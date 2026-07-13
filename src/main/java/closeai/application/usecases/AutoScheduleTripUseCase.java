@@ -3,14 +3,14 @@ package closeai.application.usecases;
 import closeai.application.ports.DistanceService;
 import closeai.application.ports.TripRepository;
 import closeai.application.ports.WeatherService;
+import closeai.application.scheduling.ActivityScoringPolicy;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.Trip;
 import closeai.domain.entities.WeatherWarning;
 import closeai.domain.valueobjects.EventType;
-import closeai.domain.valueobjects.IndoorOutdoorType;
 import closeai.domain.valueobjects.Location;
-import closeai.domain.valueobjects.WeatherSeverity;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -21,52 +21,134 @@ public final class AutoScheduleTripUseCase {
     private final TripRepository trips;
     private final DistanceService distances;
     private final WeatherService weather;
-    public AutoScheduleTripUseCase(TripRepository trips, DistanceService distances, WeatherService weather) {
-        this.trips = trips; this.distances = distances; this.weather = weather;
+    private final ActivityScoringPolicy scoringPolicy;
+
+    public AutoScheduleTripUseCase(TripRepository trips, DistanceService distances,
+                                   WeatherService weather, ActivityScoringPolicy scoringPolicy) {
+        if (trips == null || distances == null || weather == null || scoringPolicy == null) {
+            throw new IllegalArgumentException("Auto-schedule dependencies are required");
+        }
+        this.trips = trips;
+        this.distances = distances;
+        this.weather = weather;
+        this.scoringPolicy = scoringPolicy;
     }
+
     public Trip execute(String tripId) {
         Trip trip = trips.findById(tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
-        WeatherWarning warning = weather.getWarning(trip);
         List<Activity> remaining = new ArrayList<Activity>(trip.getBookmarkedActivities());
-        if (remaining.isEmpty()) throw new IllegalArgumentException("Bookmark activities before auto scheduling");
+        if (remaining.isEmpty()) {
+            throw new IllegalArgumentException("Cannot auto schedule a trip with no bookmarked activities");
+        }
+
+        WeatherWarning warning = weather.getWarning(trip);
+        if (warning == null || warning.getLocation() == null || warning.getSeverity() == null) {
+            throw new IllegalStateException("Weather service returned an incomplete forecast");
+        }
+
         List<ScheduledEvent> schedule = new ArrayList<ScheduledEvent>();
         LocalTime cursor = trip.getStartTime();
-        Location current = new Location(43.6532, -79.3832, trip.getDestination());
+        Location current = warning.getLocation();
+        int sequence = 0;
 
         while (!remaining.isEmpty()) {
-            final Location origin = current;
-            remaining.sort(Comparator.comparingDouble((Activity activity) -> score(activity,
-                    distances.estimateTravelMinutes(origin, activity.getLocation(), trip.getTransportationMode()), warning)).reversed());
-            Activity chosen = null;
-            int travel = 0;
+            List<CandidatePlan> feasible = new ArrayList<CandidatePlan>();
             for (Activity candidate : remaining) {
-                int candidateTravel = schedule.isEmpty() ? 0 : distances.estimateTravelMinutes(current,
-                        candidate.getLocation(), trip.getTransportationMode());
-                LocalTime start = cursor.plusMinutes(candidateTravel);
-                LocalTime end = start.plusMinutes(candidate.getEstimatedDurationMinutes());
-                if (!start.isBefore(candidate.getOpeningTime()) && !end.isAfter(candidate.getClosingTime())
-                        && !end.isAfter(trip.getEndTime())) { chosen = candidate; travel = candidateTravel; break; }
+                CandidatePlan plan = planCandidate(trip, warning, current, cursor, candidate);
+                if (plan != null) feasible.add(plan);
             }
-            if (chosen == null) break;
-            if (travel > 0) {
-                LocalTime travelEnd = cursor.plusMinutes(travel);
-                schedule.add(new ScheduledEvent(UUID.randomUUID().toString(), null, cursor, travelEnd,
-                        EventType.TRAVEL, "Travel · " + travel + " min"));
-                cursor = travelEnd;
+
+            if (feasible.isEmpty()) {
+                if (schedule.isEmpty()) {
+                    throw new IllegalStateException("No bookmarked activity fits the trip window and opening hours");
+                }
+                break;
             }
-            LocalTime end = cursor.plusMinutes(chosen.getEstimatedDurationMinutes());
-            schedule.add(new ScheduledEvent(UUID.randomUUID().toString(), chosen, cursor, end,
+
+            feasible.sort(Comparator.comparingDouble(CandidatePlan::getScore).reversed()
+                    .thenComparing(plan -> plan.getActivity().getId()));
+            CandidatePlan chosen = feasible.get(0);
+
+            if (chosen.getTravelMinutes() > 0) {
+                schedule.add(new ScheduledEvent(eventId(trip, sequence++, EventType.TRAVEL,
+                        chosen.getActivity(), cursor, chosen.getArrivalTime()), null, cursor,
+                        chosen.getArrivalTime(), EventType.TRAVEL,
+                        "Travel · " + chosen.getTravelMinutes() + " min"));
+            }
+            schedule.add(new ScheduledEvent(eventId(trip, sequence++, EventType.ACTIVITY,
+                    chosen.getActivity(), chosen.getStartTime(), chosen.getEndTime()),
+                    chosen.getActivity(), chosen.getStartTime(), chosen.getEndTime(),
                     EventType.ACTIVITY, "Auto scheduled"));
-            cursor = end;
-            current = chosen.getLocation();
-            remaining.remove(chosen);
+            cursor = chosen.getEndTime();
+            current = chosen.getActivity().getLocation();
+            remaining.remove(chosen.getActivity());
         }
-        trip.replaceSchedule(schedule);
-        return trips.save(trip);
+
+        Trip scheduledTrip = trip.copyWithSchedule(schedule);
+        return trips.save(scheduledTrip);
     }
-    private double score(Activity activity, int travelMinutes, WeatherWarning warning) {
-        double weatherPenalty = activity.getIndoorOutdoorType() == IndoorOutdoorType.OUTDOOR
-                ? (warning.getSeverity() == WeatherSeverity.HIGH ? 4.0 : warning.getSeverity() == WeatherSeverity.MEDIUM ? 2.0 : 0.4) : 0.0;
-        return activity.getRating() * 2.0 - travelMinutes / 20.0 - weatherPenalty;
+
+    private CandidatePlan planCandidate(Trip trip, WeatherWarning warning, Location current,
+                                        LocalTime cursor, Activity activity) {
+        int travelMinutes = distances.estimateTravelMinutes(current, activity.getLocation(),
+                trip.getTransportationMode());
+        if (travelMinutes < 0) {
+            throw new IllegalStateException("Distance service returned negative travel time");
+        }
+        if (activity.getEstimatedDurationMinutes() <= 0) {
+            throw new IllegalStateException("Activity duration must be positive");
+        }
+
+        LocalTime arrival = plusWithoutDayRollover(cursor, travelMinutes);
+        if (arrival == null || arrival.isAfter(trip.getEndTime())) return null;
+        LocalTime start = arrival.isBefore(activity.getOpeningTime())
+                ? activity.getOpeningTime() : arrival;
+        if (start.isBefore(trip.getStartTime()) || start.isAfter(trip.getEndTime())) return null;
+        LocalTime end = plusWithoutDayRollover(start, activity.getEstimatedDurationMinutes());
+        if (end == null || end.isAfter(activity.getClosingTime()) || end.isAfter(trip.getEndTime())) return null;
+
+        double score = scoringPolicy.score(activity, travelMinutes, warning.getSeverity());
+        if (!Double.isFinite(score)) {
+            throw new IllegalStateException("Scoring policy returned a non-finite score");
+        }
+        return new CandidatePlan(activity, travelMinutes, arrival, start, end, score);
+    }
+
+    private LocalTime plusWithoutDayRollover(LocalTime time, int minutes) {
+        LocalTime result = time.plusMinutes(minutes);
+        return minutes > 0 && result.isBefore(time) ? null : result;
+    }
+
+    private String eventId(Trip trip, int sequence, EventType type, Activity activity,
+                           LocalTime start, LocalTime end) {
+        String seed = trip.getId() + '|' + sequence + '|' + type + '|' + activity.getId()
+                + '|' + start + '|' + end;
+        return UUID.nameUUIDFromBytes(seed.getBytes(StandardCharsets.UTF_8)).toString();
+    }
+
+    private static final class CandidatePlan {
+        private final Activity activity;
+        private final int travelMinutes;
+        private final LocalTime arrivalTime;
+        private final LocalTime startTime;
+        private final LocalTime endTime;
+        private final double score;
+
+        private CandidatePlan(Activity activity, int travelMinutes, LocalTime arrivalTime,
+                              LocalTime startTime, LocalTime endTime, double score) {
+            this.activity = activity;
+            this.travelMinutes = travelMinutes;
+            this.arrivalTime = arrivalTime;
+            this.startTime = startTime;
+            this.endTime = endTime;
+            this.score = score;
+        }
+
+        private Activity getActivity() { return activity; }
+        private int getTravelMinutes() { return travelMinutes; }
+        private LocalTime getArrivalTime() { return arrivalTime; }
+        private LocalTime getStartTime() { return startTime; }
+        private LocalTime getEndTime() { return endTime; }
+        private double getScore() { return score; }
     }
 }

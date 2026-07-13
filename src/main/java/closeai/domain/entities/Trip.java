@@ -1,6 +1,7 @@
 package closeai.domain.entities;
 
 import closeai.domain.valueobjects.TransportationMode;
+import closeai.domain.valueobjects.EventType;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -58,8 +59,33 @@ public final class Trip {
 
     public void addEvent(ScheduledEvent event) { scheduledEvents.add(event); }
     public void replaceSchedule(List<ScheduledEvent> events) {
+        if (events == null) throw new IllegalArgumentException("Schedule is required");
+        ScheduledEvent previous = null;
+        for (ScheduledEvent event : events) {
+            if (event == null) throw new IllegalArgumentException("Schedule cannot contain null events");
+            if (event.getStartTime().isBefore(startTime) || event.getEndTime().isAfter(endTime))
+                throw new IllegalArgumentException("Scheduled events must stay inside the trip window");
+            if (previous != null && event.getStartTime().isBefore(previous.getEndTime()))
+                throw new IllegalArgumentException("Scheduled events must be sorted and cannot overlap");
+            if (event.getEventType() == EventType.ACTIVITY) {
+                Activity activity = event.getActivity();
+                if (activity == null) throw new IllegalArgumentException("Activity event requires an activity");
+                if (event.getStartTime().isBefore(activity.getOpeningTime())
+                        || event.getEndTime().isAfter(activity.getClosingTime()))
+                    throw new IllegalArgumentException("Activity must stay inside its opening hours");
+            }
+            previous = event;
+        }
         scheduledEvents.clear();
         scheduledEvents.addAll(events);
+    }
+
+    /** Returns a separate aggregate so scheduling failures never partially mutate this trip. */
+    public Trip copyWithSchedule(List<ScheduledEvent> events) {
+        Trip copy = new Trip(id, destination, date, startTime, endTime, transportationMode);
+        for (Activity activity : bookmarkedActivities) copy.bookmark(activity);
+        copy.replaceSchedule(events);
+        return copy;
     }
     public void removeEvent(String eventId) { scheduledEvents.removeIf(event -> event.getId().equals(eventId)); }
     public ScheduledEvent findEvent(String eventId) {

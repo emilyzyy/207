@@ -5,6 +5,7 @@ import closeai.application.ports.DistanceService;
 import closeai.application.ports.PlacesService;
 import closeai.application.ports.TripRepository;
 import closeai.application.ports.WeatherService;
+import closeai.application.scheduling.ActivityScoringPolicy;
 import closeai.application.usecases.*;
 
 /** Application-layer use-case registry. Concrete infrastructure is supplied by an outer builder. */
@@ -27,8 +28,10 @@ public final class AppContainer {
     public final GetWeatherWarningUseCase weatherWarning;
 
     public AppContainer(TripRepository trips, PlacesService places, ActivityRepository activities,
-                        DistanceService distances, WeatherService weather) {
-        if (trips == null || places == null || activities == null || distances == null || weather == null) {
+                        DistanceService distances, WeatherService weather,
+                        ActivityScoringPolicy scoringPolicy) {
+        if (trips == null || places == null || activities == null || distances == null
+                || weather == null || scoringPolicy == null) {
             throw new IllegalArgumentException("Application dependencies are required");
         }
         this.trips = trips;
@@ -41,7 +44,7 @@ public final class AppContainer {
         bookmarkActivity = new BookmarkActivityUseCase(trips, activities);
         removeBookmark = new RemoveBookmarkUseCase(trips);
         addActivityToPlan = new AddActivityToPlanUseCase(trips, activities);
-        autoSchedule = new AutoScheduleTripUseCase(trips, distances, weather);
+        autoSchedule = new AutoScheduleTripUseCase(trips, distances, weather, scoringPolicy);
         editEvent = new EditScheduledEventUseCase(trips);
         removeEvent = new RemoveScheduledEventUseCase(trips);
         summary = new GetTripSummaryUseCase(trips);

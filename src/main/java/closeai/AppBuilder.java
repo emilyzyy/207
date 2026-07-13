@@ -2,6 +2,7 @@ package closeai;
 
 import closeai.application.AppContainer;
 import closeai.application.ports.WeatherService;
+import closeai.application.scheduling.DefaultActivityScoringPolicy;
 import closeai.infrastructure.mock.MockDistanceService;
 import closeai.infrastructure.mock.MockPlacesService;
 import closeai.infrastructure.mock.MockWeatherService;
@@ -20,6 +21,7 @@ public final class AppBuilder {
     private AppContainer buildWithWeather(WeatherService weather) {
         InMemoryTripRepository trips = new InMemoryTripRepository();
         MockPlacesService places = new MockPlacesService();
-        return new AppContainer(trips, places, places, new MockDistanceService(), weather);
+        return new AppContainer(trips, places, places, new MockDistanceService(), weather,
+                new DefaultActivityScoringPolicy());
     }
 }

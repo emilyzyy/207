@@ -13,12 +13,16 @@ public final class ScheduledEvent {
 
     public ScheduledEvent(String id, Activity activity, LocalTime startTime, LocalTime endTime,
                           EventType eventType, String notes) {
+        if (id == null || id.trim().isEmpty()) throw new IllegalArgumentException("Event id is required");
+        if (startTime == null || endTime == null || !endTime.isAfter(startTime))
+            throw new IllegalArgumentException("End time must follow start time");
+        if (eventType == null) throw new IllegalArgumentException("Event type is required");
         this.id = id;
         this.activity = activity;
         this.startTime = startTime;
         this.endTime = endTime;
         this.eventType = eventType;
-        this.notes = notes;
+        this.notes = notes == null ? "" : notes;
     }
 
     public String getId() { return id; }
