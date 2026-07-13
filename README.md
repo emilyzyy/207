@@ -1,59 +1,116 @@
 # CloseAI
 
-CloseAI is a dependency-free CSC207 prototype for planning a one-day Toronto trip. It uses a Java 11 backend organized around Clean Architecture and a simple responsive web frontend. All places, weather, travel times, and persistence are mocked so no API keys are required.
+CloseAI is a Java 11 CSC207 prototype for planning a one-day trip. The backend follows Clean Architecture: domain and application code have no HTTP, JSON, Swing, or infrastructure dependencies, while concrete services are assembled at the outer `AppBuilder` composition root.
 
-## Run it
+The checked-in frontend is a retained web prototype, not the course's final GUI. The required Java Swing `JFrame`, panels, dialogs, and Swing feature integration are still team work and are explicitly listed in [`docs/TEAM_HANDOFF.md`](docs/TEAM_HANDOFF.md). This repository does not claim that the Swing requirement is complete.
 
-```bash
-mkdir -p out
-javac -d out $(find src/main/java -name '*.java')
-java -cp out closeai.Main
-```
+## Build and test
 
-Open [http://localhost:8080](http://localhost:8080). The backend serves both the frontend and the REST API.
-
-To run the lightweight backend tests:
+Requirement: JDK 11. The checked-in Maven Wrapper downloads the pinned Maven runtime.
 
 ```bash
-mkdir -p out
-javac -d out $(find src/main/java src/test/java -name '*.java')
-java -cp out closeai.TestRunner
+./mvnw clean test
 ```
 
-## Project structure
+The normal suite is deterministic and does not call the public internet. It uses JUnit 5 fakes for `TripRepository`, `DistanceService`, and `WeatherService`, plus a loopback HTTP server for Open-Meteo response/error tests.
+
+Run the app in offline mode (the default):
+
+```bash
+./mvnw compile exec:java -Dexec.mainClass=closeai.Main
+```
+
+Select real Open-Meteo weather at runtime:
+
+```bash
+./mvnw compile exec:java -Dexec.mainClass=closeai.Main -Dcloseai.weather.mode=open-meteo
+```
+
+Open [http://localhost:8080](http://localhost:8080). No API key or secret is used.
+
+## Architecture
 
 ```text
-src/main/java/closeai/
-  domain/          Entities, value objects, and enums
-  application/     Use cases and repository/service ports
-  adapters/        HTTP controller and JSON presenter
-  infrastructure/  Mock services, in-memory persistence, and web server
-frontend/           Code-native HTML, CSS, and JavaScript UI
-docs/design/        Generated visual specifications used for implementation
+domain
+  Trip, Activity, ScheduledEvent, WeatherWarning, value objects
+        ↑
+application
+  use cases, ports, ActivityScoringPolicy
+        ↑
+adapters / infrastructure
+  HTTP controller, persistence, mocks, Open-Meteo HTTP + DTO/JSON mapping
+        ↑
+closeai.AppBuilder / Main
+  concrete dependency assembly and live/offline selection
 ```
 
-Dependencies point inward: infrastructure and adapters depend on application ports and domain objects; domain code does not know about HTTP, JSON, or storage.
+- `AutoScheduleTripUseCase` depends only on application ports and domain objects.
+- `ActivityScoringPolicy` is injectable; `DefaultActivityScoringPolicy` owns the default rule.
+- `OpenMeteoWeatherService` implements the existing `WeatherService` port. Its API DTOs and Jackson mapping remain in `infrastructure.weather`.
+- `application.AppContainer` receives abstractions and constructs use cases; it does not instantiate infrastructure.
+- `MockWeatherService` remains the default for offline development and deterministic tests.
 
-## Main user flow
+## Auto Schedule
 
-1. Create or edit a trip with destination, date, hours, and transportation mode.
-2. Browse mock Toronto activities on the map-first dashboard.
-3. Filter, bookmark, or add activities to the compact Day Plan.
-4. Auto Schedule scores bookmarked activities and inserts travel blocks.
-5. Open Calendar View from Day Plan to inspect or remove scheduled blocks.
-6. Generate a shareable trip summary.
-
-The calendar is deliberately a secondary modal layer. It is never part of the main map/sidebar split.
-
-## Auto-schedule algorithm
-
-`AutoScheduleTripUseCase` filters activities that do not fit the trip window or opening hours, then greedily chooses the best remaining activity using:
+For every scheduling step, each remaining feasible activity is scored using:
 
 ```text
-score = rating * 2 - travel-time penalty - weather penalty
+score = 2.0 × rating − 0.05 × travelMinutes − severityPenalty × exposure
+
+severityPenalty: LOW = 0.4, MEDIUM = 2.0, HIGH = 4.0
+exposure:        INDOOR = 0.0, MIXED = 0.5, OUTDOOR = 1.0
 ```
 
-Outdoor activities receive a larger penalty in severe weather. Walking travel times are longest, driving is shortest, and transit sits between them. Travel events are inserted between activity events until no candidate fits.
+The scheduler then:
+
+1. Uses the destination coordinates resolved by `WeatherService` as the trip's initial location; there is no Toronto coordinate in the use case.
+2. Calculates travel for the first activity and every later activity using the selected transportation mode.
+3. Allows arrival before opening time by leaving a waiting gap, then starts at opening time.
+4. Rejects candidates whose travel/activity interval crosses the trip window or whose activity crosses its opening/closing time.
+5. Chooses the highest-scoring feasible candidate; equal scores use activity ID as a stable tie-break.
+6. Inserts a travel event when travel time is positive and generates deterministic event IDs from the trip, sequence, type, activity, and times.
+7. Validates that all events are sorted, inside the trip window, and non-overlapping before saving a separate scheduled trip copy.
+
+An empty bookmark list raises a clear `IllegalArgumentException`. If none of the bookmarks is feasible, scheduling raises `IllegalStateException` and preserves the previous schedule. If at least one activity fits, the legal greedy subset is saved and infeasible bookmarks remain bookmarked. Any weather, distance, scoring, or validation failure occurs before the repository receives the new aggregate, so no partial schedule is left behind.
+
+## Open-Meteo adapter
+
+`OpenMeteoWeatherService` performs two key-free requests:
+
+1. `https://geocoding-api.open-meteo.com/v1/search` resolves `Trip.destination` to latitude/longitude.
+2. `https://api.open-meteo.com/v1/forecast` requests local hourly `weather_code`, `temperature_2m`, `precipitation_probability`, and `wind_speed_10m` for the trip date.
+
+It uses Java `HttpClient` with a 5-second connect timeout and an 8-second request timeout. It converts WMO weather codes, precipitation probability, and wind speed into `LOW`, `MEDIUM`, or `HIGH` severity. Non-2xx responses, no geocoding result, missing/misaligned hourly data, malformed JSON, interruption, timeout, and network failure become `WeatherServiceException`; interrupted threads retain their interrupt flag.
+
+The public forecast API normally covers only a limited future horizon. Trips outside the provider's supported range will produce a handled service error rather than mock data.
+
+### Explicit live smoke test
+
+The live test is opt-in and is skipped by ordinary `./mvnw clean test`:
+
+```bash
+RUN_LIVE_OPEN_METEO_TEST=true ./mvnw -Dtest=OpenMeteoWeatherServiceLiveTest test
+```
+
+This makes a real geocoding request for Toronto and a real forecast request for tomorrow.
+
+## Test coverage
+
+- empty bookmarks and no feasible activity
+- first-leg travel and walking/driving/transit timing
+- waiting for opening time
+- trip window and opening/closing constraints
+- severe-weather outdoor penalty and injectable scoring
+- event ordering, non-overlap, deterministic output, and failure atomicity
+- Open-Meteo success mapping, nearest-hour selection, non-2xx, empty results, malformed/misaligned JSON, and connection failure
+- separate opt-in live Open-Meteo request
+
+## Known limitations
+
+- The current `Trip` model has a destination but no separate hotel/home origin. The geocoded destination centre is therefore the initial scheduling location.
+- The model uses same-day `LocalTime`; overnight trips and overnight opening hours are not supported.
+- Greedy scoring is deterministic but does not guarantee a globally optimal itinerary.
+- Places, distance estimates, and persistence are still mock/in-memory implementations.
 
 ## REST API
 
@@ -68,3 +125,6 @@ Outdoor activities receive a larger penalty in severe weather. Walking travel ti
 - `GET /api/trips/{tripId}/share`
 - `GET /api/trips/{tripId}/weather`
 
+## Contribution
+
+Shiyuan (Dennis) Lyu: Auto Schedule use case, scoring policy, schedule invariants, weather weighting, Open-Meteo adapter, Maven/JUnit 5 configuration, related tests, and documentation.
