@@ -6,7 +6,7 @@ import closeai.application.scheduling.DefaultActivityScoringPolicy;
 import closeai.infrastructure.mock.MockDistanceService;
 import closeai.infrastructure.mock.MockPlacesService;
 import closeai.infrastructure.mock.MockWeatherService;
-import closeai.infrastructure.persistence.InMemoryTripRepository;
+import closeai.infrastructure.persistence.InMemoryItineraryDataAccessObject;
 import closeai.infrastructure.weather.OpenMeteoWeatherService;
 
 /** Outer composition root for selecting infrastructure without leaking it into application code. */
@@ -25,9 +25,9 @@ public final class AppBuilder {
     }
 
     private AppContainer buildWithWeather(WeatherService weather) {
-        InMemoryTripRepository trips = new InMemoryTripRepository();
+        InMemoryItineraryDataAccessObject itineraries = new InMemoryItineraryDataAccessObject();
         MockPlacesService places = new MockPlacesService();
-        return new AppContainer(trips, places, places, new MockDistanceService(), weather,
-                new DefaultActivityScoringPolicy());
+        return new AppContainer(itineraries, places, places, new MockDistanceService(), weather,
+                new DefaultActivityScoringPolicy(), itineraries);
     }
 }
