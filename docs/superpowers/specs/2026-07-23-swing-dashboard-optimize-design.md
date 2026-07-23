@@ -67,9 +67,11 @@ or nested under Trip Options.
 ## Views, ViewModels, and States
 
 The presentation layer uses focused components rather than one oversized View.
-A small generic ViewModel base owns a current state value and
-`PropertyChangeSupport`. Swing Views observe their ViewModels and rerender when
-the state changes.
+The merged repository contains no course/starter ViewModel base or existing
+`PropertyChangeSupport` convention. Each feature ViewModel will therefore own
+its state and `PropertyChangeSupport` directly. This keeps the initial pattern
+explicit and avoids introducing a generic abstraction merely for elegance.
+Swing Views observe their ViewModels and rerender when the state changes.
 
 Major presentation models are:
 
@@ -96,13 +98,15 @@ The visible components are:
   clearly unavailable manual-edit controls;
 - `TripOptionsPanel`: seeded option fields with a clearly unavailable Save
   action;
-- `CalendarDialog`: read-only timeline/list refreshed from `DayPlanViewModel`.
+- `CalendarDialog`: read-only timeline/list observing the exact same
+  `DayPlanViewModel` instance as `DayPlanPanel`.
 
 ## Optimize Current Itinerary Use Case
 
 The new use case is separate from the existing bookmark-driven
-`AutoScheduleTripUseCase`. Existing constructors and behavior remain available
-for compatibility.
+`AutoScheduleTripUseCase`. That legacy prototype remains available for
+compatibility but is not wired into Swing. The Swing application exposes only
+Optimize Current Itinerary, so there are not two active autoschedule paths.
 
 The dependency flow is:
 
@@ -111,18 +115,23 @@ DayPlanPanel
 → OptimizeItineraryController
 → OptimizeItineraryInputBoundary
 → OptimizeItineraryInteractor
-→ ItineraryDataAccessInterface
+→ TripRepository
 → OptimizeItineraryOutputBoundary
 → OptimizeItineraryPresenter
 → DayPlanViewModel
 → DayPlanPanel and CalendarDialog
 ```
 
-The controller supplies the active trip ID in immutable input data. The
-interactor loads and saves through Bianca's `ItineraryDataAccessInterface`; it
-does not depend on the in-memory implementation.
+The controller supplies the active trip ID in immutable input data. Inspection
+after merging Bianca's branch confirmed that both `TripRepository` and
+`ItineraryDataAccessInterface` exist, and that the in-memory implementation
+implements both. Emily's interactor uses the existing `TripRepository`, as the
+established scheduling abstraction already does. No duplicate persistence port
+or DAO is introduced. Bianca's justified itinerary-specific interface remains
+unchanged for Edit Itinerary.
 
-For this milestone, the algorithm:
+For this milestone, the interactor performs first-pass valid schedule
+compaction, not complete optimization. It:
 
 1. Reads the trip's existing scheduled events.
 2. Selects only events of type `ACTIVITY`.
@@ -134,7 +143,10 @@ For this milestone, the algorithm:
    activity's opening time when required.
 8. Rejects the operation before saving if an activity would end after its
    closing time or outside the trip window.
-9. Saves a separate trip copy containing exactly the selected activity events.
+9. Uses `Trip.copyWithSchedule` to replace only the schedule.
+10. Persists the updated aggregate with its original ID, destination, date,
+    trip times, transportation mode, bookmarks, and all other non-schedule
+    state intact.
 
 Travel insertion, activity reordering, distance optimization, weather weighting,
 and global optimization remain outside this milestone.
@@ -170,19 +182,41 @@ Unavailable controls use a consistent visible message such as
 
 ## Testing and Verification
 
-`OptimizeItineraryInteractorTest` directly tests the interactor with a fake data
-access implementation and recording output boundary. Its primary test creates:
+`OptimizeItineraryInteractorTest` directly tests the interactor with a fake
+`TripRepository` and recording output boundary. Its primary test creates:
 
 - two activities already scheduled;
 - one unrelated bookmarked activity;
 - existing travel events.
 
 The test verifies that the successful output and saved trip contain exactly the
-two scheduled activities, preserve their IDs and durations, omit the bookmark,
-and omit old travel events.
+two scheduled activities, preserve their IDs and durations, do not add the
+unrelated bookmark to the schedule, omit old travel events, and preserve the
+bookmark plus all other non-schedule trip state.
 
 Additional focused tests cover no scheduled activities and impossible packing
 without persistence.
+
+The existing started interactors with no direct unit test at design time are:
+
+- `CreateTripUseCase`;
+- `SearchActivitiesUseCase`;
+- `FilterActivitiesUseCase`;
+- `BookmarkActivityUseCase`;
+- `RemoveBookmarkUseCase`;
+- `AddActivityToPlanUseCase`;
+- `EditScheduledEventUseCase`;
+- `RemoveScheduledEventUseCase`;
+- `GetTripSummaryUseCase`;
+- `ShareTripUseCase`;
+- `GetWeatherWarningUseCase`.
+
+The existing `AutoScheduleTripUseCase` and Bianca's
+`EditItineraryInteractor` have direct tests. Infrastructure and scoring-policy
+tests do not count as interactor tests. Emily's tests are required in this
+milestone. Other owners' missing tests remain a documented milestone gap unless
+a test-only addition is demonstrably tiny, does not change production behavior,
+and does not obscure feature ownership.
 
 Completion verification consists of:
 
@@ -194,6 +228,21 @@ Completion verification consists of:
 5. visually checking the complete dashboard and Calendar dialog;
 6. invoking Optimize and confirming Day Plan and Calendar both refresh;
 7. confirming `git diff --check` is clean.
+
+## Pair Review Record
+
+The task split identifies these intended View/ViewModel review pairs:
+
+- Emily and Bianca: Planner/Day Plan/Calendar;
+- Alex and Raashid: Activity Discovery/Search;
+- Shiyuan and Alex: Trip Setup;
+- Raashid and Shiyuan: Trip Overview/Map/Weather;
+- Raashid and Shiyuan: final `AppBuilder` view composition review.
+
+These are planned review assignments, not claims that pair programming or
+review has already occurred. The final report will state which reviews were
+actually confirmed during this work and will list unconfirmed pair-review
+requirements explicitly. It will not fabricate co-authorship.
 
 ## Explicit Non-Goals
 
@@ -208,4 +257,3 @@ This milestone does not include:
 - authentication;
 - collaborative editing;
 - full Swing wiring for every existing backend use case.
-
