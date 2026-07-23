@@ -80,7 +80,7 @@ public final class DayPlanPanel extends JPanel {
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 7, 0));
         buttons.setOpaque(false);
-        JButton optimize = SwingTheme.primaryButton("Optimize Current Itinerary");
+        JButton optimize = SwingTheme.primaryButton("Optimize Itinerary");
         optimize.addActionListener(event -> optimizeController.execute());
         buttons.add(optimize);
 

@@ -43,6 +43,9 @@ public final class SwingTheme {
         button.setForeground(Color.WHITE);
         button.setBackground(BLUE);
         button.setFocusPainted(false);
+        button.setOpaque(true);
+        button.setContentAreaFilled(true);
+        button.setBorderPainted(false);
         button.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
         return button;
     }

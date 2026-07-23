@@ -23,11 +23,13 @@ import java.awt.Container;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collections;
+import javax.swing.AbstractButton;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class SwingPanelStructureTest {
@@ -40,9 +42,10 @@ final class SwingPanelStructureTest {
                 new SearchState(Collections.singletonList(activity("rom")), "")));
         BookmarksPanel bookmarks = new BookmarksPanel(new BookmarksViewModel(
                 new BookmarksState(Collections.singletonList(activity("saved")))));
+        RecordingOptimizer optimizer = new RecordingOptimizer();
         DayPlanPanel dayPlan = new DayPlanPanel(
                 dayPlanViewModel,
-                new OptimizeItineraryController(new NoOpOptimizer(), "trip-1"));
+                new OptimizeItineraryController(optimizer, "trip-1"));
         TripOptionsPanel options = new TripOptionsPanel(new TripOptionsViewModel(
                 new TripOptionsState("Toronto", LocalDate.of(2026, 7, 23),
                         LocalTime.of(9, 0), LocalTime.of(18, 0),
@@ -57,6 +60,15 @@ final class SwingPanelStructureTest {
         assertEquals("Trip Options", tabs.getTitleAt(3));
         assertTrue(allText(planner).contains("Not wired for this milestone"));
 
+        AbstractButton optimize = findButton(dayPlan, "Optimize Itinerary");
+        assertNotNull(optimize);
+        assertTrue(optimize.isEnabled());
+        assertTrue(optimize.isVisible());
+        assertTrue(optimize.isOpaque());
+        optimize.doClick();
+        assertNotNull(optimizer.input);
+        assertEquals("trip-1", optimizer.input.getTripId());
+
         ScheduledEvent event = new ScheduledEvent(
                 "event-rom", activity("rom"), LocalTime.of(10, 0),
                 LocalTime.of(11, 0), EventType.ACTIVITY, "Visit");
@@ -66,6 +78,12 @@ final class SwingPanelStructureTest {
 
         assertTrue(allText(dayPlan).contains("rom"));
         assertTrue(allText(dayPlan).contains("Current itinerary compacted successfully"));
+
+        SwingUtilities.invokeAndWait(() -> dayPlanViewModel.setState(
+                new DayPlanState("trip-1", Collections.singletonList(event),
+                        "The itinerary cannot fit inside the trip window", true)));
+        assertTrue(allText(dayPlan).contains(
+                "The itinerary cannot fit inside the trip window"));
     }
 
     private Activity activity(String id) {
@@ -95,10 +113,28 @@ final class SwingPanelStructureTest {
         }
     }
 
-    private static final class NoOpOptimizer implements OptimizeItineraryInputBoundary {
+    private AbstractButton findButton(Component component, String text) {
+        if (component instanceof AbstractButton
+                && text.equals(((AbstractButton) component).getText())) {
+            return (AbstractButton) component;
+        }
+        if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                AbstractButton found = findButton(child, text);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static final class RecordingOptimizer implements OptimizeItineraryInputBoundary {
+        private OptimizeItineraryInputData input;
+
         @Override
         public void execute(OptimizeItineraryInputData inputData) {
-            // The panel structure test verifies wiring without invoking the interactor.
+            input = inputData;
         }
     }
 }
