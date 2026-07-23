@@ -45,10 +45,20 @@ closeai.AppBuilder / Main
 ```
 
 - `AutoScheduleTripUseCase` depends only on application ports and domain objects.
+- `EditItineraryInteractor` depends on `ItineraryDataAccessInterface`, not concrete persistence.
 - `ActivityScoringPolicy` is injectable; `DefaultActivityScoringPolicy` owns the default rule.
 - `OpenMeteoWeatherService` implements the existing `WeatherService` port. Its API DTOs and Jackson mapping remain in `infrastructure.weather`.
+- `InMemoryItineraryDataAccessObject` implements both `ItineraryDataAccessInterface` and `TripRepository` so create and edit share one in-memory store.
 - `application.AppContainer` receives abstractions and constructs use cases; it does not instantiate infrastructure.
 - `MockWeatherService` remains the default for offline development and deterministic tests.
+
+## Edit Itinerary
+
+After a trip/itinerary exists, `EditItineraryInteractor` updates its destination, date, trip window, and transportation mode through `ItineraryDataAccessInterface`.
+
+- Input is carried by immutable `EditItineraryInputData`; callers depend on `EditItineraryInputBoundary`.
+- Changes that would push scheduled events outside the new trip window are rejected before save.
+- `PUT /api/trips/{tripId}` and the Options tab “Save trip options” action use this interactor so an existing itinerary is updated in place instead of replaced by a new trip.
 
 ## Auto Schedule
 
@@ -102,6 +112,7 @@ This makes a real geocoding request for Toronto and a real forecast request for 
 - trip window and opening/closing constraints
 - severe-weather outdoor penalty and injectable scoring
 - event ordering, non-overlap, deterministic output, and failure atomicity
+- edit itinerary options update and persistence through `InMemoryItineraryDataAccessObject`
 - Open-Meteo success mapping, nearest-hour selection, non-2xx, empty results, malformed/misaligned JSON, and connection failure
 - separate opt-in live Open-Meteo request
 
@@ -116,6 +127,7 @@ This makes a real geocoding request for Toronto and a real forecast request for 
 
 - `POST /api/trips`
 - `GET /api/trips/{tripId}`
+- `PUT /api/trips/{tripId}` — edit itinerary options (destination, date, window, transportation)
 - `GET /api/activities`
 - `POST|DELETE /api/trips/{tripId}/bookmarks/{activityId}`
 - `POST /api/trips/{tripId}/plan/manual`
@@ -128,3 +140,5 @@ This makes a real geocoding request for Toronto and a real forecast request for 
 ## Contribution
 
 Shiyuan (Dennis) Lyu: Auto Schedule use case, scoring policy, schedule invariants, weather weighting, Open-Meteo adapter, Maven/JUnit 5 configuration, related tests, and documentation.
+
+Bianca: Edit Itinerary interactor (`EditItineraryInteractor`), `ItineraryDataAccessInterface`, `InMemoryItineraryDataAccessObject`, Options/API wiring for in-place itinerary updates, and related unit test.

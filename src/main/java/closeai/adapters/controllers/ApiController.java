@@ -2,6 +2,7 @@ package closeai.adapters.controllers;
 
 import closeai.adapters.presenters.JsonPresenter;
 import closeai.application.AppContainer;
+import closeai.application.usecases.EditItineraryInputData;
 import closeai.domain.entities.Trip;
 import closeai.domain.valueobjects.TransportationMode;
 import com.sun.net.httpserver.HttpExchange;
@@ -43,6 +44,20 @@ public final class ApiController implements HttpHandler {
                 String tripId = parts[3];
                 if (parts.length == 4 && "GET".equals(method)) {
                     Trip trip = app.trips.findById(tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
+                    respond(exchange, 200, presenter.trip(trip)); return;
+                }
+                if (parts.length == 4 && "PUT".equals(method)) {
+                    JsonRequest request = new JsonRequest(readBody(exchange));
+                    Trip existing = app.trips.findById(tripId)
+                            .orElseThrow(() -> new IllegalArgumentException("Itinerary not found"));
+                    Trip trip = app.editItinerary.execute(new EditItineraryInputData(
+                            tripId,
+                            request.get("destination", existing.getDestination()),
+                            LocalDate.parse(request.get("date", existing.getDate().toString())),
+                            LocalTime.parse(request.get("startTime", existing.getStartTime().toString())),
+                            LocalTime.parse(request.get("endTime", existing.getEndTime().toString())),
+                            TransportationMode.valueOf(request.get("transportationMode",
+                                    existing.getTransportationMode().name()))));
                     respond(exchange, 200, presenter.trip(trip)); return;
                 }
                 if (parts.length == 6 && "bookmarks".equals(parts[4])) {
