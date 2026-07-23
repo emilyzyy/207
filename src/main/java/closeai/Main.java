@@ -1,6 +1,7 @@
 package closeai;
 
 import closeai.adapters.controllers.ApiController;
+import closeai.adapters.views.CloseAIFrame;
 import closeai.application.AppContainer;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.Trip;
@@ -10,9 +11,31 @@ import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 public final class Main {
     public static void main(String[] args) throws Exception {
+        if (args.length > 0 && "--web".equals(args[0])) {
+            startWebPrototype();
+            return;
+        }
+
+        SwingUtilities.invokeLater(() -> {
+            try {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                CloseAIFrame frame = new AppBuilder().buildSwingApplication();
+                frame.setVisible(true);
+                System.out.println(
+                        "CloseAI Swing dashboard launched on EDT: "
+                                + SwingUtilities.isEventDispatchThread());
+            } catch (Exception exception) {
+                exception.printStackTrace();
+            }
+        });
+    }
+
+    private static void startWebPrototype() throws Exception {
         AppContainer app = new AppBuilder().build();
         Trip demo = app.createTrip.execute("Toronto", LocalDate.of(2026, 7, 18), LocalTime.of(9, 0),
                 LocalTime.of(19, 0), TransportationMode.WALKING);
