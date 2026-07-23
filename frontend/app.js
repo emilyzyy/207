@@ -99,6 +99,7 @@ function switchTab(name) {
   $$('.tab-panel').forEach(panel => panel.classList.toggle('active', panel.id === `${name}Panel`));
   if (name === 'plan') renderPlan();
   if (name === 'bookmarks') renderBookmarks();
+  if (name === 'options') syncTripForm();
 }
 
 function renderCategories() {
@@ -300,15 +301,32 @@ function renderCalendar() {
   $('#calendarTravel').textContent = formatDuration(travel.reduce((sum, event) => sum + minutesBetween(event.startTime, event.endTime), 0));
 }
 
+function syncTripForm() {
+  const form = $('#tripForm');
+  if (!form || !state.trip) return;
+  form.destination.value = state.trip.destination || '';
+  form.date.value = state.trip.date || '';
+  form.startTime.value = state.trip.startTime || '';
+  form.endTime.value = state.trip.endTime || '';
+  const mode = state.trip.transportationMode || 'WALKING';
+  const radio = form.querySelector(`input[name="transportationMode"][value="${mode}"]`);
+  if (radio) radio.checked = true;
+}
+
 async function saveTripOptions(event) {
   event.preventDefault();
   const data = Object.fromEntries(new FormData(event.currentTarget));
   try {
-    if (state.apiOnline) state.trip = await api('/api/trips', { method: 'POST', body: JSON.stringify(data) });
-    else state.trip = { id: `local-${Date.now()}`, ...data, bookmarks: [], events: [] };
+    if (state.apiOnline && state.trip?.id && state.trip.id !== 'offline-demo') {
+      state.trip = await api(`/api/trips/${state.trip.id}`, { method: 'PUT', body: JSON.stringify(data) });
+    } else if (state.apiOnline) {
+      state.trip = await api('/api/trips', { method: 'POST', body: JSON.stringify(data) });
+    } else {
+      state.trip = { ...state.trip, id: state.trip?.id || `local-${Date.now()}`, ...data };
+    }
     $('#tripTitle').textContent = `${data.destination} day trip`;
     $('#headerDate').textContent = new Date(`${data.date}T12:00:00`).toLocaleDateString('en-CA', { month: 'long', day: 'numeric' });
-    switchTab('search'); renderAll(); showToast('Trip options saved');
+    switchTab('search'); renderAll(); showToast('Itinerary updated');
   } catch (error) { showToast(error.message); }
 }
 

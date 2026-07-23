@@ -2,6 +2,7 @@ package closeai.application;
 
 import closeai.application.ports.ActivityRepository;
 import closeai.application.ports.DistanceService;
+import closeai.application.ports.ItineraryDataAccessInterface;
 import closeai.application.ports.PlacesService;
 import closeai.application.ports.TripRepository;
 import closeai.application.ports.WeatherService;
@@ -21,6 +22,7 @@ public final class AppContainer {
     public final RemoveBookmarkUseCase removeBookmark;
     public final AddActivityToPlanUseCase addActivityToPlan;
     public final AutoScheduleTripUseCase autoSchedule;
+    public final EditItineraryInputBoundary editItinerary;
     public final EditScheduledEventUseCase editEvent;
     public final RemoveScheduledEventUseCase removeEvent;
     public final GetTripSummaryUseCase summary;
@@ -30,8 +32,16 @@ public final class AppContainer {
     public AppContainer(TripRepository trips, PlacesService places, ActivityRepository activities,
                         DistanceService distances, WeatherService weather,
                         ActivityScoringPolicy scoringPolicy) {
+        this(trips, places, activities, distances, weather, scoringPolicy,
+                itineraryAccessFor(trips));
+    }
+
+    public AppContainer(TripRepository trips, PlacesService places, ActivityRepository activities,
+                        DistanceService distances, WeatherService weather,
+                        ActivityScoringPolicy scoringPolicy,
+                        ItineraryDataAccessInterface itineraries) {
         if (trips == null || places == null || activities == null || distances == null
-                || weather == null || scoringPolicy == null) {
+                || weather == null || scoringPolicy == null || itineraries == null) {
             throw new IllegalArgumentException("Application dependencies are required");
         }
         this.trips = trips;
@@ -45,10 +55,18 @@ public final class AppContainer {
         removeBookmark = new RemoveBookmarkUseCase(trips);
         addActivityToPlan = new AddActivityToPlanUseCase(trips, activities);
         autoSchedule = new AutoScheduleTripUseCase(trips, distances, weather, scoringPolicy);
+        editItinerary = new EditItineraryInteractor(itineraries);
         editEvent = new EditScheduledEventUseCase(trips);
         removeEvent = new RemoveScheduledEventUseCase(trips);
         summary = new GetTripSummaryUseCase(trips);
         share = new ShareTripUseCase(summary);
         weatherWarning = new GetWeatherWarningUseCase(trips, weather);
+    }
+
+    private static ItineraryDataAccessInterface itineraryAccessFor(TripRepository trips) {
+        if (trips instanceof ItineraryDataAccessInterface) {
+            return (ItineraryDataAccessInterface) trips;
+        }
+        return new TripRepositoryItineraryDataAccess(trips);
     }
 }
