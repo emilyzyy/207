@@ -31,6 +31,8 @@ import closeai.domain.valueobjects.TransportationMode;
 import closeai.infrastructure.mock.MockDistanceService;
 import closeai.infrastructure.mock.MockPlacesService;
 import closeai.infrastructure.mock.MockWeatherService;
+import closeai.infrastructure.places.NominatimPlacesService;
+import closeai.infrastructure.persistence.CachedPlacesRepository;
 import closeai.infrastructure.persistence.InMemoryItineraryDataAccessObject;
 import closeai.infrastructure.weather.OpenMeteoWeatherService;
 import java.time.LocalDate;
@@ -39,9 +41,13 @@ import java.util.List;
 
 /** Outer composition root for selecting infrastructure without leaking it into application code. */
 public final class AppBuilder {
+    private CachedPlacesRepository cachedPlaces;
+
     public AppContainer build() {
-        String weatherMode = System.getProperty("closeai.weather.mode", "mock");
-        return "open-meteo".equalsIgnoreCase(weatherMode) ? buildLive() : buildOffline();
+        String weatherMode = System.getProperty("closeai.weather.mode", "open-meteo");
+        WeatherService weather = "open-meteo".equalsIgnoreCase(weatherMode)
+                ? new OpenMeteoWeatherService() : new MockWeatherService();
+        return buildWithWeather(weather);
     }
 
     public AppContainer buildOffline() {
@@ -51,6 +57,9 @@ public final class AppBuilder {
     public AppContainer buildLive() {
         return buildWithWeather(new OpenMeteoWeatherService());
     }
+
+    /** Returns the CachedPlacesRepository used by the web prototype, or null if not in web mode. */
+    public CachedPlacesRepository getCachedPlaces() { return cachedPlaces; }
 
     /**
      * Builds the milestone Swing application around a replaceable seeded Trip aggregate.
@@ -96,7 +105,7 @@ public final class AppBuilder {
                 new OptimizeItineraryController(optimizeInteractor, trip.getId());
 
         HeaderPanel headerPanel = new HeaderPanel(dashboardViewModel);
-        OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel);
+        OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel, searchViewModel);
         SearchPanel searchPanel = new SearchPanel(searchViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(bookmarksViewModel);
         DayPlanPanel dayPlanPanel =
@@ -115,8 +124,11 @@ public final class AppBuilder {
 
     private AppContainer buildWithWeather(WeatherService weather) {
         InMemoryItineraryDataAccessObject itineraries = new InMemoryItineraryDataAccessObject();
-        MockPlacesService places = new MockPlacesService();
-        return new AppContainer(itineraries, places, places, new MockDistanceService(), weather,
+        MockPlacesService mockPlaces = new MockPlacesService();
+        cachedPlaces = new CachedPlacesRepository();
+        cachedPlaces.addAll(mockPlaces.findAll());
+        NominatimPlacesService nominatim = new NominatimPlacesService();
+        return new AppContainer(itineraries, nominatim, cachedPlaces, new MockDistanceService(), weather,
                 new DefaultActivityScoringPolicy(), itineraries);
     }
 
@@ -128,14 +140,28 @@ public final class AppBuilder {
                 LocalTime.of(18, 0),
                 TransportationMode.WALKING);
 
-        app.addActivityToPlan.execute(created.getId(), "rom", LocalTime.of(10, 0));
-        app.addActivityToPlan.execute(created.getId(), "pai", LocalTime.of(12, 45));
-        app.addActivityToPlan.execute(created.getId(), "cn-tower", LocalTime.of(15, 0));
-
-        // These deliberately include an activity outside the schedule. The active optimizer
-        // must ignore bookmarks and compact only the three current Day Plan activities.
-        app.bookmarkActivity.execute(created.getId(), "islands");
-        app.bookmarkActivity.execute(created.getId(), "ago");
+        List<Activity> available = app.searchActivities.execute("Toronto", "");
+        if (!available.isEmpty()) {
+            cachedPlaces.clear();
+            cachedPlaces.addAll(available);
+        }
+        List<Activity> allActivities = cachedPlaces.findAll();
+        LocalTime[] slots = { LocalTime.of(10, 0), LocalTime.of(12, 45), LocalTime.of(15, 0) };
+        int added = 0;
+        for (Activity activity : allActivities) {
+            if (added >= 3) break;
+            try {
+                app.addActivityToPlan.execute(created.getId(), activity.getId(), slots[added]);
+                added++;
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        for (int i = added; i < Math.min(allActivities.size(), added + 2); i++) {
+            try {
+                app.bookmarkActivity.execute(created.getId(), allActivities.get(i).getId());
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
         return app.trips.findById(created.getId())
                 .orElseThrow(() -> new IllegalStateException("Seeded demo trip was not saved"));
     }
