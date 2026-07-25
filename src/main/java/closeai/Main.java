@@ -3,6 +3,7 @@ package closeai;
 import closeai.adapters.controllers.ApiController;
 import closeai.adapters.views.CloseAIFrame;
 import closeai.application.AppContainer;
+import closeai.application.usecases.CreateTripInputData;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.Trip;
 import closeai.domain.valueobjects.TransportationMode;
@@ -36,9 +37,15 @@ public final class Main {
     }
 
     private static void startWebPrototype() throws Exception {
-        AppContainer app = new AppBuilder().build();
-        Trip demo = app.createTrip.execute("Toronto", LocalDate.of(2026, 7, 18), LocalTime.of(9, 0),
-                LocalTime.of(19, 0), TransportationMode.WALKING);
+        AppBuilder builder = new AppBuilder();
+        AppContainer app = builder.build();
+
+        Trip demo = app.createTrip.execute(new CreateTripInputData(
+                "Toronto",
+                LocalDate.of(2026, 7, 18),
+                LocalTime.of(9, 0),
+                LocalTime.of(19, 0),
+                TransportationMode.WALKING));
         for (Activity activity : app.activities.findAll()) {
             if (activity.getId().equals("rom") || activity.getId().equals("pai") || activity.getId().equals("cn-tower"))
                 app.bookmarkActivity.execute(demo.getId(), activity.getId());

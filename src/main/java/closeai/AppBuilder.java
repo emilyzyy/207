@@ -1,7 +1,9 @@
 package closeai;
 
 import closeai.adapters.controllers.OptimizeItineraryController;
+import closeai.adapters.controllers.TripSetupController;
 import closeai.adapters.presenters.OptimizeItineraryPresenter;
+import closeai.adapters.presenters.TripSetupPresenter;
 import closeai.adapters.viewmodels.BookmarksState;
 import closeai.adapters.viewmodels.BookmarksViewModel;
 import closeai.adapters.viewmodels.DashboardState;
@@ -21,88 +23,101 @@ import closeai.adapters.views.PlannerPanel;
 import closeai.adapters.views.SearchPanel;
 import closeai.adapters.views.TripOptionsPanel;
 import closeai.application.AppContainer;
+import closeai.application.ports.PlacesService;
 import closeai.application.ports.WeatherService;
 import closeai.application.scheduling.DefaultActivityScoringPolicy;
 import closeai.application.usecases.OptimizeItineraryInteractor;
-import closeai.domain.entities.Activity;
-import closeai.domain.entities.Trip;
-import closeai.domain.entities.WeatherWarning;
 import closeai.domain.valueobjects.TransportationMode;
 import closeai.infrastructure.mock.MockDistanceService;
 import closeai.infrastructure.mock.MockPlacesService;
 import closeai.infrastructure.mock.MockWeatherService;
+import closeai.infrastructure.places.CachingPlacesService;
+import closeai.infrastructure.places.NominatimPlacesService;
+import closeai.infrastructure.persistence.CachedPlacesRepository;
 import closeai.infrastructure.persistence.InMemoryItineraryDataAccessObject;
 import closeai.infrastructure.weather.OpenMeteoWeatherService;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.List;
+import java.util.Collections;
 
 /** Outer composition root for selecting infrastructure without leaking it into application code. */
 public final class AppBuilder {
     public AppContainer build() {
         String weatherMode = System.getProperty("closeai.weather.mode", "mock");
-        return "open-meteo".equalsIgnoreCase(weatherMode) ? buildLive() : buildOffline();
+        String placesMode = System.getProperty("closeai.places.mode", "mock");
+        WeatherService weather = "open-meteo".equalsIgnoreCase(weatherMode)
+                ? new OpenMeteoWeatherService() : new MockWeatherService();
+        return buildWithServices(
+                weather, "nominatim".equalsIgnoreCase(placesMode));
     }
 
     public AppContainer buildOffline() {
-        return buildWithWeather(new MockWeatherService());
+        return buildWithServices(new MockWeatherService(), false);
     }
 
     public AppContainer buildLive() {
-        return buildWithWeather(new OpenMeteoWeatherService());
+        return buildWithServices(new OpenMeteoWeatherService(), false);
     }
 
-    /**
-     * Builds the milestone Swing application around a replaceable seeded Trip aggregate.
-     *
-     * <p>The UI reads domain-backed state, so a future Create Trip flow can supply the active
-     * trip without changing the view structure.</p>
-     */
+    /** Builds Swing with no seeded trip; Trip Setup owns creation of the active trip. */
     public CloseAIFrame buildSwingApplication() {
-        AppContainer app = build();
-        Trip trip = seedDemoTrip(app);
-        WeatherWarning warning = app.weatherWarning.execute(trip.getId());
-        List<Activity> activities = app.activities.findAll();
+        return buildSwingApplication(build());
+    }
 
+    /** Builds Swing around an injected application container for deterministic integration tests. */
+    public CloseAIFrame buildSwingApplication(AppContainer app) {
+        if (app == null) {
+            throw new IllegalArgumentException("Application container is required");
+        }
         DashboardViewModel dashboardViewModel = new DashboardViewModel(
                 new DashboardState(
-                        trip.getDestination(),
-                        trip.getDate(),
-                        warning.getWeatherCondition(),
-                        warning.getMessage()));
+                        "", null, "Offline ready",
+                        "Create a trip to load weather for its destination."));
         SearchViewModel searchViewModel = new SearchViewModel(
-                new SearchState(activities, ""));
+                new SearchState(app.activities.findAll(), ""));
         BookmarksViewModel bookmarksViewModel = new BookmarksViewModel(
-                new BookmarksState(trip.getBookmarkedActivities()));
+                new BookmarksState(Collections.emptyList()));
         DayPlanViewModel dayPlanViewModel = new DayPlanViewModel(
                 new DayPlanState(
-                        trip.getId(),
-                        trip.getScheduledEvents(),
-                        "Seeded demo · optimizer uses Day Plan activities only",
-                        false));
+                        "", Collections.emptyList(),
+                        "Create a trip before planning or optimizing.", false));
         TripOptionsViewModel tripOptionsViewModel = new TripOptionsViewModel(
                 new TripOptionsState(
-                        trip.getDestination(),
-                        trip.getDate(),
-                        trip.getStartTime(),
-                        trip.getEndTime(),
-                        trip.getTransportationMode()));
+                        "",
+                        LocalDate.now().plusDays(1),
+                        LocalTime.of(9, 0),
+                        LocalTime.of(18, 0),
+                        TransportationMode.WALKING));
+
+        TripSetupPresenter tripSetupPresenter = new TripSetupPresenter(
+                dashboardViewModel,
+                searchViewModel,
+                bookmarksViewModel,
+                dayPlanViewModel,
+                tripOptionsViewModel,
+                app.weatherWarning,
+                app.searchActivities);
+        TripSetupController tripSetupController = new TripSetupController(
+                app.createTrip,
+                app.editItinerary,
+                () -> tripOptionsViewModel.getState().getTripId(),
+                tripSetupPresenter);
 
         OptimizeItineraryPresenter optimizePresenter =
                 new OptimizeItineraryPresenter(dayPlanViewModel);
         OptimizeItineraryInteractor optimizeInteractor =
                 new OptimizeItineraryInteractor(app.trips, optimizePresenter);
         OptimizeItineraryController optimizeController =
-                new OptimizeItineraryController(optimizeInteractor, trip.getId());
+                new OptimizeItineraryController(optimizeInteractor, dayPlanViewModel);
 
         HeaderPanel headerPanel = new HeaderPanel(dashboardViewModel);
-        OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel);
+        OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel, searchViewModel);
         SearchPanel searchPanel = new SearchPanel(searchViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(bookmarksViewModel);
         DayPlanPanel dayPlanPanel =
                 new DayPlanPanel(dayPlanViewModel, optimizeController);
         TripOptionsPanel tripOptionsPanel =
-                new TripOptionsPanel(tripOptionsViewModel);
+                new TripOptionsPanel(tripOptionsViewModel, tripSetupController);
         PlannerPanel plannerPanel = new PlannerPanel(
                 searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel);
         return new CloseAIFrame(
@@ -113,30 +128,23 @@ public final class AppBuilder {
                 dayPlanViewModel);
     }
 
-    private AppContainer buildWithWeather(WeatherService weather) {
+    private AppContainer buildWithServices(
+            WeatherService weather, boolean useLivePlaces) {
         InMemoryItineraryDataAccessObject itineraries = new InMemoryItineraryDataAccessObject();
-        MockPlacesService places = new MockPlacesService();
-        return new AppContainer(itineraries, places, places, new MockDistanceService(), weather,
-                new DefaultActivityScoringPolicy(), itineraries);
-    }
-
-    private Trip seedDemoTrip(AppContainer app) {
-        Trip created = app.createTrip.execute(
-                "Toronto",
-                LocalDate.of(2026, 7, 23),
-                LocalTime.of(9, 0),
-                LocalTime.of(18, 0),
-                TransportationMode.WALKING);
-
-        app.addActivityToPlan.execute(created.getId(), "rom", LocalTime.of(10, 0));
-        app.addActivityToPlan.execute(created.getId(), "pai", LocalTime.of(12, 45));
-        app.addActivityToPlan.execute(created.getId(), "cn-tower", LocalTime.of(15, 0));
-
-        // These deliberately include an activity outside the schedule. The active optimizer
-        // must ignore bookmarks and compact only the three current Day Plan activities.
-        app.bookmarkActivity.execute(created.getId(), "islands");
-        app.bookmarkActivity.execute(created.getId(), "ago");
-        return app.trips.findById(created.getId())
-                .orElseThrow(() -> new IllegalStateException("Seeded demo trip was not saved"));
+        MockPlacesService mockPlaces = new MockPlacesService();
+        CachedPlacesRepository cachedPlaces = new CachedPlacesRepository();
+        cachedPlaces.addAll(mockPlaces.findAll());
+        PlacesService places = useLivePlaces
+                ? new CachingPlacesService(
+                        new NominatimPlacesService(), cachedPlaces)
+                : mockPlaces;
+        return new AppContainer(
+                itineraries,
+                places,
+                cachedPlaces,
+                new MockDistanceService(),
+                weather,
+                new DefaultActivityScoringPolicy(),
+                itineraries);
     }
 }

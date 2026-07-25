@@ -21,6 +21,7 @@ public final class DayPlanPanel extends JPanel {
     private final OptimizeItineraryController optimizeController;
     private final JPanel eventList = new JPanel();
     private final JLabel status = new JLabel();
+    private JButton optimizeButton;
     private Runnable openCalendarAction = () -> { };
 
     public DayPlanPanel(
@@ -80,9 +81,9 @@ public final class DayPlanPanel extends JPanel {
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 7, 0));
         buttons.setOpaque(false);
-        JButton optimize = SwingTheme.primaryButton("Optimize Itinerary");
-        optimize.addActionListener(event -> optimizeController.execute());
-        buttons.add(optimize);
+        optimizeButton = SwingTheme.primaryButton("Optimize Itinerary");
+        optimizeButton.addActionListener(event -> optimizeController.execute());
+        buttons.add(optimizeButton);
 
         JButton calendar = new JButton("Calendar View");
         calendar.setFont(SwingTheme.BODY);
@@ -119,6 +120,7 @@ public final class DayPlanPanel extends JPanel {
                 : state.getMessage();
         status.setText(message);
         status.setForeground(state.isError() ? SwingTheme.ERROR : SwingTheme.SUCCESS);
+        optimizeButton.setEnabled(!state.getTripId().isEmpty());
         eventList.revalidate();
         eventList.repaint();
     }

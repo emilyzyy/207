@@ -14,10 +14,7 @@ public final class DayPlanState {
 
     public DayPlanState(
             String tripId, List<ScheduledEvent> events, String message, boolean error) {
-        if (tripId == null || tripId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Trip id is required");
-        }
-        this.tripId = tripId;
+        this.tripId = tripId == null ? "" : tripId.trim();
         this.events = Collections.unmodifiableList(new ArrayList<ScheduledEvent>(
                 events == null ? Collections.emptyList() : events));
         this.message = message == null ? "" : message;

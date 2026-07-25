@@ -2,9 +2,17 @@ package closeai.adapters.controllers;
 
 import closeai.adapters.presenters.JsonPresenter;
 import closeai.application.AppContainer;
+import closeai.application.usecases.CreateTripInputData;
 import closeai.application.usecases.EditItineraryInputData;
+import closeai.domain.entities.Activity;
 import closeai.domain.entities.Trip;
+import closeai.domain.valueobjects.ActivityCategory;
+import closeai.domain.valueobjects.IndoorOutdoorType;
+import closeai.domain.valueobjects.Location;
 import closeai.domain.valueobjects.TransportationMode;
+import closeai.application.ports.PlacesWriter;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import java.io.IOException;
@@ -14,11 +22,29 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class ApiController implements HttpHandler {
     private final AppContainer app;
+    private final PlacesWriter cachedPlaces;
     private final JsonPresenter presenter = new JsonPresenter();
-    public ApiController(AppContainer app) { this.app = app; }
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    public ApiController(AppContainer app) {
+        this(
+                app,
+                app != null && app.activities instanceof PlacesWriter
+                        ? (PlacesWriter) app.activities : null);
+    }
+
+    public ApiController(AppContainer app, PlacesWriter cachedPlaces) {
+        if (app == null) {
+            throw new IllegalArgumentException("Application container is required");
+        }
+        this.app = app;
+        this.cachedPlaces = cachedPlaces;
+    }
 
     public void handle(HttpExchange exchange) throws IOException {
         addHeaders(exchange);
@@ -31,13 +57,24 @@ public final class ApiController implements HttpHandler {
                 String query = queryParam(exchange.getRequestURI().getRawQuery(), "query");
                 respond(exchange, 200, presenter.activities(app.searchActivities.execute("Toronto", query))); return;
             }
+            if ("POST".equals(method) && "/api/places/search".equals(path)) {
+                if (cachedPlaces == null) {
+                    throw new IllegalArgumentException(
+                            "Discovered-place storage is unavailable");
+                }
+                List<Activity> places = parsePlacesFromJs(readBody(exchange));
+                cachedPlaces.addAll(places);
+                respond(exchange, 200, presenter.activities(places)); return;
+            }
             if ("POST".equals(method) && "/api/trips".equals(path)) {
                 JsonRequest request = new JsonRequest(readBody(exchange));
-                Trip trip = app.createTrip.execute(request.get("destination", "Toronto"),
+                Trip trip = app.createTrip.execute(new CreateTripInputData(
+                        request.get("destination", "Toronto"),
                         LocalDate.parse(request.get("date", "2026-07-18")),
                         LocalTime.parse(request.get("startTime", "09:00")),
                         LocalTime.parse(request.get("endTime", "19:00")),
-                        TransportationMode.valueOf(request.get("transportationMode", "WALKING")));
+                        TransportationMode.valueOf(
+                                request.get("transportationMode", "WALKING"))));
                 respond(exchange, 201, presenter.trip(trip)); return;
             }
             if (parts.length >= 4 && "trips".equals(parts[2])) {
@@ -103,6 +140,41 @@ public final class ApiController implements HttpHandler {
     }
 
     private static LocalTime optionalTime(String value) { return value == null || value.isEmpty() ? null : LocalTime.parse(value); }
+
+    private List<Activity> parsePlacesFromJs(String json) {
+        try {
+            JsonNode root = mapper.readTree(json);
+            JsonNode placesNode = root.path("places");
+            if (!placesNode.isArray()) return new ArrayList<>();
+            List<Activity> result = new ArrayList<>();
+            for (JsonNode place : placesNode) {
+                String id = place.path("id").asText(null);
+                String name = place.path("name").asText(null);
+                if (id == null || name == null) continue;
+                double lat = place.path("latitude").asDouble(0);
+                double lng = place.path("longitude").asDouble(0);
+                String address = place.path("address").asText("");
+                double rating = place.path("rating").asDouble(0);
+                String categoryStr = place.path("category").asText("ATTRACTION");
+                String typeStr = place.path("type").asText("MIXED");
+                int duration = place.path("durationMinutes").asInt(60);
+                ActivityCategory category;
+                try { category = ActivityCategory.valueOf(categoryStr); }
+                catch (IllegalArgumentException e) { category = ActivityCategory.ATTRACTION; }
+                IndoorOutdoorType indoorType;
+                try { indoorType = IndoorOutdoorType.valueOf(typeStr); }
+                catch (IllegalArgumentException e) { indoorType = IndoorOutdoorType.MIXED; }
+                String risk = indoorType == IndoorOutdoorType.OUTDOOR ? "High"
+                        : indoorType == IndoorOutdoorType.MIXED ? "Medium" : "Low";
+                result.add(new Activity(id, name, category, new Location(lat, lng, address),
+                        rating, duration, LocalTime.of(9, 0), LocalTime.of(21, 0), indoorType, risk));
+            }
+            return result;
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
     private static String readBody(HttpExchange exchange) throws IOException {
         InputStream input = exchange.getRequestBody();
         byte[] bytes = input.readAllBytes();

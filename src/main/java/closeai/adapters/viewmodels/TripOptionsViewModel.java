@@ -4,7 +4,7 @@ import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.util.Objects;
 
-/** Observable ViewModel for the Trip Options skeleton. */
+/** Observable ViewModel for create/edit trip setup. */
 public final class TripOptionsViewModel {
     private final PropertyChangeSupport changes = new PropertyChangeSupport(this);
     private TripOptionsState state;
@@ -22,6 +22,12 @@ public final class TripOptionsViewModel {
         TripOptionsState oldState = state;
         state = Objects.requireNonNull(updatedState, "Trip-options state is required");
         changes.firePropertyChange("state", oldState, state);
+    }
+
+    public void setFeedback(String message, boolean error) {
+        TripOptionsState oldState = state;
+        state = state.withFeedback(message, error);
+        changes.firePropertyChange("feedback", oldState, state);
     }
 
     public void addPropertyChangeListener(PropertyChangeListener listener) {
