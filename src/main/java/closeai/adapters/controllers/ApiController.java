@@ -2,6 +2,7 @@ package closeai.adapters.controllers;
 
 import closeai.adapters.presenters.JsonPresenter;
 import closeai.application.AppContainer;
+import closeai.application.usecases.CreateTripInputData;
 import closeai.application.usecases.EditItineraryInputData;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.Trip;
@@ -30,7 +31,17 @@ public final class ApiController implements HttpHandler {
     private final JsonPresenter presenter = new JsonPresenter();
     private final ObjectMapper mapper = new ObjectMapper();
 
+    public ApiController(AppContainer app) {
+        this(
+                app,
+                app != null && app.activities instanceof PlacesWriter
+                        ? (PlacesWriter) app.activities : null);
+    }
+
     public ApiController(AppContainer app, PlacesWriter cachedPlaces) {
+        if (app == null) {
+            throw new IllegalArgumentException("Application container is required");
+        }
         this.app = app;
         this.cachedPlaces = cachedPlaces;
     }
@@ -47,17 +58,23 @@ public final class ApiController implements HttpHandler {
                 respond(exchange, 200, presenter.activities(app.searchActivities.execute("Toronto", query))); return;
             }
             if ("POST".equals(method) && "/api/places/search".equals(path)) {
+                if (cachedPlaces == null) {
+                    throw new IllegalArgumentException(
+                            "Discovered-place storage is unavailable");
+                }
                 List<Activity> places = parsePlacesFromJs(readBody(exchange));
                 cachedPlaces.addAll(places);
                 respond(exchange, 200, presenter.activities(places)); return;
             }
             if ("POST".equals(method) && "/api/trips".equals(path)) {
                 JsonRequest request = new JsonRequest(readBody(exchange));
-                Trip trip = app.createTrip.execute(request.get("destination", "Toronto"),
+                Trip trip = app.createTrip.execute(new CreateTripInputData(
+                        request.get("destination", "Toronto"),
                         LocalDate.parse(request.get("date", "2026-07-18")),
                         LocalTime.parse(request.get("startTime", "09:00")),
                         LocalTime.parse(request.get("endTime", "19:00")),
-                        TransportationMode.valueOf(request.get("transportationMode", "WALKING")));
+                        TransportationMode.valueOf(
+                                request.get("transportationMode", "WALKING"))));
                 respond(exchange, 201, presenter.trip(trip)); return;
             }
             if (parts.length >= 4 && "trips".equals(parts[2])) {

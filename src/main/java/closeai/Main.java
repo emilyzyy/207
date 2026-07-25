@@ -3,10 +3,10 @@ package closeai;
 import closeai.adapters.controllers.ApiController;
 import closeai.adapters.views.CloseAIFrame;
 import closeai.application.AppContainer;
+import closeai.application.usecases.CreateTripInputData;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.Trip;
 import closeai.domain.valueobjects.TransportationMode;
-import closeai.infrastructure.persistence.CachedPlacesRepository;
 import closeai.infrastructure.web.StaticFileHandler;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
@@ -39,10 +39,13 @@ public final class Main {
     private static void startWebPrototype() throws Exception {
         AppBuilder builder = new AppBuilder();
         AppContainer app = builder.build();
-        CachedPlacesRepository cachedPlaces = builder.getCachedPlaces();
 
-        Trip demo = app.createTrip.execute("Toronto", LocalDate.of(2026, 7, 18), LocalTime.of(9, 0),
-                LocalTime.of(19, 0), TransportationMode.WALKING);
+        Trip demo = app.createTrip.execute(new CreateTripInputData(
+                "Toronto",
+                LocalDate.of(2026, 7, 18),
+                LocalTime.of(9, 0),
+                LocalTime.of(19, 0),
+                TransportationMode.WALKING));
         for (Activity activity : app.activities.findAll()) {
             if (activity.getId().equals("rom") || activity.getId().equals("pai") || activity.getId().equals("cn-tower"))
                 app.bookmarkActivity.execute(demo.getId(), activity.getId());
@@ -51,7 +54,7 @@ public final class Main {
         System.setProperty("closeai.demoTripId", demo.getId());
 
         HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
-        server.createContext("/api", new ApiController(app, cachedPlaces));
+        server.createContext("/api", new ApiController(app));
         server.createContext("/", new StaticFileHandler("frontend"));
         server.setExecutor(null);
         server.start();

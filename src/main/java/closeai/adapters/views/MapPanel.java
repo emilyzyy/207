@@ -50,13 +50,26 @@ public final class MapPanel extends JPanel {
             r -> { Thread t = new Thread(r, "TileLoader"); t.setDaemon(true); return t; });
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(java.time.Duration.ofSeconds(8)).build();
+    private final boolean tileLoadingEnabled;
 
     public MapPanel(int width, int height) {
+        this(
+                width,
+                height,
+                "osm".equalsIgnoreCase(
+                        System.getProperty("closeai.map.tiles.mode", "offline")));
+    }
+
+    MapPanel(int width, int height, boolean tileLoadingEnabled) {
+        this.tileLoadingEnabled = tileLoadingEnabled;
         setLayout(null);
         setPreferredSize(new Dimension(width, height));
         setOpaque(true);
         setBackground(new Color(232, 239, 244));
         setBorder(BorderFactory.createLineBorder(new Color(180, 200, 215)));
+        setToolTipText(tileLoadingEnabled
+                ? "OpenStreetMap tiles enabled"
+                : "Offline map: markers are shown without network tiles");
 
         addMouseListener(new MouseAdapter() {
             @Override
@@ -128,6 +141,14 @@ public final class MapPanel extends JPanel {
 
     public void fitAll() {
         fitToActivities();
+    }
+
+    public int getActivityCount() {
+        return activities.size();
+    }
+
+    public boolean isTileLoadingEnabled() {
+        return tileLoadingEnabled;
     }
 
     private void fitToActivities() {
@@ -206,7 +227,7 @@ public final class MapPanel extends JPanel {
                 int px = (int) (w / 2.0 + (cx * TILE_SIZE - centerPixelX));
                 int py = (int) (h / 2.0 + (cy * TILE_SIZE - centerPixelY));
                 String key = currentZoom + "/" + cx + "/" + cy;
-                BufferedImage tile = tileCache.get(key);
+                BufferedImage tile = tileLoadingEnabled ? tileCache.get(key) : null;
                 if (tile != null) {
                     g2.drawImage(tile, px, py, null);
                 } else {
@@ -214,7 +235,7 @@ public final class MapPanel extends JPanel {
                     g2.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                     g2.setColor(new Color(200, 210, 220));
                     g2.drawRect(px, py, TILE_SIZE - 1, TILE_SIZE - 1);
-                    if (!isDragging) {
+                    if (tileLoadingEnabled && !isDragging) {
                         loadTile(cx, cy, currentZoom, key);
                     }
                 }
@@ -228,7 +249,8 @@ public final class MapPanel extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setColor(Color.WHITE);
         g2.setFont(SwingTheme.BODY);
-        String title = activities.size() + " places in Toronto";
+        String title = activities.size() + " places"
+                + (tileLoadingEnabled ? " · OpenStreetMap" : " · offline map");
         g2.drawString(title, 12, 24);
 
         drawMarkers(g2, w, h, centerPixelX, centerPixelY);
@@ -285,6 +307,8 @@ public final class MapPanel extends JPanel {
                     }
                 }
                 response.body().close();
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
             } catch (Exception ignored) {
             } finally {
                 pendingLoads.remove(key);

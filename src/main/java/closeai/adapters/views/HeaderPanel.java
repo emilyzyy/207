@@ -56,7 +56,8 @@ public final class HeaderPanel extends JPanel {
     }
 
     private void refresh(DashboardState state) {
-        tripLabel.setText(state.getDestination() + " day trip");
+        tripLabel.setText(state.getDestination().isEmpty()
+                ? "Create a trip to begin" : state.getDestination() + " day trip");
         dateLabel.setText(state.getDate() == null
                 ? "Date not selected" : DATE.format(state.getDate()));
     }

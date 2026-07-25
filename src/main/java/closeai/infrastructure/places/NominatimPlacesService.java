@@ -21,6 +21,8 @@ import java.util.List;
 
 /** PlacesService adapter backed by OpenStreetMap Nominatim (geocoding) and Overpass (POI search). */
 public final class NominatimPlacesService implements PlacesService {
+    private static final URI GEOCODING_ENDPOINT =
+            URI.create("https://nominatim.openstreetmap.org/search");
     private static final URI OVERPASS_ENDPOINT =
             URI.create("https://overpass.kumi.systems/api/interpreter");
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(15);
@@ -29,14 +31,30 @@ public final class NominatimPlacesService implements PlacesService {
 
     private final HttpClient client;
     private final ObjectMapper mapper;
+    private final URI geocodingEndpoint;
+    private final URI overpassEndpoint;
 
     public NominatimPlacesService() {
-        this(HttpClient.newBuilder().connectTimeout(REQUEST_TIMEOUT).build(), new ObjectMapper());
+        this(
+                HttpClient.newBuilder().connectTimeout(REQUEST_TIMEOUT).build(),
+                new ObjectMapper(),
+                GEOCODING_ENDPOINT,
+                OVERPASS_ENDPOINT);
     }
 
-    NominatimPlacesService(HttpClient client, ObjectMapper mapper) {
+    NominatimPlacesService(
+            HttpClient client,
+            ObjectMapper mapper,
+            URI geocodingEndpoint,
+            URI overpassEndpoint) {
+        if (client == null || mapper == null
+                || geocodingEndpoint == null || overpassEndpoint == null) {
+            throw new IllegalArgumentException("Places service dependencies are required");
+        }
         this.client = client;
         this.mapper = mapper;
+        this.geocodingEndpoint = geocodingEndpoint;
+        this.overpassEndpoint = overpassEndpoint;
     }
 
     @Override
@@ -53,20 +71,27 @@ public final class NominatimPlacesService implements PlacesService {
             List<Activity> result = parseElements(elements);
             System.out.println("[NominatimPlaces] Parsed " + result.size() + " activities");
             return result;
-        } catch (Exception e) {
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            System.err.println("[NominatimPlaces] Search interrupted");
+            return new ArrayList<>();
+        } catch (IOException | RuntimeException e) {
             System.err.println("[NominatimPlaces] Search failed: " + e.getMessage());
             return new ArrayList<>();
         }
     }
 
     private double[] geocode(String destination) throws IOException, InterruptedException {
-        URI uri = URI.create("https://nominatim.openstreetmap.org/search"
+        URI uri = URI.create(geocodingEndpoint.toString()
                 + "?q=" + encode(destination) + "&format=json&limit=1");
         HttpRequest request = HttpRequest.newBuilder(uri).timeout(REQUEST_TIMEOUT)
                 .header("User-Agent", "CloseAI-CSC207/1.0")
                 .GET().build();
         HttpResponse<String> response = client.send(request,
                 HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new IOException("Nominatim HTTP " + response.statusCode());
+        }
         JsonNode results = mapper.readTree(response.body());
         if (!results.isArray() || results.isEmpty()) {
             throw new IOException("Nominatim found no location for: " + destination);
@@ -90,7 +115,7 @@ public final class NominatimPlacesService implements PlacesService {
 
     private JsonNode queryOverpass(String query) throws IOException, InterruptedException {
         String body = "data=" + encode(query);
-        HttpRequest request = HttpRequest.newBuilder(OVERPASS_ENDPOINT)
+        HttpRequest request = HttpRequest.newBuilder(overpassEndpoint)
                 .timeout(Duration.ofSeconds(20))
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("User-Agent", "CloseAI-CSC207/1.0")
@@ -99,8 +124,7 @@ public final class NominatimPlacesService implements PlacesService {
         HttpResponse<String> response = client.send(request,
                 HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            System.err.println("[NominatimPlaces] Overpass HTTP " + response.statusCode());
-            return mapper.createArrayNode();
+            throw new IOException("Overpass HTTP " + response.statusCode());
         }
         JsonNode tree = mapper.readTree(response.body());
         return tree.has("elements") ? tree.get("elements") : mapper.createArrayNode();

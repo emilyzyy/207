@@ -16,7 +16,7 @@ public final class AppContainer {
     public final ActivityRepository activities;
     public final WeatherService weather;
     public final DistanceService distances;
-    public final CreateTripUseCase createTrip;
+    public final CreateTripInputBoundary createTrip;
     public final SearchActivitiesUseCase searchActivities;
     public final BookmarkActivityUseCase bookmarkActivity;
     public final RemoveBookmarkUseCase removeBookmark;
