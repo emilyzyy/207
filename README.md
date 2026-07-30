@@ -2,7 +2,7 @@
 
 CloseAI is a Java 11 CSC207 prototype for planning a one-day trip. The backend follows Clean Architecture: domain and application code have no HTTP, JSON, Swing, or infrastructure dependencies, while concrete services are assembled at the outer `AppBuilder` composition root.
 
-The checked-in frontend is a retained web prototype, not the course's final GUI. The required Java Swing `JFrame`, panels, dialogs, and Swing feature integration are still team work and are explicitly listed in [`docs/TEAM_HANDOFF.md`](docs/TEAM_HANDOFF.md). This repository does not claim that the Swing requirement is complete.
+The default application is a Java Swing dashboard. It starts without a seeded trip: the Trip Setup tab creates the active trip, and the same form edits that trip later. The retained web frontend is available as a secondary prototype through `Main --web`.
 
 ## Build and test
 
@@ -12,7 +12,7 @@ Requirement: JDK 11. The checked-in Maven Wrapper downloads the pinned Maven run
 ./mvnw clean test
 ```
 
-The normal suite is deterministic and does not call the public internet. It uses JUnit 5 fakes for `TripRepository`, `DistanceService`, and `WeatherService`, plus a loopback HTTP server for Open-Meteo response/error tests.
+The normal suite is deterministic and does not call the public internet. It uses JUnit 5 fakes plus loopback-only HTTP servers for Open-Meteo and Nominatim/Overpass response and error tests.
 
 Run the app in offline mode (the default):
 
@@ -26,7 +26,23 @@ Select real Open-Meteo weather at runtime:
 ./mvnw compile exec:java -Dexec.mainClass=closeai.Main -Dcloseai.weather.mode=open-meteo
 ```
 
-Open [http://localhost:8080](http://localhost:8080). No API key or secret is used.
+Real places and OpenStreetMap tiles are separate, explicit opt-ins:
+
+```bash
+./mvnw compile exec:java -Dexec.mainClass=closeai.Main \
+  -Dcloseai.places.mode=nominatim \
+  -Dcloseai.map.tiles.mode=osm
+```
+
+The places and weather refresh runs in a `SwingWorker`, not on the Swing event-dispatch thread. If either service fails, the created trip remains valid and the UI retains its cached mock places.
+
+Run the web prototype and open [http://localhost:8080](http://localhost:8080):
+
+```bash
+./mvnw compile exec:java -Dexec.mainClass=closeai.Main -Dexec.args=--web
+```
+
+No API key or secret is used.
 
 ## Architecture
 
@@ -45,10 +61,29 @@ closeai.AppBuilder / Main
 ```
 
 - `AutoScheduleTripUseCase` depends only on application ports and domain objects.
+- `CreateTripUseCase` implements `CreateTripInputBoundary`, validates immutable `CreateTripInputData`, and saves through `TripRepository`.
+- `EditItineraryInteractor` depends on `ItineraryDataAccessInterface`, not concrete persistence.
 - `ActivityScoringPolicy` is injectable; `DefaultActivityScoringPolicy` owns the default rule.
 - `OpenMeteoWeatherService` implements the existing `WeatherService` port. Its API DTOs and Jackson mapping remain in `infrastructure.weather`.
+- `InMemoryItineraryDataAccessObject` implements both `ItineraryDataAccessInterface` and `TripRepository` so create and edit share one in-memory store.
 - `application.AppContainer` receives abstractions and constructs use cases; it does not instantiate infrastructure.
 - `MockWeatherService` remains the default for offline development and deterministic tests.
+- `MockPlacesService` and the offline map remain the defaults. `NominatimPlacesService`, Overpass, and OpenStreetMap tiles require explicit runtime modes.
+
+## Create Trip and Trip Setup
+
+- Swing starts with no active trip and disables Optimize until creation succeeds.
+- `TripSetupController` chooses Create Trip when there is no active trip and Edit Itinerary afterward.
+- `TripSetupPresenter` updates Dashboard, Trip Options, Bookmarks, and the Day Plan with the same saved trip ID.
+- Destination weather and place refresh happens asynchronously; failure never rolls back a successfully created trip.
+
+## Edit Itinerary
+
+After a trip/itinerary exists, `EditItineraryInteractor` updates its destination, date, trip window, and transportation mode through `ItineraryDataAccessInterface`.
+
+- Input is carried by immutable `EditItineraryInputData`; callers depend on `EditItineraryInputBoundary`.
+- Changes that would push scheduled events outside the new trip window are rejected before save.
+- `PUT /api/trips/{tripId}` and the Options tab “Save trip options” action use this interactor so an existing itinerary is updated in place instead of replaced by a new trip.
 
 ## Auto Schedule
 
@@ -102,6 +137,9 @@ This makes a real geocoding request for Toronto and a real forecast request for 
 - trip window and opening/closing constraints
 - severe-weather outdoor penalty and injectable scoring
 - event ordering, non-overlap, deterministic output, and failure atomicity
+- edit itinerary options update and persistence through `InMemoryItineraryDataAccessObject`
+- Create Trip validation, persistence, controller parsing, presenter state propagation, and the create/edit/optimize Swing path
+- Nominatim/Overpass success mapping, empty results, non-2xx, malformed JSON, caching, and map ViewModel updates
 - Open-Meteo success mapping, nearest-hour selection, non-2xx, empty results, malformed/misaligned JSON, and connection failure
 - separate opt-in live Open-Meteo request
 
@@ -110,12 +148,14 @@ This makes a real geocoding request for Toronto and a real forecast request for 
 - The current `Trip` model has a destination but no separate hotel/home origin. The geocoded destination centre is therefore the initial scheduling location.
 - The model uses same-day `LocalTime`; overnight trips and overnight opening hours are not supported.
 - Greedy scoring is deterministic but does not guarantee a globally optimal itinerary.
-- Places, distance estimates, and persistence are still mock/in-memory implementations.
+- Distance estimates and persistence remain mock/in-memory implementations.
+- Live place discovery is optional and uses public Nominatim/Overpass services; offline mode remains the supported default.
 
 ## REST API
 
 - `POST /api/trips`
 - `GET /api/trips/{tripId}`
+- `PUT /api/trips/{tripId}` — edit itinerary options (destination, date, window, transportation)
 - `GET /api/activities`
 - `POST|DELETE /api/trips/{tripId}/bookmarks/{activityId}`
 - `POST /api/trips/{tripId}/plan/manual`
@@ -127,4 +167,8 @@ This makes a real geocoding request for Toronto and a real forecast request for 
 
 ## Contribution
 
-Shiyuan (Dennis) Lyu: Auto Schedule use case, scoring policy, schedule invariants, weather weighting, Open-Meteo adapter, Maven/JUnit 5 configuration, related tests, and documentation.
+Shiyuan (Dennis) Lyu: Create Trip input boundary/interactor validation and tests; Trip Setup create/edit Swing workflow; active-trip composition; offline-by-default service selection; reviewed integration and tests for Raashid's map/place branch; Auto Schedule, scoring policy, schedule invariants, weather weighting, Open-Meteo adapter, Maven/JUnit 5 configuration, and documentation.
+
+Bianca: Edit Itinerary interactor (`EditItineraryInteractor`), `ItineraryDataAccessInterface`, `InMemoryItineraryDataAccessObject`, Options/API wiring for in-place itinerary updates, and related unit test.
+
+Raashid: interactive Swing map, Nominatim/Overpass place discovery, cached-place repository, and web map integration.

@@ -18,11 +18,6 @@ const exactFallbackEvents = [
   { id: 'e-cn', eventType: 'ACTIVITY', startTime: '14:00', endTime: '15:30', notes: 'Auto scheduled', activity: fallbackActivities[1] }
 ];
 
-const pinPositions = {
-  rom: [45, 41], 'cn-tower': [55, 67], islands: [69, 88], pai: [49, 61],
-  kensington: [34, 57], ago: [40, 52], balzacs: [82, 57]
-};
-
 const state = {
   activities: fallbackActivities,
   trip: {
@@ -30,7 +25,8 @@ const state = {
     transportationMode: 'WALKING', bookmarks: [fallbackActivities[0], fallbackActivities[3], fallbackActivities[1]],
     events: exactFallbackEvents
   },
-  selectedId: 'rom', selectedCategory: '', activeTab: 'search', apiOnline: true
+  selectedId: 'rom', selectedCategory: '', activeTab: 'search', apiOnline: true,
+  map: null, markerLayer: null
 };
 
 const $ = selector => document.querySelector(selector);
@@ -47,6 +43,7 @@ async function api(path, options = {}) {
 async function initialize() {
   bindStaticEvents();
   renderCategories();
+  initLeafletMap();
   renderAll();
   try {
     state.activities = await api('/api/activities');
@@ -67,9 +64,57 @@ async function initialize() {
   renderAll();
 }
 
+function initLeafletMap() {
+  state.map = L.map('map', { zoomControl: false, attributionControl: true }).setView([43.6532, -79.3832], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(state.map);
+  state.markerLayer = L.layerGroup().addTo(state.map);
+}
+
+function numberIcon(index, isSelected) {
+  const color = isSelected ? '#f06451' : '#0a2142';
+  const size = isSelected ? 38 : 32;
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);">${index + 1}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2]
+  });
+}
+
+function renderLeafletMarkers() {
+  if (!state.map || !state.markerLayer) return;
+  state.markerLayer.clearLayers();
+  const bounds = [];
+  state.activities.forEach((activity, index) => {
+    const isSelected = state.selectedId === activity.id;
+    const marker = L.marker([activity.latitude, activity.longitude], {
+      icon: numberIcon(index, isSelected),
+      zIndexOffset: isSelected ? 1000 : 0
+    });
+    marker.bindPopup(`<strong>${escapeHtml(activity.name)}</strong><br><small>${escapeHtml(activity.address)}</small>`);
+    marker.on('click', () => selectActivity(activity.id));
+    state.markerLayer.addLayer(marker);
+    bounds.push([activity.latitude, activity.longitude]);
+  });
+  if (bounds.length > 0) {
+    state.map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+  }
+  updateSelectionPopup();
+}
+
+function updateSelectionPopup() {
+  const selected = state.activities.find(a => a.id === state.selectedId) || state.activities[0];
+  if (!selected) return;
+  const index = state.activities.indexOf(selected) + 1;
+  $('#mapSelection').innerHTML = `<span class="selection-index">${index}</span><div><strong>${escapeHtml(selected.name)}</strong><small>${escapeHtml(selected.address)}</small></div>`;
+}
+
 function bindStaticEvents() {
   $$('.tab').forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.tab)));
-  $('#searchInput').addEventListener('input', renderActivities);
+  $('#searchInput').addEventListener('input', handleSearchInput);
   $('#clearSearch').addEventListener('click', () => { $('#searchInput').value = ''; renderActivities(); $('#searchInput').focus(); });
   $('#ratingFilter').addEventListener('change', renderActivities);
   $('#openFilter').addEventListener('change', renderActivities);
@@ -83,10 +128,115 @@ function bindStaticEvents() {
   $('#sharePlanButton').addEventListener('click', shareTrip);
   $('#calendarShareButton').addEventListener('click', shareTrip);
   $('#clearPlanButton').addEventListener('click', clearPlan);
-  $('#editPlanButton').addEventListener('click', () => showToast('Choose an event’s ••• menu to edit or remove it'));
+  $('#editPlanButton').addEventListener('click', () => showToast('Choose an event\'s ••• menu to edit or remove it'));
   $('#newTripButton').addEventListener('click', () => { switchTab('options'); $('#optionsPanel input').focus(); });
   $('#tripForm').addEventListener('submit', saveTripOptions);
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('#calendarModal').hidden) closeCalendar(); });
+}
+
+let searchDebounce;
+function handleSearchInput() {
+  clearTimeout(searchDebounce);
+  const query = $('#searchInput').value.trim();
+  if (query.length >= 2) {
+    searchDebounce = setTimeout(() => nominatimSearch(query), 400);
+  } else {
+    renderActivities();
+  }
+}
+
+async function nominatimSearch(query) {
+  try {
+    const bounds = state.map.getBounds();
+    const viewbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ' Toronto')}&format=json&viewbox=${viewbox}&bounded=1&limit=15&addressdetails=1`;
+    const response = await fetch(url, { headers: { 'User-Agent': 'CloseAI-TripPlanner/1.0' } });
+    const results = await response.json();
+    if (!results || results.length === 0) {
+      renderActivities();
+      return;
+    }
+    const places = results.map(mapNominatimResult).filter(Boolean);
+    state.activities = places;
+    syncPlacesToBackend(places);
+    renderLeafletMarkers();
+    renderActivities();
+  } catch (_) {
+    renderActivities();
+  }
+}
+
+function mapNominatimResult(result) {
+  if (!result.place_id || !result.lat || !result.lon) return null;
+  const lat = parseFloat(result.lat);
+  const lng = parseFloat(result.lon);
+  if (!isFinite(lat) || !isFinite(lng)) return null;
+  const types = result.type ? [result.type] : [];
+  const category = mapCategory(result, types);
+  const indoorType = mapIndoorType(result, types);
+  const address = result.display_name || '';
+  const shortName = result.namedetails && result.namedetails.name ? result.namedetails.name
+          : result.display_name ? result.display_name.split(',')[0] : 'Unknown place';
+  return {
+    id: String(result.place_id),
+    name: shortName,
+    category,
+    rating: 4.0 + Math.random() * 0.8,
+    address,
+    latitude: lat,
+    longitude: lng,
+    durationMinutes: estimateDuration(category),
+    type: indoorType,
+    weatherRisk: indoorType === 'OUTDOOR' ? 'High' : indoorType === 'MIXED' ? 'Medium' : 'Low'
+  };
+}
+
+function mapCategory(result, types) {
+  const classType = (result.class || '').toLowerCase();
+  const osmType = (result.type || '').toLowerCase();
+  if (['restaurant', 'cafe', 'bar', 'pub', 'fast_food', 'food_court'].includes(osmType) || classType === 'amenity') return 'FOOD';
+  if (['museum', 'gallery', 'arts_centre'].includes(osmType) || classType === 'tourism') {
+    if (osmType === 'museum' || osmType === 'gallery') return 'MUSEUM';
+    return 'ATTRACTION';
+  }
+  if (['park', 'garden', 'nature_reserve'].includes(osmType) || classType === 'leisure') return 'OUTDOOR';
+  if (['shop', 'supermarket', 'mall'].includes(osmType) || classType === 'shop') return 'SHOPPING';
+  if (osmType === 'cafe' || osmType === 'coffee') return 'COFFEE';
+  if (classType === 'tourism') return 'ATTRACTION';
+  return 'ATTRACTION';
+}
+
+function mapIndoorType(result, types) {
+  const classType = (result.class || '').toLowerCase();
+  const osmType = (result.type || '').toLowerCase();
+  const indoor = ['restaurant', 'cafe', 'bar', 'pub', 'museum', 'gallery', 'shop', 'supermarket'];
+  const outdoor = ['park', 'garden', 'nature_reserve', 'attraction'];
+  if (indoor.includes(osmType) || classType === 'shop') return 'INDOOR';
+  if (outdoor.includes(osmType) || classType === 'leisure') return 'OUTDOOR';
+  if (classType === 'tourism') return 'MIXED';
+  return 'MIXED';
+}
+
+function estimateDuration(category) {
+  switch (category) {
+    case 'FOOD': return 60;
+    case 'MUSEUM': return 120;
+    case 'OUTDOOR': return 120;
+    case 'SHOPPING': return 90;
+    case 'COFFEE': return 30;
+    case 'ATTRACTION': return 90;
+    default: return 60;
+  }
+}
+
+async function syncPlacesToBackend(places) {
+  if (!state.apiOnline) return;
+  try {
+    await api('/api/places/search', {
+      method: 'POST',
+      body: JSON.stringify({ places })
+    });
+  } catch (_) { /* backend sync is best-effort */ }
 }
 
 function switchTab(name) {
@@ -99,6 +249,8 @@ function switchTab(name) {
   $$('.tab-panel').forEach(panel => panel.classList.toggle('active', panel.id === `${name}Panel`));
   if (name === 'plan') renderPlan();
   if (name === 'bookmarks') renderBookmarks();
+  if (name === 'options') syncTripForm();
+  if (state.map) setTimeout(() => state.map.invalidateSize(), 50);
 }
 
 function renderCategories() {
@@ -131,7 +283,7 @@ function activityCard(activity, index, compact = false) {
   return `<article class="activity-card ${selected ? 'selected' : ''}" data-select-activity="${activity.id}">
     <div class="activity-top">
       <span class="activity-number">${index + 1}</span>
-      <div class="activity-title"><h3>${escapeHtml(activity.name)}</h3><p><span class="category">${activity.category.toLowerCase()}</span><span class="rating">${activity.rating}</span><span>${escapeHtml(activity.address)}</span></p></div>
+      <div class="activity-title"><h3>${escapeHtml(activity.name)}</h3><p><span class="category">${activity.category.toLowerCase()}</span><span class="rating">${activity.rating.toFixed(1)}</span><span>${escapeHtml(activity.address.length > 40 ? activity.address.substring(0, 40) + '...' : activity.address)}</span></p></div>
       <button class="bookmark-icon ${bookmarked ? 'bookmarked' : ''}" data-bookmark="${activity.id}" aria-label="${bookmarked ? 'Remove bookmark' : 'Bookmark'} ${escapeHtml(activity.name)}">${icon('bookmark')}</button>
     </div>
     <div class="activity-meta"><span>${formatDuration(activity.durationMinutes)}</span><span>${titleCase(activity.type)}</span><span>${activity.weatherRisk} weather risk</span></div>
@@ -142,7 +294,7 @@ function activityCard(activity, index, compact = false) {
 function renderActivities() {
   const items = getFilteredActivities();
   $('#resultCount').textContent = `${items.length} ${items.length === 1 ? 'place' : 'places'}`;
-  $('#activityList').innerHTML = items.length ? items.map((item, index) => activityCard(item, state.activities.indexOf(item))).join('')
+  $('#activityList').innerHTML = items.length ? items.map((item) => activityCard(item, state.activities.indexOf(item))).join('')
     : `<div class="empty-state"><strong>No places match</strong>Try clearing a category or rating filter.</div>`;
   bindActivityEvents($('#activityList'));
 }
@@ -169,20 +321,13 @@ function bindActivityEvents(container) {
   }));
 }
 
-function renderMap() {
-  $('#mapPins').innerHTML = state.activities.map((activity, index) => {
-    const position = pinPositions[activity.id] || [50, 50];
-    return `<button class="map-pin ${state.selectedId === activity.id ? 'active' : ''}" style="left:${position[0]}%;top:${position[1]}%" data-pin="${activity.id}" aria-label="Select ${escapeHtml(activity.name)}"><span><i>${index + 1}</i></span></button>`;
-  }).join('');
-  $$('[data-pin]').forEach(pin => pin.addEventListener('click', () => selectActivity(pin.dataset.pin)));
-  const selected = state.activities.find(activity => activity.id === state.selectedId) || state.activities[0];
-  const index = state.activities.indexOf(selected) + 1;
-  $('#mapSelection').innerHTML = `<span class="selection-index">${index}</span><div><strong>${escapeHtml(selected.name)}</strong><small>${escapeHtml(selected.address)}</small></div>`;
-}
-
 function selectActivity(id) {
   state.selectedId = id;
-  renderMap();
+  renderLeafletMarkers();
+  const activity = state.activities.find(a => a.id === id);
+  if (activity && state.map) {
+    state.map.setView([activity.latitude, activity.longitude], 15);
+  }
   renderActivities();
   const card = $(`[data-select-activity="${CSS.escape(id)}"]`);
   if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -300,15 +445,32 @@ function renderCalendar() {
   $('#calendarTravel').textContent = formatDuration(travel.reduce((sum, event) => sum + minutesBetween(event.startTime, event.endTime), 0));
 }
 
+function syncTripForm() {
+  const form = $('#tripForm');
+  if (!form || !state.trip) return;
+  form.destination.value = state.trip.destination || '';
+  form.date.value = state.trip.date || '';
+  form.startTime.value = state.trip.startTime || '';
+  form.endTime.value = state.trip.endTime || '';
+  const mode = state.trip.transportationMode || 'WALKING';
+  const radio = form.querySelector(`input[name="transportationMode"][value="${mode}"]`);
+  if (radio) radio.checked = true;
+}
+
 async function saveTripOptions(event) {
   event.preventDefault();
   const data = Object.fromEntries(new FormData(event.currentTarget));
   try {
-    if (state.apiOnline) state.trip = await api('/api/trips', { method: 'POST', body: JSON.stringify(data) });
-    else state.trip = { id: `local-${Date.now()}`, ...data, bookmarks: [], events: [] };
+    if (state.apiOnline && state.trip?.id && state.trip.id !== 'offline-demo') {
+      state.trip = await api(`/api/trips/${state.trip.id}`, { method: 'PUT', body: JSON.stringify(data) });
+    } else if (state.apiOnline) {
+      state.trip = await api('/api/trips', { method: 'POST', body: JSON.stringify(data) });
+    } else {
+      state.trip = { ...state.trip, id: state.trip?.id || `local-${Date.now()}`, ...data };
+    }
     $('#tripTitle').textContent = `${data.destination} day trip`;
     $('#headerDate').textContent = new Date(`${data.date}T12:00:00`).toLocaleDateString('en-CA', { month: 'long', day: 'numeric' });
-    switchTab('search'); renderAll(); showToast('Trip options saved');
+    switchTab('search'); renderAll(); showToast('Itinerary updated');
   } catch (error) { showToast(error.message); }
 }
 
@@ -324,7 +486,13 @@ function localSummary() {
     ...state.trip.events.map(event => `${formatTime(event.startTime)} — ${event.activity ? event.activity.name : event.notes}`)].join('\n');
 }
 
-function renderAll() { renderMap(); renderActivities(); renderBookmarks(); renderPlan(); }
+function renderAll() {
+  renderLeafletMarkers();
+  renderActivities();
+  renderBookmarks();
+  renderPlan();
+}
+
 function formatTime(value) { const [hour, minute] = value.split(':').map(Number); return new Date(2026, 0, 1, hour, minute).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
 function formatHour(hour) { return new Date(2026, 0, 1, hour, 0).toLocaleTimeString('en-US', { hour: 'numeric' }); }
 function formatDuration(minutes) { if (!minutes) return '0 min'; const hours = Math.floor(minutes / 60), rest = minutes % 60; return `${hours ? `${hours} hr` : ''}${hours && rest ? ' ' : ''}${rest ? `${rest} min` : ''}`; }

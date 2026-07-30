@@ -50,6 +50,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .button.wide { width: 100%; }
 .dashboard { height: calc(100% - 68px); display: grid; grid-template-columns: minmax(0, 64fr) minmax(430px, 36fr); }
 .map-panel { position: relative; overflow: hidden; background: var(--canvas); border-right: 1px solid var(--line); }
+.leaflet-map { width: 100%; height: 100%; }
 .map-art { width: 100%; height: 100%; display: block; }
 .map-art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 80%, rgba(255,255,255,.25)); }
 .map-pins { position: absolute; inset: 0; }
@@ -58,19 +59,12 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .map-pin i { transform: rotate(45deg); font-style: normal; }
 .map-pin:hover { transform: translate(-50%,-100%) scale(1.08); }
 .map-pin.active span { background: var(--coral); width: 40px; height: 40px; box-shadow: 0 0 0 4px rgba(240,100,81,.18); }
-.map-selection { position: absolute; z-index: 3; top: 31%; left: 45%; transform: translate(-50%,-100%); min-width: 230px; display: flex; gap: 12px; align-items: center; padding: 13px 15px; border-radius: 10px; background: #fff; box-shadow: 0 10px 28px rgba(18,39,65,.18); }
+.map-selection { position: absolute; z-index: 3; bottom: 24px; left: 50%; transform: translateX(-50%); min-width: 230px; display: flex; gap: 12px; align-items: center; padding: 13px 15px; border-radius: 10px; background: #fff; box-shadow: 0 10px 28px rgba(18,39,65,.18); }
 .map-selection::after { content: ''; position: absolute; left: 48%; bottom: -8px; width: 16px; height: 16px; background: #fff; transform: rotate(45deg); }
 .selection-index { display: grid; place-items: center; z-index: 1; width: 30px; height: 30px; border-radius: 50%; color: #fff; background: var(--coral); font-weight: 750; }
 .map-selection div { display: flex; flex-direction: column; position: relative; z-index: 1; }
 .map-selection strong { font-size: 14px; }
 .map-selection small { color: var(--muted); margin-top: 4px; }
-.map-controls { position: absolute; left: 22px; bottom: 85px; display: flex; flex-direction: column; gap: 8px; }
-.map-controls button { width: 42px; height: 42px; border: 1px solid var(--line); background: #fff; border-radius: 9px; box-shadow: 0 4px 12px rgba(8,33,66,.1); display: grid; place-items: center; font-size: 24px; }
-.map-controls button:nth-child(2) { margin-top: -8px; border-radius: 0 0 9px 9px; }
-.map-controls button:first-child { border-radius: 9px 9px 0 0; }
-.map-scale, .map-credit { position: absolute; bottom: 18px; background: rgba(255,255,255,.9); border-radius: 6px; padding: 7px 9px; font-size: 11px; color: var(--muted); }
-.map-scale { left: 22px; border-bottom: 2px solid var(--navy); }
-.map-credit { right: 16px; }
 .planner { min-width: 0; height: 100%; background: var(--white); display: flex; flex-direction: column; overflow: hidden; }
 .tabs { height: 66px; flex: 0 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); align-items: stretch; border-bottom: 1px solid var(--line); padding: 0 14px; }
 .tab { position: relative; border: 0; background: transparent; color: #566679; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 12.5px; font-weight: 650; padding: 0 8px; }

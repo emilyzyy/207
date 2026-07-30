@@ -1,105 +1,74 @@
 # CloseAI Team Handoff
 
-This document separates the shared project foundation and Shiyuan's completed scope from the CSC207 work that remains owned by other team members.
+This document records the integrated foundation, completed Shiyuan scope, and remaining team-owned work.
 
 ## 1. Completed shared foundation
 
-- Java 11 compilation is configured in `pom.xml`.
-- Maven Wrapper scripts pin Maven 3.9.16, so contributors can run `./mvnw` without a system Maven installation.
-- The Clean Architecture foundation provides domain entities, application use cases, and repository/service ports.
-- `closeai.AppBuilder` is the outer composition root; `application.AppContainer` receives abstractions and does not instantiate HTTP, JSON, or persistence adapters.
-- JUnit 5 and Maven Surefire provide the test foundation.
-- `.github/workflows/java-ci.yml` runs the ordinary test suite with Java 11 for pushes and pull requests to `main`.
-- Offline mode uses `MockWeatherService` by default. `-Dcloseai.weather.mode=open-meteo` selects the real `WeatherService` adapter.
-- `.gitignore` excludes `target/`, `out/`, and `.DS_Store`.
+- Java 11, Maven Wrapper 3.9.16, JUnit 5, Surefire, and Java CI are configured.
+- Domain and application code remain independent of HTTP, JSON, Swing, and concrete infrastructure.
+- `AppBuilder` is the composition root and `AppContainer` receives abstractions.
+- `InMemoryItineraryDataAccessObject` is the one runtime store implementing both `ItineraryDataAccessInterface` and `TripRepository`.
+- Mock weather, mock places, and a marker-only offline map are the defaults.
+- Open-Meteo, Nominatim/Overpass, and OpenStreetMap tiles are explicit runtime opt-ins.
 
 ## 2. Completed by Shiyuan (Dennis) Lyu
 
-- `AutoScheduleTripUseCase` with first-leg and inter-activity transportation time.
-- Injectable `ActivityScoringPolicy` and the documented rating/travel/weather/exposure formula.
-- Walking, driving, and transit mode propagation through `DistanceService`.
-- Waiting when an activity has not opened yet.
-- Opening/closing time and trip-window validation.
-- Sorted, non-overlapping travel and activity events with deterministic tie-breaking and event IDs.
-- Failure atomicity: scheduling builds and validates a separate aggregate before repository save.
-- Weather severity weighting for indoor, mixed, and outdoor activities.
-- Open-Meteo Geocoding and Forecast integration through the existing `WeatherService` port.
-- Java `HttpClient` timeouts and handling for non-2xx, empty, network, interruption, and malformed/misaligned JSON responses.
-- Fake-based scheduler tests, offline adapter tests, an explicit live smoke test, and related architecture/algorithm documentation.
+- `CreateTripUseCase` implements `CreateTripInputBoundary` and consumes immutable `CreateTripInputData`.
+- Create Trip validates every required field and the trip window before repository save.
+- Direct Create Trip tests cover success, persistence, missing fields, blank destination, and invalid time windows.
+- `TripSetupController` and `TripSetupPresenter` wire Create Trip and Edit Itinerary to the editable Swing Trip Setup form.
+- Dashboard, Trip Options, Bookmarks, Day Plan, Calendar, and Optimize share the created trip ID; no demo trip is seeded.
+- Offline services remain the default and destination network enrichment runs outside the Swing EDT.
+- Raashid's map/place branch is integrated with offline tile control, cached-place composition, Nominatim/Overpass error handling, and adapter/ViewModel tests.
+- Auto Schedule, scoring policy, schedule validation, weather weighting, Open-Meteo integration, and their tests remain in place.
 
-## 3. Work remaining for other members
+## 3. Integrated Swing status
 
-The following items are intentionally not implemented by this branch:
+The Java Swing application includes:
 
-- Java Swing `JFrame` and the main application window.
-- Swing Search, Bookmarks, Day Plan, and Options panels.
-- Swing `CalendarDialog`.
-- UI integration for Search, Open Now, and place filtering.
-- Manual Edit validation and event-conflict handling.
-- Share and Calendar PNG export.
-- Map or place visualization in the final Swing experience.
-- JUnit tests for each member's remaining modules.
-- Each member's own Git branch, commits, and pull request.
+- `CloseAIFrame`, header, overview/weather, interactive marker map, and four planner tabs;
+- Search and Bookmarks display panels;
+- editable Trip Setup with create and save behavior;
+- Day Plan, Calendar, and Optimize Current Itinerary;
+- shared ViewModel updates and EDT launch through `Main`.
 
-The existing web frontend may remain as a prototype/reference, but it does not satisfy the final Swing GUI requirement.
+The retained web frontend is a secondary prototype and is launched with `Main --web`.
 
-## 4. CSC207 requirement status
+## 4. Remaining team work
 
-| Requirement | Status |
-| --- | --- |
-| Java implementation | Complete for the checked-in foundation |
-| Clean Architecture foundation | Complete |
-| External API | Complete: Open-Meteo Geocoding + Forecast |
-| Auto Schedule | Complete for Shiyuan's scope |
-| Java Swing GUI | **Not complete; required from subsequent team work** |
-| Team Git contribution | Every member must contribute independently |
+- Wire Search text/category actions and saved-activity actions to their use cases.
+- Wire add-to-plan, edit-event, remove-event, Share, and Calendar export controls.
+- Decide whether live public place/weather modes should be demonstrated during grading; offline mode requires no network.
+- Add direct unit-test classes for remaining thin use cases listed in the Swing milestone report.
+- Complete the human pair walkthroughs and record actual Alex/Raashid/Emily/Bianca confirmations. Implementation status must not be treated as another person's sign-off.
 
-This branch provides a complete shared foundation and Shiyuan-owned module, not a claim that the whole team project is finished.
+## 5. Verification and contribution workflow
 
-## 5. Starting development
-
-Clone the team repository and branch from the latest `main`:
-
-```bash
-git clone https://github.com/emilyzyy/207.git
-cd 207
-git switch main
-git pull --ff-only
-git switch -c feature/<member>-<scope>
-```
-
-Run the normal offline suite:
+Run the deterministic suite:
 
 ```bash
 ./mvnw clean test
 ```
 
-Run the application with mock weather (default):
+Run Swing offline:
 
 ```bash
 ./mvnw compile exec:java -Dexec.mainClass=closeai.Main
 ```
 
-Run with the real Open-Meteo adapter:
+Opt into live weather, live places, and online map tiles only when required:
 
 ```bash
 ./mvnw compile exec:java -Dexec.mainClass=closeai.Main \
-  -Dcloseai.weather.mode=open-meteo
+  -Dcloseai.weather.mode=open-meteo \
+  -Dcloseai.places.mode=nominatim \
+  -Dcloseai.map.tiles.mode=osm
 ```
 
-Run the opt-in live weather smoke test separately:
+Before merging:
 
-```bash
-RUN_LIVE_OPEN_METEO_TEST=true \
-  ./mvnw -Dtest=OpenMeteoWeatherServiceLiveTest test
-```
-
-Before opening a pull request:
-
-1. Rebase or merge the latest `main` without rewriting shared history.
-2. Run the relevant tests and `git diff --check`.
-3. Stage only files owned by the branch; do not commit build output, secrets, IDE files, or another member's work.
-4. Push the feature branch and open a pull request to `main`.
-5. Describe scope, tests, architecture impact, and remaining work.
-6. Wait for CI and review. Add a normal follow-up commit for fixes; do not force push unless the team explicitly agrees.
-7. Do not merge until the designated reviewer approves.
+1. update from `main` without rewriting shared history;
+2. run `./mvnw clean test` and `git diff --check`;
+3. commit only the intended scope;
+4. open a pull request describing architecture, behavior, tests, and remaining pair confirmations;
+5. merge only after the designated human reviewers approve.

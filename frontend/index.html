@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="CloseAI one-day Toronto trip planner prototype">
   <title>CloseAI · Toronto day trip</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -32,39 +33,10 @@
 
     <main class="dashboard">
       <section class="map-panel" aria-label="Toronto activity map">
-        <svg class="map-art" viewBox="0 0 1000 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-          <rect width="1000" height="900" fill="#eef3f6"/>
-          <path d="M0 700 C170 660 270 730 420 700 C590 665 665 720 1000 590 L1000 900 L0 900Z" fill="#bde6f7"/>
-          <path d="M742 -50 C720 160 760 280 720 420 C690 520 735 600 690 720" fill="none" stroke="#c2e8ee" stroke-width="42"/>
-          <g stroke="#ffffff" stroke-width="10" fill="none" opacity=".98">
-            <path d="M-20 165 L1030 410"/><path d="M-30 360 L1040 565"/><path d="M-20 555 L980 690"/>
-            <path d="M150 -20 L245 800"/><path d="M345 -10 L405 785"/><path d="M535 -10 L570 760"/><path d="M820 -20 L770 720"/>
-          </g>
-          <g stroke="#d6e1e7" stroke-width="3" fill="none">
-            <path d="M-10 110 L1000 345"/><path d="M-10 250 L1000 470"/><path d="M-10 440 L1000 620"/>
-            <path d="M85 0 L190 785"/><path d="M275 0 L350 780"/><path d="M465 0 L505 765"/><path d="M650 0 L640 750"/>
-            <path d="M900 0 L810 710"/><path d="M0 40 L920 255"/><path d="M0 625 L790 725"/>
-          </g>
-          <g fill="#d9ecdf" opacity=".9">
-            <path d="M470 70h135l20 90-120 26z"/><path d="M55 415h115l35 100-135-15z"/><path d="M610 500h100l20 75-115 20z"/>
-          </g>
-          <g fill="#81909d" font-family="Arial, sans-serif" font-size="17" letter-spacing="2">
-            <text x="110" y="100">THE ANNEX</text><text x="470" y="225">YORKVILLE</text>
-            <text x="205" y="460">KENSINGTON MARKET</text><text x="470" y="525">OLD TORONTO</text>
-            <text x="545" y="670">HARBOURFRONT</text><text x="785" y="320">ROSEDALE</text>
-          </g>
-        </svg>
+        <div id="map" class="leaflet-map"></div>
         <div class="map-selection" id="mapSelection" aria-live="polite">
           <span class="selection-index">1</span><div><strong>Royal Ontario Museum</strong><small>100 Queens Park</small></div>
         </div>
-        <div id="mapPins" class="map-pins"></div>
-        <div class="map-controls" aria-label="Map controls">
-          <button aria-label="Zoom in">+</button><button aria-label="Zoom out">−</button>
-          <button aria-label="Locate me"><svg class="icon"><use href="#icon-locate"></use></svg></button>
-          <button aria-label="Map layers"><svg class="icon"><use href="#icon-layers"></use></svg></button>
-        </div>
-        <div class="map-scale">500 m</div>
-        <div class="map-credit">Mock map · Toronto</div>
       </section>
 
       <aside class="planner" aria-label="Trip planning tools">
@@ -150,6 +122,7 @@
     <symbol id="icon-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
     <symbol id="icon-transit" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="16" rx="3"/><path d="M8 7h8M8 12h8M8 19l-2 3M16 19l2 3"/><circle cx="9" cy="16" r="1"/><circle cx="15" cy="16" r="1"/></symbol>
   </svg>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
