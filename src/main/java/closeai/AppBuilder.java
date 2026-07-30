@@ -28,12 +28,12 @@ import closeai.domain.entities.Activity;
 import closeai.domain.entities.Trip;
 import closeai.domain.entities.WeatherWarning;
 import closeai.domain.valueobjects.TransportationMode;
-import closeai.infrastructure.mock.MockDistanceService;
 import closeai.infrastructure.mock.MockPlacesService;
 import closeai.infrastructure.mock.MockWeatherService;
 import closeai.infrastructure.places.NominatimPlacesService;
 import closeai.infrastructure.persistence.CachedPlacesRepository;
 import closeai.infrastructure.persistence.InMemoryItineraryDataAccessObject;
+import closeai.infrastructure.routing.OsrmDistanceService;
 import closeai.infrastructure.weather.OpenMeteoWeatherService;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -128,7 +128,7 @@ public final class AppBuilder {
         cachedPlaces = new CachedPlacesRepository();
         cachedPlaces.addAll(mockPlaces.findAll());
         NominatimPlacesService nominatim = new NominatimPlacesService();
-        return new AppContainer(itineraries, nominatim, cachedPlaces, new MockDistanceService(), weather,
+        return new AppContainer(itineraries, nominatim, cachedPlaces, new OsrmDistanceService(), weather,
                 new DefaultActivityScoringPolicy(), itineraries);
     }
 
