@@ -85,6 +85,31 @@ After a trip/itinerary exists, `EditItineraryInteractor` updates its destination
 - Changes that would push scheduled events outside the new trip window are rejected before save.
 - `PUT /api/trips/{tripId}` and the Options tab “Save trip options” action use this interactor so an existing itinerary is updated in place instead of replaced by a new trip.
 
+## Share Trip
+
+The header Share action is enabled only after an active trip exists. It runs through
+`ShareTripController`, the `ShareTripInputBoundary`, and `ShareTripPresenter` before opening a
+modeless preview. The user can copy a portable itinerary containing the destination, date, trip
+window, transportation mode, and scheduled events to the system clipboard. Validation failures
+are presented in the dialog instead of leaking Swing or clipboard classes into the application
+layer. The existing `GET /api/trips/{tripId}/share` endpoint uses the same share use case.
+
+## Interactive Calendar
+
+The Calendar View is backed by a dedicated `CalendarViewModel` that observes the same immutable
+Dashboard and Day Plan states used by the rest of Swing. It does not create a second trip or
+schedule source.
+
+- Day, Week, and Month views can be selected at runtime.
+- Previous/next navigation advances by the selected time scale.
+- Today and Trip date actions provide predictable navigation anchors.
+- Month and Week dates are clickable, with the active trip and scheduled-item count highlighted.
+- Trip edits and schedule changes immediately update the open calendar.
+
+Because the current domain aggregate represents a one-day trip, events appear on the trip date;
+the expanded calendar provides surrounding week/month context without pretending that events
+have dates the domain model does not store.
+
 ## Auto Schedule
 
 For every scheduling step, each remaining feasible activity is scored using:
@@ -142,6 +167,8 @@ This makes a real geocoding request for Toronto and a real forecast request for 
 - Nominatim/Overpass success mapping, empty results, non-2xx, malformed JSON, caching, and map ViewModel updates
 - Open-Meteo success mapping, nearest-hour selection, non-2xx, empty results, malformed/misaligned JSON, and connection failure
 - separate opt-in live Open-Meteo request
+- Share Trip input validation, summary formatting, controller/output behavior, and copyable state
+- Calendar trip/schedule synchronization, Day/Week/Month navigation, date selection, and Swing controls
 
 ## Known limitations
 
@@ -167,7 +194,7 @@ This makes a real geocoding request for Toronto and a real forecast request for 
 
 ## Contribution
 
-Shiyuan (Dennis) Lyu: Create Trip input boundary/interactor validation and tests; Trip Setup create/edit Swing workflow; active-trip composition; offline-by-default service selection; reviewed integration and tests for Raashid's map/place branch; Auto Schedule, scoring policy, schedule invariants, weather weighting, Open-Meteo adapter, Maven/JUnit 5 configuration, and documentation.
+Shiyuan (Dennis) Lyu: Share Trip Clean Architecture flow and clipboard-ready Swing preview; interactive Day/Week/Month calendar expansion and synchronized navigation; related unit, Swing structure, and application integration tests; Create Trip input boundary/interactor validation and tests; Trip Setup create/edit Swing workflow; active-trip composition; offline-by-default service selection; reviewed integration and tests for Raashid's map/place branch; Auto Schedule, scoring policy, schedule invariants, weather weighting, Open-Meteo adapter, Maven/JUnit 5 configuration, and documentation.
 
 Bianca: Edit Itinerary interactor (`EditItineraryInteractor`), `ItineraryDataAccessInterface`, `InMemoryItineraryDataAccessObject`, Options/API wiring for in-place itinerary updates, and related unit test.
 

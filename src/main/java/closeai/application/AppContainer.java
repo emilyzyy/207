@@ -26,7 +26,7 @@ public final class AppContainer {
     public final EditScheduledEventUseCase editEvent;
     public final RemoveScheduledEventUseCase removeEvent;
     public final GetTripSummaryUseCase summary;
-    public final ShareTripUseCase share;
+    public final ShareTripInputBoundary share;
     public final GetWeatherWarningUseCase weatherWarning;
 
     public AppContainer(TripRepository trips, PlacesService places, ActivityRepository activities,

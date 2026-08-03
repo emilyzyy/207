@@ -1,17 +1,22 @@
 package closeai;
 
 import closeai.adapters.controllers.OptimizeItineraryController;
+import closeai.adapters.controllers.ShareTripController;
 import closeai.adapters.controllers.TripSetupController;
 import closeai.adapters.presenters.OptimizeItineraryPresenter;
+import closeai.adapters.presenters.ShareTripPresenter;
 import closeai.adapters.presenters.TripSetupPresenter;
 import closeai.adapters.viewmodels.BookmarksState;
 import closeai.adapters.viewmodels.BookmarksViewModel;
+import closeai.adapters.viewmodels.CalendarViewModel;
 import closeai.adapters.viewmodels.DashboardState;
 import closeai.adapters.viewmodels.DashboardViewModel;
 import closeai.adapters.viewmodels.DayPlanState;
 import closeai.adapters.viewmodels.DayPlanViewModel;
 import closeai.adapters.viewmodels.SearchState;
 import closeai.adapters.viewmodels.SearchViewModel;
+import closeai.adapters.viewmodels.ShareState;
+import closeai.adapters.viewmodels.ShareViewModel;
 import closeai.adapters.viewmodels.TripOptionsState;
 import closeai.adapters.viewmodels.TripOptionsViewModel;
 import closeai.adapters.views.BookmarksPanel;
@@ -81,6 +86,10 @@ public final class AppBuilder {
                 new DayPlanState(
                         "", Collections.emptyList(),
                         "Create a trip before planning or optimizing.", false));
+        CalendarViewModel calendarViewModel = new CalendarViewModel(
+                dashboardViewModel, dayPlanViewModel);
+        ShareViewModel shareViewModel = new ShareViewModel(
+                new ShareState("", "Create a trip before sharing.", false));
         TripOptionsViewModel tripOptionsViewModel = new TripOptionsViewModel(
                 new TripOptionsState(
                         "",
@@ -109,8 +118,14 @@ public final class AppBuilder {
                 new OptimizeItineraryInteractor(app.trips, optimizePresenter);
         OptimizeItineraryController optimizeController =
                 new OptimizeItineraryController(optimizeInteractor, dayPlanViewModel);
+        ShareTripPresenter sharePresenter = new ShareTripPresenter(shareViewModel);
+        ShareTripController shareController = new ShareTripController(
+                app.share,
+                () -> dayPlanViewModel.getState().getTripId(),
+                sharePresenter);
 
-        HeaderPanel headerPanel = new HeaderPanel(dashboardViewModel);
+        HeaderPanel headerPanel = new HeaderPanel(
+                dashboardViewModel, dayPlanViewModel, shareController);
         OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel, searchViewModel);
         SearchPanel searchPanel = new SearchPanel(searchViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(bookmarksViewModel);
@@ -125,7 +140,9 @@ public final class AppBuilder {
                 overviewPanel,
                 plannerPanel,
                 dayPlanPanel,
-                dayPlanViewModel);
+                dayPlanViewModel,
+                calendarViewModel,
+                shareViewModel);
     }
 
     private AppContainer buildWithServices(
