@@ -3,6 +3,8 @@ package closeai.infrastructure.persistence;
 import closeai.application.ports.ItineraryDataAccessInterface;
 import closeai.application.ports.TripRepository;
 import closeai.domain.entities.Trip;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,5 +46,10 @@ public final class InMemoryItineraryDataAccessObject
             return Optional.empty();
         }
         return Optional.ofNullable(itineraries.get(id));
+    }
+
+    @Override
+    public List<Trip> findAll() {
+        return new ArrayList<Trip>(itineraries.values());
     }
 }

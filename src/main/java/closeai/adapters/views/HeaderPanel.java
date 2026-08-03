@@ -3,7 +3,10 @@ package closeai.adapters.views;
 import closeai.adapters.viewmodels.DashboardState;
 import closeai.adapters.viewmodels.DashboardViewModel;
 import java.awt.BorderLayout;
+import java.awt.Cursor;
 import java.awt.FlowLayout;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.format.DateTimeFormatter;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -19,6 +22,7 @@ public final class HeaderPanel extends JPanel {
     private final DashboardViewModel viewModel;
     private final JLabel tripLabel = new JLabel();
     private final JLabel dateLabel = new JLabel();
+    private Runnable onHomeAction = () -> { };
 
     public HeaderPanel(DashboardViewModel viewModel) {
         this.viewModel = viewModel;
@@ -31,6 +35,24 @@ public final class HeaderPanel extends JPanel {
         JLabel brand = new JLabel("CloseAI");
         brand.setFont(SwingTheme.TITLE);
         brand.setForeground(SwingTheme.NAVY);
+        brand.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        brand.setToolTipText("Back to My Trips");
+        brand.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                brand.setForeground(SwingTheme.BLUE);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                brand.setForeground(SwingTheme.NAVY);
+            }
+
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                onHomeAction.run();
+            }
+        });
         add(brand, BorderLayout.WEST);
 
         JPanel tripSummary = new JPanel();
@@ -53,6 +75,10 @@ public final class HeaderPanel extends JPanel {
 
         refresh(viewModel.getState());
         viewModel.addPropertyChangeListener(event -> refresh(viewModel.getState()));
+    }
+
+    public void setOnHomeAction(Runnable onHomeAction) {
+        this.onHomeAction = onHomeAction;
     }
 
     private void refresh(DashboardState state) {

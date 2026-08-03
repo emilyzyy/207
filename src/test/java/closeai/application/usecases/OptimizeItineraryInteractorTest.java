@@ -153,6 +153,11 @@ final class OptimizeItineraryInteractorTest {
         public Optional<Trip> findById(String id) {
             return original.getId().equals(id) ? Optional.of(original) : Optional.empty();
         }
+
+        @Override
+        public List<Trip> findAll() {
+            return java.util.Collections.singletonList(original);
+        }
     }
 
     private static final class RecordingOutputBoundary

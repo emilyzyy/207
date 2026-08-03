@@ -12,6 +12,7 @@ import javax.swing.JSplitPane;
 public final class CloseAIFrame extends JFrame {
     private final CalendarDialog calendarDialog;
     private final DayPlanPanel dayPlanPanel;
+    private final HeaderPanel headerPanel;
 
     public CloseAIFrame(
             HeaderPanel headerPanel,
@@ -20,6 +21,7 @@ public final class CloseAIFrame extends JFrame {
             DayPlanPanel dayPlanPanel,
             DayPlanViewModel dayPlanViewModel) {
         super("CloseAI Trip Planner");
+        this.headerPanel = headerPanel;
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1050, 680));
         setPreferredSize(new Dimension(1320, 820));
@@ -50,6 +52,11 @@ public final class CloseAIFrame extends JFrame {
 
     public CalendarDialog getCalendarDialog() {
         return calendarDialog;
+    }
+
+    /** Wires the brand click in the header to return to the gallery. */
+    public void setOnHomeAction(Runnable onHomeAction) {
+        headerPanel.setOnHomeAction(onHomeAction);
     }
 
     public DayPlanPanel getDayPlanPanel() {

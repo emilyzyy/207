@@ -70,6 +70,13 @@ public final class AppBuilder {
     public CloseAIFrame buildSwingApplication() {
         AppContainer app = build();
         Trip trip = seedDemoTrip(app);
+        return buildFrameForTrip(app, trip);
+    }
+
+    /**
+     * Builds a Swing frame for a specific trip, used by the gallery flow.
+     */
+    public CloseAIFrame buildFrameForTrip(AppContainer app, Trip trip) {
         WeatherWarning warning = app.weatherWarning.execute(trip.getId());
         List<Activity> activities = app.activities.findAll();
 

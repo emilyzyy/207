@@ -28,6 +28,7 @@ public final class AppContainer {
     public final GetTripSummaryUseCase summary;
     public final ShareTripUseCase share;
     public final GetWeatherWarningUseCase weatherWarning;
+    public final ListTripsUseCase listTrips;
 
     public AppContainer(TripRepository trips, PlacesService places, ActivityRepository activities,
                         DistanceService distances, WeatherService weather,
@@ -61,6 +62,7 @@ public final class AppContainer {
         summary = new GetTripSummaryUseCase(trips);
         share = new ShareTripUseCase(summary);
         weatherWarning = new GetWeatherWarningUseCase(trips, weather);
+        listTrips = new ListTripsUseCase(trips);
     }
 
     private static ItineraryDataAccessInterface itineraryAccessFor(TripRepository trips) {
