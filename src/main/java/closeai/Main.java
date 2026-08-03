@@ -25,6 +25,10 @@ public final class Main {
         SwingUtilities.invokeLater(() -> {
             try {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                System.setProperty("closeai.places.mode",
+                        System.getProperty("closeai.places.mode", "nominatim"));
+                System.setProperty("closeai.weather.mode",
+                        System.getProperty("closeai.weather.mode", "open-meteo"));
                 CloseAIFrame frame = new AppBuilder().buildSwingApplication();
                 frame.setVisible(true);
                 System.out.println(

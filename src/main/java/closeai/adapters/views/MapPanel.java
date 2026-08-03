@@ -57,7 +57,7 @@ public final class MapPanel extends JPanel {
                 width,
                 height,
                 "osm".equalsIgnoreCase(
-                        System.getProperty("closeai.map.tiles.mode", "offline")));
+                        System.getProperty("closeai.map.tiles.mode", "osm")));
     }
 
     MapPanel(int width, int height, boolean tileLoadingEnabled) {

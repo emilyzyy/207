@@ -31,7 +31,10 @@ import closeai.application.AppContainer;
 import closeai.application.ports.PlacesService;
 import closeai.application.ports.WeatherService;
 import closeai.application.scheduling.DefaultActivityScoringPolicy;
+import closeai.application.usecases.CreateTripInputData;
 import closeai.application.usecases.OptimizeItineraryInteractor;
+import closeai.application.usecases.TripSetupOutputData;
+import closeai.domain.entities.Trip;
 import closeai.domain.valueobjects.TransportationMode;
 import closeai.infrastructure.mock.MockPlacesService;
 import closeai.infrastructure.mock.MockWeatherService;
@@ -64,13 +67,17 @@ public final class AppBuilder {
         return buildWithServices(new OpenMeteoWeatherService(), false);
     }
 
-    /** Builds Swing with no seeded trip; Trip Setup owns creation of the active trip. */
+    /** Builds Swing with a seeded demo trip so the interactive map is populated on launch. */
     public CloseAIFrame buildSwingApplication() {
-        return buildSwingApplication(build());
+        return buildSwingApplication(build(), true);
     }
 
     /** Builds Swing around an injected application container for deterministic integration tests. */
     public CloseAIFrame buildSwingApplication(AppContainer app) {
+        return buildSwingApplication(app, false);
+    }
+
+    private CloseAIFrame buildSwingApplication(AppContainer app, boolean seedDemo) {
         if (app == null) {
             throw new IllegalArgumentException("Application container is required");
         }
@@ -135,7 +142,7 @@ public final class AppBuilder {
                 new TripOptionsPanel(tripOptionsViewModel, tripSetupController);
         PlannerPanel plannerPanel = new PlannerPanel(
                 searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel);
-        return new CloseAIFrame(
+        CloseAIFrame frame = new CloseAIFrame(
                 headerPanel,
                 overviewPanel,
                 plannerPanel,
@@ -143,6 +150,16 @@ public final class AppBuilder {
                 dayPlanViewModel,
                 calendarViewModel,
                 shareViewModel);
+        if (seedDemo) {
+            Trip demo = app.createTrip.execute(new CreateTripInputData(
+                    "Toronto",
+                    LocalDate.now().plusDays(5),
+                    LocalTime.of(9, 0),
+                    LocalTime.of(18, 0),
+                    TransportationMode.WALKING));
+            tripSetupPresenter.presentSuccess(new TripSetupOutputData(demo, true));
+        }
+        return frame;
     }
 
     private AppContainer buildWithServices(
