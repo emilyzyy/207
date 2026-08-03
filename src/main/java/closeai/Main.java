@@ -34,17 +34,10 @@ public final class Main {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
                 AppBuilder builder = new AppBuilder();
                 AppContainer app = builder.build();
-                seedDemoTrip(app);
                 List<Activity> demoActivities = app.activities.findAll();
-                Trip torontoTrip = seedTrip(app, demoActivities, "Toronto",
+                seedTrip(app, demoActivities, "Toronto",
                         LocalDate.of(2026, 7, 23),
                         LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING);
-                Trip nycTrip = seedTrip(app, demoActivities, "New York City",
-                        LocalDate.of(2026, 8, 15),
-                        LocalTime.of(10, 0), LocalTime.of(20, 0), TransportationMode.DRIVING);
-                Trip montrealTrip = seedTrip(app, demoActivities, "Montreal",
-                        LocalDate.of(2026, 9, 5),
-                        LocalTime.of(8, 0), LocalTime.of(17, 0), TransportationMode.WALKING);
 
                 showGallery(builder, app);
             } catch (Exception exception) {
@@ -130,22 +123,6 @@ public final class Main {
         server.start();
         System.out.println("CloseAI is running at http://localhost:8080");
         System.out.println("Demo trip id: " + demo.getId());
-    }
-
-    private static Trip seedDemoTrip(AppContainer app) {
-        Trip created = app.createTrip.execute(
-                "Toronto",
-                LocalDate.of(2026, 7, 18),
-                LocalTime.of(9, 0),
-                LocalTime.of(19, 0),
-                TransportationMode.WALKING);
-        for (Activity activity : app.activities.findAll()) {
-            if (activity.getId().equals("rom") || activity.getId().equals("pai") || activity.getId().equals("cn-tower"))
-                app.bookmarkActivity.execute(created.getId(), activity.getId());
-        }
-        app.autoSchedule.execute(created.getId());
-        System.setProperty("closeai.demoTripId", created.getId());
-        return created;
     }
 
     /**
