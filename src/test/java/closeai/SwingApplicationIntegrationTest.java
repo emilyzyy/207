@@ -46,6 +46,9 @@ final class SwingApplicationIntegrationTest {
             AbstractButton optimize = findButton(frame, "Optimize Itinerary");
             assertNotNull(optimize);
             assertFalse(optimize.isEnabled());
+            AbstractButton share = findButton(frame, "Share");
+            assertNotNull(share);
+            assertFalse(share.isEnabled());
 
             tabs.setSelectedIndex(3);
             Container tripSetup = (Container) tabs.getComponentAt(3);
@@ -70,6 +73,19 @@ final class SwingApplicationIntegrationTest {
             assertEquals(TransportationMode.TRANSIT,
                     created.getTransportationMode());
             assertTrue(optimize.isEnabled());
+
+            assertTrue(share.isEnabled());
+            share.doClick();
+            assertTrue(frame.getShareDialog().isVisible());
+            assertTrue(frame.getShareDialog().getViewModel()
+                    .getState().getShareText().contains("CloseAI trip to Toronto"));
+            assertEquals(created.getDate(), frame.getCalendarDialog()
+                    .getCalendarViewModel().getState().getTripDate());
+
+            AbstractButton calendar = findButton(frame, "Calendar View");
+            assertNotNull(calendar);
+            calendar.doClick();
+            assertTrue(frame.getCalendarDialog().isVisible());
 
             fields.get(0).setText("Ottawa");
             AbstractButton save = findButton(tripSetup, "Save Trip Options");
