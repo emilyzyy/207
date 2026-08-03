@@ -9,6 +9,8 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.RenderingHints;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
@@ -18,6 +20,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
+import javax.swing.JCheckBox;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
@@ -35,6 +40,10 @@ public final class MapPanel extends JPanel {
     private static final int MAX_ZOOM = 18;
     private static final double DEFAULT_LAT = 43.6532;
     private static final double DEFAULT_LNG = -79.3832;
+    private static final Color COLOR_PLAIN = new Color(0x1a, 0x56, 0xdb);
+    private static final Color COLOR_BOOKMARKED = new Color(0x22, 0xa0, 0x6b);
+    private static final Color COLOR_SCHEDULED = new Color(0xe0, 0xa0, 0x20);
+    private static final Color COLOR_BOTH = new Color(0x7a, 0x5c, 0xd6);
 
     private double centerLat = DEFAULT_LAT;
     private double centerLng = DEFAULT_LNG;
@@ -44,6 +53,11 @@ public final class MapPanel extends JPanel {
 
     private List<Activity> activities = new ArrayList<>();
     private String city = "the area";
+    private Set<String> bookmarkedIds = Collections.emptySet();
+    private Set<String> scheduledIds = Collections.emptySet();
+    private boolean showHighlightedOnly = false;
+
+    private final JCheckBox highlightOnly = new JCheckBox("Bookmarks & calendar only");
 
     private final ConcurrentHashMap<String, BufferedImage> tileCache = new ConcurrentHashMap<>();
     private final Set<String> pendingLoads = ConcurrentHashMap.newKeySet();
@@ -103,6 +117,29 @@ public final class MapPanel extends JPanel {
                 repaint();
             }
         });
+
+        highlightOnly.setOpaque(false);
+        highlightOnly.setFocusPainted(false);
+        highlightOnly.setFont(SwingTheme.SMALL);
+        highlightOnly.setForeground(Color.WHITE);
+        highlightOnly.addActionListener(e -> {
+            showHighlightedOnly = highlightOnly.isSelected();
+            fitToActivities();
+            repaint();
+        });
+        add(highlightOnly);
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                positionHighlightToggle();
+            }
+        });
+    }
+
+    private void positionHighlightToggle() {
+        Dimension preferred = highlightOnly.getPreferredSize();
+        int x = Math.max(0, getWidth() - preferred.width - 12);
+        highlightOnly.setBounds(x, 6, preferred.width, 24);
     }
 
     public void setActivities(List<Activity> activities) {
@@ -117,6 +154,35 @@ public final class MapPanel extends JPanel {
     public void setCity(String city) {
         this.city = (city == null || city.trim().isEmpty()) ? "the area" : city.trim();
         repaint();
+    }
+
+    /** Sets which discovered places are bookmarked or scheduled so they can be highlighted. */
+    public void setHighlightedIds(Set<String> bookmarked, Set<String> scheduled) {
+        this.bookmarkedIds = (bookmarked == null) ? Collections.emptySet() : new HashSet<>(bookmarked);
+        this.scheduledIds = (scheduled == null) ? Collections.emptySet() : new HashSet<>(scheduled);
+        repaint();
+    }
+
+    private List<Activity> visibleActivities() {
+        if (!showHighlightedOnly) return activities;
+        List<Activity> visible = new ArrayList<>();
+        for (Activity activity : activities) {
+            if (isHighlighted(activity.getId())) visible.add(activity);
+        }
+        return visible;
+    }
+
+    private boolean isHighlighted(String id) {
+        return bookmarkedIds.contains(id) || scheduledIds.contains(id);
+    }
+
+    private Color markerColor(String id) {
+        boolean bookmarked = bookmarkedIds.contains(id);
+        boolean scheduled = scheduledIds.contains(id);
+        if (bookmarked && scheduled) return COLOR_BOTH;
+        if (bookmarked) return COLOR_BOOKMARKED;
+        if (scheduled) return COLOR_SCHEDULED;
+        return COLOR_PLAIN;
     }
 
     private static boolean sameIds(List<Activity> a, List<Activity> b) {
@@ -147,10 +213,11 @@ public final class MapPanel extends JPanel {
     }
 
     private void fitToActivities() {
-        if (activities.isEmpty()) return;
+        List<Activity> visible = visibleActivities();
+        if (visible.isEmpty()) return;
         double minLat = Double.MAX_VALUE, maxLat = -Double.MAX_VALUE;
         double minLng = Double.MAX_VALUE, maxLng = -Double.MAX_VALUE;
-        for (Activity a : activities) {
+        for (Activity a : visible) {
             minLat = Math.min(minLat, a.getLocation().getLatitude());
             maxLat = Math.max(maxLat, a.getLocation().getLatitude());
             minLng = Math.min(minLng, a.getLocation().getLongitude());
@@ -244,7 +311,8 @@ public final class MapPanel extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setColor(Color.WHITE);
         g2.setFont(SwingTheme.BODY);
-        String title = activities.size() + " places in " + city;
+        int visibleCount = visibleActivities().size();
+        String title = visibleCount + " places in " + city;
         g2.drawString(title, 12, 24);
 
         drawMarkers(g2, w, h, centerPixelX, centerPixelY);
@@ -254,7 +322,7 @@ public final class MapPanel extends JPanel {
     private void drawMarkers(Graphics2D g2, int w, int h,
                              double centerPixelX, double centerPixelY) {
         int idx = 1;
-        for (Activity a : activities) {
+        for (Activity a : visibleActivities()) {
             double lng = a.getLocation().getLongitude();
             double lat = a.getLocation().getLatitude();
             double markerPxX = latLngToPixelX(lng);
@@ -268,7 +336,7 @@ public final class MapPanel extends JPanel {
             String label = String.valueOf(idx);
             g2.setColor(new Color(0, 0, 0, 40));
             g2.fillOval(sx - 13, sy - 9, 28, 28);
-            g2.setColor(new Color(0x1a, 0x56, 0xdb));
+            g2.setColor(markerColor(a.getId()));
             g2.fillOval(sx - 14, sy - 14, 28, 28);
             g2.setColor(Color.WHITE);
             g2.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));

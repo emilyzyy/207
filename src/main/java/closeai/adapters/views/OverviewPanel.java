@@ -71,6 +71,7 @@ public final class OverviewPanel extends JPanel {
 
     private void updateMap(SearchState state) {
         mapPanel.setActivities(state.getActivities());
+        mapPanel.setHighlightedIds(state.getBookmarkedIds(), state.getScheduledIds());
     }
 
     public MapPanel getMapPanel() {

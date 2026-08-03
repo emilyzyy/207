@@ -17,6 +17,7 @@ public final class Trip {
     private TransportationMode transportationMode;
     private final List<Activity> bookmarkedActivities = new ArrayList<Activity>();
     private final List<ScheduledEvent> scheduledEvents = new ArrayList<ScheduledEvent>();
+    private final List<Activity> discoveredPlaces = new ArrayList<Activity>();
 
     public Trip(String id, String destination, LocalDate date, LocalTime startTime,
                 LocalTime endTime, TransportationMode transportationMode) {
@@ -37,6 +38,17 @@ public final class Trip {
     public TransportationMode getTransportationMode() { return transportationMode; }
     public List<Activity> getBookmarkedActivities() { return Collections.unmodifiableList(bookmarkedActivities); }
     public List<ScheduledEvent> getScheduledEvents() { return Collections.unmodifiableList(scheduledEvents); }
+    public List<Activity> getDiscoveredPlaces() { return Collections.unmodifiableList(discoveredPlaces); }
+
+    /** Replaces the pool of places discovered for this trip's destination. */
+    public void setDiscoveredPlaces(List<Activity> places) {
+        discoveredPlaces.clear();
+        if (places != null) {
+            for (Activity activity : places) {
+                if (activity != null) discoveredPlaces.add(activity);
+            }
+        }
+    }
 
     public void updateOptions(String destination, LocalDate date, LocalTime start, LocalTime end,
                               TransportationMode mode) {
@@ -84,6 +96,7 @@ public final class Trip {
     public Trip copyWithSchedule(List<ScheduledEvent> events) {
         Trip copy = new Trip(id, destination, date, startTime, endTime, transportationMode);
         for (Activity activity : bookmarkedActivities) copy.bookmark(activity);
+        copy.setDiscoveredPlaces(discoveredPlaces);
         copy.replaceSchedule(events);
         return copy;
     }

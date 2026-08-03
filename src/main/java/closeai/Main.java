@@ -71,7 +71,7 @@ public final class Main {
                 galleryFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                 new Thread(() -> {
                     try {
-                        Trip created = seedTrip(app, List.of(), dest, date,
+                        Trip created = app.createTrip.execute(dest, date,
                                 LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING);
                         SwingUtilities.invokeLater(() -> {
                             CloseAIFrame tripFrame = openTripFrame(builder, app, created, galleryFrame);
@@ -162,9 +162,10 @@ public final class Main {
                     cachedPlaces.clear();
                     cachedPlaces.addAll(available);
                 }
-                addBookmarksAndPlan(app, tripId, available);
                 Trip updated = app.trips.findById(tripId).orElse(null);
                 if (updated != null) {
+                    updated.setDiscoveredPlaces(available);
+                    app.trips.save(updated);
                     SwingUtilities.invokeLater(() -> builder.refreshFrameForTrip(updated, frame));
                 }
             } catch (Exception exception) {
@@ -178,6 +179,8 @@ public final class Main {
                                   String destination, LocalDate date,
                                   LocalTime start, LocalTime end, TransportationMode mode) {
         Trip created = app.createTrip.execute(destination, date, start, end, mode);
+        created.setDiscoveredPlaces(available);
+        app.trips.save(created);
         addBookmarksAndPlan(app, created.getId(), available);
         return app.trips.findById(created.getId())
                 .orElseThrow(() -> new IllegalStateException("Seeded trip was not saved"));

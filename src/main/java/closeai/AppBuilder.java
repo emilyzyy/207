@@ -40,8 +40,9 @@ import closeai.infrastructure.routing.OsrmDistanceService;
 import closeai.infrastructure.weather.OpenMeteoWeatherService;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import javax.swing.SwingUtilities;
 
 /** Outer composition root for selecting infrastructure without leaking it into application code. */
@@ -87,7 +88,6 @@ public final class AppBuilder {
      */
     public CloseAIFrame buildFrameForTrip(AppContainer app, Trip trip) {
         WeatherWarning warning = placeholderWarning(trip);
-        List<Activity> activities = collectTripActivities(trip);
 
         DashboardViewModel dashboardViewModel = new DashboardViewModel(
                 new DashboardState(
@@ -95,8 +95,7 @@ public final class AppBuilder {
                         trip.getDate(),
                         warning.getWeatherCondition(),
                         warning.getMessage()));
-        SearchViewModel searchViewModel = new SearchViewModel(
-                new SearchState(activities, ""));
+        SearchViewModel searchViewModel = new SearchViewModel(searchStateFor(trip));
         BookmarksViewModel bookmarksViewModel = new BookmarksViewModel(
                 new BookmarksState(trip.getBookmarkedActivities()));
         DayPlanViewModel dayPlanViewModel = new DayPlanViewModel(
@@ -147,14 +146,28 @@ public final class AppBuilder {
      * flow to populate a newly created trip after its real activities finish loading.
      */
     public void refreshFrameForTrip(Trip trip, CloseAIFrame frame) {
-        List<Activity> activities = collectTripActivities(trip);
-        frame.getSearchViewModel().setState(new SearchState(activities, ""));
+        frame.getSearchViewModel().setState(searchStateFor(trip));
         frame.getBookmarksViewModel().setState(new BookmarksState(trip.getBookmarkedActivities()));
         frame.getDayPlanViewModel().setState(new DayPlanState(
                 trip.getId(),
                 trip.getScheduledEvents(),
                 "Seeded demo · optimizer uses Day Plan activities only",
                 false));
+    }
+
+    /** Search and map view for a trip: every discovered place, tagged with its bookmark/schedule status. */
+    private SearchState searchStateFor(Trip trip) {
+        Set<String> bookmarkedIds = new HashSet<>();
+        for (Activity activity : trip.getBookmarkedActivities()) {
+            bookmarkedIds.add(activity.getId());
+        }
+        Set<String> scheduledIds = new HashSet<>();
+        for (ScheduledEvent event : trip.getScheduledEvents()) {
+            if (event.getActivity() != null) {
+                scheduledIds.add(event.getActivity().getId());
+            }
+        }
+        return new SearchState(trip.getDiscoveredPlaces(), "", bookmarkedIds, scheduledIds);
     }
 
     private WeatherWarning placeholderWarning(Trip trip) {
@@ -198,26 +211,6 @@ public final class AppBuilder {
         }
     }
 
-    /** Collects the places that belong to this trip so each trip view reflects its own city. */
-    private List<Activity> collectTripActivities(Trip trip) {
-        List<Activity> result = new ArrayList<>();
-        for (Activity activity : trip.getBookmarkedActivities()) {
-            addIfMissing(result, activity);
-        }
-        for (ScheduledEvent event : trip.getScheduledEvents()) {
-            addIfMissing(result, event.getActivity());
-        }
-        return result;
-    }
-
-    private void addIfMissing(List<Activity> activities, Activity candidate) {
-        if (candidate == null) return;
-        for (Activity activity : activities) {
-            if (activity.getId().equals(candidate.getId())) return;
-        }
-        activities.add(candidate);
-    }
-
     private AppContainer buildWithWeather(WeatherService weather) {
         InMemoryItineraryDataAccessObject itineraries = new InMemoryItineraryDataAccessObject();
         MockPlacesService mockPlaces = new MockPlacesService();
@@ -242,6 +235,8 @@ public final class AppBuilder {
             cachedPlaces.addAll(available);
         }
         List<Activity> allActivities = cachedPlaces.findAll();
+        created.setDiscoveredPlaces(allActivities);
+        app.trips.save(created);
         LocalTime[] slots = { LocalTime.of(10, 0), LocalTime.of(12, 45), LocalTime.of(15, 0) };
         int added = 0;
         for (Activity activity : allActivities) {
