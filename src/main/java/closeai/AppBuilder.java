@@ -41,7 +41,6 @@ import closeai.infrastructure.weather.OpenMeteoWeatherService;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import javax.swing.SwingUtilities;
 
@@ -229,30 +228,11 @@ public final class AppBuilder {
                 LocalTime.of(18, 0),
                 TransportationMode.WALKING);
 
-        List<Activity> available = app.searchActivities.execute("Toronto", "");
-        if (!available.isEmpty()) {
-            cachedPlaces.clear();
-            cachedPlaces.addAll(available);
+        app.discoverTripPlaces.execute(created.getId(), "Toronto");
+        if (created.getDiscoveredPlaces().isEmpty()) {
+            app.discoverTripPlaces.record(created.getId(), app.activities.findAll());
         }
-        List<Activity> allActivities = cachedPlaces.findAll();
-        created.setDiscoveredPlaces(allActivities);
-        app.trips.save(created);
-        LocalTime[] slots = { LocalTime.of(10, 0), LocalTime.of(12, 45), LocalTime.of(15, 0) };
-        int added = 0;
-        for (Activity activity : allActivities) {
-            if (added >= 3) break;
-            try {
-                app.addActivityToPlan.execute(created.getId(), activity.getId(), slots[added]);
-                added++;
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
-        for (int i = added; i < Math.min(allActivities.size(), added + 2); i++) {
-            try {
-                app.bookmarkActivity.execute(created.getId(), allActivities.get(i).getId());
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
+        DemoSeeding.bookmarkAndSchedule(app, created.getId(), app.activities.findAll(), 3, 2);
         return app.trips.findById(created.getId())
                 .orElseThrow(() -> new IllegalStateException("Seeded demo trip was not saved"));
     }

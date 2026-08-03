@@ -156,18 +156,8 @@ public final class Main {
                                              String tripId, String destination, CloseAIFrame frame) {
         new Thread(() -> {
             try {
-                List<Activity> available = app.searchActivities.execute(destination, "");
-                CachedPlacesRepository cachedPlaces = builder.getCachedPlaces();
-                if (cachedPlaces != null && !available.isEmpty()) {
-                    cachedPlaces.clear();
-                    cachedPlaces.addAll(available);
-                }
-                Trip updated = app.trips.findById(tripId).orElse(null);
-                if (updated != null) {
-                    updated.setDiscoveredPlaces(available);
-                    app.trips.save(updated);
-                    SwingUtilities.invokeLater(() -> builder.refreshFrameForTrip(updated, frame));
-                }
+                Trip updated = app.discoverTripPlaces.execute(tripId, destination);
+                SwingUtilities.invokeLater(() -> builder.refreshFrameForTrip(updated, frame));
             } catch (Exception exception) {
                 System.err.println("[Main] Could not enrich itinerary for " + destination
                         + ": " + exception.getMessage());
@@ -179,30 +169,9 @@ public final class Main {
                                   String destination, LocalDate date,
                                   LocalTime start, LocalTime end, TransportationMode mode) {
         Trip created = app.createTrip.execute(destination, date, start, end, mode);
-        created.setDiscoveredPlaces(available);
-        app.trips.save(created);
-        addBookmarksAndPlan(app, created.getId(), available);
+        app.discoverTripPlaces.record(created.getId(), available);
+        DemoSeeding.bookmarkAndSchedule(app, created.getId(), available, 2, 3);
         return app.trips.findById(created.getId())
                 .orElseThrow(() -> new IllegalStateException("Seeded trip was not saved"));
-    }
-
-    private static void addBookmarksAndPlan(AppContainer app, String tripId, List<Activity> available) {
-        int bookmarks = Math.min(available.size(), 3);
-        for (int i = 0; i < bookmarks; i++) {
-            try {
-                app.bookmarkActivity.execute(tripId, available.get(i).getId());
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
-        LocalTime[] slots = { LocalTime.of(10, 0), LocalTime.of(12, 45), LocalTime.of(15, 0) };
-        int added = 0;
-        for (Activity activity : available) {
-            if (added >= 2) break;
-            try {
-                app.addActivityToPlan.execute(tripId, activity.getId(), slots[added]);
-                added++;
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
     }
 }
