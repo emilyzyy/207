@@ -300,6 +300,10 @@ final class AutoScheduleTripUseCaseTest {
         public Optional<Trip> findById(String id) {
             return Optional.ofNullable(trips.get(id));
         }
+
+        public List<Trip> findAll() {
+            return new ArrayList<Trip>(trips.values());
+        }
     }
 
     private static final class CountingWeatherService implements WeatherService {

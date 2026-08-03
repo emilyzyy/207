@@ -5,7 +5,10 @@ import closeai.adapters.viewmodels.DashboardState;
 import closeai.adapters.viewmodels.DashboardViewModel;
 import closeai.adapters.viewmodels.DayPlanViewModel;
 import java.awt.BorderLayout;
+import java.awt.Cursor;
 import java.awt.FlowLayout;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.format.DateTimeFormatter;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -24,6 +27,7 @@ public final class HeaderPanel extends JPanel {
     private final JLabel dateLabel = new JLabel();
     private final JButton shareButton = SwingTheme.primaryButton("Share");
     private Runnable openShareAction = () -> { };
+    private Runnable onHomeAction = () -> { };
 
     public HeaderPanel(
             DashboardViewModel viewModel,
@@ -43,6 +47,24 @@ public final class HeaderPanel extends JPanel {
         JLabel brand = new JLabel("CloseAI");
         brand.setFont(SwingTheme.TITLE);
         brand.setForeground(SwingTheme.NAVY);
+        brand.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        brand.setToolTipText("Back to My Trips");
+        brand.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                brand.setForeground(SwingTheme.BLUE);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                brand.setForeground(SwingTheme.NAVY);
+            }
+
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                onHomeAction.run();
+            }
+        });
         add(brand, BorderLayout.WEST);
 
         JPanel tripSummary = new JPanel();
@@ -75,6 +97,10 @@ public final class HeaderPanel extends JPanel {
 
     public void setOpenShareAction(Runnable action) {
         openShareAction = action == null ? () -> { } : action;
+    }
+
+    public void setOnHomeAction(Runnable onHomeAction) {
+        this.onHomeAction = onHomeAction;
     }
 
     private void refresh(DashboardState state) {

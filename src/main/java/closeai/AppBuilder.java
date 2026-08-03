@@ -34,8 +34,13 @@ import closeai.application.scheduling.DefaultActivityScoringPolicy;
 import closeai.application.usecases.CreateTripInputData;
 import closeai.application.usecases.OptimizeItineraryInteractor;
 import closeai.application.usecases.TripSetupOutputData;
+import closeai.domain.entities.Activity;
+import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.Trip;
+import closeai.domain.entities.WeatherWarning;
+import closeai.domain.valueobjects.Location;
 import closeai.domain.valueobjects.TransportationMode;
+import closeai.domain.valueobjects.WeatherSeverity;
 import closeai.infrastructure.mock.MockPlacesService;
 import closeai.infrastructure.mock.MockWeatherService;
 import closeai.infrastructure.places.CachingPlacesService;
@@ -47,6 +52,9 @@ import closeai.infrastructure.weather.OpenMeteoWeatherService;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import javax.swing.SwingUtilities;
 
 /** Outer composition root for selecting infrastructure without leaking it into application code. */
 public final class AppBuilder {
@@ -70,6 +78,80 @@ public final class AppBuilder {
     /** Builds Swing with a seeded demo trip so the interactive map is populated on launch. */
     public CloseAIFrame buildSwingApplication() {
         return buildSwingApplication(build(), true);
+    }
+
+    /**
+     * Builds a Swing frame for a specific trip, used by the gallery flow.
+     *
+     * <p>The frame opens immediately with a "loading" weather placeholder; the live forecast is
+     * fetched on a background thread and pushed into the dashboard when it arrives, so the EDT
+     * never blocks on the network.</p>
+     */
+    public CloseAIFrame buildFrameForTrip(AppContainer app, Trip trip) {
+        WeatherWarning warning = placeholderWarning(trip);
+
+        DashboardViewModel dashboardViewModel = new DashboardViewModel(
+                new DashboardState(
+                        trip.getDestination(),
+                        trip.getDate(),
+                        warning.getWeatherCondition(),
+                        warning.getMessage()));
+        SearchViewModel searchViewModel = new SearchViewModel(searchStateFor(trip));
+        BookmarksViewModel bookmarksViewModel = new BookmarksViewModel(
+                new BookmarksState(trip.getBookmarkedActivities()));
+        DayPlanViewModel dayPlanViewModel = new DayPlanViewModel(
+                new DayPlanState(
+                        trip.getId(),
+                        trip.getScheduledEvents(),
+                        "Seeded demo · optimizer uses Day Plan activities only",
+                        false));
+        TripOptionsViewModel tripOptionsViewModel = new TripOptionsViewModel(
+                new TripOptionsState(
+                        trip.getDestination(),
+                        trip.getDate(),
+                        trip.getStartTime(),
+                        trip.getEndTime(),
+                        trip.getTransportationMode()));
+        CalendarViewModel calendarViewModel = new CalendarViewModel(
+                dashboardViewModel, dayPlanViewModel);
+        ShareViewModel shareViewModel = new ShareViewModel(
+                new ShareState("", "", false));
+
+        OptimizeItineraryPresenter optimizePresenter =
+                new OptimizeItineraryPresenter(dayPlanViewModel);
+        OptimizeItineraryInteractor optimizeInteractor =
+                new OptimizeItineraryInteractor(app.trips, optimizePresenter);
+        OptimizeItineraryController optimizeController =
+                new OptimizeItineraryController(optimizeInteractor, dayPlanViewModel);
+        ShareTripPresenter sharePresenter = new ShareTripPresenter(shareViewModel);
+        ShareTripController shareController = new ShareTripController(
+                app.share,
+                () -> dayPlanViewModel.getState().getTripId(),
+                sharePresenter);
+
+        HeaderPanel headerPanel = new HeaderPanel(
+                dashboardViewModel, dayPlanViewModel, shareController);
+        OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel, searchViewModel);
+        SearchPanel searchPanel = new SearchPanel(searchViewModel);
+        BookmarksPanel bookmarksPanel = new BookmarksPanel(bookmarksViewModel);
+        DayPlanPanel dayPlanPanel =
+                new DayPlanPanel(dayPlanViewModel, optimizeController);
+        TripOptionsPanel tripOptionsPanel =
+                new TripOptionsPanel(tripOptionsViewModel);
+        PlannerPanel plannerPanel = new PlannerPanel(
+                searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel);
+        CloseAIFrame frame = new CloseAIFrame(
+                headerPanel,
+                overviewPanel,
+                plannerPanel,
+                dayPlanPanel,
+                dayPlanViewModel,
+                calendarViewModel,
+                shareViewModel,
+                searchViewModel,
+                bookmarksViewModel);
+        refreshWeatherAsync(app, trip, dashboardViewModel);
+        return frame;
     }
 
     /** Builds Swing around an injected application container for deterministic integration tests. */
@@ -149,7 +231,9 @@ public final class AppBuilder {
                 dayPlanPanel,
                 dayPlanViewModel,
                 calendarViewModel,
-                shareViewModel);
+                shareViewModel,
+                searchViewModel,
+                bookmarksViewModel);
         if (seedDemo) {
             Trip demo = app.createTrip.execute(new CreateTripInputData(
                     "Toronto",
@@ -160,6 +244,76 @@ public final class AppBuilder {
             tripSetupPresenter.presentSuccess(new TripSetupOutputData(demo, true));
         }
         return frame;
+    }
+
+    /**
+     * Pushes a refreshed snapshot of the trip into an already-built frame. Used by the gallery
+     * flow to populate a newly created trip after its real activities finish loading.
+     */
+    public void refreshFrameForTrip(Trip trip, CloseAIFrame frame) {
+        frame.getSearchViewModel().setState(searchStateFor(trip));
+        frame.getBookmarksViewModel().setState(new BookmarksState(trip.getBookmarkedActivities()));
+        frame.getDayPlanViewModel().setState(new DayPlanState(
+                trip.getId(),
+                trip.getScheduledEvents(),
+                "Seeded demo · optimizer uses Day Plan activities only",
+                false));
+    }
+
+    /** Search and map view for a trip: every discovered place, tagged with its bookmark/schedule status. */
+    private SearchState searchStateFor(Trip trip) {
+        Set<String> bookmarkedIds = new HashSet<>();
+        for (Activity activity : trip.getBookmarkedActivities()) {
+            bookmarkedIds.add(activity.getId());
+        }
+        Set<String> scheduledIds = new HashSet<>();
+        for (ScheduledEvent event : trip.getScheduledEvents()) {
+            if (event.getActivity() != null) {
+                scheduledIds.add(event.getActivity().getId());
+            }
+        }
+        return new SearchState(trip.getDiscoveredPlaces(), "", bookmarkedIds, scheduledIds);
+    }
+
+    private WeatherWarning placeholderWarning(Trip trip) {
+        return new WeatherWarning(
+                new Location(0, 0, trip.getDestination()),
+                trip.getStartTime(),
+                "Loading weather\u2026",
+                WeatherSeverity.LOW,
+                "Fetching the forecast for " + trip.getDestination() + "\u2026");
+    }
+
+    private void refreshWeatherAsync(AppContainer app, Trip trip,
+                                     DashboardViewModel dashboardViewModel) {
+        Thread worker = new Thread(() -> {
+            WeatherWarning result = weatherWarningFor(app, trip);
+            DashboardState state = new DashboardState(
+                    trip.getDestination(),
+                    trip.getDate(),
+                    result.getWeatherCondition(),
+                    result.getMessage());
+            SwingUtilities.invokeLater(() -> dashboardViewModel.setState(state));
+        }, "Weather-" + trip.getDestination());
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /** Fetches the weather preview, degrading gracefully so network or date errors cannot crash the UI. */
+    private WeatherWarning weatherWarningFor(AppContainer app, Trip trip) {
+        try {
+            return app.weatherWarning.execute(trip.getId());
+        } catch (Exception exception) {
+            System.err.println("[AppBuilder] Weather preview unavailable for " + trip.getDestination()
+                    + ": " + exception.getMessage());
+            return new WeatherWarning(
+                    new Location(0, 0, trip.getDestination()),
+                    trip.getStartTime(),
+                    "Weather preview unavailable",
+                    WeatherSeverity.LOW,
+                    "Could not fetch a forecast for " + trip.getDestination()
+                            + ". The trip date may be outside the forecast range, or you may be offline.");
+        }
     }
 
     private AppContainer buildWithServices(

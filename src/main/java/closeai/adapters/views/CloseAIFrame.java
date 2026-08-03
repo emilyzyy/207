@@ -1,7 +1,9 @@
 package closeai.adapters.views;
 
-import closeai.adapters.viewmodels.DayPlanViewModel;
+import closeai.adapters.viewmodels.BookmarksViewModel;
 import closeai.adapters.viewmodels.CalendarViewModel;
+import closeai.adapters.viewmodels.DayPlanViewModel;
+import closeai.adapters.viewmodels.SearchViewModel;
 import closeai.adapters.viewmodels.ShareViewModel;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -15,6 +17,10 @@ public final class CloseAIFrame extends JFrame {
     private final CalendarDialog calendarDialog;
     private final ShareDialog shareDialog;
     private final DayPlanPanel dayPlanPanel;
+    private final HeaderPanel headerPanel;
+    private final DayPlanViewModel dayPlanViewModel;
+    private final SearchViewModel searchViewModel;
+    private final BookmarksViewModel bookmarksViewModel;
 
     public CloseAIFrame(
             HeaderPanel headerPanel,
@@ -23,8 +29,14 @@ public final class CloseAIFrame extends JFrame {
             DayPlanPanel dayPlanPanel,
             DayPlanViewModel dayPlanViewModel,
             CalendarViewModel calendarViewModel,
-            ShareViewModel shareViewModel) {
+            ShareViewModel shareViewModel,
+            SearchViewModel searchViewModel,
+            BookmarksViewModel bookmarksViewModel) {
         super("CloseAI Trip Planner");
+        this.headerPanel = headerPanel;
+        this.dayPlanViewModel = dayPlanViewModel;
+        this.searchViewModel = searchViewModel;
+        this.bookmarksViewModel = bookmarksViewModel;
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1050, 680));
         setPreferredSize(new Dimension(1320, 820));
@@ -62,11 +74,28 @@ public final class CloseAIFrame extends JFrame {
         return calendarDialog;
     }
 
+    /** Wires the brand click in the header to return to the gallery. */
+    public void setOnHomeAction(Runnable onHomeAction) {
+        headerPanel.setOnHomeAction(onHomeAction);
+    }
+
     public DayPlanPanel getDayPlanPanel() {
         return dayPlanPanel;
     }
 
     public ShareDialog getShareDialog() {
         return shareDialog;
+    }
+
+    public DayPlanViewModel getDayPlanViewModel() {
+        return dayPlanViewModel;
+    }
+
+    public SearchViewModel getSearchViewModel() {
+        return searchViewModel;
+    }
+
+    public BookmarksViewModel getBookmarksViewModel() {
+        return bookmarksViewModel;
     }
 }

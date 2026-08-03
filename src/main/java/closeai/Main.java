@@ -2,6 +2,8 @@ package closeai;
 
 import closeai.adapters.controllers.ApiController;
 import closeai.adapters.views.CloseAIFrame;
+import closeai.adapters.views.GalleryPanel;
+import closeai.adapters.views.NewItineraryDialog;
 import closeai.application.AppContainer;
 import closeai.application.usecases.CreateTripInputData;
 import closeai.domain.entities.Activity;
@@ -9,9 +11,14 @@ import closeai.domain.entities.Trip;
 import closeai.domain.valueobjects.TransportationMode;
 import closeai.infrastructure.web.StaticFileHandler;
 import com.sun.net.httpserver.HttpServer;
+import java.awt.Cursor;
+import java.awt.Dimension;
 import java.net.InetSocketAddress;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
@@ -29,15 +36,74 @@ public final class Main {
                         System.getProperty("closeai.places.mode", "nominatim"));
                 System.setProperty("closeai.weather.mode",
                         System.getProperty("closeai.weather.mode", "open-meteo"));
-                CloseAIFrame frame = new AppBuilder().buildSwingApplication();
-                frame.setVisible(true);
-                System.out.println(
-                        "CloseAI Swing dashboard launched on EDT: "
-                                + SwingUtilities.isEventDispatchThread());
+                AppBuilder builder = new AppBuilder();
+                AppContainer app = builder.build();
+                List<Activity> demoActivities = app.activities.findAll();
+                seedTrip(app, demoActivities, "Toronto",
+                        LocalDate.of(2026, 7, 23),
+                        LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING);
+
+                showGallery(builder, app);
             } catch (Exception exception) {
                 exception.printStackTrace();
             }
         });
+    }
+
+    private static void showGallery(AppBuilder builder, AppContainer app) {
+        List<Trip> trips = app.trips.findAll();
+
+        JFrame galleryFrame = new JFrame("CloseAI - My Trips");
+        galleryFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        galleryFrame.setMinimumSize(new Dimension(800, 600));
+        galleryFrame.setPreferredSize(new Dimension(960, 700));
+        galleryFrame.add(new GalleryPanel(trips,
+            trip -> openTripFrame(builder, app, trip, galleryFrame),
+            () -> {
+                NewItineraryDialog dialog = new NewItineraryDialog(galleryFrame);
+                dialog.setVisible(true);
+                if (!dialog.isConfirmed()) return;
+                String dest = dialog.getDestination();
+                LocalDate date = dialog.getDate();
+                galleryFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+                new Thread(() -> {
+                    try {
+                        Trip created = app.createTrip.execute(dest, date,
+                                LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING);
+                        SwingUtilities.invokeLater(() -> {
+                            CloseAIFrame tripFrame = openTripFrame(builder, app, created, galleryFrame);
+                            enrichItineraryAsync(builder, app, created.getId(), dest, tripFrame);
+                        });
+                    } catch (Exception exception) {
+                        exception.printStackTrace();
+                        SwingUtilities.invokeLater(() -> {
+                            galleryFrame.setCursor(Cursor.getDefaultCursor());
+                            JOptionPane.showMessageDialog(galleryFrame,
+                                    "Could not create the itinerary: " + exception.getMessage(),
+                                    "New Itinerary", JOptionPane.ERROR_MESSAGE);
+                        });
+                    }
+                }, "Create-Itinerary").start();
+            }
+        ));
+        galleryFrame.pack();
+        galleryFrame.setLocationRelativeTo(null);
+        galleryFrame.setVisible(true);
+        System.out.println(
+                "CloseAI gallery launched on EDT: "
+                        + SwingUtilities.isEventDispatchThread());
+    }
+
+    private static CloseAIFrame openTripFrame(
+            AppBuilder builder, AppContainer app, Trip trip, JFrame galleryFrame) {
+        galleryFrame.dispose();
+        CloseAIFrame tripFrame = builder.buildFrameForTrip(app, trip);
+        tripFrame.setOnHomeAction(() -> {
+            tripFrame.dispose();
+            showGallery(builder, app);
+        });
+        tripFrame.setVisible(true);
+        return tripFrame;
     }
 
     private static void startWebPrototype() throws Exception {
@@ -64,5 +130,32 @@ public final class Main {
         server.start();
         System.out.println("CloseAI is running at http://localhost:8080");
         System.out.println("Demo trip id: " + demo.getId());
+    }
+
+    /**
+     * Populates a freshly created trip with real activities from the destination in the
+     * background, then pushes the enriched state into the already-visible trip frame.
+     */
+    private static void enrichItineraryAsync(AppBuilder builder, AppContainer app,
+                                             String tripId, String destination, CloseAIFrame frame) {
+        new Thread(() -> {
+            try {
+                Trip updated = app.discoverTripPlaces.execute(tripId, destination);
+                SwingUtilities.invokeLater(() -> builder.refreshFrameForTrip(updated, frame));
+            } catch (Exception exception) {
+                System.err.println("[Main] Could not enrich itinerary for " + destination
+                        + ": " + exception.getMessage());
+            }
+        }, "Enrich-Itinerary").start();
+    }
+
+    private static Trip seedTrip(AppContainer app, List<Activity> available,
+                                  String destination, LocalDate date,
+                                  LocalTime start, LocalTime end, TransportationMode mode) {
+        Trip created = app.createTrip.execute(destination, date, start, end, mode);
+        app.discoverTripPlaces.record(created.getId(), available);
+        DemoSeeding.bookmarkAndSchedule(app, created.getId(), available, 2, 3);
+        return app.trips.findById(created.getId())
+                .orElseThrow(() -> new IllegalStateException("Seeded trip was not saved"));
     }
 }
