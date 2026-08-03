@@ -43,6 +43,7 @@ public final class MapPanel extends JPanel {
     private boolean isDragging;
 
     private List<Activity> activities = new ArrayList<>();
+    private String city = "the area";
 
     private final ConcurrentHashMap<String, BufferedImage> tileCache = new ConcurrentHashMap<>();
     private final Set<String> pendingLoads = ConcurrentHashMap.newKeySet();
@@ -112,6 +113,12 @@ public final class MapPanel extends JPanel {
         repaint();
     }
 
+    /** Sets the city name shown in the map overlay. */
+    public void setCity(String city) {
+        this.city = (city == null || city.trim().isEmpty()) ? "the area" : city.trim();
+        repaint();
+    }
+
     private static boolean sameIds(List<Activity> a, List<Activity> b) {
         if (a.size() != b.size()) return false;
         for (int i = 0; i < a.size(); i++) {
@@ -124,6 +131,15 @@ public final class MapPanel extends JPanel {
         centerLat = lat;
         centerLng = lng;
         repaint();
+    }
+
+    /** Centers the map on the given city, geocoding unknown cities asynchronously. */
+    public void focusOnCity(String city) {
+        StaticTileLoader.cityCoords(city).thenAccept(coords -> {
+            if (coords != null) {
+                SwingUtilities.invokeLater(() -> flyTo(coords[0], coords[1]));
+            }
+        });
     }
 
     public void fitAll() {
@@ -228,7 +244,7 @@ public final class MapPanel extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setColor(Color.WHITE);
         g2.setFont(SwingTheme.BODY);
-        String title = activities.size() + " places in Toronto";
+        String title = activities.size() + " places in " + city;
         g2.drawString(title, 12, 24);
 
         drawMarkers(g2, w, h, centerPixelX, centerPixelY);

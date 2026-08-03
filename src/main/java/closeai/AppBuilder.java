@@ -25,9 +25,12 @@ import closeai.application.ports.WeatherService;
 import closeai.application.scheduling.DefaultActivityScoringPolicy;
 import closeai.application.usecases.OptimizeItineraryInteractor;
 import closeai.domain.entities.Activity;
+import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.Trip;
 import closeai.domain.entities.WeatherWarning;
+import closeai.domain.valueobjects.Location;
 import closeai.domain.valueobjects.TransportationMode;
+import closeai.domain.valueobjects.WeatherSeverity;
 import closeai.infrastructure.mock.MockPlacesService;
 import closeai.infrastructure.mock.MockWeatherService;
 import closeai.infrastructure.places.NominatimPlacesService;
@@ -37,7 +40,9 @@ import closeai.infrastructure.routing.OsrmDistanceService;
 import closeai.infrastructure.weather.OpenMeteoWeatherService;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import javax.swing.SwingUtilities;
 
 /** Outer composition root for selecting infrastructure without leaking it into application code. */
 public final class AppBuilder {
@@ -75,10 +80,14 @@ public final class AppBuilder {
 
     /**
      * Builds a Swing frame for a specific trip, used by the gallery flow.
+     *
+     * <p>The frame opens immediately with a "loading" weather placeholder; the live forecast is
+     * fetched on a background thread and pushed into the dashboard when it arrives, so the EDT
+     * never blocks on the network.</p>
      */
     public CloseAIFrame buildFrameForTrip(AppContainer app, Trip trip) {
-        WeatherWarning warning = app.weatherWarning.execute(trip.getId());
-        List<Activity> activities = app.activities.findAll();
+        WeatherWarning warning = placeholderWarning(trip);
+        List<Activity> activities = collectTripActivities(trip);
 
         DashboardViewModel dashboardViewModel = new DashboardViewModel(
                 new DashboardState(
@@ -121,12 +130,92 @@ public final class AppBuilder {
                 new TripOptionsPanel(tripOptionsViewModel);
         PlannerPanel plannerPanel = new PlannerPanel(
                 searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel);
-        return new CloseAIFrame(
+        CloseAIFrame frame = new CloseAIFrame(
                 headerPanel,
                 overviewPanel,
                 plannerPanel,
                 dayPlanPanel,
-                dayPlanViewModel);
+                dayPlanViewModel,
+                searchViewModel,
+                bookmarksViewModel);
+        refreshWeatherAsync(app, trip, dashboardViewModel);
+        return frame;
+    }
+
+    /**
+     * Pushes a refreshed snapshot of the trip into an already-built frame. Used by the gallery
+     * flow to populate a newly created trip after its real activities finish loading.
+     */
+    public void refreshFrameForTrip(Trip trip, CloseAIFrame frame) {
+        List<Activity> activities = collectTripActivities(trip);
+        frame.getSearchViewModel().setState(new SearchState(activities, ""));
+        frame.getBookmarksViewModel().setState(new BookmarksState(trip.getBookmarkedActivities()));
+        frame.getDayPlanViewModel().setState(new DayPlanState(
+                trip.getId(),
+                trip.getScheduledEvents(),
+                "Seeded demo · optimizer uses Day Plan activities only",
+                false));
+    }
+
+    private WeatherWarning placeholderWarning(Trip trip) {
+        return new WeatherWarning(
+                new Location(0, 0, trip.getDestination()),
+                trip.getStartTime(),
+                "Loading weather\u2026",
+                WeatherSeverity.LOW,
+                "Fetching the forecast for " + trip.getDestination() + "\u2026");
+    }
+
+    private void refreshWeatherAsync(AppContainer app, Trip trip,
+                                     DashboardViewModel dashboardViewModel) {
+        Thread worker = new Thread(() -> {
+            WeatherWarning result = weatherWarningFor(app, trip);
+            DashboardState state = new DashboardState(
+                    trip.getDestination(),
+                    trip.getDate(),
+                    result.getWeatherCondition(),
+                    result.getMessage());
+            SwingUtilities.invokeLater(() -> dashboardViewModel.setState(state));
+        }, "Weather-" + trip.getDestination());
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /** Fetches the weather preview, degrading gracefully so network or date errors cannot crash the UI. */
+    private WeatherWarning weatherWarningFor(AppContainer app, Trip trip) {
+        try {
+            return app.weatherWarning.execute(trip.getId());
+        } catch (Exception exception) {
+            System.err.println("[AppBuilder] Weather preview unavailable for " + trip.getDestination()
+                    + ": " + exception.getMessage());
+            return new WeatherWarning(
+                    new Location(0, 0, trip.getDestination()),
+                    trip.getStartTime(),
+                    "Weather preview unavailable",
+                    WeatherSeverity.LOW,
+                    "Could not fetch a forecast for " + trip.getDestination()
+                            + ". The trip date may be outside the forecast range, or you may be offline.");
+        }
+    }
+
+    /** Collects the places that belong to this trip so each trip view reflects its own city. */
+    private List<Activity> collectTripActivities(Trip trip) {
+        List<Activity> result = new ArrayList<>();
+        for (Activity activity : trip.getBookmarkedActivities()) {
+            addIfMissing(result, activity);
+        }
+        for (ScheduledEvent event : trip.getScheduledEvents()) {
+            addIfMissing(result, event.getActivity());
+        }
+        return result;
+    }
+
+    private void addIfMissing(List<Activity> activities, Activity candidate) {
+        if (candidate == null) return;
+        for (Activity activity : activities) {
+            if (activity.getId().equals(candidate.getId())) return;
+        }
+        activities.add(candidate);
     }
 
     private AppContainer buildWithWeather(WeatherService weather) {

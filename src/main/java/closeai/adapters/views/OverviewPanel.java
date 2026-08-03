@@ -27,6 +27,8 @@ public final class OverviewPanel extends JPanel {
         setPreferredSize(new Dimension(670, 720));
 
         mapPanel = new MapPanel(620, 520);
+        mapPanel.setCity(viewModel.getState().getDestination());
+        mapPanel.focusOnCity(viewModel.getState().getDestination());
         add(mapPanel, BorderLayout.CENTER);
         add(weatherCard(), BorderLayout.SOUTH);
 

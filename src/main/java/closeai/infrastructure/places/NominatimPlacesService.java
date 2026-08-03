@@ -18,17 +18,22 @@ import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** PlacesService adapter backed by OpenStreetMap Nominatim (geocoding) and Overpass (POI search). */
 public final class NominatimPlacesService implements PlacesService {
-    private static final URI OVERPASS_ENDPOINT =
-            URI.create("https://overpass.kumi.systems/api/interpreter");
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(15);
+    private static final List<URI> OVERPASS_ENDPOINTS = List.of(
+            URI.create("https://overpass-api.de/api/interpreter"),
+            URI.create("https://overpass.kumi.systems/api/interpreter"));
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(8);
+    private static final Duration OVERPASS_TIMEOUT = Duration.ofSeconds(10);
     private static final double SEARCH_RADIUS_METERS = 1500;
     private static final int MAX_RESULTS = 25;
 
     private final HttpClient client;
     private final ObjectMapper mapper;
+    private final Map<String, List<Activity>> cache = new ConcurrentHashMap<>();
 
     public NominatimPlacesService() {
         this(HttpClient.newBuilder().connectTimeout(REQUEST_TIMEOUT).build(), new ObjectMapper());
@@ -44,6 +49,19 @@ public final class NominatimPlacesService implements PlacesService {
         if (destination == null || destination.trim().isEmpty()) {
             return new ArrayList<>();
         }
+        String key = destination.trim().toLowerCase() + "|" + (query == null ? "" : query);
+        List<Activity> cached = cache.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        List<Activity> result = searchUncached(destination);
+        if (!result.isEmpty()) {
+            cache.put(key, result);
+        }
+        return result;
+    }
+
+    private List<Activity> searchUncached(String destination) {
         try {
             double[] coords = geocode(destination);
             String overpassQuery = buildOverpassQuery(coords[0], coords[1]);
@@ -77,7 +95,7 @@ public final class NominatimPlacesService implements PlacesService {
 
     private String buildOverpassQuery(double lat, double lon) {
         int r = (int) SEARCH_RADIUS_METERS;
-        return "[out:json][timeout:12];"
+        return "[out:json][timeout:8];"
             + "("
             + "node[\"amenity\"=\"restaurant\"](around:" + r + "," + lat + "," + lon + ");"
             + "node[\"amenity\"=\"cafe\"](around:" + r + "," + lat + "," + lon + ");"
@@ -88,10 +106,23 @@ public final class NominatimPlacesService implements PlacesService {
             + "out body " + MAX_RESULTS + ";";
     }
 
-    private JsonNode queryOverpass(String query) throws IOException, InterruptedException {
+    private JsonNode queryOverpass(String query) {
+        for (URI endpoint : OVERPASS_ENDPOINTS) {
+            try {
+                return queryEndpoint(endpoint, query);
+            } catch (Exception e) {
+                System.err.println("[NominatimPlaces] Overpass " + endpoint.getHost()
+                        + " failed: " + e.getMessage());
+            }
+        }
+        return mapper.createArrayNode();
+    }
+
+    private JsonNode queryEndpoint(URI endpoint, String query)
+            throws IOException, InterruptedException {
         String body = "data=" + encode(query);
-        HttpRequest request = HttpRequest.newBuilder(OVERPASS_ENDPOINT)
-                .timeout(Duration.ofSeconds(20))
+        HttpRequest request = HttpRequest.newBuilder(endpoint)
+                .timeout(OVERPASS_TIMEOUT)
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("User-Agent", "CloseAI-CSC207/1.0")
                 .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
@@ -99,8 +130,7 @@ public final class NominatimPlacesService implements PlacesService {
         HttpResponse<String> response = client.send(request,
                 HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            System.err.println("[NominatimPlaces] Overpass HTTP " + response.statusCode());
-            return mapper.createArrayNode();
+            throw new IOException("Overpass HTTP " + response.statusCode());
         }
         JsonNode tree = mapper.readTree(response.body());
         return tree.has("elements") ? tree.get("elements") : mapper.createArrayNode();

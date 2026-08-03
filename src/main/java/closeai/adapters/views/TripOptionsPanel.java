@@ -57,7 +57,6 @@ public final class TripOptionsPanel extends JPanel {
         addField(1, "Date", String.valueOf(state.getDate()));
         addField(2, "Day starts", String.valueOf(state.getStartTime()));
         addField(3, "Day ends", String.valueOf(state.getEndTime()));
-        addField(4, "Transportation", String.valueOf(state.getTransportationMode()));
         fields.revalidate();
         fields.repaint();
     }

@@ -1,11 +1,15 @@
 package closeai.adapters.views;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import javax.imageio.ImageIO;
@@ -25,6 +29,41 @@ final class StaticTileLoader {
             case "ottawa": return new double[]{45.4215, -75.6972};
             case "vancouver": return new double[]{49.2827, -123.1207};
             default: return null;
+        }
+    }
+
+    /** Loads a map tile centered on the given city, geocoding unknown cities on the fly. */
+    static CompletableFuture<BufferedImage> loadCityTile(String city, int zoom) {
+        return cityCoords(city).thenCompose(coords ->
+                coords == null ? CompletableFuture.completedFuture(null)
+                        : loadTile(coords[0], coords[1], zoom));
+    }
+
+    static CompletableFuture<double[]> cityCoords(String city) {
+        double[] known = latLngForCity(city);
+        if (known != null) {
+            return CompletableFuture.completedFuture(known);
+        }
+        return CompletableFuture.supplyAsync(() -> geocodeCity(city));
+    }
+
+    private static double[] geocodeCity(String city) {
+        try {
+            String uri = "https://nominatim.openstreetmap.org/search?q="
+                    + URLEncoder.encode(city, StandardCharsets.UTF_8)
+                    + "&format=json&limit=1";
+            HttpRequest request = HttpRequest.newBuilder(URI.create(uri))
+                    .header("User-Agent", "CloseAI-CSC207/1.0")
+                    .timeout(Duration.ofSeconds(10)).GET().build();
+            HttpResponse<String> response = HTTP.send(request,
+                    HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) return null;
+            JsonNode root = new ObjectMapper().readTree(response.body());
+            if (!root.isArray() || root.isEmpty()) return null;
+            JsonNode first = root.get(0);
+            return new double[]{first.get("lat").asDouble(), first.get("lon").asDouble()};
+        } catch (Exception ignored) {
+            return null;
         }
     }
 

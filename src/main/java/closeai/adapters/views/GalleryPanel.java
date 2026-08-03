@@ -85,10 +85,8 @@ public final class GalleryPanel extends JPanel {
 
     private void startTileLoading(List<Trip> trips) {
         for (Trip trip : trips) {
-            double[] coords = StaticTileLoader.latLngForCity(trip.getDestination());
-            if (coords == null) continue;
             String key = trip.getDestination().toLowerCase();
-            StaticTileLoader.loadTile(coords[0], coords[1], MAP_ZOOM)
+            StaticTileLoader.loadCityTile(trip.getDestination(), MAP_ZOOM)
                     .thenAccept(img -> {
                         if (img != null) {
                             tileCache.put(key, img);
@@ -156,8 +154,7 @@ public final class GalleryPanel extends JPanel {
 
             content.add(Box.createVerticalStrut(4));
 
-            JLabel meta = new JLabel(trip.getStartTime() + " \u2013 " + trip.getEndTime()
-                    + "  \u00b7  " + trip.getTransportationMode());
+            JLabel meta = new JLabel(trip.getStartTime() + " \u2013 " + trip.getEndTime());
             meta.setForeground(new Color(170, 185, 205));
             meta.setFont(SwingTheme.SMALL);
             meta.setAlignmentX(Component.CENTER_ALIGNMENT);
