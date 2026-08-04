@@ -110,8 +110,7 @@ public final class AppBuilder {
                         trip.getDestination(),
                         trip.getDate(),
                         trip.getStartTime(),
-                        trip.getEndTime(),
-                        trip.getTransportationMode()));
+                        trip.getEndTime()));
         CalendarViewModel calendarViewModel = new CalendarViewModel(
                 dashboardViewModel, dayPlanViewModel);
         ShareViewModel shareViewModel = new ShareViewModel(
@@ -184,8 +183,7 @@ public final class AppBuilder {
                         "",
                         LocalDate.now().plusDays(1),
                         LocalTime.of(9, 0),
-                        LocalTime.of(18, 0),
-                        TransportationMode.WALKING));
+                        LocalTime.of(18, 0)));
 
         TripSetupPresenter tripSetupPresenter = new TripSetupPresenter(
                 dashboardViewModel,

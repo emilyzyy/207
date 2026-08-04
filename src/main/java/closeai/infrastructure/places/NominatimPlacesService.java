@@ -29,7 +29,7 @@ public final class NominatimPlacesService implements PlacesService {
             URI.create("https://overpass-api.de/api/interpreter"),
             URI.create("https://overpass.kumi.systems/api/interpreter"));
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(15);
-    private static final Duration OVERPASS_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration OVERPASS_TIMEOUT = Duration.ofSeconds(15);
     private static final double SEARCH_RADIUS_METERS = 1500;
     private static final int MAX_RESULTS = 25;
 
@@ -132,7 +132,7 @@ public final class NominatimPlacesService implements PlacesService {
 
     private String buildOverpassQuery(double lat, double lon) {
         int r = (int) SEARCH_RADIUS_METERS;
-        return "[out:json][timeout:8];"
+        return "[out:json][timeout:30];"
             + "("
             + "node[\"amenity\"=\"restaurant\"](around:" + r + "," + lat + "," + lon + ");"
             + "node[\"amenity\"=\"cafe\"](around:" + r + "," + lat + "," + lon + ");"

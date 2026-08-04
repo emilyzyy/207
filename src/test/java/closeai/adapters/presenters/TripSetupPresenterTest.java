@@ -35,7 +35,7 @@ final class TripSetupPresenterTest {
         DayPlanViewModel dayPlan = new DayPlanViewModel(
                 new DayPlanState("", Collections.emptyList(), "", false));
         TripOptionsViewModel options = new TripOptionsViewModel(
-                new TripOptionsState("", null, null, null, null));
+                new TripOptionsState("", null, null, null));
         TripSetupPresenter presenter = new TripSetupPresenter(
                 dashboard, search, bookmarks, dayPlan, options, null, null);
         Trip trip = new Trip(
@@ -56,7 +56,7 @@ final class TripSetupPresenterTest {
     void failureOnlyChangesTripSetupFeedback() {
         TripOptionsViewModel options = new TripOptionsViewModel(
                 new TripOptionsState("", LocalDate.now(), LocalTime.NOON,
-                        LocalTime.of(18, 0), TransportationMode.WALKING));
+                        LocalTime.of(18, 0)));
         TripSetupPresenter presenter = new TripSetupPresenter(
                 new DashboardViewModel(new DashboardState("", null, "", "")),
                 new SearchViewModel(new SearchState(Collections.emptyList(), "")),

@@ -38,12 +38,16 @@ public final class Main {
                         System.getProperty("closeai.weather.mode", "open-meteo"));
                 AppBuilder builder = new AppBuilder();
                 AppContainer app = builder.build();
-                List<Activity> demoActivities = app.activities.findAll();
-                seedTrip(app, demoActivities, "Toronto",
-                        LocalDate.of(2026, 7, 23),
-                        LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING);
-
-                showGallery(builder, app);
+                new Thread(() -> {
+                    try {
+                        seedTrip(app, "Toronto",
+                                LocalDate.of(2026, 7, 23),
+                                LocalTime.of(9, 0), LocalTime.of(18, 0));
+                    } catch (Exception exception) {
+                        exception.printStackTrace();
+                    }
+                    SwingUtilities.invokeLater(() -> showGallery(builder, app));
+                }, "Seed-Toronto").start();
             } catch (Exception exception) {
                 exception.printStackTrace();
             }
@@ -149,12 +153,12 @@ public final class Main {
         }, "Enrich-Itinerary").start();
     }
 
-    private static Trip seedTrip(AppContainer app, List<Activity> available,
-                                  String destination, LocalDate date,
-                                  LocalTime start, LocalTime end, TransportationMode mode) {
-        Trip created = app.createTrip.execute(destination, date, start, end, mode);
-        app.discoverTripPlaces.record(created.getId(), available);
-        DemoSeeding.bookmarkAndSchedule(app, created.getId(), available, 2, 3);
+    private static Trip seedTrip(AppContainer app, String destination, LocalDate date,
+                                 LocalTime start, LocalTime end) {
+        Trip created = app.createTrip.execute(destination, date, start, end, TransportationMode.WALKING);
+        List<Activity> places =
+                app.discoverTripPlaces.execute(created.getId(), destination).getDiscoveredPlaces();
+        DemoSeeding.bookmarkAndSchedule(app, created.getId(), places, 2, 3);
         return app.trips.findById(created.getId())
                 .orElseThrow(() -> new IllegalStateException("Seeded trip was not saved"));
     }
