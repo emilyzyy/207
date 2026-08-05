@@ -3,8 +3,10 @@ package closeai;
 import closeai.application.AppContainer;
 import closeai.application.usecases.CreateTripInputData;
 import closeai.domain.entities.Trip;
+import closeai.domain.valueobjects.Location;
 import closeai.domain.valueobjects.TransportationMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 public final class TestRunner {
@@ -20,10 +22,12 @@ public final class TestRunner {
         require(trip.getBookmarkedActivities().size() == 2, "bookmark use case");
         require(!trip.getScheduledEvents().isEmpty(), "auto schedule use case");
         require(app.summary.execute(trip.getId()).contains("Royal Ontario Museum"), "summary use case");
-        require(app.distances.estimateTravelMinutes(app.activities.findById("rom").get().getLocation(),
-                app.activities.findById("pai").get().getLocation(), TransportationMode.WALKING)
-                > app.distances.estimateTravelMinutes(app.activities.findById("rom").get().getLocation(),
-                app.activities.findById("pai").get().getLocation(), TransportationMode.DRIVING), "transport mode timing");
+        LocalDateTime departure = LocalDateTime.of(LocalDate.of(2026, 7, 18), LocalTime.NOON);
+        Location rom = app.activities.findById("rom").get().getLocation();
+        Location pai = app.activities.findById("pai").get().getLocation();
+        require(app.distances.estimateTravelMinutes(rom, pai, TransportationMode.WALKING, departure)
+                > app.distances.estimateTravelMinutes(rom, pai, TransportationMode.DRIVING, departure),
+                "transport mode timing");
         System.out.println("All CloseAI tests passed.");
     }
     private static void require(boolean condition, String label) {

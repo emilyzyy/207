@@ -15,6 +15,7 @@ import closeai.domain.valueobjects.Location;
 import closeai.domain.valueobjects.TransportationMode;
 import closeai.domain.valueobjects.WeatherSeverity;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -64,6 +65,7 @@ final class AutoScheduleTripUseCaseTest {
         assertEvent(result.getScheduledEvents().get(1), EventType.ACTIVITY, time(9, 17), time(10, 17));
         assertSame(ORIGIN, distances.calls.get(0).from);
         assertEquals(TransportationMode.TRANSIT, distances.calls.get(0).mode);
+        assertEquals(LocalDateTime.of(trip.getDate(), time(9, 0)), distances.calls.get(0).departure);
     }
 
     @Test
@@ -189,7 +191,8 @@ final class AutoScheduleTripUseCaseTest {
         FakeTripRepository trips = new FakeTripRepository(trip);
         DistanceService failing = new DistanceService() {
             private int calls;
-            public int estimateTravelMinutes(Location from, Location to, TransportationMode mode) {
+            public int estimateTravelMinutes(Location from, Location to, TransportationMode mode,
+                                             LocalDateTime departure) {
                 if (++calls == 2) throw new IllegalStateException("distance unavailable");
                 return 5;
             }
@@ -326,8 +329,9 @@ final class AutoScheduleTripUseCaseTest {
         private final List<DistanceCall> calls = new ArrayList<DistanceCall>();
         private int defaultMinutes;
 
-        public int estimateTravelMinutes(Location from, Location to, TransportationMode mode) {
-            calls.add(new DistanceCall(from, mode));
+        public int estimateTravelMinutes(Location from, Location to, TransportationMode mode,
+                                         LocalDateTime departure) {
+            calls.add(new DistanceCall(from, mode, departure));
             return byMode.containsKey(mode) ? byMode.get(mode) : defaultMinutes;
         }
     }
@@ -335,10 +339,12 @@ final class AutoScheduleTripUseCaseTest {
     private static final class DistanceCall {
         private final Location from;
         private final TransportationMode mode;
+        private final LocalDateTime departure;
 
-        private DistanceCall(Location from, TransportationMode mode) {
+        private DistanceCall(Location from, TransportationMode mode, LocalDateTime departure) {
             this.from = from;
             this.mode = mode;
+            this.departure = departure;
         }
     }
 }
