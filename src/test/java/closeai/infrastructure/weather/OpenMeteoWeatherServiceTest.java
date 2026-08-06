@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -61,7 +62,7 @@ final class OpenMeteoWeatherServiceTest {
     }
 
     @Test
-    void selectsNearestHourAndMapsLowSeverity() throws Exception {
+    void returnsEveryHourAndKeepsNearestHourForThePreview() throws Exception {
         startServer();
         server.createContext("/geo", exchange -> respond(exchange, 200,
                 "{\"results\":[{\"name\":\"Montreal\",\"latitude\":45.5,\"longitude\":-73.5}]}"));
@@ -71,8 +72,13 @@ final class OpenMeteoWeatherServiceTest {
                         + "\"precipitation_probability\":[0,10],\"wind_speed_10m\":[5.0,8.0]}}"));
         server.start();
 
-        WeatherWarning warning = service().getWarning(trip("Montreal"));
+        OpenMeteoWeatherService service = service();
+        List<WeatherWarning> hourly = service.getHourlyWarnings(trip("Montreal"));
+        WeatherWarning warning = service.getWarning(trip("Montreal"));
 
+        assertEquals(2, hourly.size());
+        assertEquals(LocalTime.of(8, 0), hourly.get(0).getTime());
+        assertEquals(LocalTime.of(10, 0), hourly.get(1).getTime());
         assertEquals("Clear sky", warning.getWeatherCondition());
         assertEquals(WeatherSeverity.LOW, warning.getSeverity());
     }

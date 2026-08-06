@@ -26,8 +26,10 @@ public final class HeaderPanel extends JPanel {
     private final JLabel tripLabel = new JLabel();
     private final JLabel dateLabel = new JLabel();
     private final JButton shareButton = SwingTheme.primaryButton("Share");
+    private final JButton authButton = new JButton("Sign in");
     private Runnable openShareAction = () -> { };
     private Runnable onHomeAction = () -> { };
+    private Runnable onAuthAction = () -> { };
 
     public HeaderPanel(
             DashboardViewModel viewModel,
@@ -87,6 +89,10 @@ public final class HeaderPanel extends JPanel {
             openShareAction.run();
         });
         actions.add(shareButton);
+        authButton.setFont(SwingTheme.BODY);
+        authButton.setVisible(false);
+        authButton.addActionListener(event -> onAuthAction.run());
+        actions.add(authButton);
         add(actions, BorderLayout.EAST);
 
         refresh(viewModel.getState());
@@ -101,6 +107,12 @@ public final class HeaderPanel extends JPanel {
 
     public void setOnHomeAction(Runnable onHomeAction) {
         this.onHomeAction = onHomeAction;
+    }
+
+    public void setAuthAction(Runnable action, boolean signedIn) {
+        this.onAuthAction = action == null ? () -> { } : action;
+        authButton.setVisible(action != null);
+        authButton.setText(signedIn ? "Sign out" : "Sign in");
     }
 
     private void refresh(DashboardState state) {

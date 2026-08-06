@@ -17,6 +17,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -55,20 +57,12 @@ public final class OpenMeteoWeatherService implements WeatherService {
     }
 
     @Override
-    public WeatherWarning getWarning(Trip trip) {
+    public List<WeatherWarning> getHourlyWarnings(Trip trip) {
         if (trip == null) throw new IllegalArgumentException("Trip is required");
         OpenMeteoGeocodingResponse.Result place = geocode(trip.getDestination());
         Location location = new Location(place.latitude, place.longitude, displayName(place));
         OpenMeteoForecastResponse forecast = fetchForecast(location, trip);
-        ForecastPoint point = selectForecastPoint(forecast, trip);
-        WeatherSeverity severity = severity(point.weatherCode,
-                point.precipitationProbability, point.windSpeed);
-        String condition = condition(point.weatherCode);
-        String message = String.format(Locale.ROOT,
-                "%.1f°C · %d%% precipitation · %.1f km/h wind · %s conditions.",
-                point.temperature, point.precipitationProbability, point.windSpeed,
-                severity.name().toLowerCase(Locale.ROOT));
-        return new WeatherWarning(location, trip.getStartTime(), condition, severity, message);
+        return mapHourlyForecast(forecast, trip, location);
     }
 
     private OpenMeteoGeocodingResponse.Result geocode(String destination) {
@@ -121,7 +115,8 @@ public final class OpenMeteoWeatherService implements WeatherService {
         }
     }
 
-    private ForecastPoint selectForecastPoint(OpenMeteoForecastResponse response, Trip trip) {
+    private List<WeatherWarning> mapHourlyForecast(
+            OpenMeteoForecastResponse response, Trip trip, Location location) {
         if (response == null || response.hourly == null || response.hourly.time == null
                 || response.hourly.time.isEmpty()) {
             throw new WeatherServiceException("Open-Meteo forecast contained no hourly results");
@@ -132,34 +127,37 @@ public final class OpenMeteoWeatherService implements WeatherService {
         requireAligned(hourly.precipitationProbability, hourly.time, "precipitation_probability");
         requireAligned(hourly.windSpeed, hourly.time, "wind_speed_10m");
 
-        LocalDateTime requested = LocalDateTime.of(trip.getDate(), trip.getStartTime());
-        int bestIndex = -1;
-        long bestDifference = Long.MAX_VALUE;
+        List<WeatherWarning> warnings = new ArrayList<WeatherWarning>();
         for (int i = 0; i < hourly.time.size(); i++) {
             try {
                 LocalDateTime forecastTime = LocalDateTime.parse(hourly.time.get(i));
                 if (!forecastTime.toLocalDate().equals(trip.getDate())) continue;
-                long difference = Math.abs(Duration.between(requested, forecastTime).toMinutes());
-                if (difference < bestDifference) {
-                    bestDifference = difference;
-                    bestIndex = i;
+                Integer code = hourly.weatherCode.get(i);
+                Double temperature = hourly.temperature.get(i);
+                Integer precipitation = hourly.precipitationProbability.get(i);
+                Double wind = hourly.windSpeed.get(i);
+                if (code == null || temperature == null || precipitation == null || wind == null
+                        || !Double.isFinite(temperature) || !Double.isFinite(wind)) {
+                    throw new WeatherServiceException(
+                            "Open-Meteo forecast contained incomplete hourly values");
                 }
+                int boundedPrecipitation = Math.max(0, Math.min(100, precipitation));
+                WeatherSeverity severity = severity(code, boundedPrecipitation, wind);
+                String message = String.format(Locale.ROOT,
+                        "%.1f°C · %d%% precipitation · %.1f km/h wind · %s conditions.",
+                        temperature, boundedPrecipitation, wind,
+                        severity.name().toLowerCase(Locale.ROOT));
+                warnings.add(new WeatherWarning(location, forecastTime.toLocalTime(),
+                        condition(code), severity, message));
             } catch (DateTimeParseException ignored) {
-                // A malformed item is ignored if another valid hourly item can be selected.
+                // A malformed item is ignored if other valid hourly items remain.
             }
         }
-        if (bestIndex < 0) {
-            throw new WeatherServiceException("Open-Meteo forecast had no usable hour for the trip date");
+        if (warnings.isEmpty()) {
+            throw new WeatherServiceException(
+                    "Open-Meteo forecast had no usable hour for the trip date");
         }
-        Integer code = hourly.weatherCode.get(bestIndex);
-        Double temperature = hourly.temperature.get(bestIndex);
-        Integer precipitation = hourly.precipitationProbability.get(bestIndex);
-        Double wind = hourly.windSpeed.get(bestIndex);
-        if (code == null || temperature == null || precipitation == null || wind == null
-                || !Double.isFinite(temperature) || !Double.isFinite(wind)) {
-            throw new WeatherServiceException("Open-Meteo forecast contained incomplete hourly values");
-        }
-        return new ForecastPoint(code, temperature, Math.max(0, Math.min(100, precipitation)), wind);
+        return Collections.unmodifiableList(warnings);
     }
 
     private void requireAligned(List<?> values, List<String> times, String field) {
@@ -208,18 +206,4 @@ public final class OpenMeteoWeatherService implements WeatherService {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
-    private static final class ForecastPoint {
-        private final int weatherCode;
-        private final double temperature;
-        private final int precipitationProbability;
-        private final double windSpeed;
-
-        private ForecastPoint(int weatherCode, double temperature,
-                              int precipitationProbability, double windSpeed) {
-            this.weatherCode = weatherCode;
-            this.temperature = temperature;
-            this.precipitationProbability = precipitationProbability;
-            this.windSpeed = windSpeed;
-        }
-    }
 }

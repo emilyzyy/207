@@ -39,12 +39,24 @@ public final class GalleryPanel extends JPanel {
 
     private final transient Consumer<Trip> onOpenTrip;
     private final transient Runnable onCreateTrip;
+    private final transient Runnable onAuthAction;
     private final JPanel cardGrid;
     private final Map<String, BufferedImage> tileCache = new HashMap<>();
+    private JButton authButton;
 
     public GalleryPanel(List<Trip> trips, Consumer<Trip> onOpenTrip, Runnable onCreateTrip) {
+        this(trips, onOpenTrip, onCreateTrip, null, false);
+    }
+
+    public GalleryPanel(
+            List<Trip> trips,
+            Consumer<Trip> onOpenTrip,
+            Runnable onCreateTrip,
+            Runnable onAuthAction,
+            boolean signedIn) {
         this.onOpenTrip = onOpenTrip;
         this.onCreateTrip = onCreateTrip;
+        this.onAuthAction = onAuthAction;
         setLayout(new BorderLayout());
         setBackground(SwingTheme.BACKGROUND);
 
@@ -56,10 +68,19 @@ public final class GalleryPanel extends JPanel {
         title.setFont(SwingTheme.TITLE);
         header.add(title, BorderLayout.WEST);
 
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        actions.setOpaque(false);
         JButton newTrip = SwingTheme.primaryButton("+ New Itinerary");
         newTrip.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         newTrip.addActionListener(e -> onCreateTrip.run());
-        header.add(newTrip, BorderLayout.EAST);
+        actions.add(newTrip);
+        if (onAuthAction != null) {
+            authButton = new JButton(signedIn ? "Sign out" : "Sign in");
+            authButton.setFont(SwingTheme.BODY);
+            authButton.addActionListener(e -> onAuthAction.run());
+            actions.add(authButton);
+        }
+        header.add(actions, BorderLayout.EAST);
 
         add(header, BorderLayout.NORTH);
 

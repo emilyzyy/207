@@ -34,6 +34,25 @@ Real places and OpenStreetMap tiles are separate, explicit opt-ins:
   -Dcloseai.map.tiles.mode=osm
 ```
 
+### Supabase persistence (per-user save / reopen)
+
+1. Create a Supabase project and run the SQL in [`docs/supabase/schema.sql`](docs/supabase/schema.sql).
+2. Copy [`.env.example`](.env.example) to `.env` and fill in Project URL + anon key from Supabase → Project Settings → API.
+3. For local demos, Authentication → Providers → Email → disable **Confirm email**.
+4. Run from the project root (so `.env` is found):
+
+```bash
+./mvnw compile exec:java -Dexec.mainClass=closeai.Main \
+  -Dcloseai.persistence.mode=supabase \
+  -Dcloseai.weather.mode=open-meteo \
+  -Dcloseai.places.mode=nominatim \
+  -Dcloseai.map.tiles.mode=osm
+```
+
+`.env` is gitignored. Resolution order: `-D` system properties, then real env vars, then `.env`.
+
+Sign in is optional: the app opens on **My Trips**. Use **Sign in** (gallery or trip header, next to Share) anytime. While signed out, itineraries stay local to the session; after sign-in the current trip is saved to your account and prior cloud trips load. Sign-out clears the local session and returns you to an empty gallery.
+
 The places and weather refresh runs in a `SwingWorker`, not on the Swing event-dispatch thread. If either service fails, the created trip remains valid and the UI retains its cached mock places.
 
 Run the web prototype and open [http://localhost:8080](http://localhost:8080):
@@ -127,9 +146,10 @@ The scheduler then:
 2. Calculates travel for the first activity and every later activity using the selected transportation mode.
 3. Allows arrival before opening time by leaving a waiting gap, then starts at opening time.
 4. Rejects candidates whose travel/activity interval crosses the trip window or whose activity crosses its opening/closing time.
-5. Chooses the highest-scoring feasible candidate; equal scores use activity ID as a stable tie-break.
-6. Inserts a travel event when travel time is positive and generates deterministic event IDs from the trip, sequence, type, activity, and times.
-7. Validates that all events are sorted, inside the trip window, and non-overlapping before saving a separate scheduled trip copy.
+5. Scores each candidate with the worst weather severity among every forecast hour overlapped by that activity. A 10:30–12:30 activity therefore uses the 10:00, 11:00, and 12:00 forecast points.
+6. Chooses the highest-scoring feasible candidate; equal scores use activity ID as a stable tie-break.
+7. Inserts a travel event when travel time is positive and generates deterministic event IDs from the trip, sequence, type, activity, and times.
+8. Validates that all events are sorted, inside the trip window, and non-overlapping before saving a separate scheduled trip copy.
 
 An empty bookmark list raises a clear `IllegalArgumentException`. If none of the bookmarks is feasible, scheduling raises `IllegalStateException` and preserves the previous schedule. If at least one activity fits, the legal greedy subset is saved and infeasible bookmarks remain bookmarked. Any weather, distance, scoring, or validation failure occurs before the repository receives the new aggregate, so no partial schedule is left behind.
 
@@ -139,6 +159,8 @@ An empty bookmark list raises a clear `IllegalArgumentException`. If none of the
 
 1. `https://geocoding-api.open-meteo.com/v1/search` resolves `Trip.destination` to latitude/longitude.
 2. `https://api.open-meteo.com/v1/forecast` requests local hourly `weather_code`, `temperature_2m`, `precipitation_probability`, and `wind_speed_10m` for the trip date.
+
+One forecast request supplies the full trip date. The adapter preserves every valid hourly point instead of collapsing the response to the trip-start hour. The dashboard still shows the hour nearest the trip start, while each Day Plan activity lists every hour it overlaps.
 
 It uses Java `HttpClient` with a 5-second connect timeout and an 8-second request timeout. It converts WMO weather codes, precipitation probability, and wind speed into `LOW`, `MEDIUM`, or `HIGH` severity. Non-2xx responses, no geocoding result, missing/misaligned hourly data, malformed JSON, interruption, timeout, and network failure become `WeatherServiceException`; interrupted threads retain their interrupt flag.
 
@@ -160,12 +182,12 @@ This makes a real geocoding request for Toronto and a real forecast request for 
 - first-leg travel and walking/driving/transit timing
 - waiting for opening time
 - trip window and opening/closing constraints
-- severe-weather outdoor penalty and injectable scoring
+- per-activity hourly weather selection, multi-hour worst-severity scoring, and injectable scoring
 - event ordering, non-overlap, deterministic output, and failure atomicity
 - edit itinerary options update and persistence through `InMemoryItineraryDataAccessObject`
 - Create Trip validation, persistence, controller parsing, presenter state propagation, and the create/edit/optimize Swing path
 - Nominatim/Overpass success mapping, empty results, non-2xx, malformed JSON, caching, and map ViewModel updates
-- Open-Meteo success mapping, nearest-hour selection, non-2xx, empty results, malformed/misaligned JSON, and connection failure
+- Open-Meteo full-hour mapping, nearest-hour dashboard preview, non-2xx, empty results, malformed/misaligned JSON, and connection failure
 - separate opt-in live Open-Meteo request
 - Share Trip input validation, summary formatting, controller/output behavior, and copyable state
 - Calendar trip/schedule synchronization, Day/Week/Month navigation, date selection, and Swing controls
@@ -191,6 +213,7 @@ This makes a real geocoding request for Toronto and a real forecast request for 
 - `GET /api/trips/{tripId}/summary`
 - `GET /api/trips/{tripId}/share`
 - `GET /api/trips/{tripId}/weather`
+- `GET /api/trips/{tripId}/weather/hourly`
 
 ## Contribution
 

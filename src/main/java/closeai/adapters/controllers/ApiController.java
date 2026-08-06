@@ -130,6 +130,11 @@ public final class ApiController implements HttpHandler {
                 if (parts.length == 5 && "weather".equals(parts[4]) && "GET".equals(method)) {
                     respond(exchange, 200, presenter.weather(app.weatherWarning.execute(tripId))); return;
                 }
+                if (parts.length == 6 && "weather".equals(parts[4])
+                        && "hourly".equals(parts[5]) && "GET".equals(method)) {
+                    respond(exchange, 200,
+                            presenter.hourlyWeather(app.weatherWarning.executeHourly(tripId))); return;
+                }
             }
             respond(exchange, 404, presenter.error("Route not found"));
         } catch (IllegalArgumentException exception) {

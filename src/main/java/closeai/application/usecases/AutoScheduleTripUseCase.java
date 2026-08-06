@@ -10,6 +10,7 @@ import closeai.domain.entities.Trip;
 import closeai.domain.entities.WeatherWarning;
 import closeai.domain.valueobjects.EventType;
 import closeai.domain.valueobjects.Location;
+import closeai.domain.valueobjects.WeatherSeverity;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -42,20 +43,19 @@ public final class AutoScheduleTripUseCase {
             throw new IllegalArgumentException("Cannot auto schedule a trip with no bookmarked activities");
         }
 
-        WeatherWarning warning = weather.getWarning(trip);
-        if (warning == null || warning.getLocation() == null || warning.getSeverity() == null) {
-            throw new IllegalStateException("Weather service returned an incomplete forecast");
-        }
+        List<WeatherWarning> hourlyWeather = weather.getHourlyWarnings(trip);
+        validateHourlyWeather(hourlyWeather);
 
         List<ScheduledEvent> schedule = new ArrayList<ScheduledEvent>();
         LocalTime cursor = trip.getStartTime();
-        Location current = warning.getLocation();
+        Location current = hourlyWeather.get(0).getLocation();
         int sequence = 0;
 
         while (!remaining.isEmpty()) {
             List<CandidatePlan> feasible = new ArrayList<CandidatePlan>();
             for (Activity candidate : remaining) {
-                CandidatePlan plan = planCandidate(trip, warning, current, cursor, candidate);
+                CandidatePlan plan = planCandidate(
+                        trip, hourlyWeather, current, cursor, candidate);
                 if (plan != null) feasible.add(plan);
             }
 
@@ -89,7 +89,7 @@ public final class AutoScheduleTripUseCase {
         return trips.save(scheduledTrip);
     }
 
-    private CandidatePlan planCandidate(Trip trip, WeatherWarning warning, Location current,
+    private CandidatePlan planCandidate(Trip trip, List<WeatherWarning> hourlyWeather, Location current,
                                         LocalTime cursor, Activity activity) {
         int travelMinutes = distances.estimateTravelMinutes(current, activity.getLocation(),
                 trip.getTransportationMode(), LocalDateTime.of(trip.getDate(), cursor));
@@ -108,11 +108,47 @@ public final class AutoScheduleTripUseCase {
         LocalTime end = plusWithoutDayRollover(start, activity.getEstimatedDurationMinutes());
         if (end == null || end.isAfter(activity.getClosingTime()) || end.isAfter(trip.getEndTime())) return null;
 
-        double score = scoringPolicy.score(activity, travelMinutes, warning.getSeverity());
+        WeatherSeverity severity = worstSeverityDuring(hourlyWeather, start, end);
+        double score = scoringPolicy.score(activity, travelMinutes, severity);
         if (!Double.isFinite(score)) {
             throw new IllegalStateException("Scoring policy returned a non-finite score");
         }
         return new CandidatePlan(activity, travelMinutes, arrival, start, end, score);
+    }
+
+    private void validateHourlyWeather(List<WeatherWarning> hourlyWeather) {
+        if (hourlyWeather == null || hourlyWeather.isEmpty()) {
+            throw new IllegalStateException("Weather service returned no hourly forecast");
+        }
+        for (WeatherWarning warning : hourlyWeather) {
+            if (warning == null || warning.getLocation() == null || warning.getTime() == null
+                    || warning.getSeverity() == null) {
+                throw new IllegalStateException("Weather service returned an incomplete forecast");
+            }
+        }
+    }
+
+    /** Uses the safest score for activities spanning more than one forecast hour. */
+    private WeatherSeverity worstSeverityDuring(
+            List<WeatherWarning> hourlyWeather, LocalTime start, LocalTime end) {
+        WeatherSeverity worst = null;
+        for (WeatherWarning warning : hourlyWeather) {
+            if (!hourOverlaps(warning.getTime(), start, end)) continue;
+            if (worst == null || warning.getSeverity().ordinal() > worst.ordinal()) {
+                worst = warning.getSeverity();
+            }
+        }
+        if (worst == null) {
+            throw new IllegalStateException(
+                    "Weather service returned no forecast for a scheduled activity hour");
+        }
+        return worst;
+    }
+
+    private boolean hourOverlaps(LocalTime hour, LocalTime start, LocalTime end) {
+        LocalTime nextHour = hour.plusHours(1);
+        boolean reachesAfterStart = nextHour.isAfter(start) || nextHour.isBefore(hour);
+        return hour.isBefore(end) && reachesAfterStart;
     }
 
     private LocalTime plusWithoutDayRollover(LocalTime time, int minutes) {

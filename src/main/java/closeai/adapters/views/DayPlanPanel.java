@@ -6,12 +6,15 @@ import closeai.adapters.viewmodels.ActivitySelectionViewModel;
 import closeai.adapters.viewmodels.DayPlanState;
 import closeai.adapters.viewmodels.DayPlanViewModel;
 import closeai.domain.entities.ScheduledEvent;
+import closeai.domain.entities.WeatherWarning;
+import closeai.domain.valueobjects.EventType;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Cursor;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -131,7 +134,7 @@ public final class DayPlanPanel extends JPanel {
             eventList.add(empty);
         } else {
             for (ScheduledEvent event : state.getEvents()) {
-                eventList.add(eventCard(event));
+                eventList.add(eventCard(event, state.getHourlyWeatherFor(event)));
                 eventList.add(Box.createVerticalStrut(8));
             }
         }
@@ -145,7 +148,7 @@ public final class DayPlanPanel extends JPanel {
         eventList.repaint();
     }
 
-    private JPanel eventCard(ScheduledEvent event) {
+    private JPanel eventCard(ScheduledEvent event, List<WeatherWarning> hourlyWeather) {
         JPanel card = new JPanel(new BorderLayout(12, 5));
         SwingTheme.styleCard(card);
         makeSelectable(card, event);
@@ -157,8 +160,17 @@ public final class DayPlanPanel extends JPanel {
         String name = event.getActivity() == null
                 ? event.getEventType().toString()
                 : event.getActivity().getName();
-        JLabel details = new JLabel("<html><b>" + name + "</b><br>"
-                + event.getNotes() + "</html>");
+        StringBuilder copy = new StringBuilder("<html><b>").append(name)
+                .append("</b><br>").append(event.getNotes());
+        if (event.getEventType() == EventType.ACTIVITY && !hourlyWeather.isEmpty()) {
+            copy.append("<br><b>Hourly weather</b>");
+            for (WeatherWarning warning : hourlyWeather) {
+                copy.append("<br>").append(warning.getTime()).append(" · ")
+                        .append(warning.getWeatherCondition()).append(" · ")
+                        .append(warning.getMessage());
+            }
+        }
+        JLabel details = new JLabel(copy.append("</html>").toString());
         details.setFont(SwingTheme.BODY);
         details.setForeground(SwingTheme.NAVY);
         card.add(details, BorderLayout.CENTER);
