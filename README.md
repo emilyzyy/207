@@ -153,8 +153,13 @@ what cannot be worked out automatically:
 - **Getting around by** - walking, driving or transit, prefilled from the trip.
 - **Times I am not available** - optional. Nothing is scheduled in these, *including
   travel*: the traveller waits until the period ends before setting out.
-- **Keep my current order where possible** - the single scheduling preference, on by
-  default.
+- **Keep my current order where possible** - on by default.
+- **Consider weather** - offered only when the forecast can tell one time of day from
+  another. When it can, the box is enabled and ticked by default and may be unticked. When
+  the forecast covers the whole day, is beyond the provider's hourly range, or cannot be
+  obtained, the box is disabled and unticked and the reason is shown in words beneath it
+  ("Hourly weather is not available for this trip date."). The state is never signalled by
+  colour alone, and the checkbox stays keyboard-reachable.
 
 Individual activities can be pinned with the **Lock** checkbox on their row. A pinned
 activity keeps its exact time and everything else is arranged around it. Pins last as long
@@ -178,7 +183,14 @@ These are built in and always applied - they are what the feature is for, not op
 | Wasted waiting | Reduce idle time that is not caused by opening hours or an unavailable period |
 | Mealtimes | Prefer customary lunch/dinner windows for `FOOD` activities |
 | Daylight | Prefer daylight for `OUTDOOR` activities |
-| Weather | Prefer better conditions for exposed activities, when the forecast can tell one time from another |
+
+Weather is the one soft objective the traveller decides about, because it is the one that
+cannot always be honoured: a whole-day forecast scores every candidate time alike and so
+has nothing to say about *when*. When selected and usable it prefers better conditions for
+exposed activities. It remains soft and capped like the rest — it can shift timing, but it
+can never make a day unschedulable and never overrides a hard rule. If the forecast turns
+out to be coarse or unavailable after all, it contributes zero, the preview says so, and
+the schedule is still produced.
 
 Valid schedules are ranked by a single practical cost in minutes: travel + avoidable idle +
 capped meal/daylight/weather penalties, plus a small capped charge for disturbing the
@@ -202,17 +214,22 @@ property, never from a file in the repository, and are never logged or printed.
 
 ### Current limitations
 
-- **Weather cannot influence timing yet.** The forecast gateway reports one severity for
-  the whole trip, so every candidate time scores identically. The preview says so rather
-  than implying the timing was weather-optimised. An hourly forecast would activate the
-  behaviour with no change to the engine.
+- **The weather preference cannot be offered yet.** Both shipped forecast adapters report
+  one severity for the whole trip, so `canDistinguishTimes()` is false and the "Consider
+  weather" checkbox is disabled with the reason shown. This is the designed behaviour
+  rather than a defect, but it does mean the enabled state is not reachable in production
+  today. An hourly forecast would activate it with no change to the engine, the Interactor
+  or the UI — verified by test, not assumed.
 - **Travel confidence is reported as unknown.** The shared `DistanceService` returns a plain
   number and cannot distinguish a real route from its own distance-based fallback, so the
   preview says travel times may include estimates instead of claiming more.
 - **Transit departure times use the JVM's default time zone**, which is correct for a local
   trip and wrong for a trip in another zone. `Trip` has no time-zone field.
-- **Driving is not live-verified.** The TomTom request was corrected and is unit-tested, but
-  no key was available to confirm a real traffic-aware route.
+- **Driving is not live-verified.** The TomTom request was corrected to send
+  `latitude,longitude` and is unit-tested against a stubbed HTTP client, including a
+  regression test that fails against the old order. No key has been available in any
+  verification run, so no real TomTom route has ever been obtained and **no traffic-aware
+  claim should be made**. Walking (OSRM) and transit (Transitous) are live-verified.
 - Single day only, one transportation mode per run, and travel between activities only -
   there is no hotel or origin leg because `Trip` has no origin coordinate.
 

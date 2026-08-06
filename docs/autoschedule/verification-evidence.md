@@ -9,8 +9,9 @@ Environment: Java 24.0.2 (Temurin), macOS, aarch64. Maven via `./mvnw`.
 ./mvnw clean test
 ```
 
-**270 tests, 0 failures, 0 errors, 6 skipped.** The six skips are all opt-in live tests that
-require network access and an explicit environment variable: the pre-existing
+**297 tests, 0 failures, 0 errors, 6 skipped** (re-run 2026-08-06 after the weather-preference
+work; the previous figure was 270). The six skips are all opt-in live tests that require
+network access and an explicit environment variable: the pre-existing
 `OpenMeteoWeatherServiceLiveTest` (1, needs `RUN_LIVE_OPEN_METEO_TEST=true`) and
 `AutoScheduleLiveVerificationTest` (5, needs `RUN_LIVE_AUTOSCHEDULE_TEST=true`, results in
 §4). Nothing in the ordinary suite touches the network. All 53 tests that existed before
@@ -22,16 +23,22 @@ this feature still pass.
 ./mvnw clean test          # report written to target/site/jacoco/index.html
 ```
 
+Figures below were reproduced from `target/site/jacoco/jacoco.csv` on the run above, not
+carried over from the previous batch.
+
 | Scope | Line | Branch |
 |---|---|---|
-| Repository-wide (after exclusions) | **78.8%** | 59.7% |
-| Autoschedule slice (`application.autoschedule*` + gateways) | **90.0%** | 72.7% |
-| `AutoScheduleInteractor` (the use-case interactor) | **92.0%** | 79.5% |
+| Repository-wide (after exclusions) | **79.1%** | 60.2% |
+| Autoschedule slice (`application.autoschedule*` + gateways) | **90.4%** | 73.5% |
+| `AutoScheduleInteractor` (the use-case interactor) | **92.3%** | 80.8% |
+
+New in this batch: `WeatherOption` 100% line, `WeatherContextGateway` 100% line,
+`SchedulingPreferences` 100% line, `AutoScheduleController` 94.6% line.
 
 Against the group rubric's testing descriptors — 5/5 wants more than 90% interactor
-coverage and more than 70% overall — the interactor is at 92.0% and the repository is at
-78.8%. Both thresholds are met on line coverage, which Piazza @339 confirms is an
-acceptable metric. The Autoschedule slice as a whole also reaches 90.0%.
+coverage and more than 70% overall — the interactor is at 92.3% and the repository is at
+79.1%. Both thresholds are met on line coverage, which Piazza @339 confirms is an
+acceptable metric. The Autoschedule slice as a whole also reaches 90.4%.
 
 **Exclusions, and why each is justified:**
 
@@ -56,10 +63,18 @@ are argument-validation guards.
 ./mvnw checkstyle:check    # report written to target/checkstyle-result.xml
 ```
 
-| Scope | Violations |
-|---|---|
-| Autoschedule-owned code (main and test) | **0** |
-| Rest of the repository (pre-existing) | 236 across 39 files |
+| Scope | Files | Violations |
+|---|---|---|
+| Emily-owned production and test code | 99 | **0** |
+| Shared files modified by Emily | 7 | **0** |
+| Raashid's routing file carrying Emily's one-line fix | 1 | 3 — all blamed to his own commits |
+| Unrelated teammate-owned files | 38 | 233 — not touched |
+| **Repository total** | | **236 warnings, 0 errors** |
+
+The tool reports "0 Checkstyle violations" because the configuration's severity is
+`warning` and `violationSeverity` is `error`; the 236 warnings are in
+`target/checkstyle-result.xml`. Full ownership breakdown, with the `git blame` evidence for
+each of the three routing violations, is in **`docs/autoschedule/ownership.md`**.
 
 The pre-existing violations are almost entirely `NeedBraces` (104) and `LeftCurly` (69) from
 single-line `if` statements in teammate code — for example `ApiController` (32), `Trip` (28)
@@ -67,9 +82,13 @@ and `MapPanel` (24). **These were not reformatted.** Rewriting a teammate's file
 style report would obscure their authorship for no functional gain, and the course asks that
 members not take over each other's work. They are listed here so the team can decide.
 
-No course Checkstyle configuration was distributed with the available materials, so
-`config/checkstyle.xml` is a conservative approximation covering naming, braces, imports,
-whitespace and correctness habits. It should be replaced if the course publishes its own.
+**Configuration provenance.** Piazza @275 requires the project to follow the course
+Checkstyle rules — a verified course requirement. No configuration file was distributed
+with the available materials, and none appears in the 30 course PDFs, so
+`config/checkstyle.xml` is a **project-defined approximation and engineering judgment, not
+a verified course standard**. It covers naming, braces, imports, whitespace and correctness
+habits. It should be replaced if the course publishes its own. No IDE Checkstyle extension
+was installed; the Maven plugin produced every number here.
 
 Both tools are configured as **reports, not gates**. Failing the build on a coverage
 threshold or a legacy style violation would block teammates' commits for work that is not
@@ -84,16 +103,19 @@ RUN_LIVE_AUTOSCHEDULE_TEST=true ./mvnw test -Dtest=AutoScheduleLiveVerificationT
 Route: Union Station (43.6453, −79.3806) → Casa Loma (43.6780, −79.4094), both seeded demo
 locations. Trip date: the following day.
 
+Re-run 2026-08-06 during Batch 5. Latencies are from that run.
+
 | Mode | Departure | Result | Latency | Provider actually used |
 |---|---|---|---|---|
-| Walking | 09:30 | 68 min | 483 ms | OSRM `routed-foot` |
-| Walking | 17:30 | 68 min | 254 ms | OSRM `routed-foot` |
-| Driving | 09:30 | 11 min | 358 ms | **OSRM `routed-car` fallback** |
-| Driving | 17:30 | 11 min | 249 ms | **OSRM `routed-car` fallback** |
-| Transit | 09:30 | 33 min | 871 ms | Transitous `/api/v6/plan` |
-| Transit | 17:30 | 33 min | 352 ms | Transitous `/api/v6/plan` |
-| Transit | 03:00 | **47 min** | 182 ms | Transitous `/api/v6/plan` |
-| Weather | trip date | available, cannot distinguish times | 1001 ms | Open-Meteo |
+| Walking | baseline | 68 min | 511 ms | OSRM `routed-foot` |
+| Walking | 09:30 | 68 min | 346 ms | OSRM `routed-foot` |
+| Walking | 17:30 | 68 min | 253 ms | OSRM `routed-foot` |
+| Driving | 09:30 | 11 min | 355 ms | **OSRM `routed-car` fallback** |
+| Driving | 17:30 | 11 min | 250 ms | **OSRM `routed-car` fallback** |
+| Transit | 09:30 | 33 min | 1367 ms | Transitous `/api/v6/plan` |
+| Transit | 17:30 | 33 min | 254 ms | Transitous `/api/v6/plan` |
+| Transit | 03:00 | **47 min** | 202 ms | Transitous `/api/v6/plan` |
+| Weather | trip date | `available=true`, `canDistinguishTimes=false` | 1020 ms | Open-Meteo |
 
 **Walking — verified.** Identical at both departures, exactly as expected: the walking
 provider takes no time parameter, which is why the system treats walking as
@@ -106,19 +128,33 @@ the API directly disproved that: itinerary start times track the requested depar
 daytime. The daytime match is a well-served route, not a bug. Night service is where the
 timetable shows itself, which is why the test compares three departures rather than two.
 
-**Driving — not live-verified.** No TomTom credential was available in the environment
-(`TOMTOM_API_KEY` unset, no ignored local config). The corrected `lat,lng` coordinate order
-is unit-tested against a stubbed HTTP client, including a regression test that fails against
-the old `lng,lat` URL, but **no real TomTom route has been obtained**, so no traffic-aware
-claim should be made in the demo. Without a key the system falls back to OSRM and reports
-driving as time-insensitive, which is the honest behaviour: both departures returned 11
-minutes because a static road network has no rush hour.
+**Driving — still not live-verified, and the distinctions matter.** Batch 5 attempted this
+again. `TOMTOM_API_KEY` was not present in the verification process, nor in any ancestor
+process (checked without printing any value), so the live-driving portion was stopped and
+the rest of the batch continued. Stated precisely:
 
-**Weather — verified, and the limitation is real.** The live gateway returns a forecast, but
-`canDistinguishTimes()` is false: one severity covers the whole trip, so every candidate
-time scores identically. The preview therefore says "The forecast covers the whole day, so
-weather could not influence the timing of outdoor activities" rather than listing weather as
-an objective it did not apply. A walkthrough test asserts that caveat appears.
+| Claim | Status |
+|---|---|
+| A live TomTom request was made and verified | **No.** No key reached the process. |
+| The corrected `lat,lng` order reaches the live service | **Not proven live.** Proven against a stubbed `HttpClient`, including a regression test that fails against the old `lng,lat` URL. |
+| `departAt` is sent | **Not proven live.** Asserted on the stubbed URL. |
+| A valid duration was returned by TomTom | **No.** The 11-minute figures came from the OSRM fallback. |
+| A traffic-time difference between two departures was observed | **Not observed.** Both departures returned 11 minutes because a static road network has no rush hour. |
+| Which provider actually answered | **Unprovable through the shared return type.** `DistanceService` returns a bare `int`; the "OSRM fallback" attribution above is inferred from the absent key, not reported by the call. |
+
+**No traffic-aware claim should be made in the demo.** To verify it, relaunch with the key
+present in the environment — see §8.
+
+**Weather — verified, and it is what the new preference gate is built on.** The live gateway
+returns a forecast, but `canDistinguishTimes()` is false: one severity covers the whole
+trip, so every candidate time scores identically. Since Batch 5 that is not merely a caveat
+but the mechanism — the "Consider weather" checkbox is disabled and unticked, and the dialog
+shows "Hourly weather is not available for this trip date." If the traveller somehow asks
+for weather anyway, the Interactor still finds the forecast coarse, contributes zero, warns
+that "the forecast covers the whole day rather than each hour", and omits weather from the
+applied-objectives list. Asserted through the production wiring by
+`AutoScheduleWalkthroughTest`, and the enabled path by
+`anHourlyGatewayWouldOfferThePreferenceWithNoOtherChange`.
 
 ## 5. Manual functional, EDT and accessibility checks
 
@@ -193,19 +229,62 @@ rejected at the first node by the remaining-time bound, which is why it takes 1 
 
 ## 7. Screenshots
 
-Screenshots were **not** captured: this environment has no reliable way to drive and capture
-a Swing window without installing unrelated tooling, and a fabricated image would be worse
-than none. Capture these six states manually, at the default window size:
+**Captured.** Seven states are committed under `docs/autoschedule/screenshots/`. The
+previous batch could not capture them; this one could, using Java's own
+`Component.printAll(Graphics)` to paint the real production components offscreen into a
+`BufferedImage`. No extra software was installed and no screen-recording permission was
+needed. The components are built through `AppBuilder.buildOffline()` and driven by the real
+Controller, so every state was reached by the production use case rather than staged.
 
-1. **Before** — the Day Plan with the inefficient seeded day (museum after closing, lunch at
-   15:30), showing the Lock checkboxes.
-2. **Settings** — the dialog with availability, mode, one unavailable period added, and
-   "Keep my current order where possible" ticked.
-3. **Preview** — the proposal under the unchanged Day Plan, with the metrics line, the
-   objective summary, one reason on a row, and the weather caveat visible.
-4. **Why these times** — the expanded explanation panel.
-5. **After Apply** — the updated Day Plan, plus the Calendar View showing the same times.
-6. **Conflict** — pin the museum inside an unavailable period and generate a preview; capture
-   the message naming the museum and stating the plan was not changed.
+| # | File | State |
+|---|---|---|
+| 1 | `01-before-day-plan.png` | The inefficient seeded day, with Lock checkboxes |
+| 2 | `02-settings-weather-withheld.png` | Settings with "Consider weather" disabled, unticked, and the reason shown — the state that occurs today |
+| 2b | `02b-settings-weather-available.png` | The same dialog with an hourly forecast: enabled and ticked by default |
+| 3 | `03-preview.png` | The proposal under the unchanged Day Plan, with metrics, reasons and the lock honoured |
+| 4 | `04-why-these-times.png` | The expanded explanation panel |
+| 5 | `05-after-apply.png` | The updated Day Plan |
+| 6 | `06-conflict.png` | The named conflict, with the plan untouched |
 
-Steps 1, 3, 5 and 6 are the before/after/failure evidence the individual rubric asks for.
+**Two honest limitations.** These show the Day Plan panel and the settings dialog, not the
+surrounding application window — no title bar, tab strip or native chrome — and offscreen
+font rendering can differ very slightly from an on-screen window. For a slide they are
+accurate; if a whole-window shot is wanted, capture 1, 3, 5 and 6 by hand. State-by-state
+manual steps are in **`docs/autoschedule/screenshot-checklist.md`**.
+
+Not captured automatically: the **Calendar View** after Apply, which needs the full frame.
+Capture that one by hand alongside shot 5.
+
+**Correction to an earlier claim.** This document previously said "Steps 1, 3, 5 and 6 of
+that list are the before/after/failure evidence the individual rubric asks for." Checked
+against the course audit, only **1 and 5** are supported: the Individual Presentation
+Rubric's Required Elements are *before and after Views, Interactor code, and the full
+use-case class diagram* (S-017). It names neither an intermediate preview state nor a
+failure screenshot. Shots 3 and 6 remain worth having — 3 supports Use-case Explanation and
+6 supports the group rubric's accessibility descriptor — but attributing them to the
+individual rubric was **unverified**. See the checklist document for the full mapping.
+
+## 8. Verifying live TomTom driving
+
+The live-driving check is the one item Batch 5 could not complete, because no
+`TOMTOM_API_KEY` was present in the environment. To finish it, launch the tooling with the
+key already exported, then run the live test.
+
+```bash
+# Reads the key without echoing it and without leaving it in shell history.
+read -rs TOMTOM_API_KEY && export TOMTOM_API_KEY
+# then, in that same shell:
+RUN_LIVE_AUTOSCHEDULE_TEST=true ./mvnw test -Dtest=AutoScheduleLiveVerificationTest
+```
+
+The test prints `[live] TomTom key present: true` when the key reaches the process, and the
+two driving rows should then differ between a 09:30 and a 17:30 departure if traffic data is
+genuinely being applied. **If they do not differ, say so** — a matching pair is evidence
+against the traffic-aware claim, not for it.
+
+Even with a key, note the standing limitation: `DistanceService` returns a bare `int`, so
+the run still cannot prove *which* provider answered. Route provenance stays UNKNOWN until
+that shared return type carries a quality signal, which is Raashid's to decide.
+
+**Never** paste the key into a command line, a source file, the README, a log, or a
+screenshot, and never commit a file containing it.

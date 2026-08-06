@@ -5,8 +5,10 @@ executed as an automated test (`AutoScheduleWalkthroughTest`), so the demo is no
 anything assembled specially for it.
 
 **Before starting:** launch with the seeded demo trip. If the live forecast is wanted, run
-with `-Dcloseai.weather.mode=open-meteo`. Do **not** claim traffic-aware driving unless a
-TomTom key is configured and a real route has been confirmed on the day.
+with `-Dcloseai.weather.mode=open-meteo` — note that the live forecast is still whole-day,
+so the weather checkbox stays disabled either way. Do **not** claim traffic-aware driving:
+no TomTom key has ever reached a verification run, so no real TomTom route has been
+obtained. Driving falls back to OSRM and is not traffic-aware.
 
 ---
 
@@ -29,9 +31,18 @@ Tick **Lock** on the museum.
 Choose **Autoschedule**. Walk through the dialog quickly — it is deliberately short.
 
 > "It only asks what it cannot work out: when I am free, how I am getting around, any time
-> I am not available, and whether to keep my order. Everything else — less travel, fewer
-> gaps, sensible mealtimes, daylight outdoors — is always on, because that is what the
-> feature is for."
+> I am not available, and two preferences. Everything else — less travel, fewer gaps,
+> sensible mealtimes, daylight outdoors — is always on, because that is what the feature is
+> for."
+
+Point at the greyed-out **Consider weather** box and the sentence under it.
+
+> "This is the interesting one. Weather is a preference rather than a built-in, and it is
+> only offered when the forecast can actually tell one hour from another. For this trip it
+> cannot — the provider returns one outlook for the whole day, which scores every possible
+> time identically. So instead of a checkbox that looks like a choice and changes nothing,
+> the box is off and it tells you why. With an hourly forecast it enables and defaults on,
+> and you can still turn it off."
 
 Add an unavailable period (13:00–14:00).
 
@@ -46,15 +57,18 @@ Point at, in order:
 - the metrics line — travel and waiting, before and after;
 - the museum, still at 11:00, marked locked;
 - one reason on a row — "closes at 17:00" or "a usual mealtime";
-- the weather caveat.
+- the objectives line, and what is *not* on it.
 
 > "Nothing has changed yet. My Day Plan is still up there, untouched — this is a proposal."
 
-On the weather line:
+On the objectives line:
 
-> "The forecast we have covers the whole day, so it genuinely cannot tell 10am from 3pm. It
-> says so rather than pretending it optimised around it. With an hourly forecast the same
-> policy would start moving outdoor activities, with no change to the engine."
+> "Notice weather is not listed. It scored nothing, so claiming it as an applied objective
+> would be telling you the day was arranged around something it wasn't. And that decision is
+> made by the use case, not the dialog — if I had ticked the box anyway, the Interactor
+> would still find the forecast too coarse, contribute zero, and say so in a warning. The
+> schedule comes out either way; weather can shift timing but it can never make a day
+> unschedulable."
 
 ### 5. Why these times (15s)
 
@@ -124,6 +138,13 @@ the search limit" rather than claiming optimality. At 12 activities the budget i
 needs, and the policy deciding what the numbers mean is mine. Raashid's adapter reaches
 OSRM, Transitous and TomTom; Shiyuan's reaches Open-Meteo. My tests run on fakes I wrote.
 
-**"What would you do next?"** An hourly forecast, which activates weather-driven timing with
-no engine change; and a quality signal on the routing port so travel confidence stops
-reading as unknown.
+**"What would you do next?"** An hourly forecast, which activates the weather preference
+with no change to the engine, the Interactor or the UI — there is a test asserting exactly
+that; and a quality signal on the routing port so travel confidence stops reading as
+unknown.
+
+**"Why is weather a checkbox when the others aren't?"** Because the others always work.
+Travel, gaps, mealtimes and daylight can be computed for any day from data we already have.
+Weather depends on a forecast whose resolution we do not control, so it is the one objective
+that can be honestly unavailable — and when it is, the right answer is to say so, not to
+apply it silently at zero effect.

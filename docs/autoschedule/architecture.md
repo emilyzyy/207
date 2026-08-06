@@ -61,6 +61,15 @@ what the use case needs. The teammates own the concrete services behind those po
 
 ## Data flow: Preview
 
+0. **Capability lookup.** `DayPlanPanel` opens the dialog immediately with "Consider
+   weather" disabled and unticked, then asks `AutoScheduleController.loadWeatherOption`
+   whether the preference can honestly be offered. That runs on the `TaskRunner`, because
+   answering it means asking a forecast provider, and the panel marshals the reply back to
+   the event thread itself — knowing this is Swing is the view's job, not the controller's.
+   The question travels through `AutoScheduleInputBoundary.weatherOptionFor`, so no Swing
+   class ever learns that Open-Meteo exists. It comes back as a plain `WeatherOption`:
+   available, selected-by-default, and a reason string when withheld. See "The weather
+   capability gate" below.
 1. **`DayPlanPanel`** opens `AutoScheduleSettingsDialog`. The dialog validates locally so a
    typo is caught while it is still open.
 2. **`AutoScheduleController`** reads plain values, adds the pinned event ids held in the
@@ -72,8 +81,10 @@ what the use case needs. The teammates own the concrete services behind those po
    current duration.
 4. **`TravelMatrixPrefetcher`** asks `TravelTimeEstimator` for every directed pair, once per
    active departure period. This is the only place travel requests are made.
-5. **`WeatherContextGateway`** supplies forecast context; a failure becomes "unavailable"
-   rather than an exception, so weather can never cost the traveller a schedule.
+5. **`WeatherContextGateway`** supplies forecast context, but only when the traveller
+   selected the preference — weather not asked for is weather not fetched. A failure becomes
+   "unavailable" rather than an exception, so weather can never cost the traveller a
+   schedule.
 6. **`ScheduleEngine`** searches. Pure, deterministic, no I/O: bounded branch-and-bound over
    visit orders, each activity placed at its earliest feasible time, with a greedy
    incumbent and an admissible lower bound.
@@ -98,6 +109,50 @@ Nothing has been written at any point in this sequence.
 4. **`AutoSchedulePresenter`** re-times the events it already holds so the Calendar keeps
    real activity details, and publishes `APPLIED`. The Calendar updates through the
    `PropertyChangeSupport` it already observed.
+
+## The weather capability gate
+
+Weather is the only soft objective the traveller is asked about, and the reason is a
+product one. Providers return an hourly forecast for a trip a few days out and a single
+whole-day outlook for one further ahead. A whole-day outlook scores every candidate slot
+identically, so it cannot say whether a park is better at 10 a.m. or 3 p.m. A checkbox
+backed by it would look like a choice and change nothing.
+
+**The capability is asked, not assumed.** `WeatherContextGateway.optionFor(Trip)` derives
+the answer from what the provider actually returned — `WeatherContext.canDistinguishTimes()`
+— rather than from a hard-coded date cutoff. A cutoff would encode a guess about someone
+else's service and go stale the moment they changed their horizon. A trip beyond the hourly
+range therefore needs no special case: it arrives as a coarse forecast and is refused for
+that reason, like any other coarse forecast.
+
+**The backend is the final authority.** The dialog's belief is an optimisation, not a
+decision. `AutoScheduleInteractor` applies two gates in order: weather not requested is
+never fetched, and weather that comes back coarse or unavailable contributes zero, produces
+an honest warning, and is left out of the applied-objectives list. A stale or mistaken tick
+costs nothing but the tick, and the schedule is produced either way.
+
+**It stays soft and bounded.** `WeatherSuitabilityPolicy` charges equivalent wasted minutes
+capped at `MAX_PENALTY_MINUTES` (60). That ceiling is what guarantees avoiding bad weather
+can never buy an hours-long detour, and weather can never make a day unschedulable or
+override a lock, an unavailable window, opening hours or travel feasibility.
+
+| State | Checkbox | Explanation shown |
+|---|---|---|
+| Hourly forecast available | Enabled, **ticked by default**, may be unticked | none |
+| Whole-day forecast | Disabled, unticked | "Hourly weather is not available for this trip date." |
+| Beyond the provider's hourly range | Disabled, unticked | same — it arrives as a coarse forecast |
+| No forecast obtainable | Disabled, unticked | "Weather information is not available for this trip date." |
+| Lookup still running | Disabled, unticked | "Checking hourly weather for this trip date..." |
+
+The explanation is a visible label, not colour or absence, and it is repeated on the
+checkbox's accessible description because a disabled control can be skipped in focus
+traversal.
+
+**Today, only the disabled row is reachable in production:** both shipped adapters report
+one severity per trip. That is verified rather than assumed — the live run records
+`available=true canDistinguishTimes=false`, and `AutoScheduleWalkthroughTest` asserts both
+the withheld state through the real wiring and that an hourly gateway would offer the
+preference with no other change.
 
 ## Course concepts genuinely present
 
