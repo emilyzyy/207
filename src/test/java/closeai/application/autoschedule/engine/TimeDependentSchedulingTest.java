@@ -153,7 +153,8 @@ class TimeDependentSchedulingTest {
 
         ScheduleSearchResult searched = engine.search(problem, SearchBudget.defaultBudget());
         int greedyTravel = new GreedyPlanner()
-                .plan(problem, problem.getLockedTasks(), java.util.Collections.emptyList())
+                .plan(problem, problem.getLockedTasks(),
+                        new ActivityPlacer(java.util.Collections.emptyList()))
                 .totalTravelMinutes();
 
         assertTrue(searched.isFound());
