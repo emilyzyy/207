@@ -110,7 +110,11 @@ Because the current domain aggregate represents a one-day trip, events appear on
 the expanded calendar provides surrounding week/month context without pretending that events
 have dates the domain model does not store.
 
-## Auto Schedule
+## Auto Schedule (bookmark selection)
+
+> This section describes the bookmark-selection scheduler, which chooses activities from
+> the bookmark list. It is distinct from **Autoschedule (Day Plan)** below, which reorders
+> and retimes activities the traveller has already added to the Day Plan.
 
 For every scheduling step, each remaining feasible activity is scored using:
 
@@ -132,6 +136,122 @@ The scheduler then:
 7. Validates that all events are sorted, inside the trip window, and non-overlapping before saving a separate scheduled trip copy.
 
 An empty bookmark list raises a clear `IllegalArgumentException`. If none of the bookmarks is feasible, scheduling raises `IllegalStateException` and preserves the previous schedule. If at least one activity fits, the legal greedy subset is saved and infeasible bookmarks remain bookmarked. Any weather, distance, scoring, or validation failure occurs before the repository receives the new aggregate, so no partial schedule is left behind.
+
+## Autoschedule (Day Plan)
+
+Autoschedule rearranges the activities already in the Day Plan. It never adds an activity,
+never drops one, and never changes anything until the traveller chooses **Apply**.
+
+### Running it
+
+Open the **Day Plan** tab, then choose **Autoschedule**. The settings dialog asks only for
+what cannot be worked out automatically:
+
+- **Available from / until** - prefilled from the trip's own hours. These may narrow the
+  day but not widen it, because the `Trip` entity refuses to hold events outside its stored
+  window.
+- **Getting around by** - walking, driving or transit, prefilled from the trip.
+- **Times I am not available** - optional. Nothing is scheduled in these, *including
+  travel*: the traveller waits until the period ends before setting out.
+- **Keep my current order where possible** - the single scheduling preference, on by
+  default.
+
+Individual activities can be pinned with the **Lock** checkbox on their row. A pinned
+activity keeps its exact time and everything else is arranged around it. Pins last as long
+as the application is open and are never written to the trip.
+
+### Preview and Apply
+
+Generating a preview shows the proposal underneath the unchanged Day Plan, with before and
+after figures for travel and waiting, how many activities moved, one short reason on the
+rows that have one, and a keyboard-accessible **Why these times?** panel listing every
+explanation. **Apply** saves it; **Cancel** discards it. If the Day Plan changed after the
+preview was produced, Apply is refused rather than overwriting the newer version.
+
+### What it optimises for
+
+These are built in and always applied - they are what the feature is for, not options:
+
+| Objective | Behaviour |
+|---|---|
+| Travel | Minimise total travel time for the chosen mode |
+| Wasted waiting | Reduce idle time that is not caused by opening hours or an unavailable period |
+| Mealtimes | Prefer customary lunch/dinner windows for `FOOD` activities |
+| Daylight | Prefer daylight for `OUTDOOR` activities |
+| Weather | Prefer better conditions for exposed activities, when the forecast can tell one time from another |
+
+Valid schedules are ranked by a single practical cost in minutes: travel + avoidable idle +
+capped meal/daylight/weather penalties, plus a small capped charge for disturbing the
+traveller's order when they asked to keep it. Every soft penalty is capped, which is what
+guarantees a minor improvement in one of them can never justify a large detour. Hard rules
+- opening hours, availability, unavailable periods, pins, travel feasibility, no overlaps -
+are never traded against anything.
+
+### Configuration and secrets
+
+No configuration is required; the defaults work offline.
+
+| Variable / property | Effect |
+|---|---|
+| `TOMTOM_API_KEY` or `-Dtomtom.api.key=...` | Enables traffic-aware driving via TomTom. Without it, driving uses OSRM and is not traffic-aware. |
+| `-Dcloseai.weather.mode=open-meteo` | Live forecast instead of the mock. |
+| `-Dcloseai.places.mode=nominatim` | Live place discovery instead of the mock. |
+
+**No API key is ever committed.** Keys are read only from the environment or a system
+property, never from a file in the repository, and are never logged or printed.
+
+### Current limitations
+
+- **Weather cannot influence timing yet.** The forecast gateway reports one severity for
+  the whole trip, so every candidate time scores identically. The preview says so rather
+  than implying the timing was weather-optimised. An hourly forecast would activate the
+  behaviour with no change to the engine.
+- **Travel confidence is reported as unknown.** The shared `DistanceService` returns a plain
+  number and cannot distinguish a real route from its own distance-based fallback, so the
+  preview says travel times may include estimates instead of claiming more.
+- **Transit departure times use the JVM's default time zone**, which is correct for a local
+  trip and wrong for a trip in another zone. `Trip` has no time-zone field.
+- **Driving is not live-verified.** The TomTom request was corrected and is unit-tested, but
+  no key was available to confirm a real traffic-aware route.
+- Single day only, one transportation mode per run, and travel between activities only -
+  there is no hotel or origin leg because `Trip` has no origin coordinate.
+
+### Architecture
+
+```text
+DayPlanPanel  ->  AutoScheduleController  ->  AutoScheduleInputBoundary
+                                                      |
+                                          AutoScheduleInteractor
+                                          |     |        |        |
+                                    TripRepo  Travel  Weather  ScheduleEngine
+                                              gateway gateway   (+ policies)
+                                                      |
+                                          AutoScheduleOutputBoundary
+                                                      |
+                        AutoSchedulePresenter -> DayPlanViewModel -> Day Plan + Calendar
+```
+
+The engine is a pure function: no repository, no network, no Swing. Travel estimates are
+fetched before the search and refined afterwards, so the recursion never makes a network
+call. Full diagram and data flow: [`docs/autoschedule/architecture.md`](docs/autoschedule/architecture.md).
+
+### How add-to-plan connects later
+
+Autoschedule reads `Trip.getScheduledEvents()` and writes through `Trip.copyWithSchedule`.
+It does not care how activities arrived. When the add-to-plan flow is wired into the UI, its
+activities appear in the Day Plan and Autoschedule picks them up with no changes on either
+side; a test asserts a seeded trip and an ordinary trip behave identically.
+
+### Commands
+
+```bash
+./mvnw clean test                 # all tests, plus the JaCoCo report
+./mvnw checkstyle:check           # style report -> target/checkstyle-result.xml
+open target/site/jacoco/index.html  # coverage report
+
+# opt-in live checks (network required)
+RUN_LIVE_AUTOSCHEDULE_TEST=true ./mvnw test -Dtest=AutoScheduleLiveVerificationTest
+```
 
 ## Open-Meteo adapter
 
@@ -169,6 +289,17 @@ This makes a real geocoding request for Toronto and a real forecast request for 
 - separate opt-in live Open-Meteo request
 - Share Trip input validation, summary formatting, controller/output behavior, and copyable state
 - Calendar trip/schedule synchronization, Day/Week/Month navigation, date selection, and Swing controls
+- Autoschedule: hard constraints, pins, unavailable periods blocking activities and travel, the built-in objectives and their caps, preview side-effect freedom, stale-Apply protection, exact-time travel refinement, presenter wording, Calendar compatibility, background execution, and a brute-force cross-check that the search's pruning never changes the answer
+
+Coverage and style are measured, not asserted:
+
+```bash
+./mvnw clean test        # JaCoCo report at target/site/jacoco/index.html
+./mvnw checkstyle:check  # report at target/checkstyle-result.xml
+```
+
+Both are configured as reports rather than build gates, so a threshold or a legacy style
+violation cannot block a teammate's commit.
 
 ## Known limitations
 
@@ -177,6 +308,7 @@ This makes a real geocoding request for Toronto and a real forecast request for 
 - Greedy scoring is deterministic but does not guarantee a globally optimal itinerary.
 - Distance estimates and persistence remain mock/in-memory implementations.
 - Live place discovery is optional and uses public Nominatim/Overpass services; offline mode remains the supported default.
+- Autoschedule's own limitations are listed under [Autoschedule (Day Plan)](#autoschedule-day-plan): day-wide weather, unknown travel provenance, JVM-default transit time zone, and driving not yet live-verified.
 
 ## REST API
 
