@@ -1,6 +1,5 @@
 package closeai.adapters.views;
 
-import closeai.adapters.controllers.OptimizeItineraryController;
 import closeai.adapters.viewmodels.BookmarksState;
 import closeai.adapters.viewmodels.BookmarksViewModel;
 import closeai.adapters.viewmodels.DayPlanState;
@@ -9,8 +8,6 @@ import closeai.adapters.viewmodels.SearchState;
 import closeai.adapters.viewmodels.SearchViewModel;
 import closeai.adapters.viewmodels.TripOptionsState;
 import closeai.adapters.viewmodels.TripOptionsViewModel;
-import closeai.application.usecases.OptimizeItineraryInputBoundary;
-import closeai.application.usecases.OptimizeItineraryInputData;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.valueobjects.ActivityCategory;
@@ -28,6 +25,7 @@ import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -41,10 +39,11 @@ final class SwingPanelStructureTest {
                 new SearchState(Collections.singletonList(activity("rom")), "")));
         BookmarksPanel bookmarks = new BookmarksPanel(new BookmarksViewModel(
                 new BookmarksState(Collections.singletonList(activity("saved")))));
-        RecordingOptimizer optimizer = new RecordingOptimizer();
         DayPlanPanel dayPlan = new DayPlanPanel(
                 dayPlanViewModel,
-                new OptimizeItineraryController(optimizer, "trip-1"));
+                new closeai.adapters.controllers.AutoScheduleController(
+                        new RecordingAutoSchedule(), dayPlanViewModel,
+                        closeai.adapters.controllers.TaskRunner.immediate()));
         TripOptionsPanel options = new TripOptionsPanel(new TripOptionsViewModel(
                 new TripOptionsState("Toronto", LocalDate.of(2026, 7, 23),
                         LocalTime.of(9, 0), LocalTime.of(18, 0))));
@@ -58,24 +57,23 @@ final class SwingPanelStructureTest {
         assertEquals("Trip Options", tabs.getTitleAt(3));
         assertTrue(allText(planner).contains("Not wired for this milestone"));
 
-        AbstractButton optimize = findButton(dayPlan, "Optimize Itinerary");
-        assertNotNull(optimize);
-        assertTrue(optimize.isEnabled());
-        assertTrue(optimize.isVisible());
-        assertTrue(optimize.isOpaque());
-        optimize.doClick();
-        assertNotNull(optimizer.input);
-        assertEquals("trip-1", optimizer.input.getTripId());
+        AbstractButton autoschedule = findButton(dayPlan, "Autoschedule");
+        assertNotNull(autoschedule, "the Day Plan should offer Autoschedule");
+        assertTrue(autoschedule.isEnabled());
+        assertTrue(autoschedule.isVisible());
+        assertTrue(autoschedule.isOpaque());
+        assertNull(findButton(dayPlan, "Optimize Itinerary"),
+                "the old mockup button should be gone");
 
         ScheduledEvent event = new ScheduledEvent(
                 "event-rom", activity("rom"), LocalTime.of(10, 0),
                 LocalTime.of(11, 0), EventType.ACTIVITY, "Visit");
         SwingUtilities.invokeAndWait(() -> dayPlanViewModel.setState(
                 new DayPlanState("trip-1", Collections.singletonList(event),
-                        "Current itinerary compacted successfully", false)));
+                        "Autoschedule applied. Your Day Plan has been updated.", false)));
 
         assertTrue(allText(dayPlan).contains("rom"));
-        assertTrue(allText(dayPlan).contains("Current itinerary compacted successfully"));
+        assertTrue(allText(dayPlan).contains("Autoschedule applied"));
 
         SwingUtilities.invokeAndWait(() -> dayPlanViewModel.setState(
                 new DayPlanState("trip-1", Collections.singletonList(event),
@@ -127,12 +125,15 @@ final class SwingPanelStructureTest {
         return null;
     }
 
-    private static final class RecordingOptimizer implements OptimizeItineraryInputBoundary {
-        private OptimizeItineraryInputData input;
+    /** Stands in for the use case so the panel can be exercised without scheduling. */
+    private static final class RecordingAutoSchedule
+            implements closeai.application.autoschedule.AutoScheduleInputBoundary {
+        @Override
+        public void preview(closeai.application.autoschedule.AutoScheduleInputData inputData) {
+        }
 
         @Override
-        public void execute(OptimizeItineraryInputData inputData) {
-            input = inputData;
+        public void apply(closeai.application.autoschedule.AutoScheduleApplyInputData inputData) {
         }
     }
 }
