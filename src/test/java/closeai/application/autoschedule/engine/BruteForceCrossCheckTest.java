@@ -3,7 +3,6 @@ package closeai.application.autoschedule.engine;
 import static closeai.application.autoschedule.ProblemFixtures.at;
 import static closeai.application.autoschedule.ProblemFixtures.noBlockedWindows;
 import static closeai.application.autoschedule.ProblemFixtures.task;
-import static closeai.application.autoschedule.ProblemFixtures.tasks;
 import static closeai.application.autoschedule.ProblemFixtures.window;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;

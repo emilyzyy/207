@@ -12,6 +12,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>11</maven.compiler.release>
         <junit.version>5.12.2</junit.version>
+        <jacoco.version>0.8.12</jacoco.version>
+        <checkstyle.plugin.version>3.6.0</checkstyle.plugin.version>
         <jackson.version>2.18.4</jackson.version>
     </properties>
 
@@ -43,6 +45,56 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.3</version>
+            </plugin>
+            <!--
+                Coverage evidence. Reports only: the build is not failed on a threshold,
+                because much of the repository is other members' in-progress work and a
+                gate here would block the whole team rather than improve anything.
+                Run: ./mvnw clean test  ->  target/site/jacoco/index.html
+            -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <configuration>
+                    <excludes>
+                        <!-- Swing rendering: exercised by hand, not meaningfully unit-testable. -->
+                        <exclude>closeai/adapters/views/**</exclude>
+                        <!-- Opt-in live adapters: covered by tests that require network access. -->
+                        <exclude>closeai/infrastructure/web/**</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!--
+                Style evidence (Piazza @275). Reports only, for the same reason as above.
+                Run: ./mvnw checkstyle:check  ->  target/checkstyle-result.xml
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${checkstyle.plugin.version}</version>
+                <configuration>
+                    <configLocation>config/checkstyle.xml</configLocation>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                    <consoleOutput>true</consoleOutput>
+                    <failOnViolation>false</failOnViolation>
+                    <violationSeverity>error</violationSeverity>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
