@@ -17,7 +17,11 @@ import closeai.application.usecases.TripSetupOutputData;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.Trip;
 import closeai.domain.entities.WeatherWarning;
+import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import javax.swing.SwingWorker;
 
 /**
@@ -64,6 +68,7 @@ public final class TripSetupPresenter implements TripSetupOutputBoundary {
                 "Loading weather…",
                 "Weather and places refresh in the background."));
         bookmarks.setState(new BookmarksState(trip.getBookmarkedActivities()));
+        search.setState(searchStateFor(trip, search.getState().getActivities()));
         dayPlan.setState(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(),
                 action + ". Add activities before optimizing.", false));
@@ -86,11 +91,11 @@ public final class TripSetupPresenter implements TripSetupOutputBoundary {
         new SwingWorker<DestinationData, Void>() {
             @Override
             protected DestinationData doInBackground() {
-                WeatherWarning warning = null;
+                List<WeatherWarning> hourlyWeather = Collections.emptyList();
                 List<Activity> activities = search.getState().getActivities();
                 try {
                     if (weatherWarning != null) {
-                        warning = weatherWarning.execute(trip.getId());
+                        hourlyWeather = weatherWarning.executeHourly(trip.getId());
                     }
                 } catch (RuntimeException ignored) {
                     // Weather is optional UI enrichment; trip creation remains successful.
@@ -106,7 +111,7 @@ public final class TripSetupPresenter implements TripSetupOutputBoundary {
                 } catch (RuntimeException ignored) {
                     // Keep the current offline/cache list if live place lookup fails.
                 }
-                return new DestinationData(warning, activities);
+                return new DestinationData(hourlyWeather, activities);
             }
 
             @Override
@@ -116,7 +121,8 @@ public final class TripSetupPresenter implements TripSetupOutputBoundary {
                 }
                 try {
                     DestinationData data = get();
-                    WeatherWarning warning = data.warning;
+                    WeatherWarning warning = closestToTripStart(
+                            data.hourlyWeather, trip);
                     dashboard.setState(new DashboardState(
                             trip.getDestination(),
                             trip.getDate(),
@@ -124,7 +130,12 @@ public final class TripSetupPresenter implements TripSetupOutputBoundary {
                                     : warning.getWeatherCondition(),
                             warning == null ? "Trip saved; weather could not be refreshed."
                                     : warning.getMessage()));
-                    search.setState(new SearchState(data.activities, ""));
+                    DayPlanState currentPlan = dayPlan.getState();
+                    dayPlan.setState(new DayPlanState(
+                            currentPlan.getTripId(), currentPlan.getEvents(),
+                            currentPlan.getMessage(), currentPlan.isError(),
+                            data.hourlyWeather));
+                    search.setState(searchStateFor(trip, data.activities));
                 } catch (Exception exception) {
                     dashboard.setState(new DashboardState(
                             trip.getDestination(), trip.getDate(),
@@ -135,12 +146,43 @@ public final class TripSetupPresenter implements TripSetupOutputBoundary {
         }.execute();
     }
 
+    private static SearchState searchStateFor(Trip trip, List<Activity> activities) {
+        Set<String> bookmarkedIds = new HashSet<>();
+        for (Activity activity : trip.getBookmarkedActivities()) {
+            bookmarkedIds.add(activity.getId());
+        }
+        Set<String> scheduledIds = new HashSet<>();
+        trip.getScheduledEvents().forEach(event -> {
+            if (event.getActivity() != null) {
+                scheduledIds.add(event.getActivity().getId());
+            }
+        });
+        return new SearchState(activities, "", bookmarkedIds, scheduledIds);
+    }
+
+    private WeatherWarning closestToTripStart(List<WeatherWarning> hourlyWeather, Trip trip) {
+        WeatherWarning closest = null;
+        long closestMinutes = Long.MAX_VALUE;
+        for (WeatherWarning warning : hourlyWeather) {
+            if (warning == null || warning.getTime() == null) continue;
+            long difference = Math.abs(Duration.between(
+                    trip.getStartTime(), warning.getTime()).toMinutes());
+            if (difference < closestMinutes) {
+                closest = warning;
+                closestMinutes = difference;
+            }
+        }
+        return closest;
+    }
+
     private static final class DestinationData {
-        private final WeatherWarning warning;
+        private final List<WeatherWarning> hourlyWeather;
         private final List<Activity> activities;
 
-        private DestinationData(WeatherWarning warning, List<Activity> activities) {
-            this.warning = warning;
+        private DestinationData(
+                List<WeatherWarning> hourlyWeather, List<Activity> activities) {
+            this.hourlyWeather = hourlyWeather == null
+                    ? Collections.emptyList() : hourlyWeather;
             this.activities = activities;
         }
     }

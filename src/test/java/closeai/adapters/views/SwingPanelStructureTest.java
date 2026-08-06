@@ -13,10 +13,12 @@ import closeai.application.usecases.OptimizeItineraryInputBoundary;
 import closeai.application.usecases.OptimizeItineraryInputData;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.ScheduledEvent;
+import closeai.domain.entities.WeatherWarning;
 import closeai.domain.valueobjects.ActivityCategory;
 import closeai.domain.valueobjects.EventType;
 import closeai.domain.valueobjects.IndoorOutdoorType;
 import closeai.domain.valueobjects.Location;
+import closeai.domain.valueobjects.WeatherSeverity;
 import java.awt.Component;
 import java.awt.Container;
 import java.time.LocalDate;
@@ -56,7 +58,9 @@ final class SwingPanelStructureTest {
         assertEquals("Bookmarks", tabs.getTitleAt(1));
         assertEquals("Day Plan", tabs.getTitleAt(2));
         assertEquals("Trip Options", tabs.getTitleAt(3));
-        assertTrue(allText(planner).contains("Not wired for this milestone"));
+        assertTrue(allText(planner).contains("Discover activities"));
+        assertTrue(allText(planner).contains("Saved for later"));
+        assertNotNull(findButton(search, "Add to plan"));
 
         AbstractButton optimize = findButton(dayPlan, "Optimize Itinerary");
         assertNotNull(optimize);
@@ -72,10 +76,18 @@ final class SwingPanelStructureTest {
                 LocalTime.of(11, 0), EventType.ACTIVITY, "Visit");
         SwingUtilities.invokeAndWait(() -> dayPlanViewModel.setState(
                 new DayPlanState("trip-1", Collections.singletonList(event),
-                        "Current itinerary compacted successfully", false)));
+                        "Current itinerary compacted successfully", false,
+                        Collections.singletonList(new WeatherWarning(
+                                new Location(43.65, -79.38, "Toronto"),
+                                LocalTime.of(10, 0), "Rain", WeatherSeverity.MEDIUM,
+                                "18°C · 65% precipitation")))));
 
         assertTrue(allText(dayPlan).contains("rom"));
+        assertTrue(allText(dayPlan).contains("10:00 · Rain"));
+        assertTrue(allText(dayPlan).contains("65% precipitation"));
         assertTrue(allText(dayPlan).contains("Current itinerary compacted successfully"));
+        assertNotNull(findButton(dayPlan, "Edit"));
+        assertNotNull(findButton(dayPlan, "Remove"));
 
         SwingUtilities.invokeAndWait(() -> dayPlanViewModel.setState(
                 new DayPlanState("trip-1", Collections.singletonList(event),
