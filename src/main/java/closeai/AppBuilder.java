@@ -28,7 +28,10 @@ import closeai.adapters.views.PlannerPanel;
 import closeai.adapters.views.SearchPanel;
 import closeai.adapters.views.TripOptionsPanel;
 import closeai.application.AppContainer;
+import closeai.application.PlaceHydrator;
+import closeai.application.ports.AuthService;
 import closeai.application.ports.PlacesService;
+import closeai.application.ports.TripRepository;
 import closeai.application.ports.WeatherService;
 import closeai.application.scheduling.DefaultActivityScoringPolicy;
 import closeai.application.usecases.CreateTripInputData;
@@ -41,13 +44,16 @@ import closeai.domain.entities.WeatherWarning;
 import closeai.domain.valueobjects.Location;
 import closeai.domain.valueobjects.TransportationMode;
 import closeai.domain.valueobjects.WeatherSeverity;
+import closeai.infrastructure.config.DotEnv;
 import closeai.infrastructure.mock.MockPlacesService;
 import closeai.infrastructure.mock.MockWeatherService;
 import closeai.infrastructure.places.CachingPlacesService;
 import closeai.infrastructure.places.NominatimPlacesService;
 import closeai.infrastructure.persistence.CachedPlacesRepository;
+import closeai.infrastructure.persistence.DualModeItineraryDataAccess;
 import closeai.infrastructure.persistence.InMemoryItineraryDataAccessObject;
 import closeai.infrastructure.routing.OsrmDistanceService;
+import closeai.infrastructure.supabase.SupabaseItineraryDataAccess;
 import closeai.infrastructure.weather.OpenMeteoWeatherService;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -59,20 +65,25 @@ import javax.swing.SwingUtilities;
 /** Outer composition root for selecting infrastructure without leaking it into application code. */
 public final class AppBuilder {
     public AppContainer build() {
+        return build(null);
+    }
+
+    /** Builds the app; pass a signed-in {@link AuthService} when using Supabase persistence. */
+    public AppContainer build(AuthService authSession) {
         String weatherMode = System.getProperty("closeai.weather.mode", "mock");
         String placesMode = System.getProperty("closeai.places.mode", "mock");
         WeatherService weather = "open-meteo".equalsIgnoreCase(weatherMode)
                 ? new OpenMeteoWeatherService() : new MockWeatherService();
         return buildWithServices(
-                weather, "nominatim".equalsIgnoreCase(placesMode));
+                weather, "nominatim".equalsIgnoreCase(placesMode), authSession);
     }
 
     public AppContainer buildOffline() {
-        return buildWithServices(new MockWeatherService(), false);
+        return buildWithServices(new MockWeatherService(), false, null);
     }
 
     public AppContainer buildLive() {
-        return buildWithServices(new OpenMeteoWeatherService(), false);
+        return buildWithServices(new OpenMeteoWeatherService(), false, null);
     }
 
     /** Builds Swing with a seeded demo trip so the interactive map is populated on launch. */
@@ -315,8 +326,7 @@ public final class AppBuilder {
     }
 
     private AppContainer buildWithServices(
-            WeatherService weather, boolean useLivePlaces) {
-        InMemoryItineraryDataAccessObject itineraries = new InMemoryItineraryDataAccessObject();
+            WeatherService weather, boolean useLivePlaces, AuthService authSession) {
         MockPlacesService mockPlaces = new MockPlacesService();
         CachedPlacesRepository cachedPlaces = new CachedPlacesRepository();
         cachedPlaces.addAll(mockPlaces.findAll());
@@ -324,13 +334,37 @@ public final class AppBuilder {
                 ? new CachingPlacesService(
                         new NominatimPlacesService(), cachedPlaces)
                 : mockPlaces;
+
+        String persistence = System.getProperty("closeai.persistence.mode", "memory");
+        TripRepository trips;
+        if ("supabase".equalsIgnoreCase(persistence)) {
+            AuthService auth = authSession;
+            if (auth == null) {
+                throw new IllegalStateException(
+                        "Supabase persistence requires an AuthService instance");
+            }
+            String url = DotEnv.get("CLOSEAI_SUPABASE_URL", "closeai.supabase.url");
+            String anonKey = DotEnv.get("CLOSEAI_SUPABASE_ANON_KEY", "closeai.supabase.anonKey");
+            if (url == null || anonKey == null) {
+                throw new IllegalStateException(
+                        "Set CLOSEAI_SUPABASE_URL and CLOSEAI_SUPABASE_ANON_KEY in .env");
+            }
+            PlaceHydrator hydrator = new PlaceHydrator(cachedPlaces, places, cachedPlaces);
+            InMemoryItineraryDataAccessObject local = new InMemoryItineraryDataAccessObject();
+            SupabaseItineraryDataAccess remote =
+                    new SupabaseItineraryDataAccess(url, anonKey, auth, hydrator);
+            trips = new DualModeItineraryDataAccess(local, remote, auth);
+        } else {
+            trips = new InMemoryItineraryDataAccessObject();
+        }
+
         return new AppContainer(
-                itineraries,
+                trips,
                 places,
                 cachedPlaces,
                 new OsrmDistanceService(),
                 weather,
                 new DefaultActivityScoringPolicy(),
-                itineraries);
+                (closeai.application.ports.ItineraryDataAccessInterface) trips);
     }
 }

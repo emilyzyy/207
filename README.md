@@ -34,6 +34,25 @@ Real places and OpenStreetMap tiles are separate, explicit opt-ins:
   -Dcloseai.map.tiles.mode=osm
 ```
 
+### Supabase persistence (per-user save / reopen)
+
+1. Create a Supabase project and run the SQL in [`docs/supabase/schema.sql`](docs/supabase/schema.sql).
+2. Copy [`.env.example`](.env.example) to `.env` and fill in Project URL + anon key from Supabase → Project Settings → API.
+3. For local demos, Authentication → Providers → Email → disable **Confirm email**.
+4. Run from the project root (so `.env` is found):
+
+```bash
+./mvnw compile exec:java -Dexec.mainClass=closeai.Main \
+  -Dcloseai.persistence.mode=supabase \
+  -Dcloseai.weather.mode=open-meteo \
+  -Dcloseai.places.mode=nominatim \
+  -Dcloseai.map.tiles.mode=osm
+```
+
+`.env` is gitignored. Resolution order: `-D` system properties, then real env vars, then `.env`.
+
+Sign in is optional: the app opens on **My Trips**. Use **Sign in** (gallery or trip header, next to Share) anytime. While signed out, itineraries stay local to the session; after sign-in the current trip is saved to your account and prior cloud trips load. Sign-out clears the local session and returns you to an empty gallery.
+
 The places and weather refresh runs in a `SwingWorker`, not on the Swing event-dispatch thread. If either service fails, the created trip remains valid and the UI retains its cached mock places.
 
 Run the web prototype and open [http://localhost:8080](http://localhost:8080):
