@@ -3,6 +3,7 @@ package closeai.adapters.views;
 import closeai.adapters.controllers.OptimizeItineraryController;
 import closeai.adapters.viewmodels.BookmarksState;
 import closeai.adapters.viewmodels.BookmarksViewModel;
+import closeai.adapters.viewmodels.ActivitySelectionViewModel;
 import closeai.adapters.viewmodels.DayPlanState;
 import closeai.adapters.viewmodels.DayPlanViewModel;
 import closeai.adapters.viewmodels.SearchState;
@@ -19,6 +20,7 @@ import closeai.domain.valueobjects.IndoorOutdoorType;
 import closeai.domain.valueobjects.Location;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.event.MouseEvent;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collections;
@@ -37,14 +39,17 @@ final class SwingPanelStructureTest {
     void plannerContainsFourFocusedTabsAndDayPlanObservesSharedState() throws Exception {
         DayPlanViewModel dayPlanViewModel = new DayPlanViewModel(
                 new DayPlanState("trip-1", Collections.emptyList(), "", false));
+        ActivitySelectionViewModel selection = new ActivitySelectionViewModel();
         SearchPanel search = new SearchPanel(new SearchViewModel(
-                new SearchState(Collections.singletonList(activity("rom")), "")));
+                new SearchState(Collections.singletonList(activity("rom")), "")),
+                null, null, null, selection);
         BookmarksPanel bookmarks = new BookmarksPanel(new BookmarksViewModel(
-                new BookmarksState(Collections.singletonList(activity("saved")))));
+                new BookmarksState(Collections.singletonList(activity("saved")))),
+                null, null, selection);
         RecordingOptimizer optimizer = new RecordingOptimizer();
         DayPlanPanel dayPlan = new DayPlanPanel(
                 dayPlanViewModel,
-                new OptimizeItineraryController(optimizer, "trip-1"));
+                new OptimizeItineraryController(optimizer, "trip-1"), null, selection);
         TripOptionsPanel options = new TripOptionsPanel(new TripOptionsViewModel(
                 new TripOptionsState("Toronto", LocalDate.of(2026, 7, 23),
                         LocalTime.of(9, 0), LocalTime.of(18, 0))));
@@ -59,6 +64,10 @@ final class SwingPanelStructureTest {
         assertTrue(allText(planner).contains("Discover activities"));
         assertTrue(allText(planner).contains("Saved for later"));
         assertNotNull(findButton(search, "Add to plan"));
+        clickCard(search, "Show rom on the map");
+        assertEquals("rom", selection.getSelectedActivityId());
+        clickCard(bookmarks, "Show saved on the map");
+        assertEquals("saved", selection.getSelectedActivityId());
 
         AbstractButton optimize = findButton(dayPlan, "Optimize Itinerary");
         assertNotNull(optimize);
@@ -80,6 +89,8 @@ final class SwingPanelStructureTest {
         assertTrue(allText(dayPlan).contains("Current itinerary compacted successfully"));
         assertNotNull(findButton(dayPlan, "Edit"));
         assertNotNull(findButton(dayPlan, "Remove"));
+        clickCard(dayPlan, "Show rom on the map");
+        assertEquals("rom", selection.getSelectedActivityId());
 
         SwingUtilities.invokeAndWait(() -> dayPlanViewModel.setState(
                 new DayPlanState("trip-1", Collections.singletonList(event),
@@ -126,6 +137,31 @@ final class SwingPanelStructureTest {
                 if (found != null) {
                     return found;
                 }
+            }
+        }
+        return null;
+    }
+
+    private void clickCard(Component component, String tooltip) {
+        Component card = findByTooltip(component, tooltip);
+        assertNotNull(card);
+        MouseEvent click = new MouseEvent(
+                card, MouseEvent.MOUSE_CLICKED, System.currentTimeMillis(),
+                0, 5, 5, 1, false);
+        for (java.awt.event.MouseListener listener : card.getMouseListeners()) {
+            listener.mouseClicked(click);
+        }
+    }
+
+    private Component findByTooltip(Component component, String tooltip) {
+        if (component instanceof javax.swing.JComponent
+                && tooltip.equals(((javax.swing.JComponent) component).getToolTipText())) {
+            return component;
+        }
+        if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                Component found = findByTooltip(child, tooltip);
+                if (found != null) return found;
             }
         }
         return null;

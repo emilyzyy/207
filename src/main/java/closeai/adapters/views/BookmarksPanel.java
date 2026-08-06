@@ -2,12 +2,16 @@ package closeai.adapters.views;
 
 import closeai.adapters.controllers.BookmarkController;
 import closeai.adapters.controllers.ManualPlanController;
+import closeai.adapters.viewmodels.ActivitySelectionViewModel;
 import closeai.adapters.viewmodels.BookmarksState;
 import closeai.adapters.viewmodels.BookmarksViewModel;
 import closeai.domain.entities.Activity;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Cursor;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -22,21 +26,29 @@ public final class BookmarksPanel extends JPanel {
     private final BookmarksViewModel viewModel;
     private final BookmarkController controller;
     private final ManualPlanController manualPlan;
+    private final ActivitySelectionViewModel selection;
     private final JPanel list = new JPanel();
 
     public BookmarksPanel(BookmarksViewModel viewModel) {
-        this(viewModel, null, null);
+        this(viewModel, null, null, null);
     }
 
     public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller) {
-        this(viewModel, controller, null);
+        this(viewModel, controller, null, null);
     }
 
     public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller,
                           ManualPlanController manualPlan) {
+        this(viewModel, controller, manualPlan, null);
+    }
+
+    public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller,
+                          ManualPlanController manualPlan,
+                          ActivitySelectionViewModel selection) {
         this.viewModel = viewModel;
         this.controller = controller;
         this.manualPlan = manualPlan;
+        this.selection = selection;
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -61,6 +73,9 @@ public final class BookmarksPanel extends JPanel {
         add(scroll, BorderLayout.CENTER);
         render(viewModel.getState());
         viewModel.addPropertyChangeListener(event -> render(viewModel.getState()));
+        if (selection != null) {
+            selection.addPropertyChangeListener(event -> render(viewModel.getState()));
+        }
     }
 
     private void render(BookmarksState state) {
@@ -74,6 +89,7 @@ public final class BookmarksPanel extends JPanel {
         for (Activity activity : state.getBookmarks()) {
             JPanel card = new JPanel(new BorderLayout());
             SwingTheme.styleCard(card);
+            makeSelectable(card, activity);
             JLabel name = new JLabel(activity.getName());
             name.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
             name.setForeground(SwingTheme.NAVY);
@@ -107,5 +123,22 @@ public final class BookmarksPanel extends JPanel {
         }
         list.revalidate();
         list.repaint();
+    }
+
+    private void makeSelectable(JPanel card, Activity activity) {
+        if (selection == null) return;
+        card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        card.setToolTipText("Show " + activity.getName() + " on the map");
+        if (activity.getId().equals(selection.getSelectedActivityId())) {
+            card.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(SwingTheme.BLUE, 2),
+                    BorderFactory.createEmptyBorder(11, 13, 11, 13)));
+        }
+        card.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent event) {
+                selection.select(activity.getId());
+            }
+        });
     }
 }

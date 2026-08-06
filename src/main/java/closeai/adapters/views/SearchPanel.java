@@ -3,6 +3,7 @@ package closeai.adapters.views;
 import closeai.adapters.controllers.ActivityDiscoveryController;
 import closeai.adapters.controllers.BookmarkController;
 import closeai.adapters.controllers.ManualPlanController;
+import closeai.adapters.viewmodels.ActivitySelectionViewModel;
 import closeai.adapters.viewmodels.SearchState;
 import closeai.adapters.viewmodels.SearchViewModel;
 import closeai.domain.entities.Activity;
@@ -11,6 +12,9 @@ import closeai.domain.valueobjects.IndoorOutdoorType;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Cursor;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -29,6 +33,7 @@ public final class SearchPanel extends JPanel {
     private final ActivityDiscoveryController discovery;
     private final BookmarkController bookmarks;
     private final ManualPlanController manualPlan;
+    private final ActivitySelectionViewModel selection;
     private final JPanel results = new JPanel();
     private final JTextField search = new JTextField();
     private final JComboBox<String> category = new JComboBox<>(new String[]{
@@ -44,20 +49,27 @@ public final class SearchPanel extends JPanel {
     private final JLabel feedback = new JLabel(" ");
 
     public SearchPanel(SearchViewModel viewModel) {
-        this(viewModel, null, null, null);
+        this(viewModel, null, null, null, null);
     }
 
     public SearchPanel(SearchViewModel viewModel, ActivityDiscoveryController discovery,
                        BookmarkController bookmarks) {
-        this(viewModel, discovery, bookmarks, null);
+        this(viewModel, discovery, bookmarks, null, null);
     }
 
     public SearchPanel(SearchViewModel viewModel, ActivityDiscoveryController discovery,
                        BookmarkController bookmarks, ManualPlanController manualPlan) {
+        this(viewModel, discovery, bookmarks, manualPlan, null);
+    }
+
+    public SearchPanel(SearchViewModel viewModel, ActivityDiscoveryController discovery,
+                       BookmarkController bookmarks, ManualPlanController manualPlan,
+                       ActivitySelectionViewModel selection) {
         this.viewModel = viewModel;
         this.discovery = discovery;
         this.bookmarks = bookmarks;
         this.manualPlan = manualPlan;
+        this.selection = selection;
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -72,6 +84,9 @@ public final class SearchPanel extends JPanel {
 
         render(viewModel.getState());
         viewModel.addPropertyChangeListener(event -> render(viewModel.getState()));
+        if (selection != null) {
+            selection.addPropertyChangeListener(event -> render(viewModel.getState()));
+        }
     }
 
     private JPanel searchControls() {
@@ -177,6 +192,7 @@ public final class SearchPanel extends JPanel {
     private JPanel activityCard(Activity activity, SearchState state) {
         JPanel card = new JPanel(new BorderLayout(10, 8));
         SwingTheme.styleCard(card);
+        makeSelectable(card, activity);
         JLabel name = new JLabel(activity.getName());
         name.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         name.setForeground(SwingTheme.NAVY);
@@ -212,6 +228,23 @@ public final class SearchPanel extends JPanel {
         }
         card.add(actions, BorderLayout.SOUTH);
         return card;
+    }
+
+    private void makeSelectable(JPanel card, Activity activity) {
+        if (selection == null) return;
+        card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        card.setToolTipText("Show " + activity.getName() + " on the map");
+        if (activity.getId().equals(selection.getSelectedActivityId())) {
+            card.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(SwingTheme.BLUE, 2),
+                    BorderFactory.createEmptyBorder(11, 13, 11, 13)));
+        }
+        card.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent event) {
+                selection.select(activity.getId());
+            }
+        });
     }
 
     private void addToPlan(Activity activity) {

@@ -13,6 +13,7 @@ import closeai.adapters.presenters.ShareTripPresenter;
 import closeai.adapters.presenters.TripSetupPresenter;
 import closeai.adapters.viewmodels.BookmarksState;
 import closeai.adapters.viewmodels.BookmarksViewModel;
+import closeai.adapters.viewmodels.ActivitySelectionViewModel;
 import closeai.adapters.viewmodels.CalendarViewModel;
 import closeai.adapters.viewmodels.DashboardState;
 import closeai.adapters.viewmodels.DashboardViewModel;
@@ -104,6 +105,8 @@ public final class AppBuilder {
         SearchViewModel searchViewModel = new SearchViewModel(searchStateFor(trip));
         BookmarksViewModel bookmarksViewModel = new BookmarksViewModel(
                 new BookmarksState(trip.getBookmarkedActivities()));
+        ActivitySelectionViewModel activitySelectionViewModel =
+                new ActivitySelectionViewModel();
         DayPlanViewModel dayPlanViewModel = new DayPlanViewModel(
                 new DayPlanState(
                         trip.getId(),
@@ -148,13 +151,18 @@ public final class AppBuilder {
 
         HeaderPanel headerPanel = new HeaderPanel(
                 dashboardViewModel, dayPlanViewModel, shareController);
-        OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel, searchViewModel);
+        OverviewPanel overviewPanel = new OverviewPanel(
+                dashboardViewModel, searchViewModel, bookmarksViewModel,
+                dayPlanViewModel, activitySelectionViewModel);
         SearchPanel searchPanel = new SearchPanel(
-                searchViewModel, discoveryController, bookmarkController, manualPlanController);
+                searchViewModel, discoveryController, bookmarkController,
+                manualPlanController, activitySelectionViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(
-                bookmarksViewModel, bookmarkController, manualPlanController);
+                bookmarksViewModel, bookmarkController,
+                manualPlanController, activitySelectionViewModel);
         DayPlanPanel dayPlanPanel =
-                new DayPlanPanel(dayPlanViewModel, optimizeController, manualPlanController);
+                new DayPlanPanel(dayPlanViewModel, optimizeController,
+                        manualPlanController, activitySelectionViewModel);
         TripOptionsPanel tripOptionsPanel =
                 new TripOptionsPanel(tripOptionsViewModel);
         PlannerPanel plannerPanel = new PlannerPanel(
@@ -190,6 +198,8 @@ public final class AppBuilder {
                 new SearchState(app.activities.findAll(), ""));
         BookmarksViewModel bookmarksViewModel = new BookmarksViewModel(
                 new BookmarksState(Collections.emptyList()));
+        ActivitySelectionViewModel activitySelectionViewModel =
+                new ActivitySelectionViewModel();
         DayPlanViewModel dayPlanViewModel = new DayPlanViewModel(
                 new DayPlanState(
                         "", Collections.emptyList(),
@@ -246,13 +256,18 @@ public final class AppBuilder {
 
         HeaderPanel headerPanel = new HeaderPanel(
                 dashboardViewModel, dayPlanViewModel, shareController);
-        OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel, searchViewModel);
+        OverviewPanel overviewPanel = new OverviewPanel(
+                dashboardViewModel, searchViewModel, bookmarksViewModel,
+                dayPlanViewModel, activitySelectionViewModel);
         SearchPanel searchPanel = new SearchPanel(
-                searchViewModel, discoveryController, bookmarkController, manualPlanController);
+                searchViewModel, discoveryController, bookmarkController,
+                manualPlanController, activitySelectionViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(
-                bookmarksViewModel, bookmarkController, manualPlanController);
+                bookmarksViewModel, bookmarkController,
+                manualPlanController, activitySelectionViewModel);
         DayPlanPanel dayPlanPanel =
-                new DayPlanPanel(dayPlanViewModel, optimizeController, manualPlanController);
+                new DayPlanPanel(dayPlanViewModel, optimizeController,
+                        manualPlanController, activitySelectionViewModel);
         TripOptionsPanel tripOptionsPanel =
                 new TripOptionsPanel(tripOptionsViewModel, tripSetupController);
         PlannerPanel plannerPanel = new PlannerPanel(

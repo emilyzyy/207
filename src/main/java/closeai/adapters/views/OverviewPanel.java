@@ -1,9 +1,14 @@
 package closeai.adapters.views;
 
+import closeai.adapters.viewmodels.ActivitySelectionViewModel;
+import closeai.adapters.viewmodels.BookmarksViewModel;
 import closeai.adapters.viewmodels.DashboardState;
 import closeai.adapters.viewmodels.DashboardViewModel;
+import closeai.adapters.viewmodels.DayPlanViewModel;
 import closeai.adapters.viewmodels.SearchState;
 import closeai.adapters.viewmodels.SearchViewModel;
+import closeai.domain.entities.Activity;
+import closeai.domain.entities.ScheduledEvent;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -11,16 +16,35 @@ import java.awt.Color;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /** Left-side interactive map and weather preview. */
 public final class OverviewPanel extends JPanel {
     private final DashboardViewModel viewModel;
+    private final SearchViewModel searchViewModel;
+    private final BookmarksViewModel bookmarksViewModel;
+    private final DayPlanViewModel dayPlanViewModel;
+    private final ActivitySelectionViewModel selectionViewModel;
     private final MapPanel mapPanel;
     private final JLabel conditionLabel = new JLabel();
     private final JLabel messageLabel = new JLabel();
 
     public OverviewPanel(DashboardViewModel viewModel, SearchViewModel searchViewModel) {
+        this(viewModel, searchViewModel, null, null, null);
+    }
+
+    public OverviewPanel(DashboardViewModel viewModel, SearchViewModel searchViewModel,
+                         BookmarksViewModel bookmarksViewModel,
+                         DayPlanViewModel dayPlanViewModel,
+                         ActivitySelectionViewModel selectionViewModel) {
         this.viewModel = viewModel;
+        this.searchViewModel = searchViewModel;
+        this.bookmarksViewModel = bookmarksViewModel;
+        this.dayPlanViewModel = dayPlanViewModel;
+        this.selectionViewModel = selectionViewModel;
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 12));
@@ -35,8 +59,17 @@ public final class OverviewPanel extends JPanel {
         refreshDashboard(viewModel.getState());
         viewModel.addPropertyChangeListener(event -> refreshDashboard(viewModel.getState()));
 
-        updateMap(searchViewModel.getState());
-        searchViewModel.addPropertyChangeListener(event -> updateMap(searchViewModel.getState()));
+        refreshMap();
+        searchViewModel.addPropertyChangeListener(event -> refreshMap());
+        if (bookmarksViewModel != null) {
+            bookmarksViewModel.addPropertyChangeListener(event -> refreshMap());
+        }
+        if (dayPlanViewModel != null) {
+            dayPlanViewModel.addPropertyChangeListener(event -> refreshMap());
+        }
+        if (selectionViewModel != null) {
+            selectionViewModel.addPropertyChangeListener(event -> selectCurrentActivity());
+        }
     }
 
     private JPanel weatherCard() {
@@ -69,9 +102,63 @@ public final class OverviewPanel extends JPanel {
         messageLabel.setText("<html>" + state.getWeatherMessage() + "</html>");
     }
 
-    private void updateMap(SearchState state) {
-        mapPanel.setActivities(state.getActivities());
+    private void refreshMap() {
+        SearchState state = searchViewModel.getState();
+        Map<String, Activity> merged = new LinkedHashMap<>();
+        for (Activity activity : state.getActivities()) {
+            merged.put(activity.getId(), activity);
+        }
+        if (bookmarksViewModel != null) {
+            for (Activity activity : bookmarksViewModel.getState().getBookmarks()) {
+                merged.put(activity.getId(), activity);
+            }
+        }
+        List<ScheduledEvent> events = new ArrayList<>();
+        if (dayPlanViewModel != null) {
+            events.addAll(dayPlanViewModel.getState().getEvents());
+            for (ScheduledEvent event : events) {
+                if (event.getActivity() != null) {
+                    merged.put(event.getActivity().getId(), event.getActivity());
+                }
+            }
+        }
+        mapPanel.setActivities(new ArrayList<>(merged.values()));
         mapPanel.setHighlightedIds(state.getBookmarkedIds(), state.getScheduledIds());
+        mapPanel.setSchedule(events);
+        selectCurrentActivity();
+    }
+
+    private void selectCurrentActivity() {
+        if (selectionViewModel == null) return;
+        String selectedId = selectionViewModel.getSelectedActivityId();
+        Activity selected = null;
+        for (Activity activity : mapActivities()) {
+            if (activity.getId().equals(selectedId)) {
+                selected = activity;
+                break;
+            }
+        }
+        mapPanel.selectActivity(selected);
+    }
+
+    private List<Activity> mapActivities() {
+        Map<String, Activity> activities = new LinkedHashMap<>();
+        for (Activity activity : searchViewModel.getState().getActivities()) {
+            activities.put(activity.getId(), activity);
+        }
+        if (bookmarksViewModel != null) {
+            for (Activity activity : bookmarksViewModel.getState().getBookmarks()) {
+                activities.put(activity.getId(), activity);
+            }
+        }
+        if (dayPlanViewModel != null) {
+            for (ScheduledEvent event : dayPlanViewModel.getState().getEvents()) {
+                if (event.getActivity() != null) {
+                    activities.put(event.getActivity().getId(), event.getActivity());
+                }
+            }
+        }
+        return new ArrayList<>(activities.values());
     }
 
     public MapPanel getMapPanel() {
