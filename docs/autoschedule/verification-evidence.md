@@ -9,8 +9,8 @@ Environment: Java 24.0.2 (Temurin), macOS, aarch64. Maven via `./mvnw`.
 ./mvnw clean test
 ```
 
-**314 tests, 0 failures, 0 errors, 9 skipped** (re-run 2026-08-06 after integrating
-`origin/main` and Alex's branches; previous figures were 270, 297, then 300). The six skips are all opt-in live tests that require
+**319 tests, 0 failures, 0 errors, 9 skipped** (re-run 2026-08-06 after integrating
+`origin/main` including Shiyuan's hourly weather; previous figures were 270, 297, 300, 314). The six skips are all opt-in live tests that require
 network access and an explicit environment variable: the pre-existing
 `OpenMeteoWeatherServiceLiveTest` (1, needs `RUN_LIVE_OPEN_METEO_TEST=true`) and
 `AutoScheduleLiveVerificationTest` (5, needs `RUN_LIVE_AUTOSCHEDULE_TEST=true`) and
@@ -38,16 +38,24 @@ below were therefore never wrong — the noise was.
 
 | Scope | Line | Branch |
 |---|---|---|
-| Repository-wide (after exclusions) | **79.7%** | 60.5% |
-| Autoschedule slice (`application.autoschedule*` + gateways) | **90.4%** | 73.6% |
+| Repository-wide (after exclusions) | **71.1%** | 52.4% |
+| Autoschedule slice (`application.autoschedule*` + gateways) | **90.5%** | 73.7% |
 | `AutoScheduleInteractor` (the use-case interactor) | **92.3%** | 80.8% |
 
 New in this batch: `WeatherOption` 100% line, `WeatherContextGateway` 100% line,
 `SchedulingPreferences` 100% line, `AutoScheduleController` 94.6% line.
 
+> **Repository coverage fell from 79.7% to 71.1% in this integration**, and the cause is
+> merged teammate code arriving with little of its own test coverage — chiefly the new
+> Supabase auth and persistence classes. Nothing in the Autoschedule slice regressed: it is
+> 90.5% and the Interactor 92.3%, both essentially unchanged. **The 70% rubric threshold is
+> now met by 1.1 points rather than 9.7**, so any further untested code from any member
+> could put the group below it. Worth raising with the team rather than discovering at
+> submission.
+
 Against the group rubric's testing descriptors — 5/5 wants more than 90% interactor
 coverage and more than 70% overall — the interactor is at 92.3% and the repository is at
-79.7%. Both thresholds are met on line coverage, which Piazza @339 confirms is an
+71.1%. Both thresholds are met on line coverage, which Piazza @339 confirms is an
 acceptable metric. The Autoschedule slice as a whole also reaches 90.4%.
 
 **Exclusions, and why each is justified:**
@@ -193,16 +201,16 @@ reaches the live service and that only a valid credential is missing.
 | A traffic-time difference between two departures | **Not observed.** |
 | Which provider answered the shared `DistanceService` call | **Unprovable through that return type** — it is a bare `int`. The new test bypasses it rather than trying to infer provenance from it. |
 
-**Weather — verified, and it is what the new preference gate is built on.** The live gateway
-returns a forecast, but `canDistinguishTimes()` is false: one severity covers the whole
-trip, so every candidate time scores identically. Since Batch 5 that is not merely a caveat
-but the mechanism — the "Consider weather" checkbox is disabled and unticked, and the dialog
-shows "Hourly weather is not available for this trip date." If the traveller somehow asks
-for weather anyway, the Interactor still finds the forecast coarse, contributes zero, warns
-that "the forecast covers the whole day rather than each hour", and omits weather from the
-applied-objectives list. Asserted through the production wiring by
-`AutoScheduleWalkthroughTest`, and the enabled path by
-`anHourlyGatewayWouldOfferThePreferenceWithNoOtherChange`.
+**Weather — now hourly, and the preference is live.** Shiyuan's `getHourlyWarnings` supplies
+a severity per hour and `WeatherServiceContextGateway` turns it into an hourly
+`WeatherContext`, so `canDistinguishTimes()` is true. Verified directly against the
+production wiring: `available=true canDistinguishTimes=true`, with distinct severities
+readable at 10:00 and 15:00. "Consider weather" is therefore **enabled and ticked by default**
+in the shipped dialog — captured in `screenshots/02-settings-weather-available.png`.
+
+The degraded paths are still covered and still honest: a single known hour is reported as
+trip-level so it cannot pretend to inform timing, and an empty, severity-less or throwing
+provider becomes unavailable, contributes zero, and withholds the checkbox with a reason.
 
 ## 5. Manual functional, EDT and accessibility checks
 

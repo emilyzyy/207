@@ -148,11 +148,14 @@ The explanation is a visible label, not colour or absence, and it is repeated on
 checkbox's accessible description because a disabled control can be skipped in focus
 traversal.
 
-**Today, only the disabled row is reachable in production:** both shipped adapters report
-one severity per trip. That is verified rather than assumed — the live run records
-`available=true canDistinguishTimes=false`, and `AutoScheduleWalkthroughTest` asserts both
-the withheld state through the real wiring and that an hourly gateway would offer the
-preference with no other change.
+**The enabled row is now the production state.** Shiyuan's `getHourlyWarnings` supplies a
+severity per hour, `WeatherServiceContextGateway` turns it into an hourly `WeatherContext`,
+and `canDistinguishTimes()` is true. Activating it required **one adapter change and nothing
+else** — the engine, Interactor, Controller and dialog were untouched, because
+`WeatherContext` accepted an hourly shape from the start and the gate always asked the
+capability rather than a date. `AutoScheduleWalkthroughTest` asserts the preference is
+offered through the real wiring, that no stale caveat appears, and that a gateway with no
+usable forecast still withholds it with a reason.
 
 ## Integration seam with add-to-plan
 

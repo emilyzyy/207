@@ -89,29 +89,29 @@ Filenames below are the ones committed.
 | **Must appear in the crop** | All three time ranges and names; the Lock checkbox on every row; the Autoschedule button. |
 | **Must not appear** | Any proposed schedule; Apply or Cancel (both hidden outside a preview); any terminal window, environment variable, URL or personal information. |
 
-### 2. Settings — weather withheld (the state that occurs today)
+### 2. Settings — weather offered (the state that occurs today)
 
 | | |
 |---|---|
-| **File** | `screenshots/02-settings-weather-withheld.png` |
+| **File** | `screenshots/02-settings-weather-available.png` |
 | **Purpose** | Shows both user preferences and the capability gate. Supports Use-case Explanation and the accessibility descriptor. *(engineering judgment, not individually rubric-named)* |
 | **Starting state** | From state 1, choose **Autoschedule**. |
 | **Actions and settings** | Let the weather capability lookup finish (it is immediate offline). Optionally add one unavailable period. |
-| **Expected visible result** | Available from 09:00, until 21:00, mode WALKING. **"Keep my current order where possible" ticked.** **"Consider weather" unticked and greyed**, with the sentence *"Hourly weather is not available for this trip date."* beneath it. |
-| **Must appear in the crop** | Both checkboxes, the weather explanation sentence, and the Generate Preview button. |
+| **Expected visible result** | Available from 09:00, until 21:00, mode WALKING. **Both checkboxes ticked and enabled** — "Keep my current order where possible" and "Consider weather". Since Shiyuan's hourly forecast landed, this is the production state. |
+| **Must appear in the crop** | Both ticked checkboxes and the Generate Preview button. |
 | **Must not appear** | Any API key, authenticated URL, or the "Checking hourly weather…" transitional text. |
 
-### 2b. Settings — weather available
+### 2b. Settings — weather withheld (the degraded path)
 
 | | |
 |---|---|
-| **File** | `screenshots/02b-settings-weather-available.png` |
-| **Purpose** | Shows the other half of the gate: when a forecast can distinguish hours, the box is enabled and **on by default**. Needed because the shipped adapters cannot produce this state, so without it the design looks like a permanently dead control. |
-| **Starting state** | Requires a gateway returning an hourly `WeatherContext`. Not reachable through the shipped weather adapters today. |
+| **File** | `screenshots/02b-settings-weather-withheld.png` |
+| **Purpose** | Shows the other half of the gate: when no usable forecast exists the box is disabled, unticked and explained. Worth keeping because a provider can always fail, and it is the behaviour that makes the preference honest. |
+| **Starting state** | Requires a gateway returning no usable forecast. Not the normal production state since the hourly adapter landed. |
 | **Actions and settings** | Captured through the same dialog with an hourly forecast supplied. |
-| **Expected visible result** | "Consider weather" **enabled and ticked**, no explanation sentence. |
-| **Must appear in the crop** | The enabled, ticked checkbox and the absence of the withheld-reason line. |
-| **Must not appear** | Anything implying this is the current production behaviour — say plainly that it is the state an hourly gateway would produce. |
+| **Expected visible result** | "Consider weather" **disabled and unticked**, with *"Hourly weather is not available for this trip date."* beneath it. |
+| **Must appear in the crop** | The disabled checkbox and the explanation sentence. |
+| **Must not appear** | Anything implying this is the current production behaviour — it is the fallback. |
 
 ### 3. Preview — the proposal, with the plan still untouched
 

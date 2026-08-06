@@ -175,8 +175,8 @@ what cannot be worked out automatically:
   travel*: the traveller waits until the period ends before setting out.
 - **Keep my current order where possible** - on by default.
 - **Consider weather** - offered only when the forecast can tell one time of day from
-  another. When it can, the box is enabled and ticked by default and may be unticked. When
-  the forecast covers the whole day, is beyond the provider's hourly range, or cannot be
+  another. Since the hourly forecast landed this is the normal case: the box is **enabled and
+  ticked by default** and may be unticked. When only one hour is known, or no forecast can be
   obtained, the box is disabled and unticked and the reason is shown in words beneath it
   ("Hourly weather is not available for this trip date."). The state is never signalled by
   colour alone, and the checkbox stays keyboard-reachable.
@@ -236,12 +236,12 @@ output.
 
 ### Current limitations
 
-- **The weather preference cannot be offered yet.** Both shipped forecast adapters report
-  one severity for the whole trip, so `canDistinguishTimes()` is false and the "Consider
-  weather" checkbox is disabled with the reason shown. This is the designed behaviour
-  rather than a defect, but it does mean the enabled state is not reachable in production
-  today. An hourly forecast would activate it with no change to the engine, the Interactor
-  or the UI — verified by test, not assumed.
+- ~~The weather preference cannot be offered yet.~~ **Resolved.** Shiyuan's hourly forecast
+  landed, so `WeatherService.getHourlyWarnings` supplies a severity per hour,
+  `canDistinguishTimes()` is true, and "Consider weather" is **enabled and ticked by default**
+  in production. Activating it took one adapter change and nothing else — no engine, Interactor,
+  Controller or dialog edit — which is what the inward-facing contract was for. The disabled
+  path is still exercised, because a provider can always fail.
 - **Travel confidence is reported as unknown.** The shared `DistanceService` returns a plain
   number and cannot distinguish a real route from its own distance-based fallback, so the
   preview says travel times may include estimates instead of claiming more.
