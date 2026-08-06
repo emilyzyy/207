@@ -8,14 +8,17 @@ import java.util.List;
 /**
  * The scheduling intelligence in force for one run.
  *
- * <p>Minimising travel, cutting wasted waiting, sensible meal times, daylight for
- * outdoor activities and weather awareness are all built in and always active. They are
- * what the feature is for, and a schedule that ignored them would not be worth
- * previewing, so they are not presented as options to switch off.</p>
+ * <p>Minimising travel, cutting wasted waiting, sensible meal times and daylight for
+ * outdoor activities are all built in and always active. They are what the feature is
+ * for, and a schedule that ignored them would not be worth previewing, so they are not
+ * presented as options to switch off.</p>
  *
- * <p>The single thing the traveller does decide is whether to keep the order they
- * already arranged. That is a genuine matter of taste rather than a question of quality,
- * which is exactly why it is the one setting that is offered.</p>
+ * <p>Two things the traveller does decide. Whether to keep the order they already
+ * arranged is a genuine matter of taste rather than a question of quality. Whether to
+ * consider weather is offered only when the forecast can tell one hour from another,
+ * because a whole-day outlook has nothing to say about <em>when</em> to do things; see
+ * {@link WeatherOption}. Both are soft and bounded, and neither can make a day
+ * unschedulable.</p>
  */
 public final class SchedulingPreferences {
 
@@ -80,10 +83,21 @@ public final class SchedulingPreferences {
         return Math.min(MAX_ORDER_PENALTY_MINUTES, totalDisplacement * ORDER_PENALTY_PER_POSITION);
     }
 
-    /** What the Preview lists back as the objectives that were applied. */
+    /**
+     * What the Preview lists back as the objectives that were applied.
+     *
+     * <p>Weather earns its place here only when it could actually change something. It is
+     * omitted when the traveller left it unticked, and omitted just the same when they
+     * ticked it but the forecast turned out to cover the whole day: in both cases it
+     * scored nothing, and listing an objective that contributed zero would tell the user
+     * their day was arranged around something it was not.</p>
+     */
     public List<PolicyId> activeIds() {
         List<PolicyId> ids = new ArrayList<>();
         for (SoftPolicy policy : policies) {
+            if (policy.id() == PolicyId.WEATHER && !context.getWeather().canDistinguishTimes()) {
+                continue;
+            }
             ids.add(policy.id());
         }
         ids.add(PolicyId.REDUCE_IDLE);

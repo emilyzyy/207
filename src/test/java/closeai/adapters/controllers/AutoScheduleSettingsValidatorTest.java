@@ -20,7 +20,7 @@ class AutoScheduleSettingsValidatorTest {
     private static AutoScheduleSettings settings(LocalTime from, LocalTime until,
                                                  AutoScheduleSettings.Window... windows) {
         return new AutoScheduleSettings(from, until, TransportationMode.WALKING,
-                Arrays.asList(windows), true);
+                Arrays.asList(windows), true, true);
     }
 
     @Test
@@ -97,7 +97,7 @@ class AutoScheduleSettingsValidatorTest {
     void missingTimesAreReportedBeforeAnythingElse() {
         List<String> problems = validator.validate(
                 new AutoScheduleSettings(null, null, TransportationMode.WALKING,
-                        Collections.emptyList(), true),
+                        Collections.emptyList(), true, true),
                 TRIP_START, TRIP_END);
 
         assertEquals(1, problems.size());

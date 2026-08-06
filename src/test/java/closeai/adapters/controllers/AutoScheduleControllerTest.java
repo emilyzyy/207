@@ -14,6 +14,7 @@ import closeai.application.autoschedule.AutoScheduleApplyInputData;
 import closeai.application.autoschedule.AutoScheduleInputBoundary;
 import closeai.application.autoschedule.AutoScheduleInputData;
 import closeai.application.autoschedule.ProposedEventData;
+import closeai.application.autoschedule.WeatherOption;
 import closeai.domain.valueobjects.TransportationMode;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -21,6 +22,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 class AutoScheduleControllerTest {
@@ -30,6 +37,8 @@ class AutoScheduleControllerTest {
         private AutoScheduleInputData previewInput;
         private AutoScheduleApplyInputData applyInput;
         private int previewCalls;
+        private String weatherOptionTripId;
+        private WeatherOption weatherOption = WeatherOption.available();
 
         @Override
         public void preview(AutoScheduleInputData inputData) {
@@ -40,6 +49,12 @@ class AutoScheduleControllerTest {
         @Override
         public void apply(AutoScheduleApplyInputData inputData) {
             applyInput = inputData;
+        }
+
+        @Override
+        public WeatherOption weatherOptionFor(String tripId) {
+            weatherOptionTripId = tripId;
+            return weatherOption;
         }
     }
 
@@ -53,7 +68,7 @@ class AutoScheduleControllerTest {
     private static AutoScheduleSettings settings(boolean keepOrder,
                                                  AutoScheduleSettings.Window... windows) {
         return new AutoScheduleSettings(LocalTime.of(10, 0), LocalTime.of(18, 0),
-                TransportationMode.TRANSIT, Arrays.asList(windows), keepOrder);
+                TransportationMode.TRANSIT, Arrays.asList(windows), keepOrder, true);
     }
 
     private AutoScheduleController controllerFor(DayPlanViewModel viewModel) {
@@ -76,6 +91,66 @@ class AutoScheduleControllerTest {
         assertTrue(input.isKeepCurrentOrder());
         assertEquals(1, input.getUnavailableWindows().size());
         assertEquals(LocalTime.of(12, 0), input.getUnavailableWindows().get(0).getStart());
+    }
+
+    @Test
+    void previewCarriesTheWeatherChoiceBothWays() {
+        DayPlanViewModel viewModel = viewModel("trip-1");
+
+        controllerFor(viewModel).preview(new AutoScheduleSettings(LocalTime.of(10, 0),
+                LocalTime.of(18, 0), TransportationMode.TRANSIT, Collections.emptyList(),
+                true, false));
+        assertFalse(useCase.previewInput.isConsiderWeather(),
+                "an unticked box is a decision the use case has to hear about");
+
+        controllerFor(viewModel).preview(settings(true));
+        assertTrue(useCase.previewInput.isConsiderWeather());
+    }
+
+    @Test
+    void theWeatherCapabilityLookupGoesThroughTheTaskRunner() {
+        DayPlanViewModel viewModel = viewModel("trip-1");
+        AtomicInteger runnerCalls = new AtomicInteger();
+        TaskRunner counting = work -> {
+            runnerCalls.incrementAndGet();
+            work.run();
+        };
+        AtomicReference<WeatherOption> answer = new AtomicReference<>();
+
+        new AutoScheduleController(useCase, viewModel, counting).loadWeatherOption(answer::set);
+
+        assertEquals(1, runnerCalls.get(),
+                "asking a forecast provider is a network call and belongs off the UI thread");
+        assertEquals("trip-1", useCase.weatherOptionTripId);
+        assertTrue(answer.get().isAvailable());
+    }
+
+    @Test
+    void theWeatherCapabilityLookupNeverRunsOnTheEventThread() throws Exception {
+        DayPlanViewModel viewModel = viewModel("trip-1");
+        AtomicBoolean ranOnEventThread = new AtomicBoolean(true);
+        CountDownLatch answered = new CountDownLatch(1);
+        AutoScheduleController controller =
+                new AutoScheduleController(useCase, viewModel, new SwingTaskRunner());
+
+        SwingUtilities.invokeAndWait(() -> controller.loadWeatherOption(option -> {
+            ranOnEventThread.set(SwingUtilities.isEventDispatchThread());
+            answered.countDown();
+        }));
+
+        assertTrue(answered.await(5, TimeUnit.SECONDS), "the lookup should have answered");
+        assertFalse(ranOnEventThread.get(),
+                "a slow forecast call on the event thread would freeze the settings dialog");
+    }
+
+    @Test
+    void aTripLessViewOffersNoWeatherPreferenceAndAsksNobody() {
+        AtomicReference<WeatherOption> answer = new AtomicReference<>();
+
+        controllerFor(viewModel("")).loadWeatherOption(answer::set);
+
+        assertFalse(answer.get().isAvailable());
+        assertNull(useCase.weatherOptionTripId, "there is nothing to ask about without a trip");
     }
 
     @Test

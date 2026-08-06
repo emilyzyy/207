@@ -20,6 +20,8 @@ import closeai.adapters.viewmodels.DayPlanViewModel;
 import closeai.adapters.viewmodels.PreviewRowView;
 import closeai.application.AppContainer;
 import closeai.application.autoschedule.AutoScheduleInteractor;
+import closeai.application.autoschedule.WeatherContext;
+import closeai.application.autoschedule.WeatherOption;
 import closeai.application.autoschedule.engine.ScheduleEngine;
 import closeai.application.autoschedule.policy.DaylightPolicy;
 import closeai.application.autoschedule.policy.MealWindowPolicy;
@@ -33,13 +35,17 @@ import closeai.domain.valueobjects.EventType;
 import closeai.domain.valueobjects.IndoorOutdoorType;
 import closeai.domain.valueobjects.Location;
 import closeai.domain.valueobjects.TransportationMode;
+import closeai.domain.valueobjects.WeatherSeverity;
 import closeai.infrastructure.mock.MockDistanceService;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -98,7 +104,7 @@ class AutoScheduleWalkthroughTest {
     private static AutoScheduleSettings settings(boolean keepOrder,
                                                  AutoScheduleSettings.Window... unavailable) {
         return new AutoScheduleSettings(LocalTime.of(9, 0), LocalTime.of(21, 0),
-                TransportationMode.WALKING, Arrays.asList(unavailable), keepOrder);
+                TransportationMode.WALKING, Arrays.asList(unavailable), keepOrder, true);
     }
 
     @Test
@@ -258,5 +264,61 @@ class AutoScheduleWalkthroughTest {
                         .anyMatch(warning -> warning.contains("covers the whole day")),
                 "the mock and live gateways both report one severity per trip, and the UI "
                         + "must say weather did not influence the timing");
+    }
+
+    /**
+     * The state the settings dialog will actually be in today, through the real wiring.
+     * Both shipped weather adapters report one severity for the whole trip, so the
+     * preference is withheld with a reason rather than offered as a checkbox that would
+     * change nothing.
+     */
+    @Test
+    void theWeatherPreferenceIsWithheldWithAReasonThroughTheProductionWiring() {
+        AppBuilder builder = new AppBuilder();
+        AppContainer app = builder.buildOffline();
+        Trip trip = app.trips.save(inefficientDay());
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+                trip.getId(), trip.getScheduledEvents(), "", false));
+        AtomicReference<WeatherOption> answer = new AtomicReference<>();
+
+        wire(app, viewModel).loadWeatherOption(answer::set);
+
+        assertFalse(answer.get().isAvailable(),
+                "a whole-day forecast cannot say when to do anything");
+        assertFalse(answer.get().isSelectedByDefault());
+        assertEquals(WeatherOption.NO_HOURLY_FORECAST, answer.get().getUnavailableReason(),
+                "the dialog needs words to show, not just a disabled control");
+    }
+
+    /**
+     * Nothing about the engine or the Interactor changes when an hourly forecast arrives:
+     * the same wiring, given a gateway that can distinguish hours, offers the preference.
+     * This is the test that keeps the "no redesign needed" claim honest.
+     */
+    @Test
+    void anHourlyGatewayWouldOfferThePreferenceWithNoOtherChange() {
+        AppBuilder builder = new AppBuilder();
+        AppContainer app = builder.buildOffline();
+        Trip trip = app.trips.save(inefficientDay());
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+                trip.getId(), trip.getScheduledEvents(), "", false));
+        Map<Integer, WeatherSeverity> byHour = new HashMap<>();
+        for (int hour = 0; hour < 24; hour++) {
+            byHour.put(hour, WeatherSeverity.LOW);
+        }
+        AutoScheduleInteractor hourly = new AutoScheduleInteractor(app.trips,
+                new DistanceServiceTravelTimeEstimator(new MockDistanceService()),
+                anyTrip -> WeatherContext.hourly(byHour),
+                new AutoSchedulePresenter(viewModel),
+                Arrays.asList(new WeatherSuitabilityPolicy(), new MealWindowPolicy(),
+                        new DaylightPolicy()),
+                new ScheduleEngine());
+        AtomicReference<WeatherOption> answer = new AtomicReference<>();
+
+        new AutoScheduleController(hourly, viewModel, TaskRunner.immediate())
+                .loadWeatherOption(answer::set);
+
+        assertTrue(answer.get().isAvailable());
+        assertTrue(answer.get().isSelectedByDefault(), "offered means on unless declined");
     }
 }

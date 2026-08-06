@@ -2,6 +2,7 @@ package closeai.adapters.views;
 
 import closeai.adapters.controllers.AutoScheduleSettings;
 import closeai.adapters.controllers.AutoScheduleSettingsValidator;
+import closeai.application.autoschedule.WeatherOption;
 import closeai.domain.valueobjects.TransportationMode;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -37,11 +38,20 @@ import javax.swing.KeyStroke;
  */
 public final class AutoScheduleSettingsDialog extends JDialog {
 
+    /**
+     * Shown while the forecast provider is being asked what it can offer. The checkbox
+     * starts disabled and unticked, so a dialog dismissed before the answer arrives
+     * simply schedules without weather rather than acting on a guess.
+     */
+    static final String CHECKING_WEATHER = "Checking hourly weather for this trip date...";
+
     private final JTextField availableFrom = new JTextField(6);
     private final JTextField availableUntil = new JTextField(6);
     private final JComboBox<TransportationMode> mode =
             new JComboBox<>(TransportationMode.values());
     private final JCheckBox keepOrder = new JCheckBox("Keep my current order where possible", true);
+    private final JCheckBox considerWeather = new JCheckBox("Consider weather", false);
+    private final JLabel weatherNote = new JLabel(CHECKING_WEATHER);
     private final JPanel unavailableRows = new JPanel();
     private final List<TimeRangeRow> rows = new ArrayList<>();
     private final AutoScheduleSettingsValidator validator = new AutoScheduleSettingsValidator();
@@ -120,7 +130,60 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         keepOrder.setToolTipText("Prefer the order you already arranged when the days are "
                 + "otherwise about as good.");
         form.add(keepOrder);
+
+        considerWeather.setFont(SwingTheme.BODY);
+        considerWeather.setAlignmentX(Component.LEFT_ALIGNMENT);
+        considerWeather.setEnabled(false);
+        considerWeather.setToolTipText("Prefer to keep outdoor activities out of the worst "
+                + "weather, when the forecast is detailed enough to tell the hours apart.");
+        considerWeather.getAccessibleContext().setAccessibleName("Consider weather");
+        considerWeather.getAccessibleContext().setAccessibleDescription(CHECKING_WEATHER);
+        form.add(considerWeather);
+
+        // A visible sentence, not a greyed-out box the user has to interpret: whenever the
+        // option cannot be offered, the reason is readable text sitting next to it. Colour
+        // is never the signal, and screen readers get the same words through the
+        // checkbox's accessible description, since a disabled control may be skipped.
+        weatherNote.setFont(SwingTheme.SMALL);
+        weatherNote.setForeground(SwingTheme.MUTED);
+        weatherNote.setAlignmentX(Component.LEFT_ALIGNMENT);
+        form.add(weatherNote);
         return form;
+    }
+
+    /**
+     * Applies the use case's answer about whether weather can be offered at all.
+     *
+     * <p>Called once the capability lookup finishes. Enabled means the forecast can tell
+     * the hours apart, in which case the box is ticked by default and the traveller may
+     * untick it. Disabled means it stays unticked and the reason is shown in words.</p>
+     *
+     * <p>Must be called on the event thread. Package-private callers in tests may invoke
+     * it directly; the panel marshals it there itself.</p>
+     */
+    public void applyWeatherOption(WeatherOption option) {
+        if (option == null) {
+            return;
+        }
+        considerWeather.setEnabled(option.isAvailable());
+        considerWeather.setSelected(option.isSelectedByDefault());
+        String note = option.isAvailable() ? "" : option.getUnavailableReason();
+        weatherNote.setText(note);
+        weatherNote.setVisible(!note.isEmpty());
+        considerWeather.getAccessibleContext().setAccessibleDescription(
+                note.isEmpty() ? "Weather will be taken into account when arranging the day."
+                        : note);
+        pack();
+    }
+
+    /** The explanation currently shown beneath the weather checkbox; empty when none. */
+    String weatherNoteText() {
+        return weatherNote.isVisible() ? weatherNote.getText() : "";
+    }
+
+    /** Exposed so tests can assert the checkbox's enabled and ticked state. */
+    JCheckBox weatherCheckBox() {
+        return considerWeather;
     }
 
     private JLabel labelFor(String text, Component field) {
@@ -201,8 +264,12 @@ public final class AutoScheduleSettingsDialog extends JDialog {
             }
             windows.add(new AutoScheduleSettings.Window(start, end));
         }
+        // A disabled checkbox is never ticked, so an unusable forecast can only ever read
+        // as "do not consider weather".
+        boolean weather = considerWeather.isEnabled() && considerWeather.isSelected();
         return new AutoScheduleSettings(from, until,
-                (TransportationMode) mode.getSelectedItem(), windows, keepOrder.isSelected());
+                (TransportationMode) mode.getSelectedItem(), windows, keepOrder.isSelected(),
+                weather);
     }
 
     private static LocalTime parse(String text) {

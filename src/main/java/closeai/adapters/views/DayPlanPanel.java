@@ -177,6 +177,12 @@ public final class DayPlanPanel extends JPanel {
     private void openSettings() {
         AutoScheduleSettingsDialog dialog =
                 new AutoScheduleSettingsDialog(this, tripStart, tripEnd, tripMode);
+        // Asking whether weather is usable means asking a forecast service, so it happens
+        // off the event thread while the dialog is already on screen. The answer comes
+        // back on a background thread and is applied here, on the EDT, because knowing
+        // that this is Swing is the view's job rather than the controller's.
+        autoScheduleController.loadWeatherOption(option ->
+                SwingUtilities.invokeLater(() -> dialog.applyWeatherOption(option)));
         AutoScheduleSettings settings = dialog.showDialog();
         if (settings != null) {
             autoScheduleController.preview(settings);

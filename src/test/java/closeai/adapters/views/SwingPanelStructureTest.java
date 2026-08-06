@@ -135,5 +135,10 @@ final class SwingPanelStructureTest {
         @Override
         public void apply(closeai.application.autoschedule.AutoScheduleApplyInputData inputData) {
         }
+
+        @Override
+        public closeai.application.autoschedule.WeatherOption weatherOptionFor(String tripId) {
+            return closeai.application.autoschedule.WeatherOption.available();
+        }
     }
 }

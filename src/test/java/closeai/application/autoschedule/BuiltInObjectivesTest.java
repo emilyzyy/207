@@ -6,6 +6,7 @@ import static closeai.application.autoschedule.ProblemFixtures.noBlockedWindows;
 import static closeai.application.autoschedule.ProblemFixtures.tasks;
 import static closeai.application.autoschedule.ProblemFixtures.window;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -262,13 +263,30 @@ class BuiltInObjectivesTest {
     }
 
     @Test
-    void theActiveObjectiveListAlwaysIncludesTheBuiltInsAndReflectsTheChoice() {
-        assertEquals(Arrays.asList(PolicyId.WEATHER, PolicyId.MEAL_TIME, PolicyId.DAYLIGHT,
+    void theActiveObjectiveListIncludesTheBuiltInsAndReflectsTheChoice() {
+        assertEquals(Arrays.asList(PolicyId.MEAL_TIME, PolicyId.DAYLIGHT,
                         PolicyId.REDUCE_IDLE, PolicyId.PRESERVE_ORDER),
                 preferences(true, WeatherContext.unavailable()).activeIds());
-        assertEquals(Arrays.asList(PolicyId.WEATHER, PolicyId.MEAL_TIME, PolicyId.DAYLIGHT,
+        assertEquals(Arrays.asList(PolicyId.MEAL_TIME, PolicyId.DAYLIGHT,
                         PolicyId.REDUCE_IDLE),
                 preferences(false, WeatherContext.unavailable()).activeIds());
+    }
+
+    @Test
+    void weatherIsListedAsAnObjectiveOnlyWhenItCouldActuallyContribute() {
+        Map<Integer, WeatherSeverity> byHour = new HashMap<>();
+        byHour.put(11, WeatherSeverity.HIGH);
+
+        assertTrue(preferences(true, WeatherContext.hourly(byHour)).activeIds()
+                        .contains(PolicyId.WEATHER),
+                "an hourly forecast can move outdoor activities, so it is a real objective");
+        assertFalse(preferences(true, WeatherContext.tripLevel(WeatherSeverity.HIGH)).activeIds()
+                        .contains(PolicyId.WEATHER),
+                "a whole-day forecast scores every time alike, so claiming it as an applied "
+                        + "objective would misdescribe how the day was arranged");
+        assertFalse(preferences(true, WeatherContext.unavailable()).activeIds()
+                        .contains(PolicyId.WEATHER),
+                "weather that was never consulted is not an objective that was applied");
     }
 
     @Test

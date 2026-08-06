@@ -62,7 +62,7 @@ class AutoScheduleInteractorTest {
                                                List<TimeWindow> unavailable,
                                                boolean keepCurrentOrder) {
         return new AutoScheduleInputData(tripId, LocalTime.of(9, 0), LocalTime.of(21, 0),
-                TransportationMode.WALKING, locks, unavailable, keepCurrentOrder);
+                TransportationMode.WALKING, locks, unavailable, keepCurrentOrder, true);
     }
 
     private static AutoScheduleInputData simpleInput() {
@@ -158,7 +158,7 @@ class AutoScheduleInteractorTest {
         FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
         AutoScheduleInputData widened = new AutoScheduleInputData("trip-1",
                 LocalTime.of(6, 0), LocalTime.of(23, 0), TransportationMode.WALKING,
-                Collections.emptySet(), Collections.emptyList(), true);
+                Collections.emptySet(), Collections.emptyList(), true, true);
 
         interactorFor(trips).preview(widened);
 
@@ -172,7 +172,7 @@ class AutoScheduleInteractorTest {
         FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
         AutoScheduleInputData narrowed = new AutoScheduleInputData("trip-1",
                 LocalTime.of(10, 0), LocalTime.of(16, 0), TransportationMode.WALKING,
-                Collections.emptySet(), Collections.emptyList(), true);
+                Collections.emptySet(), Collections.emptyList(), true, true);
 
         interactorFor(trips).preview(narrowed);
 
@@ -186,7 +186,7 @@ class AutoScheduleInteractorTest {
         FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
         AutoScheduleInputData inverted = new AutoScheduleInputData("trip-1",
                 LocalTime.of(16, 0), LocalTime.of(10, 0), TransportationMode.WALKING,
-                Collections.emptySet(), Collections.emptyList(), true);
+                Collections.emptySet(), Collections.emptyList(), true, true);
 
         interactorFor(trips).preview(inverted);
 
@@ -257,7 +257,7 @@ class AutoScheduleInteractorTest {
 
         assertNotNull(presenter.getPreview(), "weather must never cost the user their schedule");
         assertTrue(presenter.getPreview().getWarnings().stream()
-                .anyMatch(warning -> warning.contains("Weather could not be considered")));
+                .anyMatch(warning -> warning.contains("no forecast was available")));
     }
 
     @Test
@@ -271,7 +271,7 @@ class AutoScheduleInteractorTest {
 
         assertNotNull(presenter.getPreview());
         assertTrue(presenter.getPreview().getWarnings().stream()
-                .anyMatch(warning -> warning.contains("Weather could not be considered")));
+                .anyMatch(warning -> warning.contains("no forecast was available")));
     }
 
     @Test
@@ -309,9 +309,11 @@ class AutoScheduleInteractorTest {
         interactorFor(trips).preview(input("trip-1", Collections.emptySet(),
                 Collections.emptyList(), true));
 
-        assertEquals(Arrays.asList(PolicyId.WEATHER, PolicyId.MEAL_TIME, PolicyId.DAYLIGHT,
+        assertEquals(Arrays.asList(PolicyId.MEAL_TIME, PolicyId.DAYLIGHT,
                         PolicyId.REDUCE_IDLE, PolicyId.PRESERVE_ORDER),
-                presenter.getPreview().getActivePolicies());
+                presenter.getPreview().getActivePolicies(),
+                "the default fake forecast is unavailable, so weather is not an applied "
+                        + "objective and must not be listed as one");
         assertTrue(presenter.getPreview().isKeptCurrentOrder());
     }
 

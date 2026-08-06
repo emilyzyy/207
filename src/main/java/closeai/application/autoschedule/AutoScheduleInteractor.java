@@ -130,23 +130,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         }
 
         List<String> warnings = new ArrayList<>();
-        WeatherContext weather;
-        try {
-            weather = weatherGateway.contextFor(trip);
-        } catch (RuntimeException exception) {
-            // The gateway contract says failures come back as an unavailable context, but a
-            // schedule must not be lost if an implementation throws instead.
-            weather = WeatherContext.unavailable();
-        }
-        // Say plainly what weather did or did not contribute, rather than listing it as an
-        // objective and leaving the user to assume the timing was optimised around it.
-        if (!weather.isAvailable()) {
-            warnings.add("Weather could not be considered, so the schedule was arranged using "
-                    + "time and travel information only.");
-        } else if (!weather.canDistinguishTimes()) {
-            warnings.add("The forecast covers the whole day, so weather could not influence "
-                    + "the timing of outdoor activities.");
-        }
+        WeatherContext weather = weatherFor(trip, inputData.isConsiderWeather(), warnings);
 
         SchedulingPreferences preferences = SchedulingPreferences.builtIn(registeredPolicies,
                 inputData.isKeepCurrentOrder(), new PolicyContext(weather));
@@ -160,6 +144,56 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         }
         presenter.presentPreview(buildPreview(trip, activityEvents, outcome, preferences,
                 inputData.getUnavailableWindows(), warnings));
+    }
+
+    /**
+     * The forecast this run will actually schedule against.
+     *
+     * <p>Two gates, in order. The traveller's tick comes first: weather not asked for is
+     * weather not fetched, so an unticked box costs nothing and contributes nothing. Then
+     * the forecast itself has to be good enough — this class, not the dialog, decides that.
+     * The dialog only enables its checkbox when the forecast can distinguish times, but a
+     * dialog can be stale or simply wrong, and a preference that quietly did nothing while
+     * being listed as an objective would be a lie about how the day was arranged. So a
+     * coarse or missing forecast contributes zero here and says so in a warning, and the
+     * schedule is produced either way.</p>
+     */
+    private WeatherContext weatherFor(Trip trip, boolean requested, List<String> warnings) {
+        if (!requested) {
+            return WeatherContext.unavailable();
+        }
+        WeatherContext weather;
+        try {
+            weather = weatherGateway.contextFor(trip);
+        } catch (RuntimeException exception) {
+            // The gateway contract says failures come back as an unavailable context, but a
+            // schedule must not be lost if an implementation throws instead.
+            weather = WeatherContext.unavailable();
+        }
+        if (!weather.isAvailable()) {
+            warnings.add("You asked for weather to be considered, but no forecast was "
+                    + "available, so the schedule was arranged using time and travel "
+                    + "information only.");
+        } else if (!weather.canDistinguishTimes()) {
+            warnings.add("The forecast covers the whole day rather than each hour, so weather "
+                    + "could not influence the timing of outdoor activities.");
+        }
+        return weather;
+    }
+
+    @Override
+    public WeatherOption weatherOptionFor(String tripId) {
+        if (tripId == null || tripId.trim().isEmpty()) {
+            return WeatherOption.unavailable(WeatherOption.NO_FORECAST);
+        }
+        Optional<Trip> found = trips.findById(tripId.trim());
+        if (!found.isPresent()) {
+            return WeatherOption.unavailable(WeatherOption.NO_FORECAST);
+        }
+        // Deliberately silent: this answers a question the dialog asks while drawing
+        // itself. Reporting a missing forecast as a failure would put an error on screen
+        // for something the user never did.
+        return weatherGateway.optionFor(found.get());
     }
 
     /**

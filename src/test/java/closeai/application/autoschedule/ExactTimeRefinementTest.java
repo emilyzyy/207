@@ -89,7 +89,7 @@ class ExactTimeRefinementTest {
     private static AutoScheduleInputData input() {
         return new AutoScheduleInputData("trip-1", LocalTime.of(9, 0), LocalTime.of(21, 0),
                 TransportationMode.TRANSIT, Collections.emptySet(), Collections.emptyList(),
-                true);
+                true, true);
     }
 
     private AutoScheduleInteractor interactorWith(TravelTimeEstimator estimator,

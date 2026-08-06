@@ -15,10 +15,12 @@ import java.util.Set;
  * crosses into the use case and the caller cannot hand the Interactor an entity it
  * might change by accident.</p>
  *
- * <p>There is one scheduling preference rather than a panel of them. Sensible travel,
- * meal times, daylight and weather handling are what the feature is for and are always
- * applied; whether to keep the order the traveller already arranged is the one genuine
- * matter of taste.</p>
+ * <p>There are two scheduling preferences rather than a panel of them. Minimising travel,
+ * cutting wasted waiting, sensible meal times and daylight for outdoor activities are what
+ * the feature is for and are always applied. Whether to keep the order the traveller
+ * already arranged is a genuine matter of taste, and whether to consider weather is a
+ * question the traveller can only be asked when the forecast can actually distinguish one
+ * time of day from another — see {@link WeatherOption}.</p>
  */
 public final class AutoScheduleInputData {
 
@@ -29,12 +31,14 @@ public final class AutoScheduleInputData {
     private final Set<String> lockedEventIds;
     private final List<TimeWindow> unavailableWindows;
     private final boolean keepCurrentOrder;
+    private final boolean considerWeather;
 
     public AutoScheduleInputData(String tripId, LocalTime availableStart, LocalTime availableEnd,
                                  TransportationMode transportationMode,
                                  Set<String> lockedEventIds,
                                  List<TimeWindow> unavailableWindows,
-                                 boolean keepCurrentOrder) {
+                                 boolean keepCurrentOrder,
+                                 boolean considerWeather) {
         this.tripId = tripId == null ? "" : tripId.trim();
         this.availableStart = availableStart;
         this.availableEnd = availableEnd;
@@ -44,6 +48,7 @@ public final class AutoScheduleInputData {
         this.unavailableWindows = Collections.unmodifiableList(new ArrayList<>(
                 unavailableWindows == null ? Collections.<TimeWindow>emptyList() : unavailableWindows));
         this.keepCurrentOrder = keepCurrentOrder;
+        this.considerWeather = considerWeather;
     }
 
     public String getTripId() {
@@ -70,8 +75,19 @@ public final class AutoScheduleInputData {
         return unavailableWindows;
     }
 
-    /** The traveller's one choice: leave my activities in the order I put them, if possible. */
+    /** Leave my activities in the order I put them, if possible. */
     public boolean isKeepCurrentOrder() {
         return keepCurrentOrder;
+    }
+
+    /**
+     * Whether the traveller asked for weather to be taken into account.
+     *
+     * <p>Only meaningful when the forecast could distinguish times in the first place; the
+     * use case checks that again rather than trusting the dialog, so a stale or mistaken
+     * tick costs nothing but the tick.</p>
+     */
+    public boolean isConsiderWeather() {
+        return considerWeather;
     }
 }

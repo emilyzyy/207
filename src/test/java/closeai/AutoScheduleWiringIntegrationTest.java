@@ -86,7 +86,7 @@ class AutoScheduleWiringIntegrationTest {
 
     private static AutoScheduleSettings defaultSettings() {
         return new AutoScheduleSettings(LocalTime.of(9, 0), LocalTime.of(21, 0),
-                TransportationMode.WALKING, Collections.emptyList(), true);
+                TransportationMode.WALKING, Collections.emptyList(), true, true);
     }
 
     @Test

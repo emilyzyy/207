@@ -8,10 +8,12 @@ import closeai.application.autoschedule.AutoScheduleInputBoundary;
 import closeai.application.autoschedule.AutoScheduleInputData;
 import closeai.application.autoschedule.ProposedEventData;
 import closeai.application.autoschedule.TimeWindow;
+import closeai.application.autoschedule.WeatherOption;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * Turns what the traveller did into a request the use case understands.
@@ -53,10 +55,33 @@ public final class AutoScheduleController {
         AutoScheduleInputData input = new AutoScheduleInputData(state.getTripId(),
                 settings.getAvailableStart(), settings.getAvailableEnd(),
                 settings.getTransportationMode(), state.getLockedEventIds(), unavailable,
-                settings.isKeepCurrentOrder());
+                settings.isKeepCurrentOrder(), settings.isConsiderWeather());
 
         viewModel.setState(state.loading("Working out a better arrangement..."));
         taskRunner.run(() -> autoSchedule.preview(input));
+    }
+
+    /**
+     * Asks whether the weather preference can be offered, and hands the answer back.
+     *
+     * <p>Answering means asking a forecast provider, which is a network call, so it runs
+     * on the task runner exactly as Preview does — the settings dialog opens immediately
+     * with the checkbox disabled and fills it in when the answer arrives, rather than
+     * making the traveller wait on a frozen window for a checkbox.</p>
+     *
+     * <p>The callback is invoked on the background thread. Marshalling back to the event
+     * thread is the view's business, since it is the view that knows it is Swing.</p>
+     */
+    public void loadWeatherOption(Consumer<WeatherOption> onAnswered) {
+        if (onAnswered == null) {
+            return;
+        }
+        String tripId = viewModel.getState().getTripId();
+        if (tripId.isEmpty()) {
+            onAnswered.accept(WeatherOption.unavailable(WeatherOption.NO_FORECAST));
+            return;
+        }
+        taskRunner.run(() -> onAnswered.accept(autoSchedule.weatherOptionFor(tripId)));
     }
 
     /** Saves the proposal currently on screen, if the Day Plan has not moved on. */
