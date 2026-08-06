@@ -17,6 +17,8 @@ import closeai.domain.valueobjects.WeatherSeverity;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.Collections;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -96,15 +98,31 @@ class GatewayAdapterTest {
     }
 
     @Test
-    void aTripWideForecastBecomesAContextThatCannotInfluenceTiming() {
-        WeatherService service = requested -> new WeatherWarning(FROM, LocalTime.of(12, 0),
-                "Rain", WeatherSeverity.HIGH, "Heavy rain expected");
+    void anHourlyForecastBecomesAContextThatCanInfluenceTiming() {
+        // Shiyuan's getHourlyWarnings is the abstract method now, so a lambda supplies it.
+        WeatherService service = requested -> Arrays.asList(
+                new WeatherWarning(FROM, LocalTime.of(9, 0), "Rain", WeatherSeverity.HIGH, ""),
+                new WeatherWarning(FROM, LocalTime.of(15, 0), "Clear", WeatherSeverity.LOW, ""));
+
+        WeatherContext context = new WeatherServiceContextGateway(service).contextFor(trip());
+
+        assertTrue(context.isAvailable());
+        assertTrue(context.canDistinguishTimes(),
+                "an hourly forecast is what lets weather say when, not just what");
+        assertEquals(WeatherSeverity.HIGH, context.severityAt(LocalTime.of(9, 30)));
+        assertEquals(WeatherSeverity.LOW, context.severityAt(LocalTime.of(15, 45)));
+    }
+
+    @Test
+    void aSingleKnownHourStillCannotInfluenceTiming() {
+        WeatherService service = requested -> Collections.singletonList(
+                new WeatherWarning(FROM, LocalTime.of(12, 0), "Rain", WeatherSeverity.HIGH, ""));
 
         WeatherContext context = new WeatherServiceContextGateway(service).contextFor(trip());
 
         assertTrue(context.isAvailable());
         assertFalse(context.canDistinguishTimes(),
-                "one severity for the whole trip says nothing about when to go out");
+                "one hour says what the weather is, not when to go out");
         assertEquals(WeatherSeverity.HIGH, context.severityAt(LocalTime.of(9, 0)));
     }
 
@@ -121,12 +139,14 @@ class GatewayAdapterTest {
     }
 
     @Test
-    void aMissingOrSeverityLessWarningIsTreatedAsNoForecast() {
+    void anEmptyOrSeverityLessForecastIsTreatedAsNoForecast() {
         WeatherService none = requested -> null;
-        WeatherService blank = requested -> new WeatherWarning(FROM, LocalTime.of(12, 0),
-                "Unknown", null, "");
+        WeatherService empty = requested -> Collections.emptyList();
+        WeatherService blank = requested -> Collections.singletonList(
+                new WeatherWarning(FROM, LocalTime.of(12, 0), "Unknown", null, ""));
 
         assertFalse(new WeatherServiceContextGateway(none).contextFor(trip()).isAvailable());
+        assertFalse(new WeatherServiceContextGateway(empty).contextFor(trip()).isAvailable());
         assertFalse(new WeatherServiceContextGateway(blank).contextFor(trip()).isAvailable());
     }
 }

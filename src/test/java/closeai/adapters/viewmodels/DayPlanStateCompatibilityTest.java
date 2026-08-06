@@ -107,8 +107,7 @@ class DayPlanStateCompatibilityTest {
         List<PreviewRowView> proposal = new ArrayList<>();
         proposal.add(new PreviewRowView("a", "Name of a", PreviewRowView.Kind.ACTIVITY,
                 LocalTime.of(15, 0), LocalTime.of(16, 0), false, true, "", null));
-        dayPlan.setState(new DayPlanState("trip-1", Arrays.asList(event("a", 9)), "", false,
-                AutoScheduleStatus.PREVIEW, proposal, null, java.util.Collections.emptyList(),
+        dayPlan.setState(new DayPlanState("trip-1", Arrays.asList(event("a", 9)), "", false, java.util.Collections.emptyList(), AutoScheduleStatus.PREVIEW, proposal, null, java.util.Collections.emptyList(),
                 "", true, true, "", "fingerprint", java.util.Collections.emptySet()));
 
         assertEquals(LocalTime.of(9, 0), calendar.getState().getEvents().get(0).getStartTime(),
@@ -130,7 +129,7 @@ class DayPlanStateCompatibilityTest {
     @Test
     void clearingAPreviewKeepsTheItineraryAndTheLocks() {
         DayPlanState previewing = new DayPlanState("trip-1", Arrays.asList(event("a", 9)),
-                "proposed", false, AutoScheduleStatus.PREVIEW,
+                "proposed", false, java.util.Collections.emptyList(), AutoScheduleStatus.PREVIEW,
                 Arrays.asList(new PreviewRowView("a", "a", PreviewRowView.Kind.ACTIVITY,
                         LocalTime.of(15, 0), LocalTime.of(16, 0), false, true, "", null)),
                 null, java.util.Collections.emptyList(), "", true, true, "", "fp",

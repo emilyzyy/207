@@ -1,6 +1,7 @@
 package closeai.adapters.viewmodels;
 
 import closeai.domain.entities.ScheduledEvent;
+import closeai.domain.entities.WeatherWarning;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -24,6 +25,7 @@ public final class DayPlanState {
     private final List<ScheduledEvent> events;
     private final String message;
     private final boolean error;
+    private final List<WeatherWarning> hourlyWeather;
 
     private final AutoScheduleStatus status;
     private final List<PreviewRowView> previewRows;
@@ -38,13 +40,21 @@ public final class DayPlanState {
 
     public DayPlanState(
             String tripId, List<ScheduledEvent> events, String message, boolean error) {
-        this(tripId, events, message, error, AutoScheduleStatus.IDLE,
+        this(tripId, events, message, error, Collections.<WeatherWarning>emptyList());
+    }
+
+    /** Shiyuan's hourly-forecast form, used by the dashboard and trip-setup presenters. */
+    public DayPlanState(
+            String tripId, List<ScheduledEvent> events, String message, boolean error,
+            List<WeatherWarning> hourlyWeather) {
+        this(tripId, events, message, error, hourlyWeather, AutoScheduleStatus.IDLE,
                 Collections.<PreviewRowView>emptyList(), null,
                 Collections.<String>emptyList(), "", true, true, "", "",
                 Collections.<String>emptySet());
     }
 
     public DayPlanState(String tripId, List<ScheduledEvent> events, String message, boolean error,
+                        List<WeatherWarning> hourlyWeather,
                         AutoScheduleStatus status, List<PreviewRowView> previewRows,
                         PreviewMetricsView metrics, List<String> warnings,
                         String objectiveSummary, boolean keptCurrentOrder,
@@ -55,6 +65,8 @@ public final class DayPlanState {
                 events == null ? Collections.emptyList() : events));
         this.message = message == null ? "" : message;
         this.error = error;
+        this.hourlyWeather = Collections.unmodifiableList(new ArrayList<WeatherWarning>(
+                hourlyWeather == null ? Collections.<WeatherWarning>emptyList() : hourlyWeather));
         this.status = status == null ? AutoScheduleStatus.IDLE : status;
         this.previewRows = Collections.unmodifiableList(new ArrayList<>(
                 previewRows == null ? Collections.<PreviewRowView>emptyList() : previewRows));
@@ -136,22 +148,42 @@ public final class DayPlanState {
 
     /** Same itinerary and locks, with Autoschedule returned to its resting state. */
     public DayPlanState clearedPreview(String newMessage) {
-        return new DayPlanState(tripId, events, newMessage, false, AutoScheduleStatus.IDLE,
+        return new DayPlanState(tripId, events, newMessage, false, hourlyWeather, AutoScheduleStatus.IDLE,
                 Collections.<PreviewRowView>emptyList(), null, Collections.<String>emptyList(),
                 "", keptCurrentOrder, true, "", "", lockedEventIds);
     }
 
     /** Same state with a different set of pinned activities. */
     public DayPlanState withLocks(Set<String> updatedLockIds) {
-        return new DayPlanState(tripId, events, message, error, status, previewRows, metrics,
+        return new DayPlanState(tripId, events, message, error, hourlyWeather, status, previewRows, metrics,
                 warnings, objectiveSummary, keptCurrentOrder, searchCompletedWithinLimit,
                 travelQualityNote, previewFingerprint, updatedLockIds);
     }
 
     /** Same state showing that work is under way. */
     public DayPlanState loading(String loadingMessage) {
-        return new DayPlanState(tripId, events, loadingMessage, false, AutoScheduleStatus.LOADING,
+        return new DayPlanState(tripId, events, loadingMessage, false, hourlyWeather, AutoScheduleStatus.LOADING,
                 Collections.<PreviewRowView>emptyList(), null, Collections.<String>emptyList(),
                 "", keptCurrentOrder, true, "", "", lockedEventIds);
+    }
+
+    public List<WeatherWarning> getHourlyWeather() {
+        return hourlyWeather;
+    }
+
+    /** Selects every forecast hour that overlaps the event's half-open time interval. */
+    public List<WeatherWarning> getHourlyWeatherFor(ScheduledEvent event) {
+        if (event == null) return Collections.emptyList();
+        List<WeatherWarning> result = new ArrayList<WeatherWarning>();
+        for (WeatherWarning warning : hourlyWeather) {
+            if (warning == null || warning.getTime() == null) continue;
+            java.time.LocalTime nextHour = warning.getTime().plusHours(1);
+            boolean reachesAfterStart = nextHour.isAfter(event.getStartTime())
+                    || nextHour.isBefore(warning.getTime());
+            if (warning.getTime().isBefore(event.getEndTime()) && reachesAfterStart) {
+                result.add(warning);
+            }
+        }
+        return Collections.unmodifiableList(result);
     }
 }

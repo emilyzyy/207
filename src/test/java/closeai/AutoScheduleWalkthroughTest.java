@@ -250,8 +250,16 @@ class AutoScheduleWalkthroughTest {
                 "with no trip there is nothing to do and nothing to report");
     }
 
+    /**
+     * The caveat is gone, and that is the point.
+     *
+     * <p>Until Shiyuan added {@code getHourlyWarnings}, both shipped adapters reported one
+     * severity for the whole trip, so the Preview had to say weather could not influence the
+     * timing. It now receives an hour-by-hour forecast, so that sentence would be false and
+     * must not appear.</p>
+     */
     @Test
-    void theWeatherCaveatIsShownWhenTheForecastCoversTheWholeDay() {
+    void noWeatherCaveatIsShownNowThatTheForecastIsHourly() {
         AppBuilder builder = new AppBuilder();
         AppContainer app = builder.buildOffline();
         Trip trip = app.trips.save(inefficientDay());
@@ -260,20 +268,22 @@ class AutoScheduleWalkthroughTest {
 
         wire(app, viewModel).preview(settings(true));
 
-        assertTrue(viewModel.getState().getWarnings().stream()
+        assertFalse(viewModel.getState().getWarnings().stream()
                         .anyMatch(warning -> warning.contains("covers the whole day")),
-                "the mock and live gateways both report one severity per trip, and the UI "
-                        + "must say weather did not influence the timing");
+                "an hourly forecast can influence timing, so the old caveat would be a lie");
+        assertTrue(viewModel.getState().getObjectiveSummary().length() > 0);
     }
 
     /**
-     * The state the settings dialog will actually be in today, through the real wiring.
-     * Both shipped weather adapters report one severity for the whole trip, so the
-     * preference is withheld with a reason rather than offered as a checkbox that would
-     * change nothing.
+     * The state the settings dialog is actually in, through the real wiring.
+     *
+     * <p>This is the assertion that changed when the hourly gateway landed: the preference
+     * used to be withheld with a reason, and is now offered and ticked by default. Nothing
+     * in the engine, the Interactor or the UI changed to make that happen — only the adapter
+     * that reads the provider.</p>
      */
     @Test
-    void theWeatherPreferenceIsWithheldWithAReasonThroughTheProductionWiring() {
+    void theWeatherPreferenceIsOfferedThroughTheProductionWiring() {
         AppBuilder builder = new AppBuilder();
         AppContainer app = builder.buildOffline();
         Trip trip = app.trips.save(inefficientDay());
@@ -283,11 +293,40 @@ class AutoScheduleWalkthroughTest {
 
         wire(app, viewModel).loadWeatherOption(answer::set);
 
-        assertFalse(answer.get().isAvailable(),
-                "a whole-day forecast cannot say when to do anything");
-        assertFalse(answer.get().isSelectedByDefault());
-        assertEquals(WeatherOption.NO_HOURLY_FORECAST, answer.get().getUnavailableReason(),
-                "the dialog needs words to show, not just a disabled control");
+        assertTrue(answer.get().isAvailable(),
+                "the hourly forecast can tell one time of day from another");
+        assertTrue(answer.get().isSelectedByDefault(),
+                "offered means on unless the traveller declines");
+        assertEquals("", answer.get().getUnavailableReason(),
+                "there is nothing left to explain away");
+    }
+
+    /**
+     * The withheld path still has to work, because a provider can always fail. A gateway
+     * that yields no usable forecast must disable the checkbox and say why, rather than
+     * offering a choice that would do nothing.
+     */
+    @Test
+    void theWeatherPreferenceIsStillWithheldWhenNoForecastIsUsable() {
+        AppBuilder builder = new AppBuilder();
+        AppContainer app = builder.buildOffline();
+        Trip trip = app.trips.save(inefficientDay());
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+                trip.getId(), trip.getScheduledEvents(), "", false));
+        AutoScheduleInteractor noForecast = new AutoScheduleInteractor(app.trips,
+                new DistanceServiceTravelTimeEstimator(new MockDistanceService()),
+                anyTrip -> WeatherContext.unavailable(),
+                new AutoSchedulePresenter(viewModel),
+                Arrays.asList(new WeatherSuitabilityPolicy(), new MealWindowPolicy(),
+                        new DaylightPolicy()),
+                new ScheduleEngine());
+        AtomicReference<WeatherOption> answer = new AtomicReference<>();
+
+        new AutoScheduleController(noForecast, viewModel, TaskRunner.immediate())
+                .loadWeatherOption(answer::set);
+
+        assertFalse(answer.get().isAvailable());
+        assertEquals(WeatherOption.NO_FORECAST, answer.get().getUnavailableReason());
     }
 
     /**

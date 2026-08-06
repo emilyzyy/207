@@ -281,8 +281,7 @@ class AutoScheduleControllerTest {
                 new PreviewRowView("a", "Museum", PreviewRowView.Kind.ACTIVITY,
                         LocalTime.of(10, 0), LocalTime.of(11, 0), false, true, "closes at 17:00",
                         Arrays.asList("closes at 17:00")));
-        return new DayPlanState(base.getTripId(), base.getEvents(), "proposed", false,
-                AutoScheduleStatus.PREVIEW, rows, null, Collections.emptyList(), "", true, true,
+        return new DayPlanState(base.getTripId(), base.getEvents(), "proposed", false, java.util.Collections.emptyList(), AutoScheduleStatus.PREVIEW, rows, null, Collections.emptyList(), "", true, true,
                 "", "fingerprint-1", base.getLockedEventIds());
     }
 }

@@ -87,7 +87,8 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
                 outputData.getPracticalCostMinutes());
 
         viewModel.setState(new DayPlanState(current.getTripId(), current.getEvents(),
-                previewHeadline(outputData), false, AutoScheduleStatus.PREVIEW, rows, metrics,
+                previewHeadline(outputData), false, current.getHourlyWeather(),
+                AutoScheduleStatus.PREVIEW, rows, metrics,
                 outputData.getWarnings(), objectiveSummary(outputData),
                 outputData.isKeptCurrentOrder(), outputData.isSearchCompletedWithinLimit(),
                 travelQualityNote(outputData.getTravelQuality()),
@@ -101,6 +102,7 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
 
         viewModel.setState(new DayPlanState(outputData.getTripId(), saved,
                 "Autoschedule applied. Your Day Plan has been updated.", false,
+                current.getHourlyWeather(),
                 AutoScheduleStatus.APPLIED, java.util.Collections.<PreviewRowView>emptyList(),
                 null, java.util.Collections.<String>emptyList(), "", current.isKeptCurrentOrder(),
                 true, "", "", current.getLockedEventIds()));
@@ -110,7 +112,8 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
     public void presentConflict(AutoScheduleConflictOutputData outputData) {
         DayPlanState current = viewModel.getState();
         viewModel.setState(new DayPlanState(current.getTripId(), current.getEvents(),
-                describe(outputData), true, AutoScheduleStatus.CONFLICT,
+                describe(outputData), true, current.getHourlyWeather(),
+                AutoScheduleStatus.CONFLICT,
                 java.util.Collections.<PreviewRowView>emptyList(), null,
                 java.util.Collections.<String>emptyList(), "", current.isKeptCurrentOrder(),
                 true, "", "", current.getLockedEventIds()));
@@ -122,7 +125,7 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
         viewModel.setState(new DayPlanState(current.getTripId(), current.getEvents(),
                 message == null || message.trim().isEmpty()
                         ? "Autoschedule could not run." : message,
-                true, AutoScheduleStatus.FAILURE,
+                true, current.getHourlyWeather(), AutoScheduleStatus.FAILURE,
                 java.util.Collections.<PreviewRowView>emptyList(), null,
                 java.util.Collections.<String>emptyList(), "", current.isKeptCurrentOrder(),
                 true, "", "", current.getLockedEventIds()));

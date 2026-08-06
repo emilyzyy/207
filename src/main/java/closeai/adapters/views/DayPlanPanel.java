@@ -9,6 +9,7 @@ import closeai.adapters.viewmodels.DayPlanViewModel;
 import closeai.adapters.viewmodels.PreviewMetricsView;
 import closeai.adapters.viewmodels.PreviewRowView;
 import closeai.domain.entities.ScheduledEvent;
+import closeai.domain.entities.WeatherWarning;
 import closeai.domain.valueobjects.EventType;
 import closeai.domain.valueobjects.TransportationMode;
 import java.awt.BorderLayout;
@@ -16,6 +17,7 @@ import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.time.LocalTime;
+import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -255,7 +257,7 @@ public final class DayPlanPanel extends JPanel {
             return;
         }
         for (ScheduledEvent event : state.getEvents()) {
-            eventList.add(eventCard(event, state));
+            eventList.add(eventCard(event, state, state.getHourlyWeatherFor(event)));
             eventList.add(Box.createVerticalStrut(8));
         }
     }
@@ -373,7 +375,8 @@ public final class DayPlanPanel extends JPanel {
         return card;
     }
 
-    private JPanel eventCard(ScheduledEvent event, DayPlanState state) {
+    private JPanel eventCard(ScheduledEvent event, DayPlanState state,
+                             List<WeatherWarning> hourlyWeather) {
         JPanel card = new JPanel(new BorderLayout(12, 5));
         SwingTheme.styleCard(card);
         card.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -386,7 +389,21 @@ public final class DayPlanPanel extends JPanel {
         String name = event.getActivity() == null
                 ? (event.getNotes().isEmpty() ? event.getEventType().toString() : event.getNotes())
                 : event.getActivity().getName();
-        JLabel details = new JLabel("<html><b>" + escape(name) + "</b></html>");
+        // Shiyuan's per-hour forecast lines, with the escaping this panel already applies so
+        // an activity name containing < or & cannot break the HTML label.
+        StringBuilder copy = new StringBuilder("<html><b>").append(escape(name)).append("</b>");
+        if (!event.getNotes().isEmpty()) {
+            copy.append("<br>").append(escape(event.getNotes()));
+        }
+        if (event.getEventType() == EventType.ACTIVITY && !hourlyWeather.isEmpty()) {
+            copy.append("<br><b>Hourly weather</b>");
+            for (WeatherWarning warning : hourlyWeather) {
+                copy.append("<br>").append(warning.getTime()).append(" · ")
+                        .append(escape(warning.getWeatherCondition())).append(" · ")
+                        .append(escape(warning.getMessage()));
+            }
+        }
+        JLabel details = new JLabel(copy.append("</html>").toString());
         details.setFont(SwingTheme.BODY);
         details.setForeground(SwingTheme.NAVY);
         card.add(details, BorderLayout.CENTER);
