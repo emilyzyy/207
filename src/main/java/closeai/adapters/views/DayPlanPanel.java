@@ -1,6 +1,7 @@
 package closeai.adapters.views;
 
 import closeai.adapters.controllers.OptimizeItineraryController;
+import closeai.adapters.controllers.ManualPlanController;
 import closeai.adapters.viewmodels.DayPlanState;
 import closeai.adapters.viewmodels.DayPlanViewModel;
 import closeai.domain.entities.ScheduledEvent;
@@ -12,13 +13,16 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextField;
 
 /** Day-plan view with the milestone's single active workflow. */
 public final class DayPlanPanel extends JPanel {
     private final DayPlanViewModel viewModel;
     private final OptimizeItineraryController optimizeController;
+    private final ManualPlanController manualPlanController;
     private final JPanel eventList = new JPanel();
     private final JLabel status = new JLabel();
     private JButton optimizeButton;
@@ -27,8 +31,16 @@ public final class DayPlanPanel extends JPanel {
     public DayPlanPanel(
             DayPlanViewModel viewModel,
             OptimizeItineraryController optimizeController) {
+        this(viewModel, optimizeController, null);
+    }
+
+    public DayPlanPanel(
+            DayPlanViewModel viewModel,
+            OptimizeItineraryController optimizeController,
+            ManualPlanController manualPlanController) {
         this.viewModel = viewModel;
         this.optimizeController = optimizeController;
+        this.manualPlanController = manualPlanController;
 
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
@@ -89,16 +101,7 @@ public final class DayPlanPanel extends JPanel {
         calendar.setFont(SwingTheme.BODY);
         calendar.addActionListener(event -> openCalendarAction.run());
         buttons.add(calendar);
-        buttons.add(SwingTheme.placeholderButton("Edit (not wired)"));
-        buttons.add(SwingTheme.placeholderButton("Remove (not wired)"));
         wrapper.add(buttons);
-
-        JLabel notice = new JLabel(
-                "Edit and remove are not wired for this milestone.");
-        notice.setFont(SwingTheme.SMALL);
-        notice.setForeground(SwingTheme.MUTED);
-        wrapper.add(Box.createVerticalStrut(5));
-        wrapper.add(notice);
         return wrapper;
     }
 
@@ -141,6 +144,38 @@ public final class DayPlanPanel extends JPanel {
         details.setFont(SwingTheme.BODY);
         details.setForeground(SwingTheme.NAVY);
         card.add(details, BorderLayout.CENTER);
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        actions.setOpaque(false);
+        JButton edit = SwingTheme.secondaryButton("Edit");
+        JButton remove = SwingTheme.secondaryButton("Remove");
+        edit.setEnabled(manualPlanController != null);
+        remove.setEnabled(manualPlanController != null);
+        edit.addActionListener(action -> editEvent(event));
+        remove.addActionListener(action -> manualPlanController.remove(event.getId()));
+        actions.add(edit);
+        actions.add(remove);
+        card.add(actions, BorderLayout.EAST);
         return card;
+    }
+
+    private void editEvent(ScheduledEvent event) {
+        JTextField start = new JTextField(event.getStartTime().toString());
+        JTextField end = new JTextField(event.getEndTime().toString());
+        JTextField notes = new JTextField(event.getNotes());
+        JPanel form = new JPanel();
+        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
+        form.add(new JLabel("Start time (HH:MM)"));
+        form.add(start);
+        form.add(new JLabel("End time (HH:MM)"));
+        form.add(end);
+        form.add(new JLabel("Notes"));
+        form.add(notes);
+        int choice = JOptionPane.showConfirmDialog(
+                this, form, "Edit scheduled event",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (choice == JOptionPane.OK_OPTION) {
+            manualPlanController.edit(
+                    event.getId(), start.getText(), end.getText(), notes.getText());
+        }
     }
 }

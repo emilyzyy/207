@@ -58,6 +58,7 @@ final class SwingPanelStructureTest {
         assertEquals("Trip Options", tabs.getTitleAt(3));
         assertTrue(allText(planner).contains("Discover activities"));
         assertTrue(allText(planner).contains("Saved for later"));
+        assertNotNull(findButton(search, "Add to plan"));
 
         AbstractButton optimize = findButton(dayPlan, "Optimize Itinerary");
         assertNotNull(optimize);
@@ -77,6 +78,8 @@ final class SwingPanelStructureTest {
 
         assertTrue(allText(dayPlan).contains("rom"));
         assertTrue(allText(dayPlan).contains("Current itinerary compacted successfully"));
+        assertNotNull(findButton(dayPlan, "Edit"));
+        assertNotNull(findButton(dayPlan, "Remove"));
 
         SwingUtilities.invokeAndWait(() -> dayPlanViewModel.setState(
                 new DayPlanState("trip-1", Collections.singletonList(event),

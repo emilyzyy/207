@@ -2,6 +2,7 @@ package closeai.adapters.views;
 
 import closeai.adapters.controllers.ActivityDiscoveryController;
 import closeai.adapters.controllers.BookmarkController;
+import closeai.adapters.controllers.ManualPlanController;
 import closeai.adapters.viewmodels.SearchState;
 import closeai.adapters.viewmodels.SearchViewModel;
 import closeai.domain.entities.Activity;
@@ -16,6 +17,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
@@ -26,6 +28,7 @@ public final class SearchPanel extends JPanel {
     private final SearchViewModel viewModel;
     private final ActivityDiscoveryController discovery;
     private final BookmarkController bookmarks;
+    private final ManualPlanController manualPlan;
     private final JPanel results = new JPanel();
     private final JTextField search = new JTextField();
     private final JComboBox<String> category = new JComboBox<>(new String[]{
@@ -41,14 +44,20 @@ public final class SearchPanel extends JPanel {
     private final JLabel feedback = new JLabel(" ");
 
     public SearchPanel(SearchViewModel viewModel) {
-        this(viewModel, null, null);
+        this(viewModel, null, null, null);
     }
 
     public SearchPanel(SearchViewModel viewModel, ActivityDiscoveryController discovery,
                        BookmarkController bookmarks) {
+        this(viewModel, discovery, bookmarks, null);
+    }
+
+    public SearchPanel(SearchViewModel viewModel, ActivityDiscoveryController discovery,
+                       BookmarkController bookmarks, ManualPlanController manualPlan) {
         this.viewModel = viewModel;
         this.discovery = discovery;
         this.bookmarks = bookmarks;
+        this.manualPlan = manualPlan;
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -184,18 +193,36 @@ public final class SearchPanel extends JPanel {
         actions.setOpaque(false);
         boolean saved = state.getBookmarkedIds().contains(activity.getId());
         JButton bookmarkButton = saved
-                ? SwingTheme.placeholderButton("Remove bookmark")
+                ? SwingTheme.secondaryButton("Remove bookmark")
                 : SwingTheme.primaryButton("Bookmark");
         bookmarkButton.setEnabled(bookmarks != null);
         bookmarkButton.addActionListener(event -> bookmarks.toggle(activity.getId()));
         actions.add(bookmarkButton);
-        if (state.getScheduledIds().contains(activity.getId())) {
-            JLabel planned = new JLabel("In day plan");
-            planned.setFont(SwingTheme.SMALL);
-            planned.setForeground(SwingTheme.MUTED);
-            actions.add(planned);
+        boolean planned = state.getScheduledIds().contains(activity.getId());
+        if (planned) {
+            JLabel plannedLabel = new JLabel("In day plan");
+            plannedLabel.setFont(SwingTheme.SMALL);
+            plannedLabel.setForeground(SwingTheme.MUTED);
+            actions.add(plannedLabel);
+        } else {
+            JButton add = SwingTheme.primaryButton("Add to plan");
+            add.setEnabled(manualPlan != null);
+            add.addActionListener(event -> addToPlan(activity));
+            actions.add(add);
         }
         card.add(actions, BorderLayout.SOUTH);
         return card;
+    }
+
+    private void addToPlan(Activity activity) {
+        String start = JOptionPane.showInputDialog(
+                this,
+                "Preferred start time for " + activity.getName()
+                        + " (HH:MM). Leave blank for the next available time.",
+                "Add activity to Day Plan",
+                JOptionPane.PLAIN_MESSAGE);
+        if (start != null) {
+            manualPlan.add(activity.getId(), start);
+        }
     }
 }
