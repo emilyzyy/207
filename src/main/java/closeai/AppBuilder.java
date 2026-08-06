@@ -3,11 +3,13 @@ package closeai;
 import closeai.adapters.controllers.ActivityDiscoveryController;
 import closeai.adapters.controllers.AutoScheduleController;
 import closeai.adapters.controllers.BookmarkController;
+import closeai.adapters.controllers.ManualPlanController;
 import closeai.adapters.controllers.ShareTripController;
 import closeai.adapters.controllers.SwingTaskRunner;
 import closeai.adapters.controllers.TripSetupController;
 import closeai.adapters.presenters.ActivityDiscoveryPresenter;
 import closeai.adapters.presenters.AutoSchedulePresenter;
+import closeai.adapters.presenters.ManualPlanPresenter;
 import closeai.adapters.presenters.ShareTripPresenter;
 import closeai.adapters.presenters.TripSetupPresenter;
 import closeai.adapters.viewmodels.BookmarksState;
@@ -144,16 +146,21 @@ public final class AppBuilder {
         BookmarkController bookmarkController = new BookmarkController(
                 app.bookmarkActivity, app.removeBookmark,
                 () -> dayPlanViewModel.getState().getTripId(), searchViewModel, discoveryPresenter);
+        ManualPlanPresenter manualPlanPresenter = new ManualPlanPresenter(
+                dayPlanViewModel, searchViewModel);
+        ManualPlanController manualPlanController = new ManualPlanController(
+                app.addActivityToPlan, app.editEvent, app.removeEvent,
+                () -> dayPlanViewModel.getState().getTripId(), manualPlanPresenter);
 
         HeaderPanel headerPanel = new HeaderPanel(
                 dashboardViewModel, dayPlanViewModel, shareController);
         OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel, searchViewModel);
         SearchPanel searchPanel = new SearchPanel(
-                searchViewModel, discoveryController, bookmarkController);
+                searchViewModel, discoveryController, bookmarkController, manualPlanController);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(
-                bookmarksViewModel, bookmarkController);
+                bookmarksViewModel, bookmarkController, manualPlanController);
         DayPlanPanel dayPlanPanel =
-                new DayPlanPanel(dayPlanViewModel, autoScheduleController);
+                new DayPlanPanel(dayPlanViewModel, autoScheduleController, manualPlanController);
         dayPlanPanel.setTripDefaults(trip.getStartTime(), trip.getEndTime(),
                 trip.getTransportationMode());
         TripOptionsPanel tripOptionsPanel =
@@ -235,16 +242,21 @@ public final class AppBuilder {
         BookmarkController bookmarkController = new BookmarkController(
                 app.bookmarkActivity, app.removeBookmark,
                 () -> dayPlanViewModel.getState().getTripId(), searchViewModel, discoveryPresenter);
+        ManualPlanPresenter manualPlanPresenter = new ManualPlanPresenter(
+                dayPlanViewModel, searchViewModel);
+        ManualPlanController manualPlanController = new ManualPlanController(
+                app.addActivityToPlan, app.editEvent, app.removeEvent,
+                () -> dayPlanViewModel.getState().getTripId(), manualPlanPresenter);
 
         HeaderPanel headerPanel = new HeaderPanel(
                 dashboardViewModel, dayPlanViewModel, shareController);
         OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel, searchViewModel);
         SearchPanel searchPanel = new SearchPanel(
-                searchViewModel, discoveryController, bookmarkController);
+                searchViewModel, discoveryController, bookmarkController, manualPlanController);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(
-                bookmarksViewModel, bookmarkController);
+                bookmarksViewModel, bookmarkController, manualPlanController);
         DayPlanPanel dayPlanPanel =
-                new DayPlanPanel(dayPlanViewModel, autoScheduleController);
+                new DayPlanPanel(dayPlanViewModel, autoScheduleController, manualPlanController);
         TripOptionsPanel tripOptionsPanel =
                 new TripOptionsPanel(tripOptionsViewModel, tripSetupController);
         PlannerPanel plannerPanel = new PlannerPanel(

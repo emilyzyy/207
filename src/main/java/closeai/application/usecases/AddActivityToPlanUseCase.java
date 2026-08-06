@@ -7,6 +7,9 @@ import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.Trip;
 import closeai.domain.valueobjects.EventType;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 
 public final class AddActivityToPlanUseCase {
@@ -20,10 +23,11 @@ public final class AddActivityToPlanUseCase {
         Activity activity = activities.findById(activityId).orElseThrow(() -> new IllegalArgumentException("Activity not found"));
         LocalTime start = preferredStart == null ? nextAvailableTime(trip) : preferredStart;
         LocalTime end = start.plusMinutes(activity.getEstimatedDurationMinutes());
-        if (end.isAfter(trip.getEndTime())) throw new IllegalArgumentException("Activity does not fit in the trip window");
-        trip.addEvent(new ScheduledEvent(UUID.randomUUID().toString(), activity, start, end,
+        List<ScheduledEvent> updated = new ArrayList<>(trip.getScheduledEvents());
+        updated.add(new ScheduledEvent(UUID.randomUUID().toString(), activity, start, end,
                 EventType.ACTIVITY, "Added manually"));
-        return trips.save(trip);
+        updated.sort(Comparator.comparing(ScheduledEvent::getStartTime));
+        return trips.save(trip.copyWithSchedule(updated));
     }
     private LocalTime nextAvailableTime(Trip trip) {
         if (trip.getScheduledEvents().isEmpty()) return trip.getStartTime();

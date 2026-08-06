@@ -50,6 +50,18 @@ public final class SwingTheme {
         return button;
     }
 
+    public static JButton secondaryButton(String text) {
+        JButton button = new JButton(text);
+        button.setFont(BODY);
+        button.setForeground(NAVY);
+        button.setBackground(PANEL);
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(LINE),
+                BorderFactory.createEmptyBorder(7, 12, 7, 12)));
+        return button;
+    }
+
     public static JButton placeholderButton(String text) {
         JButton button = new JButton(text);
         button.setFont(SMALL);

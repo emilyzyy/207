@@ -1,6 +1,7 @@
 package closeai.adapters.views;
 
 import closeai.adapters.controllers.BookmarkController;
+import closeai.adapters.controllers.ManualPlanController;
 import closeai.adapters.viewmodels.BookmarksState;
 import closeai.adapters.viewmodels.BookmarksViewModel;
 import closeai.domain.entities.Activity;
@@ -12,6 +13,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 
@@ -19,15 +21,22 @@ import javax.swing.JScrollPane;
 public final class BookmarksPanel extends JPanel {
     private final BookmarksViewModel viewModel;
     private final BookmarkController controller;
+    private final ManualPlanController manualPlan;
     private final JPanel list = new JPanel();
 
     public BookmarksPanel(BookmarksViewModel viewModel) {
-        this(viewModel, null);
+        this(viewModel, null, null);
     }
 
     public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller) {
+        this(viewModel, controller, null);
+    }
+
+    public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller,
+                          ManualPlanController manualPlan) {
         this.viewModel = viewModel;
         this.controller = controller;
+        this.manualPlan = manualPlan;
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -76,10 +85,22 @@ public final class BookmarksPanel extends JPanel {
             card.add(details, BorderLayout.CENTER);
             JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
             actions.setOpaque(false);
-            JButton remove = SwingTheme.placeholderButton("Remove bookmark");
+            JButton remove = SwingTheme.secondaryButton("Remove bookmark");
             remove.setEnabled(controller != null);
             remove.addActionListener(event -> controller.remove(activity.getId()));
             actions.add(remove);
+            JButton add = SwingTheme.primaryButton("Add to plan");
+            add.setEnabled(manualPlan != null);
+            add.addActionListener(event -> {
+                String start = JOptionPane.showInputDialog(
+                        this, "Preferred start time for " + activity.getName()
+                                + " (HH:MM). Leave blank for the next available time.",
+                        "Add activity to Day Plan", JOptionPane.PLAIN_MESSAGE);
+                if (start != null) {
+                    manualPlan.add(activity.getId(), start);
+                }
+            });
+            actions.add(add);
             card.add(actions, BorderLayout.SOUTH);
             list.add(card);
             list.add(Box.createVerticalStrut(8));

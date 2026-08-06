@@ -57,6 +57,7 @@ final class SwingPanelStructureTest {
         assertEquals("Trip Options", tabs.getTitleAt(3));
         assertTrue(allText(planner).contains("Discover activities"));
         assertTrue(allText(planner).contains("Saved for later"));
+        assertNotNull(findButton(search, "Add to plan"));
 
         AbstractButton autoschedule = findButton(dayPlan, "Autoschedule");
         assertNotNull(autoschedule, "the Day Plan should offer Autoschedule");
@@ -75,6 +76,10 @@ final class SwingPanelStructureTest {
 
         assertTrue(allText(dayPlan).contains("rom"));
         assertTrue(allText(dayPlan).contains("Autoschedule applied"));
+        // Alex's per-event controls render alongside the Lock checkbox. This panel is built
+        // without a manual controller, so they are present but disabled.
+        assertNotNull(findButton(dayPlan, "Edit"));
+        assertNotNull(findButton(dayPlan, "Remove"));
 
         SwingUtilities.invokeAndWait(() -> dayPlanViewModel.setState(
                 new DayPlanState("trip-1", Collections.singletonList(event),
