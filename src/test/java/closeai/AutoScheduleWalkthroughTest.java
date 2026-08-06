@@ -291,6 +291,44 @@ class AutoScheduleWalkthroughTest {
     }
 
     /**
+     * Autoschedule reads whatever the Trip is holding and writes back through
+     * {@code copyWithSchedule}. It never asks how an activity got there, which is the whole
+     * reason Alex's add-to-plan work needs no change on either side. That has been claimed
+     * in the documentation without being asserted, so it is asserted here: an activity
+     * appended to the Trip after the fact is scheduled like any other.
+     */
+    @Test
+    void anActivityAddedToThePlanLaterIsScheduledWithNoAutoscheduleChange() {
+        AppBuilder builder = new AppBuilder();
+        AppContainer app = builder.buildOffline();
+        Trip trip = app.trips.save(inefficientDay());
+
+        // Stands in for add-to-plan: a fourth activity appears in the Trip afterwards.
+        List<ScheduledEvent> grown = new ArrayList<>(trip.getScheduledEvents());
+        grown.add(new ScheduledEvent("event-gallery",
+                activity("gallery", "Art Gallery of Ontario", ActivityCategory.MUSEUM,
+                        IndoorOutdoorType.INDOOR, 43.6536, -79.3925, 10, 17),
+                LocalTime.of(16, 30), LocalTime.of(17, 0), EventType.ACTIVITY, ""));
+        Trip larger = app.trips.save(trip.copyWithSchedule(grown));
+
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+                larger.getId(), larger.getScheduledEvents(), "", false));
+        AutoScheduleController controller = wire(app, viewModel);
+
+        controller.preview(settings(true));
+
+        assertEquals(AutoScheduleStatus.PREVIEW, viewModel.getState().getStatus());
+        assertEquals(4, viewModel.getState().getMetrics().getActivityCount(),
+                "the newly added activity is scheduled like any other");
+        assertTrue(viewModel.getState().getPreviewRows().stream()
+                        .anyMatch(row -> row.getEventId().equals("event-gallery")),
+                "an activity added after the fact must appear in the proposal");
+
+        controller.apply();
+        assertEquals(AutoScheduleStatus.APPLIED, viewModel.getState().getStatus());
+    }
+
+    /**
      * Nothing about the engine or the Interactor changes when an hourly forecast arrives:
      * the same wiring, given a gateway that can distinguish hours, offers the preference.
      * This is the test that keeps the "no redesign needed" claim honest.
