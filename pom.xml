@@ -12,8 +12,17 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>11</maven.compiler.release>
         <junit.version>5.12.2</junit.version>
-        <jacoco.version>0.8.12</jacoco.version>
+        <!--
+            0.8.13 or newer is required here: this repository is built and run on Java 24,
+            whose class files are major version 68, and 0.8.12's bundled ASM refuses to read
+            them. The agent still instruments the project's own classes (compiled to release
+            11) correctly, so coverage figures were never wrong, but every JDK class it
+            touched raised IllegalClassFormatException and buried the build output in
+            hundreds of stack traces.
+        -->
+        <jacoco.version>0.8.13</jacoco.version>
         <checkstyle.plugin.version>3.6.0</checkstyle.plugin.version>
+        <checkstyle.tool.version>10.21.4</checkstyle.tool.version>
         <jackson.version>2.18.4</jackson.version>
     </properties>
 
@@ -88,8 +97,22 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>${checkstyle.plugin.version}</version>
+                <!--
+                    The plugin ships with an older Checkstyle than the course configuration
+                    needs: config/mystyle.xml uses SuppressWithNearbyTextFilter and
+                    NoCodeInFile, added in Checkstyle 10.10 and 10.9. Pinning the tool here
+                    is what lets the course file be used exactly as distributed, rather than
+                    editing the course's rules to suit our build.
+                -->
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>${checkstyle.tool.version}</version>
+                    </dependency>
+                </dependencies>
                 <configuration>
-                    <configLocation>config/checkstyle.xml</configLocation>
+                    <configLocation>config/mystyle.xml</configLocation>
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
                     <consoleOutput>true</consoleOutput>
                     <failOnViolation>false</failOnViolation>

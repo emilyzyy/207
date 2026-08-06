@@ -43,7 +43,7 @@ class AutoScheduleLiveVerificationTest {
     private final DistanceServiceTravelTimeEstimator estimator =
             new DistanceServiceTravelTimeEstimator(new OsrmDistanceService());
 
-    private static void record(String label, int minutes, long millis) {
+    private static void recordResult(String label, int minutes, long millis) {
         System.out.println(String.format(
                 "[live] %-34s %3d min   (%d ms)", label, minutes, millis));
     }
@@ -52,7 +52,7 @@ class AutoScheduleLiveVerificationTest {
         long started = System.currentTimeMillis();
         TravelEstimate estimate = estimator.estimate(UNION_STATION, CASA_LOMA, mode, departure);
         long elapsed = System.currentTimeMillis() - started;
-        record(label, estimate.getMinutes(), elapsed);
+        recordResult(label, estimate.getMinutes(), elapsed);
         return estimate.getMinutes();
     }
 

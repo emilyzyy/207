@@ -14,6 +14,9 @@ import java.util.List;
  */
 public final class AutoScheduleSettingsValidator {
 
+    /** Prefix for the numbered unavailable-period messages. */
+    private static final String PERIOD = "Unavailable period ";
+
     /**
      * @param tripStart the trip's own opening hour, or null when unknown
      * @param tripEnd   the trip's own closing hour, or null when unknown
@@ -50,16 +53,16 @@ public final class AutoScheduleSettingsValidator {
         for (int i = 0; i < windows.size(); i++) {
             AutoScheduleSettings.Window window = windows.get(i);
             if (window.getStart() == null || window.getEnd() == null) {
-                problems.add("Unavailable period " + (i + 1) + " needs a start and an end time.");
+                problems.add(PERIOD + (i + 1) + " needs a start and an end time.");
                 continue;
             }
             if (!window.getEnd().isAfter(window.getStart())) {
-                problems.add("Unavailable period " + (i + 1)
+                problems.add(PERIOD + (i + 1)
                         + " must end after it starts.");
                 continue;
             }
             if (window.getStart().isBefore(start) || window.getEnd().isAfter(end)) {
-                problems.add("Unavailable period " + (i + 1)
+                problems.add(PERIOD + (i + 1)
                         + " falls outside the hours you are available.");
             }
             for (int j = i + 1; j < windows.size(); j++) {

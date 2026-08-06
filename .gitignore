@@ -1,3 +1,8 @@
 out/
 target/
 .DS_Store
+
+# Never commit local credentials. OsrmDistanceService reads TOMTOM_API_KEY from a
+# .env file in the working directory (origin/main 11d4ddc), so this must stay ignored.
+.env
+.env.*
