@@ -25,7 +25,17 @@ import java.util.Set;
  */
 public final class PeriodPlan {
 
-    /** Upper bound on {@code periods * directedPairs} prefetch requests per run. */
+    /**
+     * Target ceiling on {@code periods * directedPairs} prefetch requests per run.
+     *
+     * <p>This governs how many departure periods are worth fetching, not the total on its
+     * own. Scheduling cannot begin without knowing the travel time between every pair of
+     * activities, so one full matrix - {@code directedPairs} requests - is an irreducible
+     * floor. Once periods have collapsed to one, a day large enough to exceed this figure
+     * still costs that single matrix; the alternative would be refusing to schedule at
+     * all. The invariant that actually holds is therefore: either a single period is in
+     * use, or the total sits within this ceiling.</p>
+     */
     public static final int MAX_PREFETCH_CALLS = 120;
 
     /**
@@ -165,5 +175,13 @@ public final class PeriodPlan {
     /** Prefetch requests this plan will issue for {@code directedPairs} legs. */
     public int prefetchCallCount(int directedPairs) {
         return active.size() * directedPairs;
+    }
+
+    /**
+     * Whether this plan respects the prefetch ceiling, or has already collapsed to the
+     * single irreducible matrix and cannot go lower. See {@link #MAX_PREFETCH_CALLS}.
+     */
+    public boolean withinPrefetchBudget(int directedPairs) {
+        return active.size() == 1 || prefetchCallCount(directedPairs) <= MAX_PREFETCH_CALLS;
     }
 }
