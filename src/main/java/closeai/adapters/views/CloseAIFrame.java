@@ -79,6 +79,10 @@ public final class CloseAIFrame extends JFrame {
         headerPanel.setOnHomeAction(onHomeAction);
     }
 
+    public void setAuthAction(Runnable action, boolean signedIn) {
+        headerPanel.setAuthAction(action, signedIn);
+    }
+
     public DayPlanPanel getDayPlanPanel() {
         return dayPlanPanel;
     }

@@ -52,4 +52,9 @@ public final class InMemoryItineraryDataAccessObject
     public List<Trip> findAll() {
         return new ArrayList<Trip>(itineraries.values());
     }
+
+    /** Drops all local itineraries (used on sign-out). */
+    public void clear() {
+        itineraries.clear();
+    }
 }
