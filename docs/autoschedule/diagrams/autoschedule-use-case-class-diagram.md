@@ -127,6 +127,19 @@ from planning documents. An automated cross-check confirms:
 - every class the brief asked for is present;
 - no test double, fake or fixture appears.
 
+## Relationship to add-to-plan
+
+The diagram is deliberately confined to the Autoschedule use case, and remains accurate after
+Alex's add-to-plan and discovery work was integrated: **no class or relationship in it
+changed.** His use cases reach the same `TripRepository` from the other side, which is why
+neither appears in the other's diagram. The seam is drawn in
+[`../architecture.md`](../architecture.md) and enforced by
+`AddToPlanAutoscheduleIntegrationTest`.
+
+Package paths in the diagram match the current source. No CAVE package migration has been
+performed — see [`../../cave/cave-final.md`](../../cave/cave-final.md) — so if the team later
+renames packages, the `.puml` needs the same rename and a re-render.
+
 ## Known simplifications
 
 Stated so the diagram is not read as claiming more than it shows:

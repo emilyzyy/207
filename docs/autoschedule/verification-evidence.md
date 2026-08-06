@@ -9,8 +9,8 @@ Environment: Java 24.0.2 (Temurin), macOS, aarch64. Maven via `./mvnw`.
 ./mvnw clean test
 ```
 
-**300 tests, 0 failures, 0 errors, 9 skipped** (re-run 2026-08-06 after the final tooling
-pass; previous figures were 270, then 297). The six skips are all opt-in live tests that require
+**314 tests, 0 failures, 0 errors, 9 skipped** (re-run 2026-08-06 after integrating
+`origin/main` and Alex's branches; previous figures were 270, 297, then 300). The six skips are all opt-in live tests that require
 network access and an explicit environment variable: the pre-existing
 `OpenMeteoWeatherServiceLiveTest` (1, needs `RUN_LIVE_OPEN_METEO_TEST=true`) and
 `AutoScheduleLiveVerificationTest` (5, needs `RUN_LIVE_AUTOSCHEDULE_TEST=true`) and
@@ -38,8 +38,8 @@ below were therefore never wrong — the noise was.
 
 | Scope | Line | Branch |
 |---|---|---|
-| Repository-wide (after exclusions) | **79.1%** | 60.2% |
-| Autoschedule slice (`application.autoschedule*` + gateways) | **90.4%** | 73.5% |
+| Repository-wide (after exclusions) | **79.7%** | 60.5% |
+| Autoschedule slice (`application.autoschedule*` + gateways) | **90.4%** | 73.6% |
 | `AutoScheduleInteractor` (the use-case interactor) | **92.3%** | 80.8% |
 
 New in this batch: `WeatherOption` 100% line, `WeatherContextGateway` 100% line,
@@ -47,7 +47,7 @@ New in this batch: `WeatherOption` 100% line, `WeatherContextGateway` 100% line,
 
 Against the group rubric's testing descriptors — 5/5 wants more than 90% interactor
 coverage and more than 70% overall — the interactor is at 92.3% and the repository is at
-79.1%. Both thresholds are met on line coverage, which Piazza @339 confirms is an
+79.7%. Both thresholds are met on line coverage, which Piazza @339 confirms is an
 acceptable metric. The Autoschedule slice as a whole also reaches 90.4%.
 
 **Exclusions, and why each is justified:**
@@ -79,14 +79,22 @@ are argument-validation guards.
 configuration file which we have used for Checkstyle this term"*. This **corrects** the
 earlier conclusion in these documents that no official configuration existed.
 
+Counts below are after integrating `origin/main` and Alex's two branches, attributed by the
+original author of each file.
+
 | Scope | Files | Violations |
 |---|---|---|
-| Emily-owned production | 58 | 881 |
-| Emily-owned tests | 29 | 1200 |
-| Shared files Emily modified | 5 | 301 |
-| Raashid's routing file | 1 | 95 (all his, by `git blame`) |
-| Unrelated teammate files | 121 | 2547 |
-| **Total** | | **5024** |
+| Emily-authored production | 84 | 1360 |
+| Emily-authored tests | 37 | 1468 |
+| Raashid-authored | 11 | 809 |
+| Alex-authored | 8 | 122 |
+| Other teammates | 83 | 1584 |
+| **Total** | | **5343** |
+
+The rise from 5024 is merged teammate code arriving, not new defects. **This integration
+introduced no new unambiguous violations**: the only non-ruled-out findings in the files
+touched here — one non-ASCII character in `DayPlanPanel`, a `\u2026` escape and an overload
+ordering in `AppBuilder` — were all verified present before the pass.
 
 **These are warnings, not a failing grade.** The course ships `mystyle.xml` for the IntelliJ
 plugin — no course starter wires it into a build — and the teaching team's own `starter-hw5`

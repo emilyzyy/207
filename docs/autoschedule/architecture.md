@@ -154,6 +154,28 @@ one severity per trip. That is verified rather than assumed — the live run rec
 the withheld state through the real wiring and that an hourly gateway would offer the
 preference with no other change.
 
+## Integration seam with add-to-plan
+
+Alex's add-to-plan and discovery use cases and Autoschedule are independent. Neither imports
+the other; both depend on the shared `TripRepository`:
+
+```text
+  ManualPlanController ─▶ AddActivityToPlanUseCase ─┐
+                                                    ├─▶ TripRepository ─▶ Trip
+  AutoScheduleController ─▶ AutoScheduleInteractor ─┘
+```
+
+Adding an activity writes a `ScheduledEvent` onto the Trip; Autoschedule reads whatever the
+Trip is holding when Preview runs. That is the whole of the coupling, and it is enforced by
+a test rather than by convention: `AddToPlanAutoscheduleIntegrationTest`
+`.autoscheduleHasNoDependencyOnAddToPlanClasses` scans every file in the Autoschedule
+package and fails if it names `ManualPlanController`, `AddActivityToPlanUseCase` or the
+discovery classes.
+
+`DayPlanPanel` hosts both features: each activity card carries Emily's Lock checkbox and
+Alex's Edit and Remove buttons. Travel rows carry neither, because the scheduler generates
+them.
+
 ## Class diagram
 
 The full use-case class diagram — 63 production classes and interfaces, every node

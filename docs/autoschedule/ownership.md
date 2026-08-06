@@ -86,35 +86,40 @@ Maven plus the official XML is the reproducible project-level check.
 
 ## 2. Results by ownership
 
-Under the official configuration, whole repository:
+Under the official configuration, whole repository, **after integrating `origin/main`
+(`11d4ddc`) and Alex's branches (`7e3b460`, `224481b`)**. Attribution is by the original
+author of each file, from `git log --diff-filter=A`.
 
-| Class | Files | Violations |
+| Author | Files | Violations |
 |---|---|---|
-| A. Emily-owned production | 58 | 881 |
-| B. Emily-owned tests | 29 | 1200 |
-| C. Shared files modified by Emily | 5 | 301 |
-| D. Raashid-owned routing file with Emily's narrow fix | 1 | 95 |
-| E. Unrelated teammate-owned files | 121 | 2547 |
-| **Total** | | **5024** |
+| Emily — production | 84 | 1360 |
+| Emily — tests | 37 | 1468 |
+| Raashid | 11 | 809 |
+| Alex | 8 | 122 |
+| Other teammates (Shiyuan, Bianca, shared legacy) | 83 | 1584 |
+| **Total** | | **5343** |
+
+The previous figure was 5024. The rise is **merged teammate code arriving**, not new
+defects: Raashid's expanded `OsrmDistanceService`, Alex's nine new classes, and Emily's new
+integration test.
+
+**This integration introduced no new unambiguous violations.** Filtering the files touched
+in this pass against the categories already ruled out leaves exactly three findings — a
+non-ASCII `·` in `DayPlanPanel`, a `\u2026` escape and an overload ordering in `AppBuilder`
+— and all three were verified present before the pass began. Nothing was fixed, because
+there was nothing new to fix, and manufacturing changes to show activity would have been
+worse than reporting the truth.
 
 Repository-wide, by check:
 
 | Check | Count |
 |---|---|
-| FinalLocalVariable | 1712 |
-| CustomImportOrder | 963 |
+| FinalLocalVariable | 1712+ |
+| CustomImportOrder / ImportOrder (mutually unsatisfiable pair) | 963 / 245 |
 | MagicNumber | 445 |
-| JavadocMethod | 301 |
-| ImportOrder | 245 |
+| JavadocMethod / MissingJavadocMethod | 301 / 137 |
 | AvoidInlineConditionals | 206 |
 | ReturnCount | 152 |
-| RightCurly | 142 |
-| MissingJavadocMethod | 137 |
-| NeedBraces | 134 |
-
-For reference, under the previous project-written configuration the repository reported 236
-violations with 0 in Emily-owned code. The two numbers measure different things and are not
-comparable; the official file is roughly twenty times stricter.
 
 ## 3. What was fixed, and what was deliberately not
 
@@ -185,9 +190,12 @@ and silently fell back to OSRM. Contract, fallback and key handling untouched.
 `git blame` places every one of the 95 violations in Raashid's own commits. Per the batch
 rule his code was not rewritten beyond that fix.
 
-> **Note for Raashid:** he has since pushed `11d4ddc` "tomtom fix" to `origin/main`, which
-> makes the **identical** `lat,lng` correction plus TomTom error logging and a `.env` key
-> fallback. See §5.
+> **Resolved.** `11d4ddc` is now merged. Raashid's implementation is the production source:
+> his failure logging and `.env` key fallback are kept whole, and the only thing carried over
+> from this branch is the comment recording why the order is `latitude,longitude`. His file
+> now carries 809 violations under the official config, all his own. Emily's nine routing
+> regression tests are retained and pass unchanged against his implementation — `origin/main`
+> has no routing tests at all.
 
 ### E. Unrelated teammate-owned files — 2547 violations, 121 files
 
@@ -200,7 +208,9 @@ take over each other's assigned code.
 - **Adopt `config/mystyle.xml` team-wide?** It is now wired for the whole repository. The
   5024 warnings are almost entirely pre-existing and in nobody's way, since the build is not
   gated. Worth a team decision before anyone treats the number as a target.
-- **Raashid's `11d4ddc`.** His TomTom fix duplicates Emily's coordinate correction exactly,
-  so the merge conflicts only on surrounding context, not on intent. His `.env` fallback for
-  the API key means **`.env` must be added to `.gitignore`** before anyone creates one —
-  currently it is not listed, and a committed `.env` would leak the key.
+- **Raashid's `11d4ddc`** is merged; `.env` and `.env.*` are now in `.gitignore`, which his
+  key fallback made necessary. No `.env` has ever existed in any commit on any branch.
+- **Alex's work is merged** — `7e3b460` (discovery, bookmarking) and `224481b` (manual
+  add/edit/remove). His authorship is preserved; his files are his.
+- **CAVE packaging** is an open team-level risk, deliberately not acted on here. See
+  [`../cave/cave-final.md`](../cave/cave-final.md).

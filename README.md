@@ -259,9 +259,17 @@ call. Full diagram and data flow: [`docs/autoschedule/architecture.md`](docs/aut
 ### How add-to-plan connects later
 
 Autoschedule reads `Trip.getScheduledEvents()` and writes through `Trip.copyWithSchedule`.
-It does not care how activities arrived. When the add-to-plan flow is wired into the UI, its
-activities appear in the Day Plan and Autoschedule picks them up with no changes on either
-side; a test asserts a seeded trip and an ordinary trip behave identically.
+It does not care how activities arrived.
+
+**This is now wired end to end.** Alex's discovery, bookmark and manual add/edit/remove
+workflow (`ActivityDiscoveryController`, `BookmarkController`, `ManualPlanController`) writes
+through the same `TripRepository`. An activity found in Search can be added to the Day Plan
+and then autoscheduled, with no seeded demo trip involved and **no Autoschedule code change**
+— the two use cases meet only at the Trip.
+
+`AddToPlanAutoscheduleIntegrationTest` runs that whole path through
+`AppBuilder.buildOffline()` and the real controllers, and one of its tests reads the
+Autoschedule package and fails if any file there names an add-to-plan or discovery class.
 
 ### Commands
 
