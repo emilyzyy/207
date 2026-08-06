@@ -1,10 +1,8 @@
 package closeai;
 
 import closeai.adapters.controllers.OptimizeItineraryController;
-import closeai.adapters.controllers.ShareItineraryController;
 import closeai.adapters.controllers.TripSetupController;
 import closeai.adapters.presenters.OptimizeItineraryPresenter;
-import closeai.adapters.presenters.ShareItineraryPresenter;
 import closeai.adapters.presenters.TripSetupPresenter;
 import closeai.adapters.viewmodels.BookmarksState;
 import closeai.adapters.viewmodels.BookmarksViewModel;
@@ -29,9 +27,7 @@ import closeai.application.ports.PlacesService;
 import closeai.application.ports.WeatherService;
 import closeai.application.scheduling.DefaultActivityScoringPolicy;
 import closeai.application.usecases.OptimizeItineraryInteractor;
-import closeai.application.usecases.ShareItineraryInteractor;
 import closeai.domain.valueobjects.TransportationMode;
-import closeai.infrastructure.export.AwtItineraryPngExporter;
 import closeai.infrastructure.mock.MockDistanceService;
 import closeai.infrastructure.mock.MockPlacesService;
 import closeai.infrastructure.mock.MockWeatherService;
@@ -114,23 +110,7 @@ public final class AppBuilder {
         OptimizeItineraryController optimizeController =
                 new OptimizeItineraryController(optimizeInteractor, dayPlanViewModel);
 
-        final java.awt.Component[] shareParent = new java.awt.Component[1];
-        final HeaderPanel[] headerRef = new HeaderPanel[1];
-        ShareItineraryPresenter sharePresenter = new ShareItineraryPresenter(
-                () -> shareParent[0],
-                message -> {
-                    if (headerRef[0] != null) {
-                        headerRef[0].showErrorToast(message);
-                    }
-                });
-        ShareItineraryInteractor shareInteractor = new ShareItineraryInteractor(
-                app.trips, new AwtItineraryPngExporter(), sharePresenter);
-        ShareItineraryController shareController =
-                new ShareItineraryController(shareInteractor, dayPlanViewModel);
-
-        HeaderPanel headerPanel = new HeaderPanel(dashboardViewModel, shareController);
-        shareParent[0] = headerPanel;
-        headerRef[0] = headerPanel;
+        HeaderPanel headerPanel = new HeaderPanel(dashboardViewModel);
         OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel, searchViewModel);
         SearchPanel searchPanel = new SearchPanel(searchViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(bookmarksViewModel);
