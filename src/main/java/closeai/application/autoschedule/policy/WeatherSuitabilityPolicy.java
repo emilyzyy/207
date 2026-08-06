@@ -29,6 +29,9 @@ public final class WeatherSuitabilityPolicy implements SoftPolicy {
     static final int MEDIUM_PENALTY_PER_HOUR = 15;
     static final int HIGH_PENALTY_PER_HOUR = 30;
 
+    /** Ceiling so avoiding bad weather can never justify an unreasonable detour. */
+    public static final int MAX_PENALTY_MINUTES = 60;
+
     @Override
     public PolicyId id() {
         return PolicyId.WEATHER;
@@ -37,7 +40,10 @@ public final class WeatherSuitabilityPolicy implements SoftPolicy {
     @Override
     public int penaltyMinutes(PlacedActivity placement, PolicyContext context) {
         WeatherContext weather = context.getWeather();
-        if (!weather.isAvailable()) {
+        // A forecast covering the whole trip scores every candidate time alike, so it
+        // cannot inform when to do anything. Charging for it would add a constant to
+        // every schedule and imply the timing was weather-optimised when it was not.
+        if (!weather.canDistinguishTimes()) {
             return 0;
         }
         double exposure = exposureFactor(placement);
@@ -50,7 +56,8 @@ public final class WeatherSuitabilityPolicy implements SoftPolicy {
         }
         int durationMinutes = placement.getTask().getDurationMinutes();
         double hours = durationMinutes / 60.0;
-        return (int) Math.round(penaltyPerHour(severity) * hours * exposure);
+        int raw = (int) Math.round(penaltyPerHour(severity) * hours * exposure);
+        return Math.min(MAX_PENALTY_MINUTES, raw);
     }
 
     @Override

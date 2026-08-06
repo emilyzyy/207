@@ -26,6 +26,8 @@ public final class AutoSchedulePreviewOutputData {
     private final String scheduleFingerprint;
     private final boolean searchCompletedWithinLimit;
     private final TravelEstimateQuality travelQuality;
+    private final boolean keptCurrentOrder;
+    private final int practicalCostMinutes;
 
     public AutoSchedulePreviewOutputData(List<ProposedEventData> rows,
                                          int travelBeforeMinutes, int travelAfterMinutes,
@@ -35,7 +37,11 @@ public final class AutoSchedulePreviewOutputData {
                                          List<PolicyId> activePolicies,
                                          String scheduleFingerprint,
                                          boolean searchCompletedWithinLimit,
-                                         TravelEstimateQuality travelQuality) {
+                                         TravelEstimateQuality travelQuality,
+                                         boolean keptCurrentOrder,
+                                         int practicalCostMinutes) {
+        this.keptCurrentOrder = keptCurrentOrder;
+        this.practicalCostMinutes = practicalCostMinutes;
         this.rows = copy(rows);
         this.travelBeforeMinutes = travelBeforeMinutes;
         this.travelAfterMinutes = travelAfterMinutes;
@@ -116,5 +122,18 @@ public final class AutoSchedulePreviewOutputData {
      */
     public TravelEstimateQuality getTravelQuality() {
         return travelQuality;
+    }
+
+    /** Whether the traveller asked to keep the order they had arranged. */
+    public boolean isKeptCurrentOrder() {
+        return keptCurrentOrder;
+    }
+
+    /**
+     * The schedule's total cost in minutes: travel, wasted waiting and the capped soft
+     * penalties added together. Shown so the Preview can be specific about what improved.
+     */
+    public int getPracticalCostMinutes() {
+        return practicalCostMinutes;
     }
 }

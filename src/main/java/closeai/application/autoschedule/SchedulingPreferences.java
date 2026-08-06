@@ -3,90 +3,91 @@ package closeai.application.autoschedule;
 import closeai.application.autoschedule.policy.SoftPolicy;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
- * The soft considerations active for one run.
+ * The scheduling intelligence in force for one run.
  *
- * <p>The Interactor filters the registered policies down to the ones the user left
- * switched on and hands the result here, so the engine simply scores whatever list it
- * receives. Disabling a preference removes its object from the list rather than setting
- * a flag the search has to test, which is why the search contains no policy-specific
- * branching at all.</p>
+ * <p>Minimising travel, cutting wasted waiting, sensible meal times, daylight for
+ * outdoor activities and weather awareness are all built in and always active. They are
+ * what the feature is for, and a schedule that ignored them would not be worth
+ * previewing, so they are not presented as options to switch off.</p>
+ *
+ * <p>The single thing the traveller does decide is whether to keep the order they
+ * already arranged. That is a genuine matter of taste rather than a question of quality,
+ * which is exactly why it is the one setting that is offered.</p>
  */
 public final class SchedulingPreferences {
 
-    private static final SchedulingPreferences NONE = new SchedulingPreferences(
-            Collections.emptyList(), false, false, PolicyContext.empty());
+    /** Minutes charged per position an activity is moved from where the user put it. */
+    static final int ORDER_PENALTY_PER_POSITION = 2;
+
+    /**
+     * Ceiling on the order charge. Keeping it small means preserving the user's order
+     * decides between schedules that are otherwise close, and never outweighs a day that
+     * is genuinely better.
+     */
+    static final int MAX_ORDER_PENALTY_MINUTES = 30;
+
+    private static final SchedulingPreferences NONE =
+            new SchedulingPreferences(Collections.emptyList(), false, PolicyContext.empty());
 
     private final List<SoftPolicy> policies;
-    private final boolean reduceIdle;
-    private final boolean preserveOrder;
+    private final boolean keepCurrentOrder;
     private final PolicyContext context;
 
-    public SchedulingPreferences(List<SoftPolicy> policies, boolean reduceIdle,
-                                 boolean preserveOrder, PolicyContext context) {
+    public SchedulingPreferences(List<SoftPolicy> policies, boolean keepCurrentOrder,
+                                 PolicyContext context) {
         this.policies = Collections.unmodifiableList(new ArrayList<>(
                 policies == null ? Collections.<SoftPolicy>emptyList() : policies));
-        this.reduceIdle = reduceIdle;
-        this.preserveOrder = preserveOrder;
+        this.keepCurrentOrder = keepCurrentOrder;
         this.context = context == null ? PolicyContext.empty() : context;
     }
 
-    /** Travel minimisation only: what remains when every optional preference is off. */
+    /** Travel and idle only: used by engine tests that isolate the search itself. */
     public static SchedulingPreferences none() {
         return NONE;
     }
 
     /**
-     * Selects the enabled subset of {@code registered} and the two score tiers.
+     * The built-in intelligence, plus the traveller's one choice.
      *
-     * @param enabled ids the user left switched on
+     * @param builtInPolicies every registered policy; all of them are always active
      */
-    public static SchedulingPreferences select(List<SoftPolicy> registered, Set<PolicyId> enabled,
-                                               PolicyContext context) {
-        Set<PolicyId> active = enabled == null
-                ? Collections.<PolicyId>emptySet() : new LinkedHashSet<>(enabled);
-        List<SoftPolicy> chosen = new ArrayList<>();
-        if (registered != null) {
-            for (SoftPolicy policy : registered) {
-                if (active.contains(policy.id())) {
-                    chosen.add(policy);
-                }
-            }
-        }
-        return new SchedulingPreferences(chosen, active.contains(PolicyId.REDUCE_IDLE),
-                active.contains(PolicyId.PRESERVE_ORDER), context);
+    public static SchedulingPreferences builtIn(List<SoftPolicy> builtInPolicies,
+                                                boolean keepCurrentOrder,
+                                                PolicyContext context) {
+        return new SchedulingPreferences(builtInPolicies, keepCurrentOrder, context);
     }
 
     public List<SoftPolicy> getPolicies() {
         return policies;
     }
 
-    public boolean isReduceIdleEnabled() {
-        return reduceIdle;
-    }
-
-    public boolean isPreserveOrderEnabled() {
-        return preserveOrder;
+    public boolean isKeepCurrentOrder() {
+        return keepCurrentOrder;
     }
 
     public PolicyContext getContext() {
         return context;
     }
 
-    /** The ids actually in force, for the Preview to list back to the user. */
+    /** The capped charge for moving activities away from the order the user chose. */
+    public int orderPenaltyFor(int totalDisplacement) {
+        if (!keepCurrentOrder) {
+            return 0;
+        }
+        return Math.min(MAX_ORDER_PENALTY_MINUTES, totalDisplacement * ORDER_PENALTY_PER_POSITION);
+    }
+
+    /** What the Preview lists back as the objectives that were applied. */
     public List<PolicyId> activeIds() {
         List<PolicyId> ids = new ArrayList<>();
         for (SoftPolicy policy : policies) {
             ids.add(policy.id());
         }
-        if (reduceIdle) {
-            ids.add(PolicyId.REDUCE_IDLE);
-        }
-        if (preserveOrder) {
+        ids.add(PolicyId.REDUCE_IDLE);
+        if (keepCurrentOrder) {
             ids.add(PolicyId.PRESERVE_ORDER);
         }
         return Collections.unmodifiableList(ids);

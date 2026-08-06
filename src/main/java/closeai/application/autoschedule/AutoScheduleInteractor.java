@@ -138,13 +138,18 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
             // schedule must not be lost if an implementation throws instead.
             weather = WeatherContext.unavailable();
         }
-        if (!weather.isAvailable() && inputData.getEnabledPolicyIds().contains(PolicyId.WEATHER)) {
-            warnings.add("Weather could not be considered. "
-                    + "The schedule was optimized using time and travel information only.");
+        // Say plainly what weather did or did not contribute, rather than listing it as an
+        // objective and leaving the user to assume the timing was optimised around it.
+        if (!weather.isAvailable()) {
+            warnings.add("Weather could not be considered, so the schedule was arranged using "
+                    + "time and travel information only.");
+        } else if (!weather.canDistinguishTimes()) {
+            warnings.add("The forecast covers the whole day, so weather could not influence "
+                    + "the timing of outdoor activities.");
         }
 
-        SchedulingPreferences preferences = SchedulingPreferences.select(registeredPolicies,
-                inputData.getEnabledPolicyIds(), new PolicyContext(weather));
+        SchedulingPreferences preferences = SchedulingPreferences.builtIn(registeredPolicies,
+                inputData.isKeepCurrentOrder(), new PolicyContext(weather));
 
         RefinementOutcome outcome = searchWithExactTravel(availability, tasks,
                 inputData.getUnavailableWindows(), matrix, preferences, mode, trip.getDate());
@@ -412,7 +417,9 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
                 reasons, warnings, preferences.activeIds(),
                 ScheduleFingerprint.of(trip.getScheduledEvents()).getValue(),
                 outcome.searchCompletedWithinLimit,
-                outcome.problem.getTravel().weakestQuality());
+                outcome.problem.getTravel().weakestQuality(),
+                preferences.isKeepCurrentOrder(),
+                plan.getScore().practicalCostMinutes());
     }
 
     /** Result of the search-and-refine loop: a validated plan, or the reason there is none. */

@@ -75,4 +75,16 @@ public final class WeatherContext {
     public boolean isHourly() {
         return !severityByHour.isEmpty();
     }
+
+    /**
+     * Whether this forecast can actually tell one time of day from another.
+     *
+     * <p>A single severity for the whole trip cannot: every candidate slot scores the
+     * same, so weather has nothing to say about <em>when</em> to do things. Scheduling
+     * treats that as weather being unable to contribute rather than pretending to have
+     * optimised around it, and the Preview says so.</p>
+     */
+    public boolean canDistinguishTimes() {
+        return available && isHourly();
+    }
 }

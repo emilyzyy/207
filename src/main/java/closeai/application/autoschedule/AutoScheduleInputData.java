@@ -14,6 +14,11 @@ import java.util.Set;
  * <p>Carries identifiers and plain values rather than a Trip, so nothing mutable
  * crosses into the use case and the caller cannot hand the Interactor an entity it
  * might change by accident.</p>
+ *
+ * <p>There is one scheduling preference rather than a panel of them. Sensible travel,
+ * meal times, daylight and weather handling are what the feature is for and are always
+ * applied; whether to keep the order the traveller already arranged is the one genuine
+ * matter of taste.</p>
  */
 public final class AutoScheduleInputData {
 
@@ -23,13 +28,13 @@ public final class AutoScheduleInputData {
     private final TransportationMode transportationMode;
     private final Set<String> lockedEventIds;
     private final List<TimeWindow> unavailableWindows;
-    private final Set<PolicyId> enabledPolicyIds;
+    private final boolean keepCurrentOrder;
 
     public AutoScheduleInputData(String tripId, LocalTime availableStart, LocalTime availableEnd,
                                  TransportationMode transportationMode,
                                  Set<String> lockedEventIds,
                                  List<TimeWindow> unavailableWindows,
-                                 Set<PolicyId> enabledPolicyIds) {
+                                 boolean keepCurrentOrder) {
         this.tripId = tripId == null ? "" : tripId.trim();
         this.availableStart = availableStart;
         this.availableEnd = availableEnd;
@@ -38,8 +43,7 @@ public final class AutoScheduleInputData {
                 lockedEventIds == null ? Collections.<String>emptySet() : lockedEventIds));
         this.unavailableWindows = Collections.unmodifiableList(new ArrayList<>(
                 unavailableWindows == null ? Collections.<TimeWindow>emptyList() : unavailableWindows));
-        this.enabledPolicyIds = Collections.unmodifiableSet(new LinkedHashSet<>(
-                enabledPolicyIds == null ? Collections.<PolicyId>emptySet() : enabledPolicyIds));
+        this.keepCurrentOrder = keepCurrentOrder;
     }
 
     public String getTripId() {
@@ -66,7 +70,8 @@ public final class AutoScheduleInputData {
         return unavailableWindows;
     }
 
-    public Set<PolicyId> getEnabledPolicyIds() {
-        return enabledPolicyIds;
+    /** The traveller's one choice: leave my activities in the order I put them, if possible. */
+    public boolean isKeepCurrentOrder() {
+        return keepCurrentOrder;
     }
 }

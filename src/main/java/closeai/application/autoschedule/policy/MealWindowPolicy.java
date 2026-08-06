@@ -27,7 +27,7 @@ public final class MealWindowPolicy implements SoftPolicy {
     static final LocalTime DINNER_END = LocalTime.of(21, 0);
 
     /** Ceiling so one badly-timed meal cannot outweigh every other consideration. */
-    static final int MAX_PENALTY_MINUTES = 120;
+    public static final int MAX_PENALTY_MINUTES = 120;
 
     @Override
     public PolicyId id() {

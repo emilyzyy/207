@@ -187,11 +187,12 @@ public final class ScheduleEngine {
     /**
      * Prunes when even a perfect completion could not beat the incumbent.
      *
-     * <p>Comparison is on the numeric tiers only, and strictly: a branch that could tie
-     * is explored, because the final identifier tie-break is not knowable from a partial
-     * schedule and discarding ties would make the result depend on search order. Policy
-     * penalties are safe to accumulate this way because they are never negative, so a
-     * partial total can only grow.</p>
+     * <p>Every part of the cost is non-negative and only accumulates, so the cost of what
+     * has already been placed, plus the cheapest travel that could possibly link what
+     * remains, is a genuine floor on the finished schedule. Comparison is strict, so a
+     * branch that could merely tie is still explored: the final identifier tie-break is
+     * not knowable from a partial schedule, and discarding ties would let the answer
+     * depend on the order the tree happened to be walked.</p>
      */
     private boolean cannotBeatIncumbent(SearchState state, List<PlacedActivity> placements,
                                         ScheduleTask previous, List<ScheduleTask> remaining) {
@@ -199,34 +200,14 @@ public final class ScheduleEngine {
             return false;
         }
         SchedulingPreferences preferences = state.problem.getPreferences();
-        int penaltySoFar = 0;
-        int travelSoFar = 0;
-        int idleSoFar = 0;
+        int costSoFar = 0;
         for (PlacedActivity placed : placements) {
-            penaltySoFar += policyPenalty(placed, preferences);
-            travelSoFar += placed.getTravelMinutesBefore();
-            idleSoFar += placed.getAvoidableIdleMinutes();
+            costSoFar += placed.getTravelMinutesBefore();
+            costSoFar += placed.getAvoidableIdleMinutes();
+            costSoFar += policyPenalty(placed, preferences);
         }
-        ScheduleScore optimistic = new ScheduleScore(penaltySoFar,
-                travelSoFar + minimumRemainingTravel(state, previous, remaining),
-                preferences.isReduceIdleEnabled() ? idleSoFar : 0, 0, "");
-        return compareNumeric(optimistic, state.best.getScore()) > 0;
-    }
-
-    private static int compareNumeric(ScheduleScore left, ScheduleScore right) {
-        int result = Integer.compare(left.getPolicyPenalty(), right.getPolicyPenalty());
-        if (result != 0) {
-            return result;
-        }
-        result = Integer.compare(left.getTravelMinutes(), right.getTravelMinutes());
-        if (result != 0) {
-            return result;
-        }
-        result = Integer.compare(left.getAvoidableIdleMinutes(), right.getAvoidableIdleMinutes());
-        if (result != 0) {
-            return result;
-        }
-        return Integer.compare(left.getOrderDisruption(), right.getOrderDisruption());
+        int floor = costSoFar + minimumRemainingTravel(state, previous, remaining);
+        return floor > state.best.getScore().practicalCostMinutes();
     }
 
     private static int policyPenalty(PlacedActivity placement, SchedulingPreferences preferences) {
@@ -238,11 +219,10 @@ public final class ScheduleEngine {
     }
 
     /**
-     * Scores a complete schedule.
+     * Scores a complete schedule as one practical cost in minutes.
      *
-     * <p>A disabled tier contributes zero rather than being skipped conditionally
-     * elsewhere, so switching a preference off genuinely removes its influence on the
-     * ranking instead of merely hiding it.</p>
+     * <p>Travel, wasted waiting and the capped soft penalties are simply added, so a
+     * small improvement in one can never be worth a large sacrifice in another.</p>
      */
     public static ScheduleScore score(List<PlacedActivity> placements,
                                       SchedulingPreferences preferences) {
@@ -251,7 +231,7 @@ public final class ScheduleEngine {
         int penalty = 0;
         int travel = 0;
         int avoidableIdle = 0;
-        int disruption = 0;
+        int displacement = 0;
         StringBuilder tieBreak = new StringBuilder();
 
         List<PlacedActivity> ordered = new ArrayList<>(placements);
@@ -261,13 +241,11 @@ public final class ScheduleEngine {
             penalty += policyPenalty(placed, active);
             travel += placed.getTravelMinutesBefore();
             avoidableIdle += placed.getAvoidableIdleMinutes();
-            disruption += Math.abs(position - placed.getTask().getOriginalIndex());
+            displacement += Math.abs(position - placed.getTask().getOriginalIndex());
             tieBreak.append(placed.getTask().getEventId()).append('/');
         }
-        return new ScheduleScore(penalty, travel,
-                active.isReduceIdleEnabled() ? avoidableIdle : 0,
-                active.isPreserveOrderEnabled() ? disruption : 0,
-                tieBreak.toString());
+        return new ScheduleScore(travel, avoidableIdle, penalty,
+                active.orderPenaltyFor(displacement), tieBreak.toString());
     }
 
     private ScheduleConflict diagnose(ScheduleProblem problem) {

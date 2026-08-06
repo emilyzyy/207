@@ -23,7 +23,7 @@ public final class DaylightPolicy implements SoftPolicy {
     static final LocalTime DAYLIGHT_END = LocalTime.of(19, 0);
 
     /** Ceiling so a single dusk activity cannot dominate the ranking. */
-    static final int MAX_PENALTY_MINUTES = 90;
+    public static final int MAX_PENALTY_MINUTES = 90;
 
     @Override
     public PolicyId id() {

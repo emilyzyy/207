@@ -61,14 +61,13 @@ class AutoScheduleInteractorTest {
 
     private static AutoScheduleInputData input(String tripId, Set<String> locks,
                                                List<TimeWindow> unavailable,
-                                               Set<PolicyId> policies) {
+                                               boolean keepCurrentOrder) {
         return new AutoScheduleInputData(tripId, LocalTime.of(9, 0), LocalTime.of(21, 0),
-                TransportationMode.WALKING, locks, unavailable, policies);
+                TransportationMode.WALKING, locks, unavailable, keepCurrentOrder);
     }
 
     private static AutoScheduleInputData simpleInput() {
-        return input("trip-1", Collections.emptySet(), Collections.emptyList(),
-                EnumSet.noneOf(PolicyId.class));
+        return input("trip-1", Collections.emptySet(), Collections.emptyList(), true);
     }
 
     @Test
@@ -150,7 +149,7 @@ class AutoScheduleInteractorTest {
     void reportsAnUnknownTrip() {
         interactorFor(new FakeTripRepository(tripWith(activityEvent("a", 9, 60))))
                 .preview(input("other-trip", Collections.emptySet(), Collections.emptyList(),
-                        EnumSet.noneOf(PolicyId.class)));
+                        true));
 
         assertEquals("Trip not found", presenter.getFailure());
     }
@@ -160,7 +159,7 @@ class AutoScheduleInteractorTest {
         FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
         AutoScheduleInputData widened = new AutoScheduleInputData("trip-1",
                 LocalTime.of(6, 0), LocalTime.of(23, 0), TransportationMode.WALKING,
-                Collections.emptySet(), Collections.emptyList(), EnumSet.noneOf(PolicyId.class));
+                Collections.emptySet(), Collections.emptyList(), true);
 
         interactorFor(trips).preview(widened);
 
@@ -174,7 +173,7 @@ class AutoScheduleInteractorTest {
         FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
         AutoScheduleInputData narrowed = new AutoScheduleInputData("trip-1",
                 LocalTime.of(10, 0), LocalTime.of(16, 0), TransportationMode.WALKING,
-                Collections.emptySet(), Collections.emptyList(), EnumSet.noneOf(PolicyId.class));
+                Collections.emptySet(), Collections.emptyList(), true);
 
         interactorFor(trips).preview(narrowed);
 
@@ -188,7 +187,7 @@ class AutoScheduleInteractorTest {
         FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
         AutoScheduleInputData inverted = new AutoScheduleInputData("trip-1",
                 LocalTime.of(16, 0), LocalTime.of(10, 0), TransportationMode.WALKING,
-                Collections.emptySet(), Collections.emptyList(), EnumSet.noneOf(PolicyId.class));
+                Collections.emptySet(), Collections.emptyList(), true);
 
         interactorFor(trips).preview(inverted);
 
@@ -201,7 +200,7 @@ class AutoScheduleInteractorTest {
 
         interactorFor(trips).preview(input("trip-1",
                 new LinkedHashSet<>(Arrays.asList("deleted-event")), Collections.emptyList(),
-                EnumSet.noneOf(PolicyId.class)));
+                true));
 
         assertNotNull(presenter.getConflict());
         assertEquals(ScheduleConflict.Kind.LOCK_NOT_IN_PLAN, presenter.getConflict().getKind());
@@ -215,7 +214,7 @@ class AutoScheduleInteractorTest {
 
         interactorFor(trips).preview(input("trip-1",
                 new LinkedHashSet<>(Arrays.asList("dinner")), Collections.emptyList(),
-                EnumSet.noneOf(PolicyId.class)));
+                true));
 
         ProposedEventData dinner = rowFor(presenter.getPreview(), "dinner");
         assertEquals(LocalTime.of(18, 0), dinner.getStart());
@@ -255,7 +254,7 @@ class AutoScheduleInteractorTest {
         FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
 
         interactorFor(trips).preview(input("trip-1", Collections.emptySet(),
-                Collections.emptyList(), EnumSet.of(PolicyId.WEATHER)));
+                Collections.emptyList(), true));
 
         assertNotNull(presenter.getPreview(), "weather must never cost the user their schedule");
         assertTrue(presenter.getPreview().getWarnings().stream()
@@ -269,7 +268,7 @@ class AutoScheduleInteractorTest {
         new AutoScheduleInteractor(trips, estimator, new FakeWeatherContextGateway().thatFails(),
                 presenter, REGISTERED, new ScheduleEngine())
                 .preview(input("trip-1", Collections.emptySet(), Collections.emptyList(),
-                        EnumSet.of(PolicyId.WEATHER)));
+                        true));
 
         assertNotNull(presenter.getPreview());
         assertTrue(presenter.getPreview().getWarnings().stream()
@@ -277,25 +276,55 @@ class AutoScheduleInteractorTest {
     }
 
     @Test
-    void weatherAvailableProducesNoWarning() {
+    void aWholeDayForecastSaysSoRatherThanImplyingItShapedTheTiming() {
         weather.returning(WeatherContext.tripLevel(WeatherSeverity.LOW));
         FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
 
         interactorFor(trips).preview(input("trip-1", Collections.emptySet(),
-                Collections.emptyList(), EnumSet.of(PolicyId.WEATHER)));
+                Collections.emptyList(), true));
+
+        assertTrue(presenter.getPreview().getWarnings().stream()
+                .anyMatch(warning -> warning.contains("covers the whole day")),
+                "a trip-wide forecast cannot influence timing, and the Preview should admit it");
+    }
+
+    @Test
+    void anHourlyForecastNeedsNoCaveat() {
+        java.util.Map<Integer, WeatherSeverity> byHour = new java.util.HashMap<>();
+        for (int hour = 9; hour < 21; hour++) {
+            byHour.put(hour, WeatherSeverity.LOW);
+        }
+        weather.returning(WeatherContext.hourly(byHour));
+        FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
+
+        interactorFor(trips).preview(input("trip-1", Collections.emptySet(),
+                Collections.emptyList(), true));
 
         assertTrue(presenter.getPreview().getWarnings().isEmpty());
     }
 
     @Test
-    void reportsWhichPreferencesWereActive() {
+    void reportsTheBuiltInObjectivesAndWhetherOrderWasKept() {
         FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
 
         interactorFor(trips).preview(input("trip-1", Collections.emptySet(),
-                Collections.emptyList(), EnumSet.of(PolicyId.MEAL_TIME, PolicyId.PRESERVE_ORDER)));
+                Collections.emptyList(), true));
 
-        assertEquals(Arrays.asList(PolicyId.MEAL_TIME, PolicyId.PRESERVE_ORDER),
+        assertEquals(Arrays.asList(PolicyId.WEATHER, PolicyId.MEAL_TIME, PolicyId.DAYLIGHT,
+                        PolicyId.REDUCE_IDLE, PolicyId.PRESERVE_ORDER),
                 presenter.getPreview().getActivePolicies());
+        assertTrue(presenter.getPreview().isKeptCurrentOrder());
+    }
+
+    @Test
+    void turningOffKeepMyOrderIsReflectedInTheOutput() {
+        FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
+
+        interactorFor(trips).preview(input("trip-1", Collections.emptySet(),
+                Collections.emptyList(), false));
+
+        assertFalse(presenter.getPreview().isKeptCurrentOrder());
+        assertFalse(presenter.getPreview().getActivePolicies().contains(PolicyId.PRESERVE_ORDER));
     }
 
     @Test

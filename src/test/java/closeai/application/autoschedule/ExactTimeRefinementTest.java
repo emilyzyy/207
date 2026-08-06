@@ -22,7 +22,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -90,7 +89,7 @@ class ExactTimeRefinementTest {
     private static AutoScheduleInputData input() {
         return new AutoScheduleInputData("trip-1", LocalTime.of(9, 0), LocalTime.of(21, 0),
                 TransportationMode.TRANSIT, Collections.emptySet(), Collections.emptyList(),
-                EnumSet.noneOf(PolicyId.class));
+                true);
     }
 
     private AutoScheduleInteractor interactorWith(TravelTimeEstimator estimator,
