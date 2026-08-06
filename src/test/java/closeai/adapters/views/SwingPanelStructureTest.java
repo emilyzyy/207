@@ -55,7 +55,8 @@ final class SwingPanelStructureTest {
         assertEquals("Bookmarks", tabs.getTitleAt(1));
         assertEquals("Day Plan", tabs.getTitleAt(2));
         assertEquals("Trip Options", tabs.getTitleAt(3));
-        assertTrue(allText(planner).contains("Not wired for this milestone"));
+        assertTrue(allText(planner).contains("Discover activities"));
+        assertTrue(allText(planner).contains("Saved for later"));
 
         AbstractButton autoschedule = findButton(dayPlan, "Autoschedule");
         assertNotNull(autoschedule, "the Day Plan should offer Autoschedule");
