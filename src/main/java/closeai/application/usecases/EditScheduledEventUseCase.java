@@ -4,6 +4,9 @@ import closeai.application.ports.TripRepository;
 import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.Trip;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 public final class EditScheduledEventUseCase {
     private final TripRepository trips;
@@ -12,9 +15,14 @@ public final class EditScheduledEventUseCase {
         Trip trip = trips.findById(tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
         ScheduledEvent event = trip.findEvent(eventId);
         if (event == null) throw new IllegalArgumentException("Event not found");
-        if (start.isBefore(trip.getStartTime()) || end.isAfter(trip.getEndTime()))
-            throw new IllegalArgumentException("Event must stay inside the trip window");
-        event.reschedule(start, end, notes);
-        return trips.save(trip);
+        List<ScheduledEvent> updated = new ArrayList<>();
+        for (ScheduledEvent existing : trip.getScheduledEvents()) {
+            updated.add(existing.getId().equals(eventId)
+                    ? new ScheduledEvent(existing.getId(), existing.getActivity(), start, end,
+                            existing.getEventType(), notes)
+                    : existing);
+        }
+        updated.sort(Comparator.comparing(ScheduledEvent::getStartTime));
+        return trips.save(trip.copyWithSchedule(updated));
     }
 }
