@@ -54,10 +54,12 @@ import closeai.infrastructure.persistence.CachedPlacesRepository;
 import closeai.infrastructure.persistence.InMemoryItineraryDataAccessObject;
 import closeai.infrastructure.routing.OsrmDistanceService;
 import closeai.infrastructure.weather.OpenMeteoWeatherService;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import javax.swing.SwingUtilities;
 
@@ -169,7 +171,7 @@ public final class AppBuilder {
                 shareViewModel,
                 searchViewModel,
                 bookmarksViewModel);
-        refreshWeatherAsync(app, trip, dashboardViewModel);
+        refreshWeatherAsync(app, trip, dashboardViewModel, dayPlanViewModel);
         return frame;
     }
 
@@ -286,11 +288,13 @@ public final class AppBuilder {
     public void refreshFrameForTrip(Trip trip, CloseAIFrame frame) {
         frame.getSearchViewModel().setState(searchStateFor(trip));
         frame.getBookmarksViewModel().setState(new BookmarksState(trip.getBookmarkedActivities()));
+        DayPlanState current = frame.getDayPlanViewModel().getState();
         frame.getDayPlanViewModel().setState(new DayPlanState(
                 trip.getId(),
                 trip.getScheduledEvents(),
                 "Seeded demo · optimizer uses Day Plan activities only",
-                false));
+                false,
+                current.getHourlyWeather()));
     }
 
     /** Search and map view for a trip: every discovered place, tagged with its bookmark/schedule status. */
@@ -318,35 +322,59 @@ public final class AppBuilder {
     }
 
     private void refreshWeatherAsync(AppContainer app, Trip trip,
-                                     DashboardViewModel dashboardViewModel) {
+                                     DashboardViewModel dashboardViewModel,
+                                     DayPlanViewModel dayPlanViewModel) {
         Thread worker = new Thread(() -> {
-            WeatherWarning result = weatherWarningFor(app, trip);
+            List<WeatherWarning> hourlyWeather = weatherWarningsFor(app, trip);
+            WeatherWarning result = closestToTripStart(hourlyWeather, trip);
             DashboardState state = new DashboardState(
                     trip.getDestination(),
                     trip.getDate(),
                     result.getWeatherCondition(),
                     result.getMessage());
-            SwingUtilities.invokeLater(() -> dashboardViewModel.setState(state));
+            SwingUtilities.invokeLater(() -> {
+                dashboardViewModel.setState(state);
+                DayPlanState current = dayPlanViewModel.getState();
+                dayPlanViewModel.setState(new DayPlanState(
+                        current.getTripId(), current.getEvents(), current.getMessage(),
+                        current.isError(), hourlyWeather));
+            });
         }, "Weather-" + trip.getDestination());
         worker.setDaemon(true);
         worker.start();
     }
 
     /** Fetches the weather preview, degrading gracefully so network or date errors cannot crash the UI. */
-    private WeatherWarning weatherWarningFor(AppContainer app, Trip trip) {
+    private List<WeatherWarning> weatherWarningsFor(AppContainer app, Trip trip) {
         try {
-            return app.weatherWarning.execute(trip.getId());
+            return app.weatherWarning.executeHourly(trip.getId());
         } catch (Exception exception) {
             System.err.println("[AppBuilder] Weather preview unavailable for " + trip.getDestination()
                     + ": " + exception.getMessage());
-            return new WeatherWarning(
+            return Collections.singletonList(new WeatherWarning(
                     new Location(0, 0, trip.getDestination()),
                     trip.getStartTime(),
                     "Weather preview unavailable",
                     WeatherSeverity.LOW,
                     "Could not fetch a forecast for " + trip.getDestination()
-                            + ". The trip date may be outside the forecast range, or you may be offline.");
+                            + ". The trip date may be outside the forecast range, or you may be offline."));
         }
+    }
+
+    private WeatherWarning closestToTripStart(
+            List<WeatherWarning> hourlyWeather, Trip trip) {
+        WeatherWarning closest = null;
+        long closestMinutes = Long.MAX_VALUE;
+        for (WeatherWarning warning : hourlyWeather) {
+            if (warning == null || warning.getTime() == null) continue;
+            long difference = Math.abs(Duration.between(
+                    trip.getStartTime(), warning.getTime()).toMinutes());
+            if (difference < closestMinutes) {
+                closest = warning;
+                closestMinutes = difference;
+            }
+        }
+        return closest == null ? placeholderWarning(trip) : closest;
     }
 
     private AppContainer buildWithServices(

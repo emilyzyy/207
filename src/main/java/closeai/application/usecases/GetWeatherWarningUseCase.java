@@ -4,6 +4,7 @@ import closeai.application.ports.TripRepository;
 import closeai.application.ports.WeatherService;
 import closeai.domain.entities.Trip;
 import closeai.domain.entities.WeatherWarning;
+import java.util.List;
 
 public final class GetWeatherWarningUseCase {
     private final TripRepository trips;
@@ -14,5 +15,11 @@ public final class GetWeatherWarningUseCase {
     public WeatherWarning execute(String tripId) {
         Trip trip = trips.findById(tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
         return weather.getWarning(trip);
+    }
+
+    public List<WeatherWarning> executeHourly(String tripId) {
+        Trip trip = trips.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("Trip not found"));
+        return weather.getHourlyWarnings(trip);
     }
 }

@@ -121,6 +121,23 @@ final class AutoScheduleTripUseCaseTest {
     }
 
     @Test
+    void candidateUsesWeatherFromEveryHourItsActivityOverlaps() {
+        Trip trip = trip("hourly-weather", TransportationMode.WALKING);
+        trip.bookmark(activity("outdoor-spans-storm", 5.0, 90, time(9, 30), time(18, 0),
+                IndoorOutdoorType.OUTDOOR));
+        trip.bookmark(activity("indoor-at-nine", 4.0, 30, time(9, 0), time(18, 0),
+                IndoorOutdoorType.INDOOR));
+        ConfigurableDistanceService distances = new ConfigurableDistanceService();
+        distances.defaultMinutes = 0;
+        WeatherService changingWeather = changingWeatherAt(10, WeatherSeverity.HIGH);
+
+        Trip result = scheduler(new FakeTripRepository(trip), distances, changingWeather)
+                .execute(trip.getId());
+
+        assertEquals("indoor-at-nine", firstActivity(result).getActivity().getId());
+    }
+
+    @Test
     void injectedScoringPolicyControlsSelection() {
         Trip trip = trip("injected-policy", TransportationMode.WALKING);
         trip.bookmark(activity("a", 5.0, 30, time(9, 0), time(18, 0), IndoorOutdoorType.INDOOR));
@@ -258,6 +275,18 @@ final class AutoScheduleTripUseCaseTest {
                 .findFirst().orElseThrow(AssertionError::new);
     }
 
+    private WeatherService changingWeatherAt(int severeHour, WeatherSeverity severe) {
+        return trip -> {
+            List<WeatherWarning> hourly = new ArrayList<WeatherWarning>();
+            for (int hour = 0; hour < 24; hour++) {
+                WeatherSeverity severity = hour == severeHour ? severe : WeatherSeverity.LOW;
+                hourly.add(new WeatherWarning(
+                        ORIGIN, time(hour, 0), "test", severity, "test"));
+            }
+            return hourly;
+        };
+    }
+
     private void assertEvent(ScheduledEvent event, EventType type, LocalTime start, LocalTime end) {
         assertEquals(type, event.getEventType());
         assertEquals(start, event.getStartTime());
@@ -317,9 +346,14 @@ final class AutoScheduleTripUseCaseTest {
             this.severity = severity;
         }
 
-        public WeatherWarning getWarning(Trip trip) {
+        public List<WeatherWarning> getHourlyWarnings(Trip trip) {
             calls++;
-            return new WeatherWarning(ORIGIN, trip.getStartTime(), "test", severity, "test");
+            List<WeatherWarning> hourly = new ArrayList<WeatherWarning>();
+            for (int hour = 0; hour < 24; hour++) {
+                hourly.add(new WeatherWarning(
+                        ORIGIN, LocalTime.of(hour, 0), "test", severity, "test"));
+            }
+            return hourly;
         }
     }
 
