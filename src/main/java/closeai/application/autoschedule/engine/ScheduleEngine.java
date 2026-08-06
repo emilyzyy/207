@@ -1,13 +1,15 @@
 package closeai.application.autoschedule.engine;
 
+import closeai.application.autoschedule.BlockedPeriods;
 import closeai.application.autoschedule.PlacedActivity;
 import closeai.application.autoschedule.ScheduleConflict;
 import closeai.application.autoschedule.SchedulePlan;
 import closeai.application.autoschedule.ScheduleProblem;
 import closeai.application.autoschedule.ScheduleScore;
 import closeai.application.autoschedule.ScheduleTask;
+import closeai.application.autoschedule.SchedulingPreferences;
 import closeai.application.autoschedule.TimeWindow;
-import closeai.application.autoschedule.TravelMatrix;
+import closeai.application.autoschedule.policy.SoftPolicy;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,24 +25,35 @@ import java.util.List;
  * prefetched before the search began. That is what makes it exhaustively testable
  * and what keeps every external call outside the recursion.</p>
  *
- * <p>Each candidate is placed at its earliest feasible time, which makes the search
- * a search over <em>orders</em> rather than over times. Four rules cut the tree:
- * an infeasible placement, a remaining-work lower bound, an incumbent bound, and the
- * node budget. There is deliberately no dominance cache — with time-dependent costs
- * two partial schedules are frequently incomparable, and the brute-force cross-check
- * test is a safer way to buy the same confidence.</p>
+ * <p>Each candidate is placed at its earliest feasible time, which makes the search a
+ * search over <em>orders</em> rather than over times. Four rules cut the tree: an
+ * infeasible placement, a remaining-work lower bound, an incumbent bound, and the node
+ * budget. There is deliberately no dominance cache — with time-dependent costs two
+ * partial schedules are frequently incomparable, and the brute-force cross-check test
+ * is a safer way to buy the same confidence.</p>
+ *
+ * <p>Soft preferences reach the engine as a list of policy objects chosen by the
+ * Interactor. The engine scores whatever list it is given and never asks which policy
+ * is which, so switching a preference off is a change of input rather than a branch in
+ * the search.</p>
  */
 public final class ScheduleEngine {
 
-    private final List<PlacementRule> placementRules;
+    private final ActivityPlacer placer;
 
     public ScheduleEngine() {
         this(Collections.<PlacementRule>emptyList());
     }
 
     public ScheduleEngine(List<PlacementRule> placementRules) {
-        this.placementRules = Collections.unmodifiableList(new ArrayList<>(
+        List<PlacementRule> rules = Collections.unmodifiableList(new ArrayList<>(
                 placementRules == null ? Collections.<PlacementRule>emptyList() : placementRules));
+        this.placer = new ActivityPlacer(rules);
+    }
+
+    /** The placer this engine uses, so re-timing obeys exactly the same rules. */
+    public ActivityPlacer placer() {
+        return placer;
     }
 
     public ScheduleSearchResult search(ScheduleProblem problem, SearchBudget budget) {
@@ -52,8 +65,7 @@ public final class ScheduleEngine {
         List<ScheduleTask> movable = sortedById(problem.getMovableTasks());
 
         SearchState state = new SearchState(problem, locked, budget);
-        SchedulePlan greedy = new GreedyPlanner().plan(problem, locked, placementRules);
-        state.best = greedy;
+        state.best = new GreedyPlanner().plan(problem, locked, placer);
 
         explore(state, problem.getAvailability().getStart(), null, movable, 0,
                 new ArrayList<PlacedActivity>());
@@ -78,7 +90,8 @@ public final class ScheduleEngine {
 
         boolean allLockedPlaced = lockedIndex >= state.locked.size();
         if (remaining.isEmpty() && allLockedPlaced) {
-            SchedulePlan candidate = new SchedulePlan(placements, score(placements));
+            SchedulePlan candidate = new SchedulePlan(placements,
+                    score(placements, state.problem.getPreferences()));
             if (state.best == null || candidate.getScore().compareTo(state.best.getScore()) < 0) {
                 state.best = candidate;
             }
@@ -92,127 +105,30 @@ public final class ScheduleEngine {
             return;
         }
 
+        BlockedPeriods blocked = state.problem.blockedPeriodsFrom(state.locked, lockedIndex);
+
         if (!allLockedPlaced) {
             ScheduleTask lockedTask = state.locked.get(lockedIndex);
-            PlacedActivity placed = placeLocked(state.problem, lockedTask, cursor, previous);
+            BlockedPeriods withoutThisLock =
+                    state.problem.blockedPeriodsFrom(state.locked, lockedIndex + 1);
+            PlacedActivity placed = placer.placeLocked(state.problem, lockedTask, cursor,
+                    previous, withoutThisLock);
             if (placed != null) {
-                List<PlacedActivity> extended = append(placements, placed);
-                explore(state, placed.getEnd(), lockedTask, remaining, lockedIndex + 1, extended);
+                explore(state, placed.getEnd(), lockedTask, remaining, lockedIndex + 1,
+                        append(placements, placed));
             }
         }
 
         for (int i = 0; i < remaining.size(); i++) {
             ScheduleTask candidate = remaining.get(i);
-            PlacedActivity placed = placeMovable(state, candidate, cursor, previous, lockedIndex);
+            PlacedActivity placed = placer.placeMovable(state.problem, candidate, cursor,
+                    previous, blocked);
             if (placed == null) {
                 continue;
             }
-            List<ScheduleTask> rest = withoutIndex(remaining, i);
-            List<PlacedActivity> extended = append(placements, placed);
-            explore(state, placed.getEnd(), candidate, rest, lockedIndex, extended);
+            explore(state, placed.getEnd(), candidate, withoutIndex(remaining, i), lockedIndex,
+                    append(placements, placed));
         }
-    }
-
-    /** Places a movable activity at the earliest time that satisfies every hard rule. */
-    private PlacedActivity placeMovable(SearchState state, ScheduleTask task, LocalTime cursor,
-                                        ScheduleTask previous, int lockedIndex) {
-        ScheduleProblem problem = state.problem;
-        TimeWindow availability = problem.getAvailability();
-
-        int travel = travelMinutes(problem.getTravel(), previous, task, cursor);
-        LocalTime arrival = plusMinutes(cursor, travel);
-        if (arrival == null) {
-            return null;
-        }
-
-        LocalTime start = latest(arrival, task.getOpeningTime(), availability.getStart());
-        LocalTime end = plusMinutes(start, task.getDurationMinutes());
-        if (end == null) {
-            return null;
-        }
-
-        // Slide past any blocked period or locked activity the placement would collide with.
-        for (int guard = 0; guard < problem.getUnavailableWindows().size() + state.locked.size() + 2; guard++) {
-            LocalTime pushed = start;
-            for (TimeWindow blocked : problem.getUnavailableWindows()) {
-                if (blocked.overlaps(new TimeWindow(start, end))) {
-                    pushed = later(pushed, blocked.getEnd());
-                }
-            }
-            for (int i = lockedIndex; i < state.locked.size(); i++) {
-                TimeWindow lockedWindow = state.locked.get(i).getLockedAt();
-                if (lockedWindow.overlaps(new TimeWindow(start, end))) {
-                    // The locked activity must happen first; this branch will try that instead.
-                    return null;
-                }
-            }
-            if (pushed.equals(start)) {
-                break;
-            }
-            start = pushed;
-            end = plusMinutes(start, task.getDurationMinutes());
-            if (end == null) {
-                return null;
-            }
-        }
-
-        if (end.isAfter(task.getClosingTime()) || end.isAfter(availability.getEnd())) {
-            return null;
-        }
-        if (start.isBefore(task.getOpeningTime()) || start.isBefore(availability.getStart())) {
-            return null;
-        }
-        if (!allowedByRules(problem, task, start, end, travel)) {
-            return null;
-        }
-
-        return placement(task, start, end, travel, arrival);
-    }
-
-    /** Confirms the next locked activity can still be reached in time from the cursor. */
-    private PlacedActivity placeLocked(ScheduleProblem problem, ScheduleTask task,
-                                       LocalTime cursor, ScheduleTask previous) {
-        TimeWindow window = task.getLockedAt();
-        int travel = travelMinutes(problem.getTravel(), previous, task, cursor);
-        LocalTime arrival = plusMinutes(cursor, travel);
-        if (arrival == null || arrival.isAfter(window.getStart())) {
-            return null;
-        }
-        if (!allowedByRules(problem, task, window.getStart(), window.getEnd(), travel)) {
-            return null;
-        }
-        return placement(task, window.getStart(), window.getEnd(), travel, arrival);
-    }
-
-    private PlacedActivity placement(ScheduleTask task, LocalTime start, LocalTime end,
-                                     int travel, LocalTime arrival) {
-        int idle = minutesBetween(arrival, start);
-        int unavoidable = arrival.isBefore(task.getOpeningTime())
-                ? minutesBetween(arrival, earlier(task.getOpeningTime(), start))
-                : 0;
-        return new PlacedActivity(task, start, end, travel, idle, unavoidable);
-    }
-
-    private boolean allowedByRules(ScheduleProblem problem, ScheduleTask task,
-                                   LocalTime start, LocalTime end, int travel) {
-        for (PlacementRule rule : placementRules) {
-            if (!rule.allows(problem, task, start, end, travel)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Travel for the leg into {@code task}, read from the bucket containing the moment
-     * the traveller leaves the previous activity.
-     */
-    private int travelMinutes(TravelMatrix travel, ScheduleTask previous,
-                              ScheduleTask task, LocalTime departure) {
-        if (previous == null) {
-            return 0;
-        }
-        return travel.estimateAt(previous.getEventId(), task.getEventId(), departure).getMinutes();
     }
 
     /**
@@ -232,9 +148,8 @@ public final class ScheduleEngine {
             required += task.getDurationMinutes();
         }
         required += minimumRemainingTravel(state, previous, remaining);
-
-        int available = minutesBetween(cursor, state.problem.getAvailability().getEnd());
-        return required > available;
+        return required > ActivityPlacer.minutesBetween(cursor,
+                state.problem.getAvailability().getEnd());
     }
 
     /**
@@ -274,22 +189,27 @@ public final class ScheduleEngine {
      *
      * <p>Comparison is on the numeric tiers only, and strictly: a branch that could tie
      * is explored, because the final identifier tie-break is not knowable from a partial
-     * schedule and discarding ties would make the result depend on search order.</p>
+     * schedule and discarding ties would make the result depend on search order. Policy
+     * penalties are safe to accumulate this way because they are never negative, so a
+     * partial total can only grow.</p>
      */
     private boolean cannotBeatIncumbent(SearchState state, List<PlacedActivity> placements,
                                         ScheduleTask previous, List<ScheduleTask> remaining) {
         if (state.best == null) {
             return false;
         }
+        SchedulingPreferences preferences = state.problem.getPreferences();
+        int penaltySoFar = 0;
         int travelSoFar = 0;
         int idleSoFar = 0;
         for (PlacedActivity placed : placements) {
+            penaltySoFar += policyPenalty(placed, preferences);
             travelSoFar += placed.getTravelMinutesBefore();
             idleSoFar += placed.getAvoidableIdleMinutes();
         }
-        ScheduleScore optimistic = new ScheduleScore(0,
+        ScheduleScore optimistic = new ScheduleScore(penaltySoFar,
                 travelSoFar + minimumRemainingTravel(state, previous, remaining),
-                idleSoFar, 0, "");
+                preferences.isReduceIdleEnabled() ? idleSoFar : 0, 0, "");
         return compareNumeric(optimistic, state.best.getScore()) > 0;
     }
 
@@ -309,40 +229,62 @@ public final class ScheduleEngine {
         return Integer.compare(left.getOrderDisruption(), right.getOrderDisruption());
     }
 
-    /** Scores a complete schedule. Policy penalties arrive with the soft policies later. */
-    static ScheduleScore score(List<PlacedActivity> placements) {
+    private static int policyPenalty(PlacedActivity placement, SchedulingPreferences preferences) {
+        int penalty = 0;
+        for (SoftPolicy policy : preferences.getPolicies()) {
+            penalty += policy.penaltyMinutes(placement, preferences.getContext());
+        }
+        return penalty;
+    }
+
+    /**
+     * Scores a complete schedule.
+     *
+     * <p>A disabled tier contributes zero rather than being skipped conditionally
+     * elsewhere, so switching a preference off genuinely removes its influence on the
+     * ranking instead of merely hiding it.</p>
+     */
+    public static ScheduleScore score(List<PlacedActivity> placements,
+                                      SchedulingPreferences preferences) {
+        SchedulingPreferences active = preferences == null
+                ? SchedulingPreferences.none() : preferences;
+        int penalty = 0;
         int travel = 0;
         int avoidableIdle = 0;
         int disruption = 0;
         StringBuilder tieBreak = new StringBuilder();
+
         List<PlacedActivity> ordered = new ArrayList<>(placements);
         Collections.sort(ordered, (left, right) -> left.getStart().compareTo(right.getStart()));
         for (int position = 0; position < ordered.size(); position++) {
             PlacedActivity placed = ordered.get(position);
+            penalty += policyPenalty(placed, active);
             travel += placed.getTravelMinutesBefore();
             avoidableIdle += placed.getAvoidableIdleMinutes();
             disruption += Math.abs(position - placed.getTask().getOriginalIndex());
-            tieBreak.append(placed.getTask().getEventId()).append('|');
+            tieBreak.append(placed.getTask().getEventId()).append('/');
         }
-        return new ScheduleScore(0, travel, avoidableIdle, disruption, tieBreak.toString());
+        return new ScheduleScore(penalty, travel,
+                active.isReduceIdleEnabled() ? avoidableIdle : 0,
+                active.isPreserveOrderEnabled() ? disruption : 0,
+                tieBreak.toString());
     }
 
     private ScheduleConflict diagnose(ScheduleProblem problem) {
         TimeWindow availability = problem.getAvailability();
         for (ScheduleTask task : problem.allTasks()) {
-            LocalTime windowStart = latest(task.getOpeningTime(), availability.getStart(), null);
-            LocalTime windowEnd = earlier(task.getClosingTime(), availability.getEnd());
-            int usable = windowEnd.isAfter(windowStart) ? minutesBetween(windowStart, windowEnd) : 0;
+            LocalTime windowStart = ActivityPlacer.later(task.getOpeningTime(),
+                    availability.getStart());
+            LocalTime windowEnd = ActivityPlacer.earlier(task.getClosingTime(),
+                    availability.getEnd());
+            int usable = windowEnd.isAfter(windowStart)
+                    ? ActivityPlacer.minutesBetween(windowStart, windowEnd) : 0;
             if (usable < task.getDurationMinutes()) {
-                return new ScheduleConflict(task.getEventId(),
-                        task.getActivity().getName() + " needs " + task.getDurationMinutes()
-                                + " minutes but only " + usable
-                                + " fit between its opening hours and your available time.");
+                return ScheduleConflict.activityCannotFit(task.getEventId(),
+                        task.getActivity().getName(), task.getDurationMinutes(), usable);
             }
         }
-        return new ScheduleConflict("",
-                "No complete schedule fits your available hours once travel between these "
-                        + "activities is included. Your original Day Plan was not changed.");
+        return ScheduleConflict.noFeasibleOrder();
     }
 
     private static List<ScheduleTask> sortedByLockStart(List<ScheduleTask> tasks) {
@@ -365,34 +307,10 @@ public final class ScheduleEngine {
         return copy;
     }
 
-    private static List<PlacedActivity> append(List<PlacedActivity> placements, PlacedActivity placed) {
+    private static List<PlacedActivity> append(List<PlacedActivity> placements,
+                                               PlacedActivity placed) {
         List<PlacedActivity> copy = new ArrayList<>(placements);
         copy.add(placed);
         return copy;
-    }
-
-    static LocalTime plusMinutes(LocalTime time, int minutes) {
-        LocalTime result = time.plusMinutes(minutes);
-        if (minutes > 0 && !result.isAfter(time)) {
-            return null;
-        }
-        return result;
-    }
-
-    static int minutesBetween(LocalTime from, LocalTime to) {
-        return (to.toSecondOfDay() - from.toSecondOfDay()) / 60;
-    }
-
-    static LocalTime later(LocalTime left, LocalTime right) {
-        return left.isAfter(right) ? left : right;
-    }
-
-    static LocalTime earlier(LocalTime left, LocalTime right) {
-        return left.isBefore(right) ? left : right;
-    }
-
-    private static LocalTime latest(LocalTime first, LocalTime second, LocalTime third) {
-        LocalTime result = later(first, second);
-        return third == null ? result : later(result, third);
     }
 }

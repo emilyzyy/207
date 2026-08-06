@@ -19,9 +19,16 @@ public final class ScheduleProblem {
     private final List<ScheduleTask> lockedTasks;
     private final List<TimeWindow> unavailableWindows;
     private final TravelMatrix travel;
+    private final SchedulingPreferences preferences;
 
     public ScheduleProblem(TimeWindow availability, List<ScheduleTask> tasks,
                            List<TimeWindow> unavailableWindows, TravelMatrix travel) {
+        this(availability, tasks, unavailableWindows, travel, SchedulingPreferences.none());
+    }
+
+    public ScheduleProblem(TimeWindow availability, List<ScheduleTask> tasks,
+                           List<TimeWindow> unavailableWindows, TravelMatrix travel,
+                           SchedulingPreferences preferences) {
         if (availability == null) {
             throw new IllegalArgumentException("Availability window is required");
         }
@@ -55,6 +62,25 @@ public final class ScheduleProblem {
         this.unavailableWindows = Collections.unmodifiableList(new ArrayList<>(
                 unavailableWindows == null ? Collections.<TimeWindow>emptyList() : unavailableWindows));
         this.travel = travel;
+        this.preferences = preferences == null ? SchedulingPreferences.none() : preferences;
+    }
+
+    public SchedulingPreferences getPreferences() {
+        return preferences;
+    }
+
+    /**
+     * Periods in which nothing may be scheduled, from the traveller's point of view at
+     * {@code lockedIndex} locks into the day. Unavailable windows are always included;
+     * locks still ahead are added because a traveller cannot be journeying through an
+     * appointment they have already committed to.
+     */
+    public BlockedPeriods blockedPeriodsFrom(List<ScheduleTask> locksInOrder, int lockedIndex) {
+        BlockedPeriods blocked = BlockedPeriods.of(unavailableWindows);
+        for (int i = lockedIndex; i < locksInOrder.size(); i++) {
+            blocked = blocked.plus(locksInOrder.get(i).getLockedAt());
+        }
+        return blocked;
     }
 
     public TimeWindow getAvailability() {

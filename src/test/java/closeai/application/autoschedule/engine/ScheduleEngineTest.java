@@ -136,8 +136,11 @@ class ScheduleEngineTest {
         ScheduleSearchResult result = search(problem);
 
         assertFalse(result.isFound());
+        assertEquals(closeai.application.autoschedule.ScheduleConflict.Kind.ACTIVITY_CANNOT_FIT,
+                result.getConflict().getKind());
         assertEquals("a", result.getConflict().getBlockingEventId());
-        assertTrue(result.getConflict().getReason().contains("121 minutes"));
+        assertEquals(121, result.getConflict().getRequiredMinutes());
+        assertEquals(120, result.getConflict().getAvailableMinutes());
     }
 
     @Test
