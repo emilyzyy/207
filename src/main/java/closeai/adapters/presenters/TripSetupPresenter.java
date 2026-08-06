@@ -18,6 +18,8 @@ import closeai.domain.entities.Activity;
 import closeai.domain.entities.Trip;
 import closeai.domain.entities.WeatherWarning;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import javax.swing.SwingWorker;
 
 /**
@@ -64,6 +66,7 @@ public final class TripSetupPresenter implements TripSetupOutputBoundary {
                 "Loading weather…",
                 "Weather and places refresh in the background."));
         bookmarks.setState(new BookmarksState(trip.getBookmarkedActivities()));
+        search.setState(searchStateFor(trip, search.getState().getActivities()));
         dayPlan.setState(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(),
                 action + ". Add activities before optimizing.", false));
@@ -124,7 +127,7 @@ public final class TripSetupPresenter implements TripSetupOutputBoundary {
                                     : warning.getWeatherCondition(),
                             warning == null ? "Trip saved; weather could not be refreshed."
                                     : warning.getMessage()));
-                    search.setState(new SearchState(data.activities, ""));
+                    search.setState(searchStateFor(trip, data.activities));
                 } catch (Exception exception) {
                     dashboard.setState(new DashboardState(
                             trip.getDestination(), trip.getDate(),
@@ -133,6 +136,20 @@ public final class TripSetupPresenter implements TripSetupOutputBoundary {
                 }
             }
         }.execute();
+    }
+
+    private static SearchState searchStateFor(Trip trip, List<Activity> activities) {
+        Set<String> bookmarkedIds = new HashSet<>();
+        for (Activity activity : trip.getBookmarkedActivities()) {
+            bookmarkedIds.add(activity.getId());
+        }
+        Set<String> scheduledIds = new HashSet<>();
+        trip.getScheduledEvents().forEach(event -> {
+            if (event.getActivity() != null) {
+                scheduledIds.add(event.getActivity().getId());
+            }
+        });
+        return new SearchState(activities, "", bookmarkedIds, scheduledIds);
     }
 
     private static final class DestinationData {

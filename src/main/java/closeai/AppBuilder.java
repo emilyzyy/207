@@ -1,8 +1,11 @@
 package closeai;
 
+import closeai.adapters.controllers.ActivityDiscoveryController;
+import closeai.adapters.controllers.BookmarkController;
 import closeai.adapters.controllers.OptimizeItineraryController;
 import closeai.adapters.controllers.ShareTripController;
 import closeai.adapters.controllers.TripSetupController;
+import closeai.adapters.presenters.ActivityDiscoveryPresenter;
 import closeai.adapters.presenters.OptimizeItineraryPresenter;
 import closeai.adapters.presenters.ShareTripPresenter;
 import closeai.adapters.presenters.TripSetupPresenter;
@@ -127,12 +130,22 @@ public final class AppBuilder {
                 app.share,
                 () -> dayPlanViewModel.getState().getTripId(),
                 sharePresenter);
+        ActivityDiscoveryPresenter discoveryPresenter = new ActivityDiscoveryPresenter(
+                searchViewModel, bookmarksViewModel);
+        ActivityDiscoveryController discoveryController = new ActivityDiscoveryController(
+                app.searchActivities, app.filterActivities,
+                () -> dashboardViewModel.getState().getDestination(), discoveryPresenter);
+        BookmarkController bookmarkController = new BookmarkController(
+                app.bookmarkActivity, app.removeBookmark,
+                () -> dayPlanViewModel.getState().getTripId(), searchViewModel, discoveryPresenter);
 
         HeaderPanel headerPanel = new HeaderPanel(
                 dashboardViewModel, dayPlanViewModel, shareController);
         OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel, searchViewModel);
-        SearchPanel searchPanel = new SearchPanel(searchViewModel);
-        BookmarksPanel bookmarksPanel = new BookmarksPanel(bookmarksViewModel);
+        SearchPanel searchPanel = new SearchPanel(
+                searchViewModel, discoveryController, bookmarkController);
+        BookmarksPanel bookmarksPanel = new BookmarksPanel(
+                bookmarksViewModel, bookmarkController);
         DayPlanPanel dayPlanPanel =
                 new DayPlanPanel(dayPlanViewModel, optimizeController);
         TripOptionsPanel tripOptionsPanel =
@@ -210,12 +223,22 @@ public final class AppBuilder {
                 app.share,
                 () -> dayPlanViewModel.getState().getTripId(),
                 sharePresenter);
+        ActivityDiscoveryPresenter discoveryPresenter = new ActivityDiscoveryPresenter(
+                searchViewModel, bookmarksViewModel);
+        ActivityDiscoveryController discoveryController = new ActivityDiscoveryController(
+                app.searchActivities, app.filterActivities,
+                () -> dashboardViewModel.getState().getDestination(), discoveryPresenter);
+        BookmarkController bookmarkController = new BookmarkController(
+                app.bookmarkActivity, app.removeBookmark,
+                () -> dayPlanViewModel.getState().getTripId(), searchViewModel, discoveryPresenter);
 
         HeaderPanel headerPanel = new HeaderPanel(
                 dashboardViewModel, dayPlanViewModel, shareController);
         OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel, searchViewModel);
-        SearchPanel searchPanel = new SearchPanel(searchViewModel);
-        BookmarksPanel bookmarksPanel = new BookmarksPanel(bookmarksViewModel);
+        SearchPanel searchPanel = new SearchPanel(
+                searchViewModel, discoveryController, bookmarkController);
+        BookmarksPanel bookmarksPanel = new BookmarksPanel(
+                bookmarksViewModel, bookmarkController);
         DayPlanPanel dayPlanPanel =
                 new DayPlanPanel(dayPlanViewModel, optimizeController);
         TripOptionsPanel tripOptionsPanel =

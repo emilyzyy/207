@@ -47,6 +47,22 @@ final class NominatimPlacesServiceTest {
     }
 
     @Test
+    void appliesQueryToDiscoveredNamesCategoriesAndAddresses() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":123,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"City Museum\",\"tourism\":\"museum\","
+                        + "\"addr:street\":\"Culture Road\"}}]}" );
+        NominatimPlacesService service = service();
+
+        assertEquals(1, service.search("Toronto", "museum").size());
+        assertEquals(1, service.search("Toronto", "culture").size());
+        assertTrue(service.search("Toronto", "restaurant").isEmpty());
+    }
+
+    @Test
     void returnsEmptyWhenGeocodingHasNoResult() throws Exception {
         startServer(200, "[]", 200, "{\"elements\":[]}");
 

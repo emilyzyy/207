@@ -20,6 +20,7 @@ public final class AppContainer {
     public final CreateTripUseCase createTrip;
     public final DiscoverTripPlacesUseCase discoverTripPlaces;
     public final SearchActivitiesUseCase searchActivities;
+    public final FilterActivitiesUseCase filterActivities;
     public final BookmarkActivityUseCase bookmarkActivity;
     public final RemoveBookmarkUseCase removeBookmark;
     public final AddActivityToPlanUseCase addActivityToPlan;
@@ -65,6 +66,7 @@ public final class AppContainer {
         createTrip = new CreateTripUseCase(trips);
         discoverTripPlaces = new DiscoverTripPlacesUseCase(trips, places, placesWriter);
         searchActivities = new SearchActivitiesUseCase(places);
+        filterActivities = new FilterActivitiesUseCase();
         bookmarkActivity = new BookmarkActivityUseCase(trips, activities);
         removeBookmark = new RemoveBookmarkUseCase(trips);
         addActivityToPlan = new AddActivityToPlanUseCase(trips, activities);
