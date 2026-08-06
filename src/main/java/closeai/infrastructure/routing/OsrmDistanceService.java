@@ -11,6 +11,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -70,6 +73,9 @@ public final class OsrmDistanceService implements DistanceService {
         double lat2 = to.getLatitude();
         String departAt = departure.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
         // TomTom orders coordinates latitude,longitude, unlike the OSRM calls below.
+        // Kept from the parallel fix on feature/emily-autoschedule: the implementation here
+        // is Raashid's, and this line records why the order is what it is so the defect is
+        // not reintroduced a third time.
         String url = TOMTOM_BASE + "/" + lat1 + "," + lng1 + ":" + lat2 + "," + lng2 + "/json"
                 + "?key=" + urlEncode(key)
                 + "&departAt=" + urlEncode(departAt)
@@ -83,6 +89,9 @@ public final class OsrmDistanceService implements DistanceService {
             HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
+                warnOnce("TomTom route request failed (" + response.statusCode() + "): "
+                        + tomtomError(response.body())
+                        + "; driving estimates fall back to OSRM");
                 return null;
             }
             JsonNode root = mapper.readTree(response.body());
@@ -96,7 +105,26 @@ public final class OsrmDistanceService implements DistanceService {
             }
             return Math.max(1, (int) Math.round(seconds / 60.0));
         } catch (Exception e) {
+            warnOnce("TomTom route request failed: " + e + "; driving estimates fall back to OSRM");
             return null;
+        }
+    }
+
+    private String tomtomError(String body) {
+        if (body == null || body.isBlank()) {
+            return "no error body";
+        }
+        try {
+            JsonNode detail = mapper.readTree(body).path("detailedError");
+            String code = detail.path("code").asText("");
+            String message = detail.path("message").asText("");
+            if (!code.isEmpty() || !message.isEmpty()) {
+                return (code.isEmpty() ? "" : code + ": ")
+                        + (message.isEmpty() ? "no message" : message);
+            }
+            return body;
+        } catch (Exception e) {
+            return body;
         }
     }
 
@@ -179,7 +207,45 @@ public final class OsrmDistanceService implements DistanceService {
         if (key != null && !key.isBlank()) {
             return key;
         }
-        return System.getenv("TOMTOM_API_KEY");
+        key = System.getenv("TOMTOM_API_KEY");
+        if (key != null && !key.isBlank()) {
+            return key;
+        }
+        return keyFromDotEnv();
+    }
+
+    private static String dotEnvKey = null;
+    private static boolean dotEnvLoaded = false;
+
+    private static String keyFromDotEnv() {
+        if (dotEnvLoaded) {
+            return dotEnvKey;
+        }
+        dotEnvLoaded = true;
+        try {
+            Path dotEnv = Paths.get(System.getProperty("user.dir"), ".env");
+            if (!Files.isReadable(dotEnv)) {
+                return dotEnvKey;
+            }
+            for (String line : Files.readAllLines(dotEnv, StandardCharsets.UTF_8)) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                    continue;
+                }
+                int eq = trimmed.indexOf('=');
+                if (eq <= 0) {
+                    continue;
+                }
+                String name = trimmed.substring(0, eq).trim();
+                if ("TOMTOM_API_KEY".equals(name)) {
+                    dotEnvKey = trimmed.substring(eq + 1).trim();
+                    return dotEnvKey;
+                }
+            }
+        } catch (Exception ignored) {
+            dotEnvKey = null;
+        }
+        return dotEnvKey;
     }
 
     private static void warnOnce(String message) {
