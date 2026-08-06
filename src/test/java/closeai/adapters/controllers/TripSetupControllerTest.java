@@ -30,11 +30,11 @@ final class TripSetupControllerTest {
                 create, edit, () -> "", output);
 
         controller.execute(
-                "Montreal", "2026-08-02", "09:00", "18:00", "TRANSIT");
+                "Montreal", "2026-08-02", "09:00", "18:00");
 
         assertNotNull(create.input);
         assertEquals("Montreal", create.input.getDestination());
-        assertEquals(TransportationMode.TRANSIT,
+        assertEquals(TransportationMode.WALKING,
                 create.input.getTransportationMode());
         assertTrue(output.success.isCreated());
         assertNull(edit.input);
@@ -50,7 +50,7 @@ final class TripSetupControllerTest {
                 create, edit, activeId::get, output);
 
         controller.execute(
-                "Ottawa", "2026-08-03", "10:00", "19:00", "WALKING");
+                "Ottawa", "2026-08-03", "10:00", "19:00");
 
         assertNotNull(edit.input);
         assertEquals("trip-1", edit.input.getItineraryId());
@@ -68,7 +68,7 @@ final class TripSetupControllerTest {
                 create, edit, () -> "", output);
 
         controller.execute(
-                "Toronto", "08/02/2026", "morning", "18:00", "WALKING");
+                "Toronto", "08/02/2026", "morning", "18:00");
 
         assertEquals("Date must use YYYY-MM-DD", output.failure);
         assertNull(create.input);

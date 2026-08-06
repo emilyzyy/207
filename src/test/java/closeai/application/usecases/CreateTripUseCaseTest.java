@@ -98,5 +98,10 @@ final class CreateTripUseCaseTest {
             return saved != null && saved.getId().equals(id)
                     ? Optional.of(saved) : Optional.empty();
         }
+
+        @Override
+        public java.util.List<Trip> findAll() {
+            return saved == null ? java.util.List.of() : java.util.List.of(saved);
+        }
     }
 }

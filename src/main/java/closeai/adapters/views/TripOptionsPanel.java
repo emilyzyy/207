@@ -3,7 +3,6 @@ package closeai.adapters.views;
 import closeai.adapters.controllers.TripSetupController;
 import closeai.adapters.viewmodels.TripOptionsState;
 import closeai.adapters.viewmodels.TripOptionsViewModel;
-import closeai.domain.valueobjects.TransportationMode;
 import java.awt.BorderLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -12,7 +11,6 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
@@ -25,8 +23,6 @@ public final class TripOptionsPanel extends JPanel {
     private final JTextField date = new JTextField();
     private final JTextField startTime = new JTextField();
     private final JTextField endTime = new JTextField();
-    private final JComboBox<TransportationMode> transportation =
-            new JComboBox<TransportationMode>(TransportationMode.values());
     private final JLabel status = new JLabel();
     private final JButton submit = SwingTheme.primaryButton("Create Trip");
 
@@ -66,7 +62,6 @@ public final class TripOptionsPanel extends JPanel {
         addField(fields, 1, "Date (YYYY-MM-DD)", date);
         addField(fields, 2, "Day starts (HH:MM)", startTime);
         addField(fields, 3, "Day ends (HH:MM)", endTime);
-        addField(fields, 4, "Transportation", transportation);
         add(fields, BorderLayout.CENTER);
 
         JPanel footer = new JPanel();
@@ -96,14 +91,11 @@ public final class TripOptionsPanel extends JPanel {
 
     private void submit() {
         if (controller != null) {
-            TransportationMode selected =
-                    (TransportationMode) transportation.getSelectedItem();
             controller.execute(
                     destination.getText(),
                     date.getText(),
                     startTime.getText(),
-                    endTime.getText(),
-                    selected == null ? "" : selected.name());
+                    endTime.getText());
         }
     }
 
@@ -114,9 +106,6 @@ public final class TripOptionsPanel extends JPanel {
                 state.getStartTime() == null ? "" : state.getStartTime().toString());
         endTime.setText(
                 state.getEndTime() == null ? "" : state.getEndTime().toString());
-        if (state.getTransportationMode() != null) {
-            transportation.setSelectedItem(state.getTransportationMode());
-        }
         submit.setText(state.hasActiveTrip() ? "Save Trip Options" : "Create Trip");
         renderFeedback(state);
     }

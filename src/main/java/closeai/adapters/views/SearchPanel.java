@@ -70,6 +70,15 @@ public final class SearchPanel extends JPanel {
 
     private void render(SearchState state) {
         results.removeAll();
+        if (state.getActivities().isEmpty()) {
+            JLabel empty = new JLabel("No results");
+            empty.setFont(SwingTheme.BODY);
+            empty.setForeground(SwingTheme.MUTED);
+            results.add(empty);
+            results.revalidate();
+            results.repaint();
+            return;
+        }
         JLabel count = new JLabel(state.getActivities().size() + " seeded places");
         count.setFont(SwingTheme.SMALL);
         count.setForeground(SwingTheme.MUTED);

@@ -39,23 +39,23 @@ public final class TripSetupController {
             String destination,
             String date,
             String startTime,
-            String endTime,
-            String transportationMode) {
+            String endTime) {
         try {
             LocalDate parsedDate = parseDate(date);
             LocalTime parsedStart = parseTime(startTime, "Start time");
             LocalTime parsedEnd = parseTime(endTime, "End time");
-            TransportationMode parsedMode = parseMode(transportationMode);
             String tripId = activeTripId.get();
 
             Trip trip;
             boolean created = tripId == null || tripId.trim().isEmpty();
             if (created) {
                 trip = createTrip.execute(new CreateTripInputData(
-                        destination, parsedDate, parsedStart, parsedEnd, parsedMode));
+                        destination, parsedDate, parsedStart, parsedEnd,
+                        TransportationMode.WALKING));
             } else {
                 trip = editItinerary.execute(new EditItineraryInputData(
-                        tripId, destination, parsedDate, parsedStart, parsedEnd, parsedMode));
+                        tripId, destination, parsedDate, parsedStart, parsedEnd,
+                        TransportationMode.WALKING));
             }
             output.presentSuccess(new TripSetupOutputData(trip, created));
         } catch (IllegalArgumentException exception) {
@@ -76,15 +76,6 @@ public final class TripSetupController {
             return LocalTime.parse(requireText(value, label + " is required"));
         } catch (DateTimeParseException exception) {
             throw new IllegalArgumentException(label + " must use HH:MM");
-        }
-    }
-
-    private static TransportationMode parseMode(String value) {
-        try {
-            return TransportationMode.valueOf(
-                    requireText(value, "Transportation mode is required"));
-        } catch (IllegalArgumentException exception) {
-            throw new IllegalArgumentException("Select a transportation mode");
         }
     }
 

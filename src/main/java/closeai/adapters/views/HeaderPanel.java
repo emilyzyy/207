@@ -1,9 +1,14 @@
 package closeai.adapters.views;
 
+import closeai.adapters.controllers.ShareTripController;
 import closeai.adapters.viewmodels.DashboardState;
 import closeai.adapters.viewmodels.DashboardViewModel;
+import closeai.adapters.viewmodels.DayPlanViewModel;
 import java.awt.BorderLayout;
+import java.awt.Cursor;
 import java.awt.FlowLayout;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.format.DateTimeFormatter;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -17,11 +22,22 @@ public final class HeaderPanel extends JPanel {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("MMMM d");
 
     private final DashboardViewModel viewModel;
+    private final DayPlanViewModel dayPlanViewModel;
     private final JLabel tripLabel = new JLabel();
     private final JLabel dateLabel = new JLabel();
+    private final JButton shareButton = SwingTheme.primaryButton("Share");
+    private Runnable openShareAction = () -> { };
+    private Runnable onHomeAction = () -> { };
 
-    public HeaderPanel(DashboardViewModel viewModel) {
+    public HeaderPanel(
+            DashboardViewModel viewModel,
+            DayPlanViewModel dayPlanViewModel,
+            ShareTripController shareController) {
+        if (viewModel == null || dayPlanViewModel == null || shareController == null) {
+            throw new IllegalArgumentException("Header dependencies are required");
+        }
         this.viewModel = viewModel;
+        this.dayPlanViewModel = dayPlanViewModel;
         setLayout(new BorderLayout(24, 0));
         setBackground(SwingTheme.PANEL);
         setBorder(BorderFactory.createCompoundBorder(
@@ -31,6 +47,24 @@ public final class HeaderPanel extends JPanel {
         JLabel brand = new JLabel("CloseAI");
         brand.setFont(SwingTheme.TITLE);
         brand.setForeground(SwingTheme.NAVY);
+        brand.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        brand.setToolTipText("Back to My Trips");
+        brand.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                brand.setForeground(SwingTheme.BLUE);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                brand.setForeground(SwingTheme.NAVY);
+            }
+
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                onHomeAction.run();
+            }
+        });
         add(brand, BorderLayout.WEST);
 
         JPanel tripSummary = new JPanel();
@@ -47,12 +81,26 @@ public final class HeaderPanel extends JPanel {
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         actions.setOpaque(false);
-        JButton share = SwingTheme.placeholderButton("Share (not wired)");
-        actions.add(share);
+        shareButton.setName("share-trip");
+        shareButton.addActionListener(event -> {
+            shareController.execute();
+            openShareAction.run();
+        });
+        actions.add(shareButton);
         add(actions, BorderLayout.EAST);
 
         refresh(viewModel.getState());
+        refreshShareAvailability();
         viewModel.addPropertyChangeListener(event -> refresh(viewModel.getState()));
+        dayPlanViewModel.addPropertyChangeListener(event -> refreshShareAvailability());
+    }
+
+    public void setOpenShareAction(Runnable action) {
+        openShareAction = action == null ? () -> { } : action;
+    }
+
+    public void setOnHomeAction(Runnable onHomeAction) {
+        this.onHomeAction = onHomeAction;
     }
 
     private void refresh(DashboardState state) {
@@ -60,5 +108,12 @@ public final class HeaderPanel extends JPanel {
                 ? "Create a trip to begin" : state.getDestination() + " day trip");
         dateLabel.setText(state.getDate() == null
                 ? "Date not selected" : DATE.format(state.getDate()));
+    }
+
+    private void refreshShareAvailability() {
+        shareButton.setEnabled(!dayPlanViewModel.getState().getTripId().isEmpty());
+        shareButton.setToolTipText(shareButton.isEnabled()
+                ? "Preview and copy this itinerary"
+                : "Create a trip before sharing");
     }
 }

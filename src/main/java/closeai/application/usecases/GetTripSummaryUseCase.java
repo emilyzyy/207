@@ -5,19 +5,39 @@ import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.Trip;
 import closeai.domain.valueobjects.EventType;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 public final class GetTripSummaryUseCase {
     private final TripRepository trips;
     public GetTripSummaryUseCase(TripRepository trips) { this.trips = trips; }
     public String execute(String tripId) {
         Trip trip = trips.findById(tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
-        StringBuilder summary = new StringBuilder("CloseAI trip to ").append(trip.getDestination())
-                .append(" on ").append(trip.getDate()).append("\n");
-        DateTimeFormatter time = DateTimeFormatter.ofPattern("h:mm a");
-        for (ScheduledEvent event : trip.getScheduledEvents()) {
-            summary.append(event.getStartTime().format(time)).append(" — ")
-                    .append(event.getEventType() == EventType.TRAVEL ? event.getNotes() : event.getActivity().getName()).append("\n");
+        StringBuilder summary = new StringBuilder("CloseAI trip to ")
+                .append(trip.getDestination()).append("\n")
+                .append("Date: ").append(trip.getDate()).append("\n")
+                .append("Time: ").append(trip.getStartTime())
+                .append(" – ").append(trip.getEndTime()).append("\n")
+                .append("Transportation: ")
+                .append(trip.getTransportationMode()).append("\n\n")
+                .append("Itinerary\n");
+        DateTimeFormatter time = DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH);
+        if (trip.getScheduledEvents().isEmpty()) {
+            summary.append("No activities scheduled yet.\n");
+        } else {
+            for (ScheduledEvent event : trip.getScheduledEvents()) {
+                summary.append(event.getStartTime().format(time))
+                        .append(" – ").append(event.getEndTime().format(time))
+                        .append(" · ").append(eventName(event)).append("\n");
+            }
         }
-        return summary.toString().trim();
+        return summary.append("\nShared from CloseAI").toString();
+    }
+
+    private String eventName(ScheduledEvent event) {
+        if (event.getEventType() == EventType.TRAVEL) {
+            return event.getNotes().trim().isEmpty() ? "Travel" : event.getNotes();
+        }
+        return event.getActivity() == null
+                ? event.getEventType().toString() : event.getActivity().getName();
     }
 }

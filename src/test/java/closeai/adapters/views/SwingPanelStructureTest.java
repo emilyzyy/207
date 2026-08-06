@@ -17,7 +17,6 @@ import closeai.domain.valueobjects.ActivityCategory;
 import closeai.domain.valueobjects.EventType;
 import closeai.domain.valueobjects.IndoorOutdoorType;
 import closeai.domain.valueobjects.Location;
-import closeai.domain.valueobjects.TransportationMode;
 import java.awt.Component;
 import java.awt.Container;
 import java.time.LocalDate;
@@ -48,8 +47,7 @@ final class SwingPanelStructureTest {
                 new OptimizeItineraryController(optimizer, "trip-1"));
         TripOptionsPanel options = new TripOptionsPanel(new TripOptionsViewModel(
                 new TripOptionsState("Toronto", LocalDate.of(2026, 7, 23),
-                        LocalTime.of(9, 0), LocalTime.of(18, 0),
-                        TransportationMode.WALKING)));
+                        LocalTime.of(9, 0), LocalTime.of(18, 0))));
         PlannerPanel planner = new PlannerPanel(search, bookmarks, dayPlan, options);
 
         JTabbedPane tabs = (JTabbedPane) planner.getComponent(0);

@@ -11,6 +11,7 @@ import closeai.domain.entities.WeatherWarning;
 import closeai.domain.valueobjects.EventType;
 import closeai.domain.valueobjects.Location;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -91,7 +92,7 @@ public final class AutoScheduleTripUseCase {
     private CandidatePlan planCandidate(Trip trip, WeatherWarning warning, Location current,
                                         LocalTime cursor, Activity activity) {
         int travelMinutes = distances.estimateTravelMinutes(current, activity.getLocation(),
-                trip.getTransportationMode());
+                trip.getTransportationMode(), LocalDateTime.of(trip.getDate(), cursor));
         if (travelMinutes < 0) {
             throw new IllegalStateException("Distance service returned negative travel time");
         }

@@ -4,7 +4,6 @@ import closeai.domain.entities.Activity;
 import closeai.domain.valueobjects.ActivityCategory;
 import closeai.domain.valueobjects.IndoorOutdoorType;
 import closeai.domain.valueobjects.Location;
-import closeai.domain.valueobjects.TransportationMode;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -52,15 +51,13 @@ final class ViewModelStateTest {
         DashboardViewModel dashboard = new DashboardViewModel(dashboardState);
         TripOptionsState optionsState = new TripOptionsState(
                 "Toronto", LocalDate.of(2026, 7, 23),
-                LocalTime.of(9, 0), LocalTime.of(18, 0),
-                TransportationMode.TRANSIT);
+                LocalTime.of(9, 0), LocalTime.of(18, 0));
         TripOptionsViewModel options = new TripOptionsViewModel(optionsState);
 
         assertEquals("Toronto", dashboard.getState().getDestination());
         assertEquals("Sunny intervals", dashboard.getState().getWeatherCondition());
         assertEquals(LocalTime.of(9, 0), options.getState().getStartTime());
-        assertEquals(TransportationMode.TRANSIT,
-                options.getState().getTransportationMode());
+        assertEquals(LocalTime.of(18, 0), options.getState().getEndTime());
     }
 
     private Activity activity(String id) {
