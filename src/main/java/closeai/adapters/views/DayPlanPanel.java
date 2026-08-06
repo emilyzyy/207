@@ -2,6 +2,7 @@ package closeai.adapters.views;
 
 import closeai.adapters.controllers.OptimizeItineraryController;
 import closeai.adapters.controllers.ManualPlanController;
+import closeai.adapters.viewmodels.ActivitySelectionViewModel;
 import closeai.adapters.viewmodels.DayPlanState;
 import closeai.adapters.viewmodels.DayPlanViewModel;
 import closeai.domain.entities.ScheduledEvent;
@@ -10,6 +11,9 @@ import closeai.domain.valueobjects.EventType;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Cursor;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -26,6 +30,7 @@ public final class DayPlanPanel extends JPanel {
     private final DayPlanViewModel viewModel;
     private final OptimizeItineraryController optimizeController;
     private final ManualPlanController manualPlanController;
+    private final ActivitySelectionViewModel selection;
     private final JPanel eventList = new JPanel();
     private final JLabel status = new JLabel();
     private JButton optimizeButton;
@@ -34,16 +39,25 @@ public final class DayPlanPanel extends JPanel {
     public DayPlanPanel(
             DayPlanViewModel viewModel,
             OptimizeItineraryController optimizeController) {
-        this(viewModel, optimizeController, null);
+        this(viewModel, optimizeController, null, null);
     }
 
     public DayPlanPanel(
             DayPlanViewModel viewModel,
             OptimizeItineraryController optimizeController,
             ManualPlanController manualPlanController) {
+        this(viewModel, optimizeController, manualPlanController, null);
+    }
+
+    public DayPlanPanel(
+            DayPlanViewModel viewModel,
+            OptimizeItineraryController optimizeController,
+            ManualPlanController manualPlanController,
+            ActivitySelectionViewModel selection) {
         this.viewModel = viewModel;
         this.optimizeController = optimizeController;
         this.manualPlanController = manualPlanController;
+        this.selection = selection;
 
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
@@ -60,6 +74,9 @@ public final class DayPlanPanel extends JPanel {
 
         render(viewModel.getState());
         viewModel.addPropertyChangeListener(event -> render(viewModel.getState()));
+        if (selection != null) {
+            selection.addPropertyChangeListener(event -> render(viewModel.getState()));
+        }
     }
 
     public void setOpenCalendarAction(Runnable action) {
@@ -134,6 +151,7 @@ public final class DayPlanPanel extends JPanel {
     private JPanel eventCard(ScheduledEvent event, List<WeatherWarning> hourlyWeather) {
         JPanel card = new JPanel(new BorderLayout(12, 5));
         SwingTheme.styleCard(card);
+        makeSelectable(card, event);
         JLabel time = new JLabel(event.getStartTime() + " – " + event.getEndTime());
         time.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         time.setForeground(SwingTheme.BLUE);
@@ -168,6 +186,23 @@ public final class DayPlanPanel extends JPanel {
         actions.add(remove);
         card.add(actions, BorderLayout.EAST);
         return card;
+    }
+
+    private void makeSelectable(JPanel card, ScheduledEvent event) {
+        if (selection == null || event.getActivity() == null) return;
+        card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        card.setToolTipText("Show " + event.getActivity().getName() + " on the map");
+        if (event.getActivity().getId().equals(selection.getSelectedActivityId())) {
+            card.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(SwingTheme.BLUE, 2),
+                    BorderFactory.createEmptyBorder(11, 13, 11, 13)));
+        }
+        card.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent mouseEvent) {
+                selection.select(event.getActivity().getId());
+            }
+        });
     }
 
     private void editEvent(ScheduledEvent event) {
