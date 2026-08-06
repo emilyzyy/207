@@ -69,7 +69,8 @@ public final class OsrmDistanceService implements DistanceService {
         double lng2 = to.getLongitude();
         double lat2 = to.getLatitude();
         String departAt = departure.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
-        String url = TOMTOM_BASE + "/" + lng1 + "," + lat1 + ":" + lng2 + "," + lat2 + "/json"
+        // TomTom orders coordinates latitude,longitude, unlike the OSRM calls below.
+        String url = TOMTOM_BASE + "/" + lat1 + "," + lng1 + ":" + lat2 + "," + lng2 + "/json"
                 + "?key=" + urlEncode(key)
                 + "&departAt=" + urlEncode(departAt)
                 + "&traffic=true"
