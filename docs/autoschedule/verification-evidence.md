@@ -9,12 +9,13 @@ Environment: Java 24.0.2 (Temurin), macOS, aarch64. Maven via `./mvnw`.
 ./mvnw clean test
 ```
 
-**297 tests, 0 failures, 0 errors, 6 skipped** (re-run 2026-08-06 after the weather-preference
-work; the previous figure was 270). The six skips are all opt-in live tests that require
+**300 tests, 0 failures, 0 errors, 9 skipped** (re-run 2026-08-06 after the final tooling
+pass; previous figures were 270, then 297). The six skips are all opt-in live tests that require
 network access and an explicit environment variable: the pre-existing
 `OpenMeteoWeatherServiceLiveTest` (1, needs `RUN_LIVE_OPEN_METEO_TEST=true`) and
-`AutoScheduleLiveVerificationTest` (5, needs `RUN_LIVE_AUTOSCHEDULE_TEST=true`, results in
-§4). Nothing in the ordinary suite touches the network. All 53 tests that existed before
+`AutoScheduleLiveVerificationTest` (5, needs `RUN_LIVE_AUTOSCHEDULE_TEST=true`) and
+`TomTomLiveVerificationTest` (3, needs `RUN_LIVE_TOMTOM_TEST=true` **and** a credential;
+results in §4). Nothing in the ordinary suite touches the network. All 53 tests that existed before
 this feature still pass.
 
 ## 2. Coverage (JaCoCo)
@@ -25,6 +26,15 @@ this feature still pass.
 
 Figures below were reproduced from `target/site/jacoco/jacoco.csv` on the run above, not
 carried over from the previous batch.
+
+**JaCoCo runs clean on Java 24 as of this pass.** The project was on JaCoCo 0.8.12, whose
+bundled ASM cannot read class-file major version 68, so every run emitted **622**
+`IllegalClassFormatException: Unsupported class file major version 68` traces. Upgrading to
+**0.8.13** removed all 622. The failures only ever affected JDK classes
+(`com/sun/net/httpserver/**`, `java/net/http/**`, `sun/security/**`); the project's own
+classes compile to release 11 (major 55) and were always instrumented correctly, which is
+why the coverage figures are byte-for-byte identical before and after the fix. The numbers
+below were therefore never wrong — the noise was.
 
 | Scope | Line | Branch |
 |---|---|---|
@@ -63,36 +73,35 @@ are argument-validation guards.
 ./mvnw checkstyle:check    # report written to target/checkstyle-result.xml
 ```
 
+**The configuration is now the official CSC207 one.** `config/mystyle.xml` is byte-identical
+(md5 `8128987caad9cb8c58732d8f85be6f89`) to the file distributed in the course's own
+`starter-hw5`, and is named in lecture `15-regex (1).pdf` p.5: *"the mystyle.xml
+configuration file which we have used for Checkstyle this term"*. This **corrects** the
+earlier conclusion in these documents that no official configuration existed.
+
 | Scope | Files | Violations |
 |---|---|---|
-| Emily-owned production and test code | 99 | **0** |
-| Shared files modified by Emily | 7 | **0** |
-| Raashid's routing file carrying Emily's one-line fix | 1 | 3 — all blamed to his own commits |
-| Unrelated teammate-owned files | 38 | 233 — not touched |
-| **Repository total** | | **236 warnings, 0 errors** |
+| Emily-owned production | 58 | 881 |
+| Emily-owned tests | 29 | 1200 |
+| Shared files Emily modified | 5 | 301 |
+| Raashid's routing file | 1 | 95 (all his, by `git blame`) |
+| Unrelated teammate files | 121 | 2547 |
+| **Total** | | **5024** |
 
-The tool reports "0 Checkstyle violations" because the configuration's severity is
-`warning` and `violationSeverity` is `error`; the 236 warnings are in
-`target/checkstyle-result.xml`. Full ownership breakdown, with the `git blame` evidence for
-each of the three routing violations, is in **`docs/autoschedule/ownership.md`**.
+**These are warnings, not a failing grade.** The course ships `mystyle.xml` for the IntelliJ
+plugin — no course starter wires it into a build — and the teaching team's own `starter-hw5`
+produces **62 violations under it**. It is Checkstyle's "use every check we have"
+configuration (225 modules) and it enables `CustomImportOrder` and `ImportOrder` together
+with incompatible settings, which no import block can satisfy. So the report is evidence and
+guidance, not a zero-warning target, and `failOnViolation` stays `false`.
 
-The pre-existing violations are almost entirely `NeedBraces` (104) and `LeftCurly` (69) from
-single-line `if` statements in teammate code — for example `ApiController` (32), `Trip` (28)
-and `MapPanel` (24). **These were not reformatted.** Rewriting a teammate's file to satisfy a
-style report would obscure their authorship for no functional gain, and the course asks that
-members not take over each other's work. They are listed here so the team can decide.
+Two Emily-owned violations were fixed in this pass (a helper named `record`, a repeated
+string literal). The categories left alone, each with a reason, are itemised in
+**`docs/autoschedule/ownership.md`** §3 — chiefly `FinalLocalVariable` (953), the
+unsatisfiable import pair (472) and mass Javadoc (271).
 
-**Configuration provenance.** Piazza @275 requires the project to follow the course
-Checkstyle rules — a verified course requirement. No configuration file was distributed
-with the available materials, and none appears in the 30 course PDFs, so
-`config/checkstyle.xml` is a **project-defined approximation and engineering judgment, not
-a verified course standard**. It covers naming, braces, imports, whitespace and correctness
-habits. It should be replaced if the course publishes its own. No IDE Checkstyle extension
-was installed; the Maven plugin produced every number here.
-
-Both tools are configured as **reports, not gates**. Failing the build on a coverage
-threshold or a legacy style violation would block teammates' commits for work that is not
-theirs to fix.
+`pom.xml` pins `checkstyle:10.21.4` so the course file loads unmodified; the plugin's
+bundled version predates two of its modules. No IDE extension is installed or committed.
 
 ## 4. Live provider verification
 
@@ -128,22 +137,53 @@ the API directly disproved that: itinerary start times track the requested depar
 daytime. The daytime match is a well-served route, not a bug. Night service is where the
 timetable shows itself, which is why the test compares three departures rather than two.
 
-**Driving — still not live-verified, and the distinctions matter.** Batch 5 attempted this
-again. `TOMTOM_API_KEY` was not present in the verification process, nor in any ancestor
-process (checked without printing any value), so the live-driving portion was stopped and
-the rest of the batch continued. Stated precisely:
+**Driving — still not live-verified, and now provably so rather than ambiguously so.**
+
+The previous run's driving check was re-examined in this pass, because `BUILD SUCCESS` with
+5 tests and 0 skips had been read as evidence about TomTom. It was not. What actually ran:
+
+| Test | Ran? | What it proved |
+|---|---|---|
+| `walkingReturnsAPlausibleRoute` | yes | OSRM walking |
+| `walkingDoesNotChangeWithDepartureTime` | yes | walking is time-insensitive |
+| `transitIsTimetableAwareAcrossDifferentDepartureTimes` | yes | Transitous timetable awareness |
+| `drivingReturnsARouteAndReportsWhichProviderAnswered` | **yes — not skipped** | **nothing about TomTom** |
+| `theRealForecastCannotDistinguishOneTimeOfDayFromAnother` | yes | day-wide forecast |
+
+The driving test executed and passed while printing `[live] TomTom key present: false (OSRM
+fallback, not traffic-aware)`. Its assertion is `morning > 0 && evening > 0`, which the OSRM
+fallback satisfies. **The test structurally cannot fail when TomTom is unreachable**, so it
+was never capable of proving TomTom was reached.
+
+`TomTomLiveVerificationTest` was added to close that hole. It calls the private
+`estimateTomtom` directly by reflection — the one method in the routing adapter with **no
+fallback**, which returns a duration only when the live endpoint answered `200` with a
+parsable route, and `null` otherwise. A non-null return is therefore conclusive. It also
+carries a negative control: the same call with the coordinate pair **swapped** must return
+`null`, because a longitude of −79 in the latitude slot is out of range. Passing with
+`latitude,longitude` and failing with `longitude,latitude` is what actually establishes the
+order reaching the live service; asserting only that the correct order works would prove
+much less.
+
+**Result of this pass: still not verified.** `TOMTOM_API_KEY` was checked for presence only
+and was absent — not in the test process, not in any ancestor process, no `.env` file, no
+shell-profile entry. The two proof tests therefore **abort** rather than pass, and the third
+records `[live] TomTom credential present: false - live driving NOT verified, no
+traffic-aware claim`. A silent pass that could later be mistaken for proof is precisely what
+was avoided.
+
+The harness itself is verified working: invoked with a deliberately invalid key it completed
+a real 510 ms round-trip to TomTom and returned `null`, confirming the reflection path
+reaches the live service and that only a valid credential is missing.
 
 | Claim | Status |
 |---|---|
 | A live TomTom request was made and verified | **No.** No key reached the process. |
-| The corrected `lat,lng` order reaches the live service | **Not proven live.** Proven against a stubbed `HttpClient`, including a regression test that fails against the old `lng,lat` URL. |
+| The corrected `lat,lng` order reaches the live service | **Not proven live.** Proven against a stubbed `HttpClient`; the live negative control is written and ready. |
 | `departAt` is sent | **Not proven live.** Asserted on the stubbed URL. |
 | A valid duration was returned by TomTom | **No.** The 11-minute figures came from the OSRM fallback. |
-| A traffic-time difference between two departures was observed | **Not observed.** Both departures returned 11 minutes because a static road network has no rush hour. |
-| Which provider actually answered | **Unprovable through the shared return type.** `DistanceService` returns a bare `int`; the "OSRM fallback" attribution above is inferred from the absent key, not reported by the call. |
-
-**No traffic-aware claim should be made in the demo.** To verify it, relaunch with the key
-present in the environment — see §8.
+| A traffic-time difference between two departures | **Not observed.** |
+| Which provider answered the shared `DistanceService` call | **Unprovable through that return type** — it is a bare `int`. The new test bypasses it rather than trying to infer provenance from it. |
 
 **Weather — verified, and it is what the new preference gate is built on.** The live gateway
 returns a forecast, but `canDistinguishTimes()` is false: one severity covers the whole
@@ -266,25 +306,35 @@ individual rubric was **unverified**. See the checklist document for the full ma
 
 ## 8. Verifying live TomTom driving
 
-The live-driving check is the one item Batch 5 could not complete, because no
-`TOMTOM_API_KEY` was present in the environment. To finish it, launch the tooling with the
-key already exported, then run the live test.
+One command, once a credential is available in the environment:
 
 ```bash
 # Reads the key without echoing it and without leaving it in shell history.
 read -rs TOMTOM_API_KEY && export TOMTOM_API_KEY
-# then, in that same shell:
-RUN_LIVE_AUTOSCHEDULE_TEST=true ./mvnw test -Dtest=AutoScheduleLiveVerificationTest
+RUN_LIVE_TOMTOM_TEST=true ./mvnw test -Dtest=TomTomLiveVerificationTest
 ```
 
-The test prints `[live] TomTom key present: true` when the key reaches the process, and the
-two driving rows should then differ between a 09:30 and a 17:30 departure if traffic data is
-genuinely being applied. **If they do not differ, say so** — a matching pair is evidence
-against the traffic-aware claim, not for it.
+Expected output on success — no key, no URL, ever printed:
 
-Even with a key, note the standing limitation: `DistanceService` returns a bare `int`, so
-the run still cannot prove *which* provider answered. Route provenance stays UNKNOWN until
-that shared return type carries a quality signal, which is Raashid's to decide.
+```
+[live] driving provider=TomTom duration=<minutes> latency=<ms> departAt=09:30
+[live] driving provider=TomTom duration=<minutes> latency=<ms> departAt=17:30
+[live] driving traffic-time difference observed: <true|false>
+[live] driving coordinate-order control: swapped pair rejected, so latitude,longitude
+       is the order the live service accepted
+```
+
+Equal durations at the two departures are a legitimate result and are reported as such, not
+treated as a failure. A difference is the traffic-aware claim being earned.
+
+Without a credential the two proof tests abort and the run states plainly that driving is
+not verified. **Until that output exists, make no traffic-aware claim in the demo.**
+
+Even with a key, one limitation stands: `DistanceService` returns a bare `int`, so the
+ordinary production path still cannot report which provider answered. Route provenance
+through that contract stays UNKNOWN until it carries a quality signal, which is Raashid's
+to decide.
 
 **Never** paste the key into a command line, a source file, the README, a log, or a
-screenshot, and never commit a file containing it.
+screenshot. `.env` and `.env.*` are now in `.gitignore`, because `origin/main` `11d4ddc`
+added a `.env` fallback for the key and a committed `.env` would leak it.

@@ -209,8 +209,10 @@ No configuration is required; the defaults work offline.
 | `-Dcloseai.weather.mode=open-meteo` | Live forecast instead of the mock. |
 | `-Dcloseai.places.mode=nominatim` | Live place discovery instead of the mock. |
 
-**No API key is ever committed.** Keys are read only from the environment or a system
-property, never from a file in the repository, and are never logged or printed.
+**No API key is ever committed.** Keys are read from the environment or a system property.
+`origin/main` also added a `.env` fallback, so `.env` and `.env.*` are in `.gitignore`;
+never commit one. Keys are never logged or printed, and no authenticated URL is written to
+output.
 
 ### Current limitations
 
@@ -229,7 +231,9 @@ property, never from a file in the repository, and are never logged or printed.
   `latitude,longitude` and is unit-tested against a stubbed HTTP client, including a
   regression test that fails against the old order. No key has been available in any
   verification run, so no real TomTom route has ever been obtained and **no traffic-aware
-  claim should be made**. Walking (OSRM) and transit (Transitous) are live-verified.
+  claim should be made**. `TomTomLiveVerificationTest` will settle it in one command once a
+  credential is present — it calls the fallback-free TomTom path directly, so it cannot be
+  satisfied by an OSRM fallback. Walking (OSRM) and transit (Transitous) are live-verified.
 - Single day only, one transportation mode per run, and travel between activities only -
   there is no hotel or origin leg because `Trip` has no origin coordinate.
 
@@ -268,7 +272,14 @@ open target/site/jacoco/index.html  # coverage report
 
 # opt-in live checks (network required)
 RUN_LIVE_AUTOSCHEDULE_TEST=true ./mvnw test -Dtest=AutoScheduleLiveVerificationTest
+
+# conclusive live TomTom driving check (also needs a credential in the environment)
+RUN_LIVE_TOMTOM_TEST=true ./mvnw test -Dtest=TomTomLiveVerificationTest
 ```
+
+The class diagram for the full use case is in
+[`docs/autoschedule/diagrams/`](docs/autoschedule/diagrams/) (PlantUML source plus rendered
+SVG and PNG).
 
 ## Open-Meteo adapter
 
@@ -317,6 +328,17 @@ Coverage and style are measured, not asserted:
 
 Both are configured as reports rather than build gates, so a threshold or a legacy style
 violation cannot block a teammate's commit.
+
+**Checkstyle uses the official CSC207 configuration.** `config/mystyle.xml` is byte-identical
+to the file distributed with the course starter code and named in the regex lecture. The
+course ships it for the IntelliJ Checkstyle plugin rather than as a build gate — its own
+starter code produces 62 warnings under it — so this project runs it through Maven for
+reproducible evidence with `failOnViolation=false`. `pom.xml` pins Checkstyle 10.21.4
+because the plugin's bundled version predates two modules the course file uses.
+
+**JaCoCo is 0.8.13 or newer.** 0.8.12 cannot instrument Java 24 class files (major version
+68) and floods the build with `IllegalClassFormatException`. Only JDK classes were affected,
+so coverage numbers were never wrong, but the noise made the output unreadable.
 
 ## Known limitations
 

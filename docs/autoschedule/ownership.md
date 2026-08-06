@@ -1,143 +1,206 @@
 # Autoschedule ownership and Checkstyle report
 
-Recorded 2026-08-06 on `feature/emily-autoschedule`, base `origin/main` = `b6ab177`.
-Ownership below is derived from `git diff --diff-filter=A/M origin/main HEAD` and
-`git blame`, not from memory. **Modifying a shared file does not make that file
-Emily-owned**, and the table is arranged so that distinction stays visible.
+Recorded 2026-08-06 on `feature/emily-autoschedule`. Ownership is derived from
+`git diff --diff-filter=A/M origin/main HEAD` and `git blame`, not from memory.
+**Modifying a shared file does not make that file Emily-owned**, and the tables below are
+arranged so that distinction stays visible.
 
-## 1. Checkstyle configuration provenance
+## 1. Checkstyle configuration provenance — corrected
 
-| Question | Answer |
-|---|---|
-| Command | `./mvnw checkstyle:check` |
-| Configuration | `config/checkstyle.xml` |
-| Official course config? | **No — project-defined. Engineering judgment, not a verified course standard.** |
-| Plugin | `maven-checkstyle-plugin` 3.6.0, declared in `pom.xml`; Maven resolves the tool itself |
-| Enforcement | Report only (`failOnViolation=false`, `violationSeverity=error`); the config's own severity is `warning` |
+> **This section corrects an earlier conclusion.** Previous versions of this document said
+> "no official course configuration exists" and labelled `config/checkstyle.xml`
+> engineering judgment. **That was wrong.** An official CSC207 configuration does exist. It
+> was found in this pass and has replaced the project-written file.
 
-**Why it is labelled engineering judgment.** Piazza @275 (2026-06-28, Pan Chen) states the
-group project must follow the course Checkstyle rules used in labs and homework. That is a
-verified course requirement. What could not be verified is a distributed configuration
-file: the local course audit records "No Checkstyle config/plugin/documented command found"
-(`project-requirements.md` §95, §118) and "The current repository does not configure a
-Checkstyle Maven plugin or checked report" (`course-source-verification.md` §58). The 30
-course PDFs in `course-files/` contain no `checkstyle.xml`. So the requirement is real and
-the file satisfying it is ours.
-
-`config/checkstyle.xml` therefore enforces the checks the lectures and code samples lean on
-— naming, braces, imports, whitespace, and a short list of correctness habits — and omits
-stylistic checks (Javadoc on every member, magic numbers, final parameters) that would
-flag large amounts of existing teammate code without improving it. **If the course
-publishes its own configuration, replace this file with it.** No conflict with an official
-standard has been found, because no official standard was found to conflict with.
-
-No IntelliJ or VS Code Checkstyle extension was installed. The IDE plugin is optional
-editor integration; the Maven plugin is the project quality tool, and it is what produced
-every number below.
-
-## 2. Ownership classification
-
-| Class | Files | Checkstyle violations |
+| Question | Answer | Source |
 |---|---|---|
-| A. Emily-owned production | 64 | **0** |
-| B. Emily-owned tests | 31 | **0** |
-| C. Emily-owned non-source (config, docs) | 4 | **0** |
-| D. Shared files modified by Emily | 7 | **0** |
-| E. Raashid-owned routing file with Emily's narrow fix | 1 | 3 — *all pre-existing, none Emily's* |
-| F. Unrelated teammate-owned files | 38 | 233 — **not touched** |
-| **Repository total** | | **236 warnings, 0 errors** |
+| Does CSC207 provide an official Checkstyle XML configuration? | **Yes — `mystyle.xml`** | Lecture `15-regex (1).pdf` p.5: *"you can see lots of similar examples in the **mystyle.xml** configuration file which we have used for Checkstyle this term!"* |
+| Where is it distributed? | In course starter repositories, beside `pom.xml` | Found in `starter-hw5/`, `csc207-hw5/`, `hw3/hw4/hw5-git-activity/` |
+| Does the course tell students to install an IntelliJ plugin? | Effectively yes — that is how the file is consumed | No course starter `pom.xml` or `build.gradle` wires Checkstyle at all (`grep -ci checkstyle` = 0) |
+| Which configuration is the plugin meant to load? | `mystyle.xml` from the project root | Same |
+| Is there an official command or grading setup? | **None found.** No Maven/Gradle wiring, no documented command | Searched all 30 course PDFs, Piazza findings and audit files |
+| Is Checkstyle required, or only particular rules? | Following the course Checkstyle rules is required | Piazza @275 (2026-06-28, Pan Chen) |
 
-### A–C. Emily-owned (99 files, 0 violations)
+### The file now in this repository
+
+`config/mystyle.xml` is **byte-identical** to the copy in the course's own `starter-hw5`:
+
+```
+md5  8128987caad9cb8c58732d8f85be6f89   config/mystyle.xml
+md5  8128987caad9cb8c58732d8f85be6f89   <course>/starter-hw5/mystyle.xml
+```
+
+The same checksum appears in `csc207-hw5` and `hw5-git-activity`. (`hw3` and `hw4` carry
+slightly older revisions — `DesignForExtension` was dropped and `FinalLocalVariable`,
+`UncommentedMain` and `UnusedLocalVariable` were added since — so the hw5 revision is the
+current-term one.) It is copied unmodified, with no rules added, removed or retuned; the
+provenance is recorded here rather than by editing the file, so the checksum stays
+verifiable.
+
+It is Checkstyle's own "Practice What You Preach" configuration — its metadata says *"In our
+config we should use all Checks that Checkstyle has"* — carrying **225 modules** at
+`severity=error`.
+
+### It is a development aid, not a zero-warning gate
+
+This matters for how the numbers below should be read, and it is established by the course's
+own artefacts rather than asserted:
+
+| Code | Violations under `mystyle.xml` |
+|---|---|
+| **CSC207 `starter-hw5` — the teaching team's own distributed code** | **62** |
+| Emily's completed and submitted `csc207-hw5` | 67 |
+| `hw3-git-activity` | 168 |
+
+The course ships the configuration alongside code that does not satisfy it. Its top
+violations in the course's own starter are `FinalLocalVariable` (64), `OperatorWrap` (44),
+`CustomImportOrder` (14) and `ImportOrder` (9) — the same categories that dominate our
+repository.
+
+The configuration also enables **`CustomImportOrder` and `ImportOrder` simultaneously** with
+incompatible settings (`ImportOrder` requires `separated=true` between groups;
+`CustomImportOrder` as configured does not), so a single import block cannot satisfy both.
+The course's own code trips both checks, which is the signature of that conflict.
+
+**Conclusion:** `mystyle.xml` is the official CSC207 configuration and is now what this
+project runs. It is used here as **evidence and guidance**, exactly as the course uses it —
+not as a zero-warning build gate. `failOnViolation` stays `false`.
+
+### How it is run
+
+```bash
+./mvnw checkstyle:check          # report -> target/checkstyle-result.xml
+```
+
+`pom.xml` pins `com.puppycrawl.tools:checkstyle:10.21.4` under the plugin, because the
+plugin's bundled Checkstyle predates `SuppressWithNearbyTextFilter` (10.10) and
+`NoCodeInFile` (10.9) and cannot load the course file. Pinning the tool is what lets the
+course configuration be used **exactly as distributed** rather than edited to suit our build.
+
+No IDE extension is installed or committed. The IntelliJ Checkstyle plugin is a reasonable
+developer convenience — and is how the course itself expects the file to be used — but
+Maven plus the official XML is the reproducible project-level check.
+
+`config/checkstyle.xml`, the project-written approximation used before this pass, has been
+**removed**; Git history retains it.
+
+## 2. Results by ownership
+
+Under the official configuration, whole repository:
+
+| Class | Files | Violations |
+|---|---|---|
+| A. Emily-owned production | 58 | 881 |
+| B. Emily-owned tests | 29 | 1200 |
+| C. Shared files modified by Emily | 5 | 301 |
+| D. Raashid-owned routing file with Emily's narrow fix | 1 | 95 |
+| E. Unrelated teammate-owned files | 121 | 2547 |
+| **Total** | | **5024** |
+
+Repository-wide, by check:
+
+| Check | Count |
+|---|---|
+| FinalLocalVariable | 1712 |
+| CustomImportOrder | 963 |
+| MagicNumber | 445 |
+| JavadocMethod | 301 |
+| ImportOrder | 245 |
+| AvoidInlineConditionals | 206 |
+| ReturnCount | 152 |
+| RightCurly | 142 |
+| MissingJavadocMethod | 137 |
+| NeedBraces | 134 |
+
+For reference, under the previous project-written configuration the repository reported 236
+violations with 0 in Emily-owned code. The two numbers measure different things and are not
+comparable; the official file is roughly twenty times stricter.
+
+## 3. What was fixed, and what was deliberately not
+
+**Fixed in Emily-owned code — 2 violations, 2 files:**
+
+| File | Check | Change |
+|---|---|---|
+| `AutoScheduleLiveVerificationTest` | `IllegalIdentifierName` | Private helper named `record` → `recordResult`. `record` is a restricted identifier in modern Java; renaming is a genuine improvement at zero risk. |
+| `AutoScheduleSettingsValidator` | `MultipleStringLiterals` | Repeated `"Unavailable period "` literal extracted to a `private static final` constant. |
+
+Total: **5026 → 5024**.
+
+The categories the brief nominated as the safe subset — `NewlineAtEndOfFile`,
+`RedundantImport`, `AvoidStarImport`, duplicate imports — were **already at zero** in
+Emily-owned code, because the previous project configuration enforced them and the code was
+kept clean against it. There was no backlog of that kind to clear.
+
+**Deliberately not fixed, with reasons:**
+
+| Check | Count (Emily) | Why not |
+|---|---|---|
+| `FinalLocalVariable` | 953 | Adding `final` to 953 locals across 64 files is exactly the mass mechanical churn the brief rules out. The course's own starter code has 64 of these. |
+| `CustomImportOrder` + `ImportOrder` | 472 | **Mutually unsatisfiable as configured.** Reordering to satisfy one guarantees violating the other. |
+| `JavadocMethod` / `MissingJavadocMethod` | 271 | Mass Javadoc generation, explicitly excluded. |
+| `AvoidInlineConditionals` | 86 | Removing 86 ternaries is a behaviour-preserving rewrite with no readability gain. |
+| `ReturnCount` | 84 | Rewriting methods solely to reduce returns; guard clauses are clearer than the alternative. |
+| `RightCurly` | 17 | Wants `}` alone on its line *before* `catch`, and `public enum Kind { ACTIVITY, TRAVEL }` expanded over four lines. Contradicts standard Java formatting and the rest of the repository. |
+| `NeedBraces` | 10 | Wants `(a, b) -> Integer.compare(a, b)` to become `(a, b) -> { return …; }`. Verbosity with no benefit. |
+| `ParameterName` / `LambdaParameterName` | 21 | Rejects two-letter names, i.e. `to` on the **`TravelTimeEstimator` interface**. `from`/`to` are the clearest possible names for a travel estimator; renaming interface parameters to satisfy a report would make the code worse. |
+| `InnerTypeLast` | 39 | Moving nested types produces large diffs for no functional gain. |
+| `MagicNumber`, `NPath`/`Cyclomatic`, `VisibilityModifier`, others | ~90 | Either intentional (tuned policy constants, documented in situ) or requiring redesign. |
+
+**Nothing teammate-owned was reformatted.**
+
+## 4. Ownership detail
+
+### A–B. Emily-owned (99 files)
 
 Everything under `src/main/java/closeai/application/autoschedule/` (including `engine/` and
 `policy/`), plus `adapters/controllers/AutoSchedule*`, `TaskRunner`, `SwingTaskRunner`,
 `adapters/presenters/AutoSchedulePresenter`, `adapters/viewmodels/AutoScheduleStatus`,
 `PreviewRowView`, `PreviewMetricsView`, `adapters/views/AutoScheduleSettingsDialog`,
 `adapters/gateways/DistanceServiceTravelTimeEstimator`, `WeatherServiceContextGateway`, and
-the 31 matching test classes. Non-source: `config/checkstyle.xml` and the three
-`docs/autoschedule/` documents.
+the matching test classes. Non-source: `config/mystyle.xml` (course file) and everything
+under `docs/autoschedule/`.
 
-This batch added `WeatherOption`, `WeatherPreferenceTest` and
-`AutoScheduleWeatherCheckBoxTest` to that set. All three are clean.
-
-### D. Shared files modified by Emily (7 files, 0 violations)
+### C. Shared files modified by Emily (5 files with violations, 7 modified)
 
 These belong to teammates. Emily changed them for a stated reason and nothing wider.
 
 | File | Original author | Emily's change | +/− |
 |---|---|---|---|
-| `README.md` | Shiyuan | Additive Day Plan section; one heading disambiguated | +133/−1 |
-| `pom.xml` | Raashid | Added JaCoCo and Checkstyle plugins | +52/−0 |
+| `README.md` | Shiyuan | Additive Day Plan section; one heading disambiguated | +139/−2 |
+| `pom.xml` | Raashid | JaCoCo, Checkstyle, course config, pinned tool version | +70/−3 |
 | `AppBuilder.java` | Raashid | Wires the one Autoschedule path | +47/−20 |
 | `DayPlanState.java` | Shiyuan | Additive state only | +119/−1 |
-| `DayPlanPanel.java` | Shiyuan | Rewritten around Autoschedule (agreed feature owner) | +291/−41 |
+| `DayPlanPanel.java` | Shiyuan | Rewritten around Autoschedule (agreed feature owner) | +297/−41 |
 | `SwingApplicationIntegrationTest.java` | Raashid | Button rename | +11/−8 |
 | `SwingPanelStructureTest.java` | Raashid | Button rename; test double gained `weatherOptionFor` | +25/−19 |
 
-None carries a Checkstyle violation, before or after this batch.
+### D. Raashid-owned routing file — 95 violations, none Emily's
 
-### E. Raashid-owned routing file with Emily's narrow fix
+`src/main/java/closeai/infrastructure/routing/OsrmDistanceService.java`. Emily's entire
+change to this file is **one line plus one comment**: TomTom documents
+`latitude,longitude` and was receiving `longitude,latitude`, so every driving request failed
+and silently fell back to OSRM. Contract, fallback and key handling untouched.
 
-`src/main/java/closeai/infrastructure/routing/OsrmDistanceService.java` — **3 violations,
-none introduced by Emily.** `git blame` places all three in Raashid's own commits:
+`git blame` places every one of the 95 violations in Raashid's own commits. Per the batch
+rule his code was not rewritten beyond that fix.
 
-| Line | Check | Introduced by | Commit |
-|---|---|---|---|
-| 40 | LineLength (116) | Raashid | `b6ab177` "time-sensitive DistanceService" |
-| 61 | NeedBraces | Raashid | `b6ab177` "time-sensitive DistanceService" |
-| 200 | LineLength (112) | Raashid | `7c494c7` "Replace MockDistanceService with OsrmDistanceService" |
+> **Note for Raashid:** he has since pushed `11d4ddc` "tomtom fix" to `origin/main`, which
+> makes the **identical** `lat,lng` correction plus TomTom error logging and a `.env` key
+> fallback. See §5.
 
-Emily's entire change to this file is **one line plus one comment** — TomTom documents
-`latitude,longitude` and was receiving `longitude,latitude`, so every driving request
-failed and silently fell back to OSRM. Contract, fallback and key handling are untouched.
-Per the batch rule, Raashid's code was **not** rewritten beyond that fix, and these three
-violations are left for him.
-
-### F. Unrelated teammate-owned files (38 files, 233 violations)
+### E. Unrelated teammate-owned files — 2547 violations, 121 files
 
 **Deliberately not reformatted.** Rewriting a teammate's file to satisfy a style report
 would obscure their authorship for no functional gain, and the course asks that members not
-take over each other's assigned code (Project Requirements). Listed so the team can decide.
+take over each other's assigned code.
 
-Largest: `ApiController` (32), `Trip` (28), `MapPanel` (24), `OpenMeteoWeatherService` (15),
-`NominatimPlacesService` (13), `AutoScheduleTripUseCase` (12), `ScheduledEvent` (10),
-`Activity` (10).
+## 5. Standing items for the team
 
-Repository-wide breakdown by check:
-
-| Check | Count |
-|---|---|
-| NeedBraces | 104 |
-| LeftCurly | 69 |
-| LineLength | 28 |
-| OneStatementPerLine | 20 |
-| MultipleVariableDeclarations | 6 |
-| UnusedImports | 4 |
-| RightCurly | 2 |
-| WhitespaceAround | 2 |
-| AvoidStarImport | 1 |
-
-Almost all of it is single-line `if` statements in teammate code — a formatting habit, not
-a defect.
-
-## 3. Results, before and after this batch
-
-| Scope | Before Batch 5 | After Batch 5 |
-|---|---|---|
-| Emily-owned production | 0 | **0** |
-| Emily-owned tests | 0 | **0** |
-| Shared files modified by Emily | 0 | **0** |
-| Raashid's routing file | 3 (all his) | 3 (all his) |
-| Unrelated teammate files | 233 | 233 |
-| **Total** | 236 | **236** |
-
-**Files changed by Checkstyle in this batch: none.** No violation existed in Emily-owned
-code to fix, before or after the weather work, so no fix was required and none was invented.
-The count is unchanged because nothing teammate-owned was reformatted, which was the point.
-
-## 4. Standing item for the team
-
-Whether to adopt `config/checkstyle.xml` or replace it with a course-published
-configuration, and who clears the 233 pre-existing violations, are team decisions. Neither
-blocks this feature: both tools are reports rather than build gates, so nobody's commit is
-failed by them.
+- **Adopt `config/mystyle.xml` team-wide?** It is now wired for the whole repository. The
+  5024 warnings are almost entirely pre-existing and in nobody's way, since the build is not
+  gated. Worth a team decision before anyone treats the number as a target.
+- **Raashid's `11d4ddc`.** His TomTom fix duplicates Emily's coordinate correction exactly,
+  so the merge conflicts only on surrounding context, not on intent. His `.env` fallback for
+  the API key means **`.env` must be added to `.gitignore`** before anyone creates one —
+  currently it is not listed, and a committed `.env` would leak the key.

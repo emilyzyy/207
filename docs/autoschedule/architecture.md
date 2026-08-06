@@ -154,6 +154,15 @@ one severity per trip. That is verified rather than assumed — the live run rec
 the withheld state through the real wiring and that an hourly gateway would offer the
 preference with no other change.
 
+## Class diagram
+
+The full use-case class diagram — 63 production classes and interfaces, every node
+cross-checked against source — is in
+[`diagrams/autoschedule-use-case-class-diagram.md`](diagrams/autoschedule-use-case-class-diagram.md),
+with PlantUML source and rendered SVG/PNG beside it. It follows the course's own conventions:
+PlantUML, as used in the Clean Architecture lecture, and name/attribute/method class boxes as
+introduced in the entity-discovery lecture.
+
 ## Course concepts genuinely present
 
 | Concept | Where it is real | Source |

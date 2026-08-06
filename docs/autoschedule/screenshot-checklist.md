@@ -47,6 +47,14 @@ The rubric's three Required Elements are: **before and after Views, Use Case Int
 code, and a class diagram for the full use case.** Only two of the six screenshots map
 directly onto that list.
 
+All three Required Elements now exist in the repository:
+
+| Required Element | Where |
+|---|---|
+| Before and after Views | `screenshots/01-before-day-plan.png` and `05-after-apply.png` |
+| Use Case Interactor code | `src/main/java/closeai/application/autoschedule/AutoScheduleInteractor.java` |
+| Full use-case class diagram | [`../diagrams/`](../diagrams/) — PlantUML source, SVG and PNG |
+
 Screenshots 3 and 6 are still worth capturing, but for reasons that should be stated
 accurately rather than attributed to the individual rubric:
 
