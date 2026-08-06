@@ -85,15 +85,6 @@ After a trip/itinerary exists, `EditItineraryInteractor` updates its destination
 - Changes that would push scheduled events outside the new trip window are rejected before save.
 - `PUT /api/trips/{tripId}` and the Options tab “Save trip options” action use this interactor so an existing itinerary is updated in place instead of replaced by a new trip.
 
-## Share Itinerary PNG
-
-The Swing header **Share PNG** button exports the active day plan as an image you can send to friends.
-
-- `ShareItineraryInteractor` loads the trip, rejects an empty schedule, builds a `ShareCardModel`, and asks `ItineraryPngExporter` for PNG bytes.
-- `AwtItineraryPngExporter` draws the card with Graphics2D (destination, date, transport, timed stops).
-- A save dialog writes the file (for example `CloseAI-Toronto-2026-08-07.png`).
-- The retained web prototype still uses text-only `GET /api/trips/{tripId}/share`.
-
 ## Auto Schedule
 
 For every scheduling step, each remaining feasible activity is scored using:
@@ -147,7 +138,6 @@ This makes a real geocoding request for Toronto and a real forecast request for 
 - severe-weather outdoor penalty and injectable scoring
 - event ordering, non-overlap, deterministic output, and failure atomicity
 - edit itinerary options update and persistence through `InMemoryItineraryDataAccessObject`
-- share itinerary PNG export for a scheduled trip and rejection of an empty schedule
 - Create Trip validation, persistence, controller parsing, presenter state propagation, and the create/edit/optimize Swing path
 - Nominatim/Overpass success mapping, empty results, non-2xx, malformed JSON, caching, and map ViewModel updates
 - Open-Meteo success mapping, nearest-hour selection, non-2xx, empty results, malformed/misaligned JSON, and connection failure
