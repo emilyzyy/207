@@ -9,9 +9,12 @@ Environment: Java 24.0.2 (Temurin), macOS, aarch64. Maven via `./mvnw`.
 ./mvnw clean test
 ```
 
-**265 tests, 0 failures, 0 errors, 1 skipped.** The skip is the pre-existing opt-in live
-Open-Meteo test, which requires `RUN_LIVE_OPEN_METEO_TEST=true`. All 53 tests that existed
-before this feature still pass.
+**270 tests, 0 failures, 0 errors, 6 skipped.** The six skips are all opt-in live tests that
+require network access and an explicit environment variable: the pre-existing
+`OpenMeteoWeatherServiceLiveTest` (1, needs `RUN_LIVE_OPEN_METEO_TEST=true`) and
+`AutoScheduleLiveVerificationTest` (5, needs `RUN_LIVE_AUTOSCHEDULE_TEST=true`, results in
+§4). Nothing in the ordinary suite touches the network. All 53 tests that existed before
+this feature still pass.
 
 ## 2. Coverage (JaCoCo)
 
@@ -21,14 +24,14 @@ before this feature still pass.
 
 | Scope | Line | Branch |
 |---|---|---|
-| Repository-wide (after exclusions) | **78.4%** | 59.1% |
-| Autoschedule slice (`application.autoschedule*` + gateways) | **89.2%** | 71.5% |
-| `AutoScheduleInteractor` (the use-case interactor) | **91.1%** | 78.6% |
+| Repository-wide (after exclusions) | **78.8%** | 59.7% |
+| Autoschedule slice (`application.autoschedule*` + gateways) | **90.0%** | 72.7% |
+| `AutoScheduleInteractor` (the use-case interactor) | **92.0%** | 79.5% |
 
 Against the group rubric's testing descriptors — 5/5 wants more than 90% interactor
-coverage and more than 70% overall — the interactor is at 91.1% and the repository is at
-78.4%. Both thresholds are met on line coverage, which Piazza @339 confirms is an
-acceptable metric.
+coverage and more than 70% overall — the interactor is at 92.0% and the repository is at
+78.8%. Both thresholds are met on line coverage, which Piazza @339 confirms is an
+acceptable metric. The Autoschedule slice as a whole also reaches 90.0%.
 
 **Exclusions, and why each is justified:**
 
