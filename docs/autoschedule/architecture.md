@@ -52,9 +52,13 @@ sits at the centre and knows nothing about repositories, HTTP or Swing.
 | Policies | `SoftPolicy` + weather / meal / daylight implementations | Emily |
 | Inward gateways | `TravelTimeEstimator`, `WeatherContextGateway` | Emily |
 | Gateway adapters | `DistanceServiceTravelTimeEstimator`, `WeatherServiceContextGateway` | Emily |
+| Opening-hours model | `OpeningHours` (+ `TimeInterval`) | Emily |
+| Opening-hours parsing | `OpeningHoursParser` | Emily |
 | Routing service | `OsrmDistanceService` (OSRM, Transitous, TomTom) | Raashid |
-| Forecast service | `OpenMeteoWeatherService` | Shiyuan |
-| Repository, entities | `TripRepository`, `Trip`, `Activity`, `ScheduledEvent` | Shared |
+| Places service | `NominatimPlacesService` (Nominatim + Overpass) | Raashid; opening-hours read by Emily |
+| Forecast service | `OpenMeteoWeatherService` | Shiyuan (Dennis) |
+| Hourly forecast popup | `HourlyWeatherDialog`, `HourlyWeatherPanel`, the Overview weather card | Shiyuan (Dennis) |
+| Repository, entities | `TripRepository`, `Trip`, `Activity`, `ScheduledEvent` | Shared; `Activity.openingHours` added by Emily |
 
 Emily owns the policy — what the numbers mean for a schedule — and the ports that express
 what the use case needs. The teammates own the concrete services behind those ports.
@@ -179,6 +183,63 @@ discovery classes.
 Alex's Edit and Remove buttons. Travel rows carry neither, because the scheduler generates
 them.
 
+## Opening hours
+
+Opening hours are a hard constraint, and the only one whose data comes from a third party
+that mostly does not have it. The layering is what keeps that from leaking:
+
+```text
+  Overpass "out body"                infrastructure
+     tags.opening_hours ──▶ OpeningHoursParser ──▶ OpeningHours   (per-weekday intervals,
+                                                        │          or UNKNOWN, or ALWAYS)
+                                       Activity ◀───────┘
+                                          │
+  ────────────────────────────────────────┼──────────────────────────────────────────────
+                                          │                        use case
+                          AutoScheduleInteractor.buildTasks(trip.getDate())
+                                          │
+                                    ScheduleTask.openingWindows : List<TimeWindow>
+                                          │
+                      ActivityPlacer ─────┴───── ProblemValidator ───── ReasonCollector
+```
+
+Three rules hold this together:
+
+1. **Parsing happens once, in the adapter.** `OpeningHoursParser` lives in
+   `infrastructure/places` because OSM's `opening_hours` syntax is one provider's quirk. No
+   Swing code, no Interactor and no engine class ever sees the raw tag. A second provider
+   would add a second parser and change nothing above it.
+2. **The weekday is resolved in the Interactor**, which is the only place that holds
+   `trip.getDate()`. The engine below it works on one day of plain `TimeWindow`s and needs no
+   calendar, which is also what keeps it a pure function.
+3. **A visit fits inside one window, never across the gap between two.** `ActivityPlacer`
+   snaps forward into the earliest window that can hold the whole visit;
+   `ProblemValidator` applies the same rule to pins; `ScheduleEngine.diagnose` measures the
+   longest usable shift, so a venue shut on the trip date is reported by name with zero
+   minutes available rather than as "no feasible order".
+
+### Unknown is not closed
+
+`OpeningHours` has three states and the distinction between the last two is the whole design:
+
+| State | Meaning | Effect on the schedule |
+|---|---|---|
+| Known | Intervals per weekday | Hard constraint |
+| Known, no intervals for the date | Shut all day | Unschedulable, named in the conflict |
+| Unknown | The provider said nothing, or something unparseable | **No constraint, plus a warning** |
+
+Most OpenStreetMap places carry no `opening_hours` tag. Reading silence as "closed" would
+refuse to plan almost any real day, so unknown is permissive — and the Interactor adds
+"Opening hours unavailable for X, so it was scheduled without that limit." to the preview's
+warnings. Anything the parser cannot fully understand (month ranges, `sunrise`/`sunset`,
+quoted comments) becomes unknown for the same reason: a wrong guess would either bar a venue
+that is open or book one that is shut, and both are worse than saying so.
+
+`Activity` keeps its original single `openingTime`/`closingTime` pair alongside the new
+field. That pair is what every hand-built activity and every existing test has, and when
+hours are unknown `ScheduleTask` falls back to it exactly as before — which is why adding
+real hours changed no existing behaviour.
+
 ## Schedule improvements
 
 The Preview reports what it can prove. `ScheduleImprovementFinder` compares each activity's
@@ -212,7 +273,7 @@ travel rows are still trusted, so an already-applied plan is not counted twice.
 
 ## Class diagram
 
-The full use-case class diagram — 63 production classes and interfaces, every node
+The full use-case class diagram — 76 production classes, interfaces and enums, every node
 cross-checked against source — is in
 [`diagrams/autoschedule-use-case-class-diagram.md`](diagrams/autoschedule-use-case-class-diagram.md),
 with PlantUML source and rendered SVG/PNG beside it. It follows the course's own conventions:

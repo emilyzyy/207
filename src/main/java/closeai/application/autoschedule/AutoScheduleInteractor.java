@@ -407,7 +407,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         if (!unknown.isEmpty()) {
             warnings.add("Opening hours unavailable for " + namesOf(unknown)
                     + ", so " + (unknown.size() == 1 ? "it was" : "they were")
-                    + " scheduled without that limit. Please check before you set off.");
+                    + " scheduled without that limit.");
         }
         if (!closed.isEmpty()) {
             warnings.add(namesOf(closed) + (closed.size() == 1 ? " is" : " are")

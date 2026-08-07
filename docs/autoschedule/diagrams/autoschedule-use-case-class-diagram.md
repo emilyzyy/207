@@ -3,9 +3,9 @@
 | | |
 |---|---|
 | **Source** | [`autoschedule-use-case-class-diagram.puml`](autoschedule-use-case-class-diagram.puml) |
-| **Vector** | [`autoschedule-use-case-class-diagram.svg`](autoschedule-use-case-class-diagram.svg) — 3506 × 2300, zoomable; use this on screen |
-| **Raster** | [`autoschedule-use-case-class-diagram.png`](autoschedule-use-case-class-diagram.png) — 5477 × 3592 (150 dpi), landscape; use this on a slide |
-| **Covers** | 71 production classes, interfaces and enums; 0 test doubles |
+| **Vector** | [`autoschedule-use-case-class-diagram.svg`](autoschedule-use-case-class-diagram.svg) — 3534 × 2897, zoomable; use this on screen |
+| **Raster** | [`autoschedule-use-case-class-diagram.png`](autoschedule-use-case-class-diagram.png) — 5520 × 4525 (150 dpi); use this on a slide |
+| **Covers** | 76 production classes, interfaces and enums; 0 test doubles |
 
 This is the third Required Element of the Individual Presentation Rubric — *before and
 after Views, Use Case Interactor code, and a class diagram for the full Use Case* (S-017).
@@ -123,7 +123,7 @@ Every node and relationship was read out of the source on `feature/emily-autosch
 constructor signatures, `implements` clauses, field types and the `AppBuilder` wiring — not
 from planning documents. An automated cross-check confirms:
 
-- 71 / 71 diagram nodes exist as production source files;
+- 76 / 76 diagram nodes exist as production source files;
 - every class the brief asked for is present;
 - no test double, fake or fixture appears.
 

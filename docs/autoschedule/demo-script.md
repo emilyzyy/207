@@ -4,11 +4,12 @@ Roughly three minutes, compressible to two by dropping step 6. Every step below 
 executed as an automated test (`AutoScheduleWalkthroughTest`), so the demo is not relying on
 anything assembled specially for it.
 
-**Before starting:** launch with the seeded demo trip. If the live forecast is wanted, run
-with `-Dcloseai.weather.mode=open-meteo` — note that the live forecast is still whole-day,
-so the weather checkbox stays disabled either way. Do **not** claim traffic-aware driving:
+**Before starting:** launch with the seeded demo trip. Shiyuan (Dennis) Lyu's hourly
+forecast has landed, so **"Consider weather" is enabled and ticked by default** — the
+disabled state is now the fallback, not the norm. Do **not** claim traffic-aware driving:
 no TomTom key has ever reached a verification run, so no real TomTom route has been
-obtained. Driving falls back to OSRM and is not traffic-aware.
+obtained. Driving falls back to OSRM and is not traffic-aware. Do **not** claim the venues
+in the seeded demo have real opening hours — they do not, and that is step 4b.
 
 ---
 
@@ -35,14 +36,16 @@ Choose **Autoschedule**. Walk through the dialog quickly — it is deliberately 
 > sensible mealtimes, daylight outdoors — is always on, because that is what the feature is
 > for."
 
-Point at the greyed-out **Consider weather** box and the sentence under it.
+Point at the **Consider weather** box, now ticked and enabled.
 
 > "This is the interesting one. Weather is a preference rather than a built-in, and it is
-> only offered when the forecast can actually tell one hour from another. For this trip it
-> cannot — the provider returns one outlook for the whole day, which scores every possible
-> time identically. So instead of a checkbox that looks like a choice and changes nothing,
-> the box is off and it tells you why. With an hourly forecast it enables and defaults on,
-> and you can still turn it off."
+> only offered when the forecast can actually tell one hour from another. Since Dennis's
+> hourly forecast landed it can, so the box is enabled and ticked — and you can still turn
+> it off. If the provider ever falls back to one outlook for the whole day, that scores
+> every possible time identically, so rather than a checkbox that looks like a choice and
+> changes nothing, the box goes off and tells you why. Turning it on took one adapter
+> change and no edit to the engine, Interactor, Controller or dialog, which is what the
+> inward-facing contract was for."
 
 Add an unavailable period (13:00–14:00).
 
@@ -61,14 +64,36 @@ Point at, in order:
 
 > "Nothing has changed yet. My Day Plan is still up there, untouched — this is a proposal."
 
-On the objectives line:
+On the improvement cards:
 
-> "Notice weather is not listed. It scored nothing, so claiming it as an applied objective
-> would be telling you the day was arranged around something it wasn't. And that decision is
-> made by the use case, not the dialog — if I had ticked the box anyway, the Interactor
-> would still find the forecast too coarse, contribute zero, and say so in a warning. The
-> schedule comes out either way; weather can shift timing but it can never make a day
-> unschedulable."
+> "Each of these is a before-and-after comparison, not a description of the result. High
+> Park was at half past seven in heavy rain and after dark; it earns a daylight card and a
+> weather card because moving it lowered the penalty from the *same policy objects the
+> search used*. An activity that was already in daylight earns nothing. Nothing that got
+> worse is dressed up as an achievement — the trade-offs are under 'Why this schedule?'."
+
+### 4b. What it does not know (25s)
+
+Point at the amber band, at the line naming venues.
+
+> "Opening hours are a hard constraint — an activity has to sit entirely inside one opening
+> interval, and a venue that shuts for lunch gets two intervals, not one long one. Travel is
+> allowed outside them, because walking to a museum before it opens is how you get there.
+>
+> But look at what it says: *opening hours unavailable for these five*. They come from
+> OpenStreetMap's `opening_hours` tag, and most places simply do not have one. I could have
+> treated silence as 'closed', and then it would refuse to plan almost any real day. So
+> unknown means no constraint — and it tells you exactly where it made that assumption. A
+> silent guess and a stated one look identical in a screenshot and are not the same promise.
+>
+> When a venue *does* publish hours they are obeyed strictly: shut on your date and it
+> cannot be scheduled at all, and you are told which one and why."
+
+If asked where the parsing lives:
+
+> "In the places adapter, next to the Overpass call. The syntax is one provider's quirk. The
+> Interactor gets normalised windows for the trip's own weekday, and the search below it
+> never needs a calendar."
 
 ### 5. Why these times (15s)
 
@@ -76,6 +101,14 @@ Click **Why these times?**
 
 > "Every explanation comes from the policy that produced it as a code. The presenter turns
 > codes into sentences, so none of this wording lives in the scheduling logic."
+
+### 5b. Where the weather came from (15s) — optional
+
+Switch to **Overview** and press **WEATHER PREVIEW**.
+
+> "This popup is Dennis's. It reads the same view model Autoschedule does, which is why the
+> hours it lists are exactly the hours the scheduler reasoned about — the forecast turns at
+> six, and that is the reason the park moved."
 
 ### 6. Cancel, then Apply (20s)
 
@@ -118,7 +151,7 @@ One limitation, said plainly:
 
 ### 9. Testing (20s)
 
-> "265 tests. The one I would point at is a brute-force cross-check: it enumerates every
+> "450 tests. The one I would point at is a brute-force cross-check: it enumerates every
 > possible order on a hundred randomised days and requires the pruned search to return an
 > equally good schedule. That is how I know the pruning is not quietly throwing away the
 > right answer — and it caught a real bug in my lower bound when I wrote it."

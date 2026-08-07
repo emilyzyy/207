@@ -4,9 +4,19 @@ The screenshot list comes from `docs/autoschedule/verification-evidence.md` §7 
 not guessed. This batch added a seventh (2b) because the weather preference now has two
 distinct appearances and only one of them occurs today.
 
-Captured 2026-08-06, **re-captured after the UI polish pass** on
-`feature/autoschedule-ui-polish`. Seven of seven captured automatically and committed under
-`docs/autoschedule/screenshots/`.
+Captured 2026-08-06, re-captured after the UI polish pass, and **re-captured again
+2026-08-07** on `feature/autoschedule-ui-polish` after merging `origin/main`, Shiyuan
+(Dennis) Lyu's hourly forecast popup and real opening hours. Eight of eight captured
+automatically and committed under `docs/autoschedule/screenshots/`.
+
+Three things changed visibly in that pass and are why 1, 3, 5 and 6 were re-taken:
+
+- **Per-row weather.** Merging `origin/main` added an hourly condition line under each Day
+  Plan activity. Not an Autoschedule change, but it is in every Day Plan shot.
+- **The opening-hours warning.** Shot 3's warning band now carries a second line naming the
+  venues scheduled without hours data. This is the visible half of the honesty rule and is
+  the reason shot 3 matters more than it did.
+- **Dennis's forecast popup**, added as shot 7.
 
 Every shot shows the polished interface: a 12-hour clock throughout, visible padlock
 controls, section headers, the `SCHEDULE IMPROVEMENTS` stack, `Locked`/`Moved` badges, a
@@ -21,7 +31,8 @@ improvement cards visible in shot 3 are produced by the real Interactor and asse
 
 | # | Capture | How |
 |---|---|---|
-| 1, 2, 2b, 3, 5, 6 | Day Plan panel and settings dialog | **Automated component render** — the real production components painted offscreen at a fixed 900×692 (dialogs at their packed size). |
+| 1, 2, 2b, 3, 5, 6 | Day Plan panel and settings dialog | **Automated component render** — the real production components painted offscreen at a fixed 1180×732 (dialogs at their packed size). |
+| 7 | Dennis's hourly forecast popup | **Automated component render** of `HourlyWeatherPanel` at the dialog's own 640×520, scrolled to the afternoon. See the note under shot 7. |
 | 4 | Expanded "Why this schedule?" | **Automated, but of the scroll pane's content rather than the window.** The expanded reasoning falls below a 692px viewport, so the capture is of the scrollable view at its full height. It is the real component, not a mock-up, but it is not what a 900×692 window shows without scrolling. |
 | — | Whole application window, Calendar View after Apply | **Manual only.** The harness renders panels, not the frame, tab strip or native chrome. |
 
@@ -103,8 +114,8 @@ Filenames below are the ones committed.
 | **Purpose** | Individual rubric Required Elements: the **"before" View**. *(verified)* |
 | **Starting state** | App launched offline; seeded `demo-trip` (Toronto, 2026-08-12, 09:00–21:00, walking) loaded; Day Plan tab open; no preview run. |
 | **Actions and settings** | None. Capture as opened. |
-| **Expected visible result** | A `YOUR DAY PLAN` section header, then three activity cards on a 12-hour clock: High Park 9:00 AM – 10:00 AM, Royal Ontario Museum 11:00 AM – 12:00 PM (after it closes is the point of the demo narrative), St Lawrence Market 3:30 PM – 4:30 PM. Each carries an **open padlock**, Edit and Remove. Status reads "Add activities, then choose Autoschedule." |
-| **Must appear in the crop** | All three time ranges in AM/PM; the padlock control on every row; the Autoschedule button. A locked row is tinted blue and shows a **closed** padlock. |
+| **Expected visible result** | A `YOUR DAY PLAN` section header, then the five activity cards of the seeded day on a 12-hour clock: Royal Ontario Museum 11:00 AM – 12:00 PM, Distillery District 1:00 PM – 2:00 PM, St Lawrence Market 3:30 PM – 4:30 PM, Casa Loma 5:00 PM – 6:00 PM, High Park 7:30 PM – 8:30 PM. Each carries an **open padlock**, Edit and Remove, and an hourly weather line. Status reads "Add activities, then choose Autoschedule." |
+| **Must appear in the crop** | All five time ranges in AM/PM; the padlock control on every row; the Autoschedule button. A locked row is tinted blue and shows a **closed** padlock. |
 | **Must not appear** | Any proposed schedule; Apply or Cancel (both hidden outside a preview); any terminal window, environment variable, URL or personal information. |
 
 ### 2. Settings — weather offered (the state that occurs today)
@@ -139,8 +150,8 @@ Filenames below are the ones committed.
 | **Purpose** | Use-case Explanation and functionality: preview-and-confirm, before/after metrics, per-row reasons. *(not individually rubric-named — see above)* |
 | **Starting state** | From state 1, tick **Lock** on Royal Ontario Museum. |
 | **Actions and settings** | Autoschedule → keep the defaults → **Generate Preview**. |
-| **Expected visible result** | `YOUR DAY PLAN` unchanged above with the museum still locked; a `PROPOSED SCHEDULE` header marked "not applied yet"; a **`SCHEDULE IMPROVEMENTS` stack on the right** with six cards (waiting removed, less travel, pinned kept, meal moved, into daylight, better weather); an amber warning band; activity rows with `Locked` / `Moved` badges; travel rows tinted, indented and prefixed `↳`. Apply and Cancel visible; Autoschedule hidden. |
-| **Must appear in the crop** | The unchanged original plan **and** the proposal together — that juxtaposition is the whole point. The improvements stack, the warning band, and at least one badge. Capture at **1180px or wider** so the stack sits beside the schedule; below that it moves underneath, which is correct but is not the shot to present. |
+| **Expected visible result** | `YOUR DAY PLAN` unchanged above with the museum still locked; a `PROPOSED SCHEDULE` header marked "not applied yet"; a **`SCHEDULE IMPROVEMENTS` stack on the right** with six cards (waiting removed, less travel, pinned kept, meal moved, into daylight, better weather); an amber warning band carrying **two** lines — *"Opening hours unavailable for Royal Ontario Museum, Distillery District and 3 more, so they were scheduled without that limit."* and the travel-estimate caveat; activity rows with `Locked` / `Moved` badges; travel rows tinted, indented and prefixed `↳`. Apply and Cancel visible; Autoschedule hidden. |
+| **Must appear in the crop** | The unchanged original plan **and** the proposal together — that juxtaposition is the whole point. The improvements stack, **both lines of the warning band**, and at least one badge. Capture at **1180px or wider** so the stack sits beside the schedule; below that it moves underneath, which is correct but is not the shot to present. The panel must be sized *before* the preview runs, because the layout decision is made when the state is rendered. |
 | **Must not appear** | Any suggestion the plan has already changed. |
 
 ### 4. Why these times — expanded
@@ -180,6 +191,19 @@ Filenames below are the ones committed.
 | **Must appear in the crop** | The message **naming the museum** and stating the plan was not changed, plus the untouched plan. |
 | **Must not appear** | Any partial or greyed-out proposal. |
 
+### 7. Hourly forecast popup — Dennis's, on the same forecast Autoschedule used
+
+| | |
+|---|---|
+| **File** | `screenshots/07-hourly-weather-popup.png` |
+| **Purpose** | Shows Shiyuan (Dennis) Lyu's live hourly forecast window, and that it and Autoschedule read one shared `DayPlanViewModel`. It is his feature, captured here because it is the other half of the weather story the Preview depends on. |
+| **Starting state** | Overview tab, a trip with a forecast loaded. |
+| **Actions and settings** | Press **WEATHER PREVIEW** on the Overview weather card. Scroll to the afternoon. |
+| **Expected visible result** | "Hourly forecast", "Toronto · Wednesday, August 12, 2026", "24 HOURLY FORECASTS", then one card per hour on a 12-hour clock with condition, temperature, precipitation and a severity chip. The seeded forecast turns at 6 PM: LOW through the afternoon, **MEDIUM at 6:00 PM (Showers)**, **HIGH from 7:00 PM (Heavy rain)**. |
+| **Must appear in the crop** | The 6 PM and 7 PM rows — that turn is exactly why Autoschedule moves High Park out of the evening, so it is what ties this shot to shot 3. |
+| **Must not appear** | Any API key or authenticated URL; the forecast is the deterministic seeded one, not a live call. |
+| **Honest note** | The dialog **opens at midnight**, since it lists all 24 hours from the top. This capture is scrolled to the afternoon, which is what a viewer does within a second of opening it — the alternative would have been six identical dark-hours rows that show nothing about the feature. Nothing else is staged. |
+
 ## Can the seeded demo produce every required state?
 
 **Yes — verified, not assumed.** Every state above was reached through
@@ -193,4 +217,4 @@ and captured with an hourly gateway supplied. That limitation is stated wherever
 
 No screenshot contains an API key, an authenticated URL, a terminal window, an environment
 variable, or personal information. The captures are of application panels only; the harness
-never rendered a shell. Verified by inspecting all seven images.
+never rendered a shell. Verified by inspecting all eight images.

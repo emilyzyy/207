@@ -43,6 +43,14 @@ left to right direction
 ' ===================== FRAMEWORKS & DRIVERS (outermost) =====================
 package "Frameworks & Drivers" #F4F7FA {
 
+  class OpeningHoursParser <<adapter>> {
+    + {static} parse(raw : String) : OpeningHours
+  }
+
+  class NominatimPlacesService <<adapter>> {
+    - parseElements(elements) : List<Activity>
+  }
+
   class DayPlanPanel <<Swing View>> {
     - viewModel : DayPlanViewModel
     - autoScheduleController : AutoScheduleController
@@ -344,6 +352,12 @@ package "Application Business Rules (Use Case)" #F5FAF6 {
     - eventId : String
     - durationMinutes : int
     - lockedAt : TimeWindow
+    - openingWindows : List<TimeWindow>
+    - hoursKnown : boolean
+    + hasKnownHours() : boolean
+    + isClosedAllDay() : boolean
+    + isOpenThroughout(start, end) : boolean
+    + openingWindowFor(start, end) : TimeWindow
   }
   class SchedulePlan {
     - placements : List<PlacedActivity>
@@ -383,6 +397,20 @@ package "Enterprise Business Rules (Entities)" #FBF7F0 {
     - name : String
     - openingTime : LocalTime
     - closingTime : LocalTime
+    - openingHours : OpeningHours
+  }
+  class OpeningHours <<value object>> {
+    - byDay : Map<DayOfWeek, List<TimeInterval>>
+    - alwaysOpen : boolean
+    + {static} unknown() : OpeningHours
+    + {static} alwaysOpen() : OpeningHours
+    + isKnown() : boolean
+    + isClosedOn(date) : boolean
+    + intervalsOn(date) : List<TimeInterval>
+  }
+  class TimeInterval <<value object>> {
+    - start : LocalTime
+    - end : LocalTime
   }
 }
 
@@ -390,6 +418,7 @@ package "Enterprise Business Rules (Entities)" #FBF7F0 {
 package "Shared service ports" #FAFAFA {
   interface DistanceService <<interface>>
   interface WeatherService <<interface>>
+  interface PlacesService <<interface>>
 }
 
 ' ============================================================================
@@ -403,6 +432,7 @@ DistanceServiceTravelTimeEstimator ..|> TravelTimeEstimator
 WeatherServiceContextGateway      ..|> WeatherContextGateway
 SwingTaskRunner                   ..|> TaskRunner
 InMemoryTripRepository            ..|> TripRepository
+NominatimPlacesService            ..|> PlacesService
 OsrmDistanceService               ..|> DistanceService
 OpenMeteoWeatherService           ..|> WeatherService
 WeatherSuitabilityPolicy          ..|> SoftPolicy
@@ -491,6 +521,11 @@ TravelMatrixPrefetcher ..> TravelMatrix : builds
 Trip "1" *-- "0..*" ScheduledEvent
 ScheduledEvent "0..1" --> "1" Activity
 ScheduleTask --> Activity
+Activity "1" *-- "1" OpeningHours
+OpeningHours "1" *-- "0..*" TimeInterval
+OpeningHoursParser ..> OpeningHours : creates
+NominatimPlacesService ..> OpeningHoursParser
+NominatimPlacesService ..> Activity : builds
 TripRepository ..> Trip
 AutoScheduleInteractor ..> Trip : reads / copyWithSchedule
 AutoSchedulePresenter ..> ScheduledEvent : re-times for Calendar

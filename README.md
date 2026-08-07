@@ -200,6 +200,37 @@ dressed as an achievement: trade-offs and the complete before/after figures sit 
 
 The cards stack beside the schedule on a wide window and below it on a narrow one.
 
+### Opening hours
+
+Opening hours are a **hard constraint**, in the same class as the traveller's own unavailable
+periods. An activity is placed entirely inside one of its venue's opening intervals, never
+across the gap between two — a museum open 09:00–12:00 and 14:00–18:00 offers a visitor two
+shifts, not a nine-hour day. Travel is deliberately free to happen outside them, because
+walking to a museum before it opens is how anyone gets there.
+
+Hours come from the venue's OpenStreetMap `opening_hours` tag, which the Overpass query has
+always returned. `OpeningHoursParser` normalises it into per-weekday intervals in the
+infrastructure layer, so no scheduling code has to know that
+`Mo-Fr 09:00-17:00; Sa 10:00-14:00; Su off` is a syntax. Weekday selectors and ranges,
+several intervals in a day, `off`/`closed`, `24/7`, and spans past midnight are all handled;
+the trip's own date decides which day's hours apply.
+
+Three outcomes, and the last is the one that matters:
+
+| The provider says | Autoschedule does |
+|---|---|
+| Real hours for the trip date | Places the activity inside one interval; a pin outside one is a named conflict |
+| The venue is shut that day | Refuses to schedule it, naming the venue and reporting zero minutes available |
+| **Nothing, or something unreadable** | **Schedules it with no opening-hours limit at all, and says so** |
+
+The third row is the common one: most OpenStreetMap places carry no `opening_hours` tag, and
+treating silence as "shut" would refuse to plan almost any real day. So unknown hours stay
+permissive — and the preview names the venues it guessed about
+("Opening hours unavailable for Casa Loma, so it was scheduled without that limit."). A
+silent guess and a stated one look identical in a screenshot and are not the same promise.
+Anything the parser cannot fully understand — month ranges, `sunrise`/`sunset`, free text —
+becomes unknown rather than a guess.
+
 ### Preview and Apply
 
 Generating a preview shows the proposal underneath the unchanged Day Plan, with before and
@@ -269,6 +300,18 @@ output.
   claim should be made**. `TomTomLiveVerificationTest` will settle it in one command once a
   credential is present — it calls the fallback-free TomTom path directly, so it cannot be
   satisfied by an OSRM fallback. Walking (OSRM) and transit (Transitous) are live-verified.
+- **Public holidays are not known.** A `PH`/`SH` rule in an `opening_hours` tag is skipped
+  rather than rejected, so `Mo-Fr 09:00-17:00; PH off` still yields ordinary weekday hours —
+  but a public holiday is then treated as an ordinary weekday. Rejecting the whole tag would
+  have been worse: it would have discarded good hours for every venue that bothers to record
+  a holiday.
+- **Only the common `opening_hours` shapes are parsed.** Month and date ranges
+  (`Jan-Mar 09:00-17:00`), week selectors, nth-weekday selectors (`Mo[1]`),
+  `sunrise`/`sunset` times and quoted comments all yield *unknown*, which is permissive and
+  stated, never a guess. A midnight closing time is held as 23:59, costing at most one
+  minute, because the scheduler works in whole minutes inside a single day.
+- **Hours are only as good as OpenStreetMap.** Nothing verifies them against the venue, and
+  the mock places provider supplies none at all, so an offline run warns about every activity.
 - Single day only, one transportation mode per run, and travel between activities only -
   there is no hotel or origin leg because `Trip` has no origin coordinate.
 

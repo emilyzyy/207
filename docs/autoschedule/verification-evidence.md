@@ -1,6 +1,8 @@
 # Autoschedule verification evidence
 
-Recorded 2026-08-06 on the branch `feature/emily-autoschedule`.
+Recorded 2026-08-06 on `feature/emily-autoschedule`; §9 added 2026-08-07 on
+`feature/autoschedule-ui-polish` after integrating Dennis's hourly forecast popup and real
+opening hours.
 Environment: Java 24.0.2 (Temurin), macOS, aarch64. Maven via `./mvnw`.
 
 ## 1. Automated tests
@@ -375,3 +377,91 @@ to decide.
 **Never** paste the key into a command line, a source file, the README, a log, or a
 screenshot. `.env` and `.env.*` are now in `.gitignore`, because `origin/main` `11d4ddc`
 added a `.env` fallback for the key and a committed `.env` would leak it.
+
+## 9. Real opening hours and Dennis's forecast popup — 2026-08-07
+
+Branch `feature/autoschedule-ui-polish`, after merging `origin/main` and Shiyuan (Dennis)
+Lyu's `cf92d3d`.
+
+### Suite
+
+```bash
+./mvnw clean test
+```
+
+**450 tests, 0 failures, 0 errors, 9 skipped** (was 392 before this pass; 58 added). The
+nine skips are unchanged — the same opt-in live tests described in §1.
+
+### Coverage
+
+```bash
+./mvnw clean test jacoco:report
+```
+
+| Scope | Line | Branch |
+|---|---|---|
+| Repository-wide (after exclusions) | **73.9%** | 56.7% |
+| Autoschedule slice (`application.autoschedule*` + gateways) | **91.6%** | 75.0% |
+| `AutoScheduleInteractor` | **93.5%** | 83.1% |
+| `infrastructure.places` (incl. the new parser) | 88.5% | 67.3% |
+| `OpeningHours` + nested `TimeInterval` | **100%** | **100%** |
+| `OpeningHoursParser` | **96%** | 83% |
+
+The baseline for those deltas was measured on the merge commit `e4a91aa`, in a throwaway
+worktree, rather than carried over from §2:
+
+| Scope | Before (`e4a91aa`) | After |
+|---|---|---|
+| Repository line | 72.8% | **73.9%** |
+| Repository branch | 54.3% | 56.7% |
+| Autoschedule slice line | 91.1% | 91.6% |
+| `AutoScheduleInteractor` line | 92.5% | 93.5% |
+| `infrastructure.places` line | 82.8% | 88.5% |
+| `infrastructure.places` branch | 51.3% | 67.3% |
+
+Nothing regressed, and the 70% group threshold is now met by 3.9 points. The parser's
+uncovered branches are malformed-input combinations that the twelve already tested make
+unreachable in practice.
+
+### What was verified about opening hours
+
+Twelve behaviours. None of these could have been tested before this pass — every discovered
+activity carried the same hard-coded 09:00-21:00 window, so there were no real hours to obey:
+
+| Behaviour | Where |
+|---|---|
+| Activity placed fully inside an imported opening interval | `RealOpeningHoursTest.anActivitySitsEntirelyInsideAnImportedOpeningInterval` |
+| Activity moved out of an hour the venue is shut | `…anActivityIsMovedOutOfAnHourTheVenueIsShut` |
+| Travel allowed outside venue hours | `…travelMayHappenWhileTheVenueIsStillShut` |
+| Exact opening and closing boundaries usable | `…aVisitMayStartOnTheOpeningMinuteAndEndOnTheClosingMinute` |
+| Duration extending past closing refused, not truncated | `…aVisitOneMinuteTooLongForTheIntervalIsRefused`, `…aDurationThatWouldRunPastClosingIsRefusedRatherThanTruncated` |
+| Multiple intervals; no straddling the gap | `…aVisitMustFitInsideOneIntervalNotAcrossTheGapBetweenTwo`, `…aVisitTooLongForTheMorningShiftFallsToTheAfternoonOne` |
+| Closed day → unschedulable, named, zero minutes | `…aVenueClosedOnTheTripDateCannotBeScheduledAtAll`, `OpeningHoursWarningTest.aVenueClosedOnTheTripDateBecomesANamedConflict` |
+| Unknown hours → permissive, with a warning | `…unknownHoursConstrainNothingAndAreNotTreatedAsClosed`, `OpeningHoursWarningTest` (5 tests) |
+| Malformed provider data degrades safely | `OpeningHoursParserTest.anythingNotFullyUnderstoodIsUnknownRatherThanGuessedAt` (12 values), `NominatimPlacesServiceTest.anUnparseableOpeningHoursTagDegradesToUnknownRatherThanFailingTheSearch` |
+| Locked activity outside hours → named conflict | `LockValidationTest.aLockAtAVenueThatIsShutAllDayIsRejectedByName`, `…aLockSpanningAVenuesMiddayClosureIsOutsideItsOpeningHours` |
+| Overnight hours, split at midnight onto both days | `OpeningHoursParserTest.aSpanPastMidnightIsSplitOntoBothDays`, `RealOpeningHoursTest.theEveningHalfOfAnOvernightVenueIsUsable`, `…theMorningHalfOfAnOvernightVenueBelongsToTheFollowingDay` |
+| Trip's weekday used, not today's | `RealOpeningHoursTest.hoursAreReadForTheTripsWeekdayNotForToday` |
+
+Production wiring — that the hours really travel from Raashid's adapter into scheduling
+rather than only through hand-built fixtures — is covered by
+`NominatimPlacesServiceTest.readsRealOpeningHoursFromTheOverpassResponse`, which stubs an
+Overpass response over a real local HTTP server and reads the resulting `Activity`.
+
+### Dennis's popup alongside the polished Day Plan
+
+`HourlyWeatherAndAutoscheduleTest` (5 tests) builds `HourlyWeatherPanel` and `DayPlanPanel`
+from one `DayPlanViewModel` and asserts: both render from it; an Autoschedule preview leaves
+the forecast intact; a refreshed forecast reaches both; both use a 12-hour clock; and the
+lock controls and Autoschedule button survived the merge.
+
+His 108-line `HourlyWeatherPanelTest` is retained and passes unmodified.
+
+### Style
+
+Whole repository under `config/mystyle.xml`: **6811 → 7152**, a rise of 341 across roughly
+900 added lines. The seven new files account for 248 of it and the edits to existing files
+for the remaining 93. Every one falls in a category already ruled out in §3 —
+`FinalLocalVariable` alone is 105 — and three genuinely new, unambiguous findings were fixed
+while writing rather than left to be reported. Full breakdown and reasoning in
+[`ownership.md` §3b](ownership.md).
