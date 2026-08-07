@@ -47,12 +47,16 @@ import javax.swing.SwingUtilities;
  */
 public final class DayPlanPanel extends JPanel {
 
+    /** Below this the sidebar would squeeze the schedule, so the cards go underneath. */
+    static final int WIDE_LAYOUT_MINIMUM = 820;
+
     private final DayPlanViewModel viewModel;
     private final AutoScheduleController autoScheduleController;
     private final ManualPlanController manualPlanController;
     private final ActivitySelectionViewModel selection;
     private final JPanel eventList = new JPanel();
     private final JPanel previewArea = new JPanel();
+    private final JPanel sidebarSlot = new JPanel(new BorderLayout());
     private final JLabel status = new JLabel();
     private final JLabel objective = new JLabel();
     private final JButton autoscheduleButton = SwingTheme.primaryButton("Autoschedule");
@@ -111,7 +115,24 @@ public final class DayPlanPanel extends JPanel {
         JScrollPane scroll = new JScrollPane(centre);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(14);
-        add(scroll, BorderLayout.CENTER);
+
+        sidebarSlot.setOpaque(false);
+        sidebarSlot.setBorder(BorderFactory.createEmptyBorder(0, 14, 0, 0));
+        sidebarSlot.setVisible(false);
+        JPanel body = new JPanel(new BorderLayout());
+        body.setOpaque(false);
+        body.add(scroll, BorderLayout.CENTER);
+        body.add(sidebarSlot, BorderLayout.EAST);
+        add(body, BorderLayout.CENTER);
+
+        // Crossing the width threshold changes where the stack belongs, so a resize has to
+        // re-render rather than only re-lay-out.
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent event) {
+                render(viewModel.getState());
+            }
+        });
         add(actions(), BorderLayout.SOUTH);
 
         whyButton.setFont(SwingTheme.SMALL);
@@ -276,15 +297,6 @@ public final class DayPlanPanel extends JPanel {
         repaint();
     }
 
-    private boolean hasAnyReason(DayPlanState state) {
-        for (PreviewRowView row : state.getPreviewRows()) {
-            if (!row.getAllReasons().isEmpty()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private void renderItinerary(DayPlanState state) {
         eventList.removeAll();
         eventList.add(SwingTheme.sectionHeader("YOUR DAY PLAN",
@@ -317,25 +329,25 @@ public final class DayPlanPanel extends JPanel {
                 SwingTheme.BLUE));
         previewArea.add(Box.createVerticalStrut(8));
 
-        PreviewMetricsView metrics = state.getMetrics();
-        if (metrics != null) {
-            JPanel strip = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-            strip.setOpaque(false);
-            strip.setAlignmentX(Component.LEFT_ALIGNMENT);
-            strip.add(SwingTheme.metricCard(
-                    metrics.getTravelBeforeMinutes() + " \u2192 " + metrics.getTravelAfterMinutes(),
-                    "travel, minutes"));
-            strip.add(SwingTheme.metricCard(
-                    metrics.getIdleBeforeMinutes() + " \u2192 " + metrics.getIdleAfterMinutes(),
-                    "waiting, minutes"));
-            strip.add(SwingTheme.metricCard(
-                    metrics.getMovedActivityCount() + " of " + metrics.getActivityCount(),
-                    "activities moved"));
-            strip.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE,
-                    strip.getPreferredSize().height));
-            previewArea.add(strip);
+        // The improvements stack sits beside the schedule when there is room for it and
+        // below when there is not. Which side it lands on is this panel's business; the
+        // stack itself is identical either way, which is what lets it move to a calendar
+        // view later without being rewritten.
+        ScheduleImprovementsPanel improvements =
+                new ScheduleImprovementsPanel(state.getImprovements());
+        boolean wide = getWidth() >= WIDE_LAYOUT_MINIMUM;
+        if (!wide) {
+            improvements.setAlignmentX(Component.LEFT_ALIGNMENT);
+            improvements.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE,
+                    improvements.getPreferredSize().height));
+            previewArea.add(improvements);
             previewArea.add(Box.createVerticalStrut(10));
         }
+        sidebarSlot.removeAll();
+        if (wide) {
+            sidebarSlot.add(improvements, BorderLayout.NORTH);
+        }
+        sidebarSlot.setVisible(wide);
 
         // Warnings get their own band. Previously they were SMALL/MUTED labels immediately
         // under the figures, which made a routing caveat look like part of the arithmetic.
@@ -359,8 +371,8 @@ public final class DayPlanPanel extends JPanel {
             previewArea.add(Box.createVerticalStrut(6));
         }
 
-        if (hasAnyReason(state)) {
-            previewArea.add(Box.createVerticalStrut(4));
+        previewArea.add(Box.createVerticalStrut(4));
+        {
             whyButton.setText((whyButton.isSelected() ? "\u25be " : "\u25b8 ")
                     + "Why this schedule?");
             whyButton.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -395,6 +407,45 @@ public final class DayPlanPanel extends JPanel {
                 BorderFactory.createEmptyBorder(10, 12, 10, 12)));
         section.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        PreviewMetricsView metrics = state.getMetrics();
+        if (metrics != null) {
+            JLabel figuresHeading = new JLabel("Before and after");
+            figuresHeading.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
+            figuresHeading.setForeground(SwingTheme.NAVY);
+            figuresHeading.setAlignmentX(Component.LEFT_ALIGNMENT);
+            section.add(figuresHeading);
+            section.add(detailLine("Travel: " + metrics.getTravelBeforeMinutes()
+                    + " min before, " + metrics.getTravelAfterMinutes() + " min after"));
+            section.add(detailLine("Waiting: " + metrics.getIdleBeforeMinutes()
+                    + " min before, " + metrics.getIdleAfterMinutes() + " min after"));
+            section.add(detailLine("Activities moved: " + metrics.getMovedActivityCount()
+                    + " of " + metrics.getActivityCount()));
+            section.add(Box.createVerticalStrut(6));
+
+            // Whatever got worse is stated here rather than omitted. The improvement cards
+            // are positive by design, so this is the only place the full trade is visible,
+            // and a comparison that only ever flatters the feature is not a comparison.
+            java.util.List<String> tradeOffs = new java.util.ArrayList<>();
+            if (metrics.getTravelSavedMinutes() < 0) {
+                tradeOffs.add("Travel increased by " + (-metrics.getTravelSavedMinutes())
+                        + " min, in exchange for the gains above");
+            }
+            if (metrics.getIdleSavedMinutes() < 0) {
+                tradeOffs.add("Waiting increased by " + (-metrics.getIdleSavedMinutes()) + " min");
+            }
+            if (!tradeOffs.isEmpty()) {
+                JLabel tradeHeading = new JLabel("Trade-offs");
+                tradeHeading.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
+                tradeHeading.setForeground(SwingTheme.NAVY);
+                tradeHeading.setAlignmentX(Component.LEFT_ALIGNMENT);
+                section.add(tradeHeading);
+                for (String tradeOff : tradeOffs) {
+                    section.add(detailLine(tradeOff));
+                }
+                section.add(Box.createVerticalStrut(6));
+            }
+        }
+
         java.util.Map<String, java.util.List<String>> grouped =
                 new java.util.LinkedHashMap<>();
         for (PreviewRowView row : state.getPreviewRows()) {
@@ -422,6 +473,14 @@ public final class DayPlanPanel extends JPanel {
         section.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE,
                 section.getPreferredSize().height));
         return section;
+    }
+
+    private static JLabel detailLine(String text) {
+        JLabel line = new JLabel("<html>&nbsp;&nbsp;" + escape(text) + "</html>");
+        line.setFont(SwingTheme.SMALL);
+        line.setForeground(SwingTheme.MUTED);
+        line.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return line;
     }
 
     /**

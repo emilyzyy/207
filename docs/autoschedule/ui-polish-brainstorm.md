@@ -265,3 +265,79 @@ Direction 2, as specified. Implemented on `feature/autoschedule-ui-polish`:
 **Not done, deliberately:** no algorithm, scoring, constraint, gateway, boundary, package or
 persistence change; no new preference; no new ViewModel semantics. `DayPlanState`'s fields
 keep their exact meaning.
+
+---
+
+## Revision: Schedule improvements, and a metric that was lying
+
+### The arrow cards are gone
+
+`0 → 132 travel` asked the reader to work out whether each arrow was good news, and in the
+old demo the honest answer for travel was "no". They are replaced by a **Schedule
+improvements** stack: one card per thing the schedule can *prove* it achieved, in plain
+words. The complete before/after figures, and every trade-off, moved under
+**Why this schedule?** where a reader who wants numbers finds all of them together.
+
+### The travel metric was wrong, and it flattered us
+
+`ScheduleMetrics.ofExistingSchedule` summed only `EventType.TRAVEL` rows. A plan the
+traveller built by hand has none, so a day spread across Toronto reported **0 minutes of
+travel before**. The Preview was comparing "travel the user happened to write down" against
+"travel the scheduler computed", so Autoschedule always appeared to *invent* journeys it had
+merely made visible.
+
+Fixed at the application layer: consecutive activities with no travel row between them are
+charged the journey they actually require, using the same estimator the search uses, and the
+gap is credited as waiting only for what is left over. Explicit travel rows are still
+trusted, so a plan Autoschedule already applied is not counted twice.
+
+On the old three-activity demo the before-figures moved from `travel 0, idle 270` to
+`travel 114, idle 173` — the same day, honestly measured.
+
+### Improvements are computed, never inferred from wording
+
+`ScheduleImprovement` and `ScheduleImprovementType` are application-owned.
+`ScheduleImprovementFinder` compares the original placement with the proposed one, and for
+the policy-driven cards it **re-runs the same policy objects the search used** against the
+activity's original time. A lower penalty is a real improvement, measured by the rule that
+produced the schedule; reimplementing "what counts as daylight" in the view would have been
+a second definition free to drift from the first.
+
+What that rules out, deliberately:
+
+| Not claimed | Why |
+|---|---|
+| Daylight, when the activity was already in daylight | A final state is not an improvement |
+| Weather, on a whole-day forecast | A forecast that scores every hour alike cannot prove one hour was better |
+| Order preserved, from `isKeptCurrentOrder()` | That is the user's *preference*; the finder compares the actual sequences |
+| Anything that got worse | Trade-offs live under "Why this schedule?", not dressed as achievements |
+
+### The seeded demo
+
+`AutoscheduleDemoTrip` is new and Emily-owned. Raashid's `DemoSeeding` (42/42 lines his,
+from `3e0ae2e`) drives the running application from discovered places and was **left
+untouched** — this is a separate deterministic fixture, because a demonstration needs a day
+whose outcome is known in advance and does not depend on a public API.
+
+Five activities, each present for a reason, producing exactly six proven improvements
+through the real Interactor:
+
+```
+travel 189 → 181 | waiting 109 → 46 | 4 of 5 moved
+⏳ 63 min of waiting removed
+→  8 min less travel
+⚿  Pinned activity kept at its time   Royal Ontario Museum
+◴  Meal moved to a better time         St Lawrence Market
+☂  Moved to better weather             High Park
+☀  Moved into daylight                 High Park
+```
+
+`Your original order was kept` is **absent, correctly** — four of five activities moved,
+even though the preference asked for it. That case is asserted by a test.
+
+### Layout
+
+`ScheduleImprovementsPanel` is standalone and knows nothing but a list of worded cards, so
+it can move to the side of a full 12 a.m.–12 a.m. calendar without being rewritten. The Day
+Plan places it in `BorderLayout.EAST` at or above 820px and below the schedule when narrower;
+the stack looks identical either way.

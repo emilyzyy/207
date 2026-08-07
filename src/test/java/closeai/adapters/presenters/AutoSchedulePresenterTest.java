@@ -18,6 +18,7 @@ import closeai.application.autoschedule.ProposedEventData;
 import closeai.application.autoschedule.Reason;
 import closeai.application.autoschedule.ReasonCode;
 import closeai.application.autoschedule.ScheduleConflict;
+import closeai.application.autoschedule.ScheduleImprovement;
 import closeai.application.autoschedule.TravelEstimateQuality;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.ScheduledEvent;
@@ -69,7 +70,8 @@ class AutoSchedulePresenterTest {
         return new AutoSchedulePreviewOutputData(rows, 80, 40, 60, 20, 2, 3, reasons, warnings,
                 Arrays.asList(PolicyId.WEATHER, PolicyId.MEAL_TIME, PolicyId.DAYLIGHT,
                         PolicyId.REDUCE_IDLE),
-                "fingerprint-1", withinLimit, quality, keptOrder, 60);
+                "fingerprint-1", withinLimit, quality, keptOrder,
+                Collections.<ScheduleImprovement>emptyList(), 60);
     }
 
     @Test

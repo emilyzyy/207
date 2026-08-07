@@ -37,6 +37,7 @@ public final class DayPlanState {
     private final String travelQualityNote;
     private final String previewFingerprint;
     private final Set<String> lockedEventIds;
+    private final List<ImprovementView> improvements;
 
     public DayPlanState(
             String tripId, List<ScheduledEvent> events, String message, boolean error) {
@@ -60,6 +61,20 @@ public final class DayPlanState {
                         String objectiveSummary, boolean keptCurrentOrder,
                         boolean searchCompletedWithinLimit, String travelQualityNote,
                         String previewFingerprint, Set<String> lockedEventIds) {
+        this(tripId, events, message, error, hourlyWeather, status, previewRows, metrics,
+                warnings, objectiveSummary, keptCurrentOrder, searchCompletedWithinLimit,
+                travelQualityNote, previewFingerprint, lockedEventIds,
+                Collections.<ImprovementView>emptyList());
+    }
+
+    public DayPlanState(String tripId, List<ScheduledEvent> events, String message, boolean error,
+                        List<WeatherWarning> hourlyWeather,
+                        AutoScheduleStatus status, List<PreviewRowView> previewRows,
+                        PreviewMetricsView metrics, List<String> warnings,
+                        String objectiveSummary, boolean keptCurrentOrder,
+                        boolean searchCompletedWithinLimit, String travelQualityNote,
+                        String previewFingerprint, Set<String> lockedEventIds,
+                        List<ImprovementView> improvements) {
         this.tripId = tripId == null ? "" : tripId.trim();
         this.events = Collections.unmodifiableList(new ArrayList<ScheduledEvent>(
                 events == null ? Collections.emptyList() : events));
@@ -80,6 +95,9 @@ public final class DayPlanState {
         this.previewFingerprint = previewFingerprint == null ? "" : previewFingerprint;
         this.lockedEventIds = Collections.unmodifiableSet(new LinkedHashSet<>(
                 lockedEventIds == null ? Collections.<String>emptySet() : lockedEventIds));
+        this.improvements = Collections.unmodifiableList(new ArrayList<>(
+                improvements == null
+                        ? Collections.<ImprovementView>emptyList() : improvements));
     }
 
     public String getTripId() {
@@ -141,6 +159,11 @@ public final class DayPlanState {
         return previewFingerprint;
     }
 
+    /** Proven before/after gains, for the "Schedule improvements" stack; empty when none. */
+    public List<ImprovementView> getImprovements() {
+        return improvements;
+    }
+
     /** Activities the traveller pinned, remembered for as long as the app is open. */
     public Set<String> getLockedEventIds() {
         return lockedEventIds;
@@ -157,7 +180,7 @@ public final class DayPlanState {
     public DayPlanState withLocks(Set<String> updatedLockIds) {
         return new DayPlanState(tripId, events, message, error, hourlyWeather, status, previewRows, metrics,
                 warnings, objectiveSummary, keptCurrentOrder, searchCompletedWithinLimit,
-                travelQualityNote, previewFingerprint, updatedLockIds);
+                travelQualityNote, previewFingerprint, updatedLockIds, improvements);
     }
 
     /** Same state showing that work is under way. */

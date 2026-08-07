@@ -12,6 +12,7 @@ import closeai.adapters.controllers.TaskRunner;
 import closeai.adapters.viewmodels.AutoScheduleStatus;
 import closeai.adapters.viewmodels.DayPlanState;
 import closeai.adapters.viewmodels.DayPlanViewModel;
+import closeai.adapters.viewmodels.ImprovementView;
 import closeai.adapters.viewmodels.PreviewMetricsView;
 import closeai.adapters.viewmodels.PreviewRowView;
 import closeai.application.autoschedule.AutoScheduleApplyInputData;
@@ -302,17 +303,41 @@ class AutoschedulePolishedUiTest {
                 Collections.emptySet());
     }
 
+    /**
+     * The arrow cards are gone; the complete figures moved under the disclosure, where a
+     * reader who wants numbers can find all of them together rather than having to decide
+     * whether each arrow was good news.
+     */
     @Test
-    void previewMetricsAreShownAsBeforeAndAfterFigures() throws Exception {
+    void completeBeforeAndAfterFiguresLiveUnderTheDisclosure() throws Exception {
         DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        DayPlanPanel panel = panelFor(viewModel);
 
-        String text = allText(panelFor(viewModel));
+        assertFalse(allText(panel).contains("0 → 132"),
+                "the ambiguous arrow cards should be gone from the main view");
 
-        assertTrue(text.contains("0 → 132"), "travel before and after: " + text);
-        assertTrue(text.contains("270 → 60"), "waiting before and after: " + text);
-        assertTrue(text.contains("2 of 3"), "activities moved: " + text);
-        assertTrue(text.contains("travel, minutes") && text.contains("waiting, minutes"),
-                "each figure says what it counts");
+        SwingUtilities.invokeAndWait(
+                () -> buttonNamed(panel, "▸ Why this schedule?").doClick());
+        String expanded = allText(panel);
+
+        assertTrue(expanded.contains("Travel: 0 min before, 132 min after"), expanded);
+        assertTrue(expanded.contains("Waiting: 270 min before, 60 min after"), expanded);
+        assertTrue(expanded.contains("Activities moved: 2 of 3"), expanded);
+    }
+
+    /** A trade-off is stated plainly rather than left out of a positive-only summary. */
+    @Test
+    void aWorseFigureIsReportedAsATradeOffRatherThanOmitted() throws Exception {
+        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        DayPlanPanel panel = panelFor(viewModel);
+
+        SwingUtilities.invokeAndWait(
+                () -> buttonNamed(panel, "▸ Why this schedule?").doClick());
+
+        String expanded = allText(panel);
+        assertTrue(expanded.contains("Trade-offs"), expanded);
+        assertTrue(expanded.contains("Travel increased by 132 min"),
+                "travel got worse in this fixture and the screen must say so: " + expanded);
     }
 
     @Test
@@ -433,6 +458,98 @@ class AutoschedulePolishedUiTest {
         assertNotNull(weatherLine.getToolTipText(), "the full reading stays reachable");
         assertTrue(weatherLine.getToolTipText().contains("surface flooding"),
                 "nothing is lost, only folded away");
+    }
+
+    // --- 5b. the improvements stack ----------------------------------------------------
+
+    private static DayPlanState previewWithImprovements(List<ImprovementView> improvements) {
+        DayPlanState base = previewState();
+        return new DayPlanState(base.getTripId(), base.getEvents(), base.getMessage(),
+                base.isError(), base.getHourlyWeather(), base.getStatus(),
+                base.getPreviewRows(), base.getMetrics(), base.getWarnings(),
+                base.getObjectiveSummary(), base.isKeptCurrentOrder(),
+                base.isSearchCompletedWithinLimit(), base.getTravelQualityNote(),
+                base.getPreviewFingerprint(), base.getLockedEventIds(), improvements);
+    }
+
+    private static ScheduleImprovementsPanel stackIn(Component root) {
+        for (Component component : all(root)) {
+            if (component instanceof ScheduleImprovementsPanel) {
+                return (ScheduleImprovementsPanel) component;
+            }
+        }
+        return null;
+    }
+
+    @Test
+    void provenImprovementsRenderAsStackedCardsWithAMarkerAndTheActivity() throws Exception {
+        DayPlanViewModel viewModel = new DayPlanViewModel(previewWithImprovements(Arrays.asList(
+                new ImprovementView("\u23f3", "63 min of waiting removed", "Less dead time"),
+                new ImprovementView("\u2600", "Moved into daylight", "High Park"))));
+        DayPlanPanel panel = panelFor(viewModel);
+
+        String text = allText(panel);
+        assertTrue(text.contains("SCHEDULE IMPROVEMENTS"), text);
+        assertTrue(text.contains("63 min of waiting removed"), text);
+        assertTrue(text.contains("Moved into daylight"), text);
+        assertTrue(text.contains("High Park"), "the card names its activity: " + text);
+        // The glyph is present, so the categories survive being printed in grey.
+        assertTrue(text.contains("\u23f3") && text.contains("\u2600"),
+                "each card carries a marker that is not a colour");
+        assertNotNull(stackIn(panel));
+    }
+
+    @Test
+    void anHonestEmptyStateAppearsRatherThanAnInventedCard() throws Exception {
+        DayPlanViewModel viewModel = new DayPlanViewModel(
+                previewWithImprovements(Collections.emptyList()));
+
+        String text = allText(panelFor(viewModel));
+
+        assertTrue(text.contains(ScheduleImprovementsPanel.NOTHING_IMPROVED), text);
+        assertFalse(text.contains("min of waiting removed"),
+                "nothing improved, so nothing may be claimed");
+    }
+
+    @Test
+    void theStackRendersInBothWideAndNarrowLayouts() throws Exception {
+        List<ImprovementView> improvements = Collections.singletonList(
+                new ImprovementView("\u23f3", "63 min of waiting removed", "Less dead time"));
+        DayPlanViewModel viewModel =
+                new DayPlanViewModel(previewWithImprovements(improvements));
+        DayPlanPanel panel = panelFor(viewModel);
+
+        SwingUtilities.invokeAndWait(() -> {
+            panel.setSize(DayPlanPanel.WIDE_LAYOUT_MINIMUM + 120, 700);
+            panel.doLayout();
+        });
+        assertNotNull(stackIn(panel), "wide: the stack sits beside the schedule");
+        assertTrue(allText(panel).contains("63 min of waiting removed"));
+
+        SwingUtilities.invokeAndWait(() -> {
+            panel.setSize(DayPlanPanel.WIDE_LAYOUT_MINIMUM - 200, 700);
+            panel.doLayout();
+        });
+        assertNotNull(stackIn(panel), "narrow: the same stack moves below the schedule");
+        assertTrue(allText(panel).contains("63 min of waiting removed"),
+                "the cards must survive the narrow layout, not disappear with the sidebar");
+    }
+
+    @Test
+    void theStackIsReusableWithoutADayPlanAroundIt() throws Exception {
+        assumeFalse(GraphicsEnvironment.isHeadless(), "building components needs a display");
+        final ScheduleImprovementsPanel[] standalone = new ScheduleImprovementsPanel[1];
+
+        SwingUtilities.invokeAndWait(() -> standalone[0] = new ScheduleImprovementsPanel(
+                Collections.singletonList(new ImprovementView("\u2600",
+                        "Moved into daylight", "High Park"))));
+
+        // Nothing about a Day Plan was needed to build it, which is what lets it move to a
+        // calendar view later.
+        assertTrue(allText(standalone[0]).contains("Moved into daylight"));
+        assertEquals(ScheduleImprovementsPanel.PREFERRED_WIDTH,
+                standalone[0].getPreferredSize().width,
+                "a fixed width is what makes it droppable into a sidebar");
     }
 
     // --- 6. nothing is leaked ----------------------------------------------------------

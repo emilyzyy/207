@@ -4,6 +4,7 @@ import closeai.adapters.viewmodels.AutoScheduleStatus;
 import closeai.adapters.viewmodels.DayPlanState;
 import closeai.adapters.viewmodels.DayPlanViewModel;
 import closeai.adapters.viewmodels.PreviewMetricsView;
+import closeai.adapters.viewmodels.ImprovementView;
 import closeai.adapters.viewmodels.PreviewRowView;
 import closeai.application.autoschedule.AutoScheduleAppliedOutputData;
 import closeai.application.autoschedule.AutoScheduleConflictOutputData;
@@ -11,6 +12,7 @@ import closeai.application.autoschedule.AutoScheduleOutputBoundary;
 import closeai.application.autoschedule.AutoSchedulePreviewOutputData;
 import closeai.application.autoschedule.PolicyId;
 import closeai.application.autoschedule.ProposedEventData;
+import closeai.application.autoschedule.ScheduleImprovement;
 import closeai.application.autoschedule.Reason;
 import closeai.application.autoschedule.ReasonCode;
 import closeai.application.autoschedule.ScheduleConflict;
@@ -92,7 +94,58 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
                 outputData.getWarnings(), objectiveSummary(outputData),
                 outputData.isKeptCurrentOrder(), outputData.isSearchCompletedWithinLimit(),
                 travelQualityNote(outputData.getTravelQuality()),
-                outputData.getScheduleFingerprint(), current.getLockedEventIds()));
+                outputData.getScheduleFingerprint(), current.getLockedEventIds(),
+                improvementViews(outputData.getImprovements())));
+    }
+
+    /**
+     * Turns proven improvements into cards. Wording lives here rather than in the use case
+     * for the same reason reason codes do: prose written inside the application layer is
+     * prose the display cannot restate without changing the layer that computed it.
+     *
+     * <p>Each marker is a glyph, so the categories remain distinguishable without colour.</p>
+     */
+    private static List<ImprovementView> improvementViews(
+            List<ScheduleImprovement> improvements) {
+        List<ImprovementView> views = new ArrayList<>();
+        for (ScheduleImprovement improvement : improvements) {
+            switch (improvement.getType()) {
+                case WAITING_REDUCED:
+                    views.add(new ImprovementView("\u23f3",
+                            improvement.getAmount() + " min of waiting removed",
+                            "Less dead time between activities"));
+                    break;
+                case TRAVEL_REDUCED:
+                    views.add(new ImprovementView("\u2192",
+                            improvement.getAmount() + " min less travel",
+                            "Shorter journeys than your current order"));
+                    break;
+                case LOCK_PRESERVED:
+                    views.add(new ImprovementView("\u26bf",
+                            "Pinned activity kept at its time",
+                            improvement.getSubject()));
+                    break;
+                case MOVED_INTO_DAYLIGHT:
+                    views.add(new ImprovementView("\u2600",
+                            "Moved into daylight", improvement.getSubject()));
+                    break;
+                case MOVED_TO_BETTER_WEATHER:
+                    views.add(new ImprovementView("\u2602",
+                            "Moved to better weather", improvement.getSubject()));
+                    break;
+                case MEAL_MOVED_TOWARD_WINDOW:
+                    views.add(new ImprovementView("\u25f4",
+                            "Meal moved to a better time", improvement.getSubject()));
+                    break;
+                case ORDER_PRESERVED:
+                    views.add(new ImprovementView("\u2261",
+                            "Your original order was kept", "Nothing was reordered"));
+                    break;
+                default:
+                    break;
+            }
+        }
+        return views;
     }
 
     @Override
