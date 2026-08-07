@@ -9,9 +9,12 @@ import closeai.adapters.controllers.AutoScheduleSettings;
 import closeai.application.autoschedule.WeatherOption;
 import closeai.domain.valueobjects.TransportationMode;
 import java.awt.GraphicsEnvironment;
+import java.util.ArrayList;
+import java.util.List;
 import java.time.LocalTime;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.SwingUtilities;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -25,11 +28,33 @@ import org.junit.jupiter.api.Test;
  */
 class AutoScheduleWeatherCheckBoxTest {
 
-    private static AutoScheduleSettingsDialog dialog() throws Exception {
+    /**
+     * Every dialog this class builds, so each one can be released again.
+     *
+     * <p>A {@code JDialog} allocates a native window as soon as it is packed, and Surefire
+     * runs the whole suite in one JVM. Left undisposed, the eight dialogs these tests create
+     * outlive them and keep their peers alive for every later Swing test in the same fork.
+     * Disposing them is not tidiness: it is the difference between releasing eight windows
+     * and leaking them into somebody else's test run.</p>
+     */
+    private final List<AutoScheduleSettingsDialog> opened = new ArrayList<>();
+
+    @AfterEach
+    void disposeDialogs() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            for (AutoScheduleSettingsDialog dialog : opened) {
+                dialog.dispose();
+            }
+            opened.clear();
+        });
+    }
+
+    private AutoScheduleSettingsDialog dialog() throws Exception {
         assumeFalse(GraphicsEnvironment.isHeadless(), "a dialog needs a display");
         AtomicReference<AutoScheduleSettingsDialog> built = new AtomicReference<>();
         SwingUtilities.invokeAndWait(() -> built.set(new AutoScheduleSettingsDialog(
                 null, LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING)));
+        opened.add(built.get());
         return built.get();
     }
 
