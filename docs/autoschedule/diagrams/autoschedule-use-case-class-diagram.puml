@@ -48,7 +48,8 @@ package "Frameworks & Drivers" #F4F7FA {
   }
 
   class NominatimPlacesService <<adapter>> {
-    - parseElements(elements) : List<Activity>
+    - parseElements(elements, limit) : List<Activity>
+    - {static} deriveOpenClose(openingHours) : LocalTime[]
   }
 
   class DayPlanPanel <<Swing View>> {
@@ -397,6 +398,7 @@ package "Enterprise Business Rules (Entities)" #FBF7F0 {
     - name : String
     - openingTime : LocalTime
     - closingTime : LocalTime
+    - openingHoursText : String
     - openingHours : OpeningHours
   }
   class OpeningHours <<value object>> {

@@ -54,8 +54,9 @@ sits at the centre and knows nothing about repositories, HTTP or Swing.
 | Gateway adapters | `DistanceServiceTravelTimeEstimator`, `WeatherServiceContextGateway` | Emily |
 | Opening-hours model | `OpeningHours` (+ `TimeInterval`) | Emily |
 | Opening-hours parsing | `OpeningHoursParser` | Emily |
+| Opening-hours source | the `opening_hours` tag read, kept verbatim, and flattened to one window in `NominatimPlacesService` | Raashid |
 | Routing service | `OsrmDistanceService` (OSRM, Transitous, TomTom) | Raashid |
-| Places service | `NominatimPlacesService` (Nominatim + Overpass) | Raashid; opening-hours read by Emily |
+| Places service | `NominatimPlacesService` (Nominatim + Overpass, bounding-box search, English names, hours) | Raashid; the per-weekday parse added by Emily |
 | Forecast service | `OpenMeteoWeatherService` | Shiyuan (Dennis) |
 | Hourly forecast popup | `HourlyWeatherDialog`, `HourlyWeatherPanel`, the Overview weather card | Shiyuan (Dennis) |
 | Repository, entities | `TripRepository`, `Trip`, `Activity`, `ScheduledEvent` | Shared; `Activity.openingHours` added by Emily |
@@ -190,8 +191,13 @@ that mostly does not have it. The layering is what keeps that from leaking:
 
 ```text
   Overpass "out body"                infrastructure
-     tags.opening_hours ──▶ OpeningHoursParser ──▶ OpeningHours   (per-weekday intervals,
-                                                        │          or UNKNOWN, or ALWAYS)
+     tags.opening_hours ──┬─▶ deriveOpenClose ────▶ openingTime / closingTime
+              (Raashid)   │      (Raashid)            one coarse window for the whole week
+                          │
+                          ├─▶ (kept verbatim) ────▶ openingHoursText
+                          │
+                          └─▶ OpeningHoursParser ─▶ OpeningHours   (per-weekday intervals,
+                                    (Emily)             │           or UNKNOWN, or ALWAYS)
                                        Activity ◀───────┘
                                           │
   ────────────────────────────────────────┼──────────────────────────────────────────────
@@ -202,6 +208,26 @@ that mostly does not have it. The layering is what keeps that from leaking:
                                           │
                       ActivityPlacer ─────┴───── ProblemValidator ───── ReasonCollector
 ```
+
+### Two readings of one tag
+
+Raashid's adapter reads the tag; the flattening and the parsing are separate jobs and both
+are kept:
+
+| Reading | Owner | What it is for |
+|---|---|---|
+| `openingHoursText` | Raashid | The provider's own words, unmodified. The only thing that can honestly be shown to a user when we cannot parse it. |
+| `openingTime` / `closingTime` | Raashid | Earliest opening anywhere in the week to latest closing anywhere. Deliberately generous, so every older caller always has a valid window — and it is what the `Trip` entity enforces. |
+| `OpeningHours` | Emily | The same text resolved per weekday, with the gaps intact. **This is what the scheduler obeys.** |
+
+They disagree, and that is the point. For `Mo-Fr 09:00-17:00; Sa-Su 11:00-23:00` the coarse
+window says 09:00–23:00, which is wrong about Wednesday's closing and Saturday's opening.
+When the parser cannot read a tag it returns unknown and the coarse window takes over, so
+parsing can only ever make a place *more* accurately scheduled, never less schedulable.
+
+The coarse guard being the entity's and the precise rule being the scheduler's is a sensible
+split rather than an accident: `Trip` has no idea what day it is being asked about, and the
+Interactor does.
 
 Three rules hold this together:
 

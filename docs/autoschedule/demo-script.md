@@ -8,8 +8,12 @@ anything assembled specially for it.
 forecast has landed, so **"Consider weather" is enabled and ticked by default** — the
 disabled state is now the fallback, not the norm. Do **not** claim traffic-aware driving:
 no TomTom key has ever reached a verification run, so no real TomTom route has been
-obtained. Driving falls back to OSRM and is not traffic-aware. Do **not** claim the venues
-in the seeded demo have real opening hours — they do not, and that is step 4b.
+obtained. Driving falls back to OSRM and is not traffic-aware.
+
+The seeded demo trip's venues have **no** opening hours — it is deterministic and offline —
+so step 4b is the honest one to run. If you want to show real hours instead, launch with
+`-Dcloseai.places.mode=nominatim`, search a city and add a place that publishes them;
+Raashid's adapter reads the tag on both search and map panning.
 
 ---
 
@@ -80,8 +84,9 @@ Point at the amber band, at the line naming venues.
 > interval, and a venue that shuts for lunch gets two intervals, not one long one. Travel is
 > allowed outside them, because walking to a museum before it opens is how you get there.
 >
-> But look at what it says: *opening hours unavailable for these five*. They come from
-> OpenStreetMap's `opening_hours` tag, and most places simply do not have one. I could have
+> But look at what it says: *opening hours unavailable for these five*. Real hours come from
+> OpenStreetMap's `opening_hours` tag — Raashid's places adapter reads it — and most places
+> simply do not have one. The seeded demo has none at all, which is why all five are named. I could have
 > treated silence as 'closed', and then it would refuse to plan almost any real day. So
 > unknown means no constraint — and it tells you exactly where it made that assumption. A
 > silent guess and a stated one look identical in a screenshot and are not the same promise.
@@ -94,6 +99,17 @@ If asked where the parsing lives:
 > "In the places adapter, next to the Overpass call. The syntax is one provider's quirk. The
 > Interactor gets normalised windows for the trip's own weekday, and the search below it
 > never needs a calendar."
+
+If asked how it fits with Raashid's work:
+
+> "He reads the tag and flattens it into one window per venue, so anything that only knows
+> about a single opening and closing always has something valid — and that is what the Trip
+> entity enforces. I read the same text a second way, keeping the weekdays and the gaps,
+> because that is what you need to actually place a visit. They disagree on purpose: for a
+> place open nine-to-five on weekdays and eleven-to-eleven at weekends, his window says nine
+> to eleven every day. The scheduler believes the weekday. When my parser cannot read a tag
+> it says unknown and his window takes over, so adding the parse can only make a place more
+> accurately scheduled, never less schedulable."
 
 ### 5. Why these times (15s)
 

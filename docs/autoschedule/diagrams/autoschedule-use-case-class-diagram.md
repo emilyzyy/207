@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Source** | [`autoschedule-use-case-class-diagram.puml`](autoschedule-use-case-class-diagram.puml) |
-| **Vector** | [`autoschedule-use-case-class-diagram.svg`](autoschedule-use-case-class-diagram.svg) — 3534 × 2897, zoomable; use this on screen |
-| **Raster** | [`autoschedule-use-case-class-diagram.png`](autoschedule-use-case-class-diagram.png) — 5520 × 4525 (150 dpi); use this on a slide |
+| **Vector** | [`autoschedule-use-case-class-diagram.svg`](autoschedule-use-case-class-diagram.svg) — 3534 × 2903, zoomable; use this on screen |
+| **Raster** | [`autoschedule-use-case-class-diagram.png`](autoschedule-use-case-class-diagram.png) — 5520 × 4534 (150 dpi); use this on a slide |
 | **Covers** | 76 production classes, interfaces and enums; 0 test doubles |
 
 This is the third Required Element of the Individual Presentation Rubric — *before and

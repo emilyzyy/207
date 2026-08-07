@@ -201,6 +201,47 @@ Two findings were genuinely new and unambiguous, so both were fixed while writin
 a parameter named `at` (renamed `hourOfDay`) and a catch parameter `notATime`
 (`AbbreviationAsWordInName`, renamed `notTime`), plus one `JavadocParagraph`.
 
+## 3c. After Raashid's opening-hours push — 2026-08-07
+
+Raashid pushed five commits including `02e8cce` ("Translated place names and added opening
+hours"), which implements the provider half this branch had previously had to stand in for.
+Merged into `feature/autoschedule-ui-polish` with his authorship intact.
+
+### What is his, and what is mine, in the hours path
+
+| Piece | Owner |
+|---|---|
+| Reading the `opening_hours` tag from Overpass, on both `search` and `searchInBounds` | **Raashid** |
+| Keeping the tag verbatim on `Activity.openingHoursText` | **Raashid** |
+| `deriveOpenClose` — the coarse one-window-per-week derivation | **Raashid** |
+| English name preference (`name:en` → `int_name` → `name`) | **Raashid** |
+| `OpeningHours` value object and `OpeningHoursParser` | **Emily** |
+| The per-weekday parse call inside `parseElements` (2 lines + comment) | **Emily** |
+| Everything from `ScheduleTask` inward | **Emily** |
+
+**My earlier version of the tag read has been removed**, along with my `FALLBACK_OPENS` /
+`FALLBACK_CLOSES` constants: his extraction and his defaults are upstream now and better,
+because they also cover the bounding-box path he added. My parser reads *his* `hoursText`
+variable rather than re-reading the tag. His query, endpoints, retry/busy handling,
+categorisation, address building and caching are untouched.
+
+### Conflicts, and how each was resolved
+
+| File | Conflict | Resolution |
+|---|---|---|
+| `Activity.java` | We both added an 11th constructor parameter — his `String openingHoursText`, mine `OpeningHours` | **Both kept.** A 12-arg constructor holds both; his 11-arg one delegates with `unknown()` and its Javadoc says plainly that an entity cannot parse provider syntax |
+| `NominatimPlacesService.java` | Both of us read the tag and built the Activity | **His kept whole**, my parse added on top of his `hoursText` |
+| `OverviewPanel.java` | Dennis's weather-preview button vs Raashid's viewport places loader | Unrelated additions; both kept |
+
+Nothing of his was reformatted, and none of his 13 new tests was edited or weakened.
+
+### Checkstyle
+
+Whole repository: **7493**, up from 7152 — the rise is his merged code arriving, not new
+defects. My eight new files account for **305**, still entirely in the categories ruled out
+in §3 (`FinalLocalVariable` 126, the unsatisfiable `CustomImportOrder`/`ImportOrder` pair
+100, `JavadocMethod` 19).
+
 ## 4. Ownership detail
 
 ### A–B. Emily-owned (99 files)

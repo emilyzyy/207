@@ -208,12 +208,22 @@ across the gap between two — a museum open 09:00–12:00 and 14:00–18:00 off
 shifts, not a nine-hour day. Travel is deliberately free to happen outside them, because
 walking to a museum before it opens is how anyone gets there.
 
-Hours come from the venue's OpenStreetMap `opening_hours` tag, which the Overpass query has
-always returned. `OpeningHoursParser` normalises it into per-weekday intervals in the
-infrastructure layer, so no scheduling code has to know that
+Hours come from the venue's OpenStreetMap `opening_hours` tag. `NominatimPlacesService`
+reads the tag and keeps it verbatim on the activity, and derives a single coarse window
+spanning the whole week so that any code knowing only about one always has something valid.
+`OpeningHoursParser` then reads the same text a second way, into per-weekday intervals, in
+the infrastructure layer — so no scheduling code has to know that
 `Mo-Fr 09:00-17:00; Sa 10:00-14:00; Su off` is a syntax. Weekday selectors and ranges,
 several intervals in a day, `off`/`closed`, `24/7`, and spans past midnight are all handled;
 the trip's own date decides which day's hours apply.
+
+The two readings are kept side by side on purpose, and they disagree. For
+`Mo-Fr 09:00-17:00; Sa-Su 11:00-23:00` the coarse window is 09:00–23:00 — the earliest
+opening anywhere in the week to the latest closing anywhere — which is wrong about both
+Wednesday's closing and Saturday's opening. **Autoschedule uses the per-weekday reading.**
+The coarse window remains the guard the `Trip` entity applies (it cannot hold an event
+outside it) and the fallback whenever the parser returns unknown, so nothing is ever less
+schedulable than it was before hours were parsed at all.
 
 Three outcomes, and the last is the one that matters:
 

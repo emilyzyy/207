@@ -465,3 +465,79 @@ for the remaining 93. Every one falls in a category already ruled out in §3 —
 `FinalLocalVariable` alone is 105 — and three genuinely new, unambiguous findings were fixed
 while writing rather than left to be reported. Full breakdown and reasoning in
 [`ownership.md` §3b](ownership.md).
+
+### 9b. Raashid's provider implementation merged — 2026-08-07, later the same day
+
+Raashid pushed `02e8cce` ("Translated place names and added opening hours") and four other
+commits. This is the provider half that §9 had to stand in for, and it changes the picture
+enough to record separately rather than editing §9 to pretend it was always this way.
+
+**What he built.** `NominatimPlacesService` now reads the `opening_hours` tag on both the
+text search and a new bounding-box search, keeps it verbatim on `Activity.openingHoursText`,
+and derives `openingTime`/`closingTime` from it with `deriveOpenClose`. He also added
+English name preference (`name:en` → `int_name` → `name`) and 13 tests.
+
+**What his derivation does, precisely.** It regex-scans the whole tag for `HH:MM-HH:MM`
+pairs, ignoring weekday selectors, and takes the earliest start and the latest end. So:
+
+| Tag | His window | What the day really is |
+|---|---|---|
+| `Mo-Fr 09:30-17:15; Sa 10:00-14:00` | 09:30–17:15 | correct Mon–Fri; Saturday is 10:00–14:00 |
+| `Mo-Fr 09:00-17:00; Sa-Su 11:00-23:00` | 09:00–23:00 | wrong about Wednesday's close *and* Saturday's open |
+| `We 10:00-13:00,14:00-18:00` | 10:00–18:00 | shut 13:00–14:00 |
+| `Su off` | invisible | closed |
+| `Fr 20:00-02:00` | skipped, falls back to 09:00–21:00 | open across midnight |
+| missing or unreadable | 09:00–21:00 | unknown |
+
+This is not a defect in his code — his Javadoc says it exists "so that scheduling logic
+always has a valid window", and as a coarse always-valid window it is exactly right. It is
+simply not enough to place a visit with, which is what the per-weekday parse is for.
+
+**How they were combined.** Both readings are kept on `Activity`. His stays in charge of the
+coarse window and of what `Trip` enforces; the parsed `OpeningHours` is what the scheduler
+obeys, and falls back to his window whenever the parser returns unknown. The result can only
+ever be *more* accurate than his alone, never less schedulable.
+
+### Suite and coverage after the merge
+
+```bash
+./mvnw clean test jacoco:report
+```
+
+**472 tests, 0 failures, 0 errors, 9 skipped.** All 13 of Raashid's new tests pass unchanged;
+none was edited or weakened.
+
+| Scope | §9 (before his merge) | After |
+|---|---|---|
+| Repository line | 73.9% | **74.8%** |
+| Repository branch | 56.7% | 58.3% |
+| Autoschedule slice line | 91.6% | 91.7% |
+| `AutoScheduleInteractor` line | 93.5% | 93.5% |
+| `infrastructure.places` line / branch | 88.5% / 67.3% | **90.5% / 73.6%** |
+| `OpeningHours` line / branch | 100% / 100% | 100% / 100% |
+
+### The end-to-end proof that was previously missing
+
+`OpeningHoursProductionWiringTest` (6 tests) starts at an Overpass response served over a
+real local HTTP server, runs it through Raashid's adapter, drops the resulting `Activity`
+into a Day Plan, and asks the production Interactor to schedule it. Until his merge there
+was no provider path to test this way.
+
+| Case | Asserts |
+|---|---|
+| `hoursFromTheProviderReachTheScheduleAndMoveTheVisit` | `Mo-Fr 13:00-18:00` → the visit starts at 13:00, not at the day's 09:00 |
+| `aMiddayClosureFromTheProviderIsRespectedEndToEnd` | `We 10:00-11:30,15:00-19:00`, two-hour visit → 15:00, not straddling the closure |
+| `aVenueClosedOnTheTripDateIsRefusedByName` | `Sa 10:00-16:00` on a Wednesday → conflict naming the venue |
+| `aPlaceWithNoHoursTagIsStillScheduledAndTheGuessIsStated` | no tag → scheduled, and the warning names it |
+| `anUnreadableTagIsTreatedAsNoTagRatherThanAsAClosedDoor` | `Mo-Su sunrise-sunset` → scheduled, warning stated |
+| `theScheduleBelievesTheWeekdayRatherThanTheFlattenedWeek` | flattened window says 23:00, Wednesday says 17:00, the visit ends by 17:00 |
+
+Three more in `NominatimPlacesServiceTest` pin the division of labour: the flattened window
+and the parsed week are both kept and deliberately disagree, hours arrive through
+`searchInBounds` as well as `search`, and the provider's own words survive verbatim even
+when unparseable.
+
+**One thing the merge revealed:** `Trip` refuses to hold an event outside an activity's
+flattened window. That coarse guard is the entity's — it has no idea which day it is being
+asked about — and the per-weekday rule is the scheduler's, stricter one. Documented in
+`architecture.md` rather than changed.
