@@ -3,6 +3,7 @@ package closeai.infrastructure.routing;
 import closeai.application.ports.DistanceService;
 import closeai.domain.valueobjects.Location;
 import closeai.domain.valueobjects.TransportationMode;
+import closeai.infrastructure.config.DotEnv;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
@@ -11,14 +12,12 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.function.Supplier;
 
 public final class OsrmDistanceService implements DistanceService {
     private static final String OSRM_BASE = "https://routing.openstreetmap.de";
@@ -28,15 +27,22 @@ public final class OsrmDistanceService implements DistanceService {
 
     private final HttpClient client;
     private final ObjectMapper mapper;
+    private final Supplier<String> apiKey;
     private static boolean warned = false;
 
     public OsrmDistanceService() {
-        this(HttpClient.newBuilder().connectTimeout(TIMEOUT).build(), new ObjectMapper());
+        this(HttpClient.newBuilder().connectTimeout(TIMEOUT).build(), new ObjectMapper(),
+                OsrmDistanceService::tomtomApiKey);
     }
 
     OsrmDistanceService(HttpClient client, ObjectMapper mapper) {
+        this(client, mapper, OsrmDistanceService::tomtomApiKey);
+    }
+
+    OsrmDistanceService(HttpClient client, ObjectMapper mapper, Supplier<String> apiKey) {
         this.client = client;
         this.mapper = mapper;
+        this.apiKey = apiKey;
     }
 
     @Override
@@ -54,7 +60,7 @@ public final class OsrmDistanceService implements DistanceService {
     }
 
     private int estimateDriving(Location from, Location to, LocalDateTime departure) {
-        String key = tomtomApiKey();
+        String key = apiKey.get();
         if (key == null || key.isBlank()) {
             warnOnce("No TomTom API key set (tomtom.api.key or TOMTOM_API_KEY); "
                     + "driving estimates fall back to OSRM without traffic awareness");
@@ -203,49 +209,7 @@ public final class OsrmDistanceService implements DistanceService {
     }
 
     private static String tomtomApiKey() {
-        String key = System.getProperty("tomtom.api.key");
-        if (key != null && !key.isBlank()) {
-            return key;
-        }
-        key = System.getenv("TOMTOM_API_KEY");
-        if (key != null && !key.isBlank()) {
-            return key;
-        }
-        return keyFromDotEnv();
-    }
-
-    private static String dotEnvKey = null;
-    private static boolean dotEnvLoaded = false;
-
-    private static String keyFromDotEnv() {
-        if (dotEnvLoaded) {
-            return dotEnvKey;
-        }
-        dotEnvLoaded = true;
-        try {
-            Path dotEnv = Paths.get(System.getProperty("user.dir"), ".env");
-            if (!Files.isReadable(dotEnv)) {
-                return dotEnvKey;
-            }
-            for (String line : Files.readAllLines(dotEnv, StandardCharsets.UTF_8)) {
-                String trimmed = line.trim();
-                if (trimmed.isEmpty() || trimmed.startsWith("#")) {
-                    continue;
-                }
-                int eq = trimmed.indexOf('=');
-                if (eq <= 0) {
-                    continue;
-                }
-                String name = trimmed.substring(0, eq).trim();
-                if ("TOMTOM_API_KEY".equals(name)) {
-                    dotEnvKey = trimmed.substring(eq + 1).trim();
-                    return dotEnvKey;
-                }
-            }
-        } catch (Exception ignored) {
-            dotEnvKey = null;
-        }
-        return dotEnvKey;
+        return DotEnv.get("TOMTOM_API_KEY", "tomtom.api.key");
     }
 
     private static void warnOnce(String message) {

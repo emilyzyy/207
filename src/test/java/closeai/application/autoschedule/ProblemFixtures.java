@@ -66,7 +66,7 @@ public final class ProblemFixtures {
         return new Activity(id, id, ActivityCategory.MUSEUM,
                 new Location(43.65, -79.38, id), 4.5, 60,
                 LocalTime.of(0, 0), LocalTime.of(23, 59),
-                IndoorOutdoorType.INDOOR, "none", hours);
+                IndoorOutdoorType.INDOOR, "none", null, hours);
     }
 
     /** A movable task whose hours are the real ones for {@link #TRIP_DATE}. */

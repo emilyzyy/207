@@ -257,6 +257,7 @@ public final class Main {
 
     private static void enrichItineraryAsync(AppBuilder builder, AppContainer app,
                                              String tripId, String destination, CloseAIFrame frame) {
+        frame.getSearchViewModel().setLoading(true);
         new Thread(() -> {
             try {
                 Trip updated = app.discoverTripPlaces.execute(tripId, destination);
@@ -264,6 +265,7 @@ public final class Main {
             } catch (Exception exception) {
                 System.err.println("[Main] Could not enrich itinerary for " + destination
                         + ": " + exception.getMessage());
+                SwingUtilities.invokeLater(() -> frame.getSearchViewModel().setLoading(false));
             }
         }, "Enrich-Itinerary").start();
     }

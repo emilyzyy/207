@@ -23,8 +23,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -34,6 +36,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JCheckBox;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 
 /** Pure Swing map panel that renders OpenStreetMap tiles with activity markers. */
 public final class MapPanel extends JPanel {
@@ -50,6 +53,7 @@ public final class MapPanel extends JPanel {
     private double centerLat = DEFAULT_LAT;
     private double centerLng = DEFAULT_LNG;
     private int zoom = 13;
+    private Point pressStart;
     private Point dragStart;
     private boolean isDragging;
 
@@ -61,6 +65,13 @@ public final class MapPanel extends JPanel {
     private String selectedActivityId = "";
     private boolean showHighlightedOnly = false;
 
+    private final List<Integer> markerHitboxesX = new ArrayList<>();
+    private final List<Integer> markerHitboxesY = new ArrayList<>();
+    private final List<String> markerIds = new ArrayList<>();
+    private java.util.function.Consumer<String> placeSelectionListener;
+    private java.util.function.Consumer<List<Activity>> placesLoadedListener;
+    private java.util.function.Consumer<Boolean> placesLoadingListener;
+
     private final JCheckBox highlightOnly = new JCheckBox("Bookmarks & calendar only");
 
     private final ConcurrentHashMap<String, BufferedImage> tileCache = new ConcurrentHashMap<>();
@@ -70,6 +81,20 @@ public final class MapPanel extends JPanel {
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(java.time.Duration.ofSeconds(8)).build();
     private final boolean tileLoadingEnabled;
+
+    private Timer viewportTimer;
+    private final ExecutorService viewportLoaderExecutor = Executors.newSingleThreadExecutor(
+            r -> { Thread t = new Thread(r, "ViewportLoader"); t.setDaemon(true); return t; });
+
+    private ViewportPlacesLoader viewportLoader;
+
+    /**
+     * Supplies places for a visible map window. Implementations should perform blocking
+     * lookups off the Swing event-dispatch thread (the loader is invoked on a worker thread).
+     */
+    public interface ViewportPlacesLoader {
+        List<Activity> load(double south, double west, double north, double east, int maxResults);
+    }
 
     public MapPanel(int width, int height) {
         this(
@@ -93,15 +118,18 @@ public final class MapPanel extends JPanel {
         addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
+                pressStart = e.getPoint();
                 dragStart = e.getPoint();
                 isDragging = true;
                 setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             }
             @Override
             public void mouseReleased(MouseEvent e) {
+                handleMarkerClick(e);
                 dragStart = null;
                 isDragging = false;
                 setCursor(Cursor.getDefaultCursor());
+                scheduleViewportReload();
                 repaint();
             }
         });
@@ -131,6 +159,7 @@ public final class MapPanel extends JPanel {
                 double newMousePxY = latLngToPixelY(mouseLat);
                 centerLng = pixelXToLng(newMousePxX - (e.getX() - w / 2.0));
                 centerLat = pixelYToLat(newMousePxY - (e.getY() - h / 2.0));
+                scheduleViewportReload();
                 repaint();
             }
         });
@@ -161,9 +190,13 @@ public final class MapPanel extends JPanel {
 
     public void setActivities(List<Activity> activities) {
         List<Activity> newList = (activities == null) ? new ArrayList<>() : new ArrayList<>(activities);
-        if (sameIds(newList, this.activities)) return;
+        if (sameIds(newList, this.activities)) {
+            repaint();
+            return;
+        }
+        boolean wasEmpty = this.activities.isEmpty();
         this.activities = newList;
-        if (!this.activities.isEmpty()) fitToActivities();
+        if (wasEmpty && !this.activities.isEmpty()) fitToActivities();
         repaint();
     }
 
@@ -231,8 +264,10 @@ public final class MapPanel extends JPanel {
 
     private static boolean sameIds(List<Activity> a, List<Activity> b) {
         if (a.size() != b.size()) return false;
-        for (int i = 0; i < a.size(); i++) {
-            if (!a.get(i).getId().equals(b.get(i).getId())) return false;
+        Set<String> idsB = new HashSet<>();
+        for (Activity activity : b) idsB.add(activity.getId());
+        for (Activity activity : a) {
+            if (!idsB.contains(activity.getId())) return false;
         }
         return true;
     }
@@ -241,6 +276,130 @@ public final class MapPanel extends JPanel {
         centerLat = lat;
         centerLng = lng;
         repaint();
+    }
+
+    /** Sets the map viewport's place loader, enabling live load-as-you-navigate. */
+    public void setViewportLoader(ViewportPlacesLoader loader) {
+        this.viewportLoader = loader;
+    }
+
+    /** Registers a callback invoked when the user clicks a marker on the map. */
+    public void setPlaceSelectionListener(java.util.function.Consumer<String> listener) {
+        this.placeSelectionListener = listener;
+    }
+
+    /** Registers a callback invoked with the full merged place list after a viewport reload. */
+    public void setPlacesLoadedListener(java.util.function.Consumer<List<Activity>> listener) {
+        this.placesLoadedListener = listener;
+    }
+
+    /** Registers a callback invoked when viewport place loading starts (true) or ends (false). */
+    public void setPlacesLoadingListener(java.util.function.Consumer<Boolean> listener) {
+        this.placesLoadingListener = listener;
+    }
+
+    private void handleMarkerClick(MouseEvent e) {
+        if (placeSelectionListener == null) return;
+        if (pressStart == null) return;
+        int dx = e.getX() - pressStart.x;
+        int dy = e.getY() - pressStart.y;
+        if (Math.sqrt(dx * dx + dy * dy) > 6) return;
+        for (int i = 0; i < markerHitboxesX.size(); i++) {
+            int mx = markerHitboxesX.get(i);
+            int my = markerHitboxesY.get(i);
+            if (Math.hypot(e.getX() - mx, e.getY() - my) <= 16) {
+                placeSelectionListener.accept(markerIds.get(i));
+                return;
+            }
+        }
+    }
+
+    private void scheduleViewportReload() {
+        if (viewportLoader == null) return;
+        if (viewportTimer == null) {
+            viewportTimer = new Timer(300, e -> reloadViewport());
+            viewportTimer.setRepeats(false);
+        }
+        viewportTimer.restart();
+    }
+
+    void reloadViewport() {
+        if (viewportLoader == null) return;
+        int w = getWidth(), h = getHeight();
+        if (w <= 0 || h <= 0) return;
+        double[][] corners = visibleCoords(w, h);
+        final int maxResults = maxResultsForZoom(zoom);
+        final double south = corners[0][0];
+        final double west = corners[0][1];
+        final double north = corners[1][0];
+        final double east = corners[1][1];
+        viewportLoaderExecutor.submit(() -> {
+            try {
+                List<Activity> found = viewportLoader.load(south, west, north, east, maxResults);
+                SwingUtilities.invokeLater(() -> {
+                    mergeViewportResults(found);
+                    notifyPlacesLoading(false);
+                });
+            } catch (Exception ignored) {
+                SwingUtilities.invokeLater(() -> notifyPlacesLoading(false));
+            }
+        });
+        notifyPlacesLoading(true);
+    }
+
+    private void notifyPlacesLoading(boolean loading) {
+        if (placesLoadingListener != null) {
+            placesLoadingListener.accept(loading);
+        }
+    }
+
+    private void mergeViewportResults(List<Activity> found) {
+        Map<String, Activity> byId = new HashMap<>();
+        if (found != null) {
+            for (Activity activity : found) {
+                if (activity.getLocation() != null) byId.put(activity.getId(), activity);
+            }
+        }
+        for (Activity activity : activities) {
+            byId.putIfAbsent(activity.getId(), activity);
+        }
+        this.activities = new ArrayList<>(byId.values());
+        repaint();
+        if (placesLoadedListener != null && !byId.isEmpty()) {
+            placesLoadedListener.accept(new ArrayList<>(this.activities));
+        }
+    }
+
+    /** Computes the visible bounding box as {{south,west},{north,east}} for the current view. */
+    private double[][] visibleCoords(int w, int h) {
+        double cx = latLngToPixelX(centerLng);
+        double cy = latLngToPixelY(centerLat);
+        double westPixel = cx - (w / 2.0);
+        double eastPixel = cx + (w / 2.0);
+        double northPixel = cy - (h / 2.0);
+        double southPixel = cy + (h / 2.0);
+        double west = clampLng(pixelXToLng(westPixel));
+        double east = clampLng(pixelXToLng(eastPixel));
+        double north = pixelYToLat(visiblePixelY(northPixel));
+        double south = pixelYToLat(visiblePixelY(southPixel));
+        if (south > north) { double t = south; south = north; north = t; }
+        if (west > east) { double t = east; east = west; west = t; }
+        return new double[][]{{south, west}, {north, east}};
+    }
+
+    private static double clampLng(double lng) {
+        return Math.max(-180.0, Math.min(180.0, lng));
+    }
+
+    /** Count scales with zoom: wider views (fewer places) vs. zoomed-in detail (more places). */
+    private int maxResultsForZoom(int z) {
+        return Math.max(10, Math.min(300, 6 + z * 3));
+    }
+
+    /** Clamps pixel-coordinate to keep the later inverse projection within valid latitude. */
+    private double visiblePixelY(double py) {
+        double max = Math.pow(2, zoom) * TILE_SIZE;
+        return Math.max(0.0, Math.min(max, py));
     }
 
     /** Centers the map on the given city, geocoding unknown cities asynchronously. */
@@ -374,6 +533,9 @@ public final class MapPanel extends JPanel {
 
     private void drawMarkers(Graphics2D g2, int w, int h,
                              double centerPixelX, double centerPixelY) {
+        markerHitboxesX.clear();
+        markerHitboxesY.clear();
+        markerIds.clear();
         for (Activity a : visibleActivities()) {
             double lng = a.getLocation().getLongitude();
             double lat = a.getLocation().getLatitude();
@@ -384,6 +546,9 @@ public final class MapPanel extends JPanel {
             if (sx < -30 || sx > w + 30 || sy < -30 || sy > h + 30) {
                 continue;
             }
+            markerHitboxesX.add(sx);
+            markerHitboxesY.add(sy);
+            markerIds.add(a.getId());
             drawMarker(g2, a.getId(), sx, sy);
             g2.setColor(new Color(0x1a, 0x1f, 0x36));
             g2.setFont(SwingTheme.SMALL);

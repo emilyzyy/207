@@ -6,6 +6,7 @@ import closeai.application.autoschedule.TravelTimeEstimator;
 import closeai.application.ports.DistanceService;
 import closeai.domain.valueobjects.Location;
 import closeai.domain.valueobjects.TransportationMode;
+import closeai.infrastructure.config.DotEnv;
 import java.time.LocalDateTime;
 
 /**
@@ -63,11 +64,6 @@ public final class DistanceServiceTravelTimeEstimator implements TravelTimeEstim
 
     /** Presence check only. The key itself is never read into scheduling code or logged. */
     private static boolean tomtomKeyPresent() {
-        String property = System.getProperty(TOMTOM_KEY_PROPERTY);
-        if (property != null && !property.trim().isEmpty()) {
-            return true;
-        }
-        String environment = System.getenv(TOMTOM_KEY_ENVIRONMENT_VARIABLE);
-        return environment != null && !environment.trim().isEmpty();
+        return DotEnv.get(TOMTOM_KEY_ENVIRONMENT_VARIABLE, TOMTOM_KEY_PROPERTY) != null;
     }
 }

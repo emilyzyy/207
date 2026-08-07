@@ -15,22 +15,49 @@ public final class SearchState {
     private final String query;
     private final Set<String> bookmarkedIds;
     private final Set<String> scheduledIds;
+    private final String selectedActivityId;
+    private final boolean loading;
     private final ActivityCategory category;
     private final double minimumRating;
     private final IndoorOutdoorType type;
     private final String feedback;
 
     public SearchState(List<Activity> activities, String query) {
-        this(activities, query, Collections.emptySet(), Collections.emptySet());
+        this(activities, query, Collections.emptySet(), Collections.emptySet(), null, false,
+                null, 0.0, null, "");
     }
 
     public SearchState(List<Activity> activities, String query,
                        Set<String> bookmarkedIds, Set<String> scheduledIds) {
-        this(activities, query, bookmarkedIds, scheduledIds, null, 0.0, null, "");
+        this(activities, query, bookmarkedIds, scheduledIds, null, false,
+                null, 0.0, null, "");
     }
 
     public SearchState(List<Activity> activities, String query,
                        Set<String> bookmarkedIds, Set<String> scheduledIds,
+                       String selectedActivityId) {
+        this(activities, query, bookmarkedIds, scheduledIds, selectedActivityId, false,
+                null, 0.0, null, "");
+    }
+
+    public SearchState(List<Activity> activities, String query,
+                       Set<String> bookmarkedIds, Set<String> scheduledIds,
+                       String selectedActivityId, boolean loading) {
+        this(activities, query, bookmarkedIds, scheduledIds, selectedActivityId, loading,
+                null, 0.0, null, "");
+    }
+
+    public SearchState(List<Activity> activities, String query,
+                       Set<String> bookmarkedIds, Set<String> scheduledIds,
+                       ActivityCategory category, double minimumRating,
+                       IndoorOutdoorType type, String feedback) {
+        this(activities, query, bookmarkedIds, scheduledIds, null, false,
+                category, minimumRating, type, feedback);
+    }
+
+    public SearchState(List<Activity> activities, String query,
+                       Set<String> bookmarkedIds, Set<String> scheduledIds,
+                       String selectedActivityId, boolean loading,
                        ActivityCategory category, double minimumRating,
                        IndoorOutdoorType type, String feedback) {
         this.activities = Collections.unmodifiableList(new ArrayList<Activity>(
@@ -40,6 +67,8 @@ public final class SearchState {
                 bookmarkedIds == null ? Collections.emptySet() : bookmarkedIds));
         this.scheduledIds = Collections.unmodifiableSet(new HashSet<String>(
                 scheduledIds == null ? Collections.emptySet() : scheduledIds));
+        this.selectedActivityId = selectedActivityId;
+        this.loading = loading;
         this.category = category;
         this.minimumRating = minimumRating;
         this.type = type;
@@ -60,6 +89,14 @@ public final class SearchState {
 
     public Set<String> getScheduledIds() {
         return scheduledIds;
+    }
+
+    public String getSelectedActivityId() {
+        return selectedActivityId;
+    }
+
+    public boolean isLoading() {
+        return loading;
     }
 
     public ActivityCategory getCategory() { return category; }

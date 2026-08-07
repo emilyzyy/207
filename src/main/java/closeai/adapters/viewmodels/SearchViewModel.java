@@ -23,6 +23,26 @@ public final class SearchViewModel {
         changes.firePropertyChange("state", oldState, state);
     }
 
+    /** Marks a discovered activity as focused in the sidebar. */
+    public void selectActivity(String activityId) {
+        SearchState current = state;
+        setState(new SearchState(current.getActivities(), current.getQuery(),
+                current.getBookmarkedIds(), current.getScheduledIds(), activityId,
+                current.isLoading(), current.getCategory(), current.getMinimumRating(),
+                current.getType(), current.getFeedback()));
+    }
+
+    /** Toggles the loading indicator shown while places are being fetched. */
+    public void setLoading(boolean loading) {
+        SearchState current = state;
+        if (current.isLoading() == loading) return;
+        setState(new SearchState(current.getActivities(), current.getQuery(),
+                current.getBookmarkedIds(), current.getScheduledIds(),
+                current.getSelectedActivityId(), loading,
+                current.getCategory(), current.getMinimumRating(),
+                current.getType(), current.getFeedback()));
+    }
+
     public void addPropertyChangeListener(PropertyChangeListener listener) {
         changes.addPropertyChangeListener(listener);
     }

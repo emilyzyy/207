@@ -88,6 +88,7 @@ public final class TripSetupPresenter implements TripSetupOutputBoundary {
         if (weatherWarning == null && searchActivities == null) {
             return;
         }
+        search.setLoading(true);
         new SwingWorker<DestinationData, Void>() {
             @Override
             protected DestinationData doInBackground() {
@@ -116,6 +117,7 @@ public final class TripSetupPresenter implements TripSetupOutputBoundary {
 
             @Override
             protected void done() {
+                search.setLoading(false);
                 if (!trip.getId().equals(options.getState().getTripId())) {
                     return;
                 }

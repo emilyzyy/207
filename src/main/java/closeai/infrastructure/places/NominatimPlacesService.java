@@ -28,22 +28,17 @@ public final class NominatimPlacesService implements PlacesService {
             URI.create("https://nominatim.openstreetmap.org/search");
     private static final List<URI> OVERPASS_ENDPOINTS = List.of(
             URI.create("https://overpass-api.de/api/interpreter"),
-            URI.create("https://overpass.kumi.systems/api/interpreter"));
+            URI.create("https://overpass.kumi.systems/api/interpreter"),
+            URI.create("https://overpass.private.coffee/api/interpreter"),
+            URI.create("https://overpass.osm.jp/api/interpreter"));
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(15);
-    private static final Duration OVERPASS_TIMEOUT = Duration.ofSeconds(15);
+    private static final Duration OVERPASS_TIMEOUT = Duration.ofSeconds(20);
     private static final double SEARCH_RADIUS_METERS = 1500;
     private static final int MAX_RESULTS = 25;
+    private static final int MAX_BUSY_RETRIES = 3;
+    private static final long[] BUSY_RETRY_DELAY_MILLIS =
+            {300L, 800L, 2000L};
 
-    /**
-     * Assumed hours for a place whose real ones OpenStreetMap does not record.
-     *
-     * <p>A guess, and knowingly so. It is not a claim that the venue is shut outside these
-     * times: the activity also carries {@link OpeningHours#unknown()}, which is what the
-     * scheduler actually consults, and which makes it treat the place as unconstrained and
-     * say so. These two values only survive as the coarse window older code reads.</p>
-     */
-    private static final LocalTime FALLBACK_OPENS = LocalTime.of(9, 0);
-    private static final LocalTime FALLBACK_CLOSES = LocalTime.of(21, 0);
 
     private final HttpClient client;
     private final ObjectMapper mapper;
@@ -51,6 +46,7 @@ public final class NominatimPlacesService implements PlacesService {
     private final URI overpassEndpoint;
     private final boolean tryFallbacks;
     private final Map<String, List<Activity>> cache = new ConcurrentHashMap<>();
+    private final Map<String, List<Activity>> boundsCache = new ConcurrentHashMap<>();
 
     public NominatimPlacesService() {
         this(
@@ -114,6 +110,32 @@ public final class NominatimPlacesService implements PlacesService {
         return result;
     }
 
+    @Override
+    public List<Activity> searchInBounds(double south, double west, double north, double east,
+                                         int maxResults) {
+        String key = quantize(south, west, north, east);
+        List<Activity> cached = boundsCache.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        String overpassQuery = buildBoundingBoxQuery(south, west, north, east, maxResults);
+        JsonNode elements = queryOverpass(overpassQuery);
+        List<Activity> result = parseElements(elements, maxResults);
+        if (!result.isEmpty()) {
+            boundsCache.put(key, result);
+        }
+        return result;
+    }
+
+    /** Groups nearby viewport windows onto a shared key so panning reuses one query result. */
+    private static String quantize(double south, double west, double north, double east) {
+        long s = Math.round(south * 100);
+        long w = Math.round(west * 100);
+        long n = Math.round(north * 100);
+        long e = Math.round(east * 100);
+        return s + "," + w + "," + n + "," + e;
+    }
+
     private List<Activity> searchUncached(String destination) {
         try {
             double[] coords = geocode(destination);
@@ -121,7 +143,7 @@ public final class NominatimPlacesService implements PlacesService {
             System.out.println("[NominatimPlaces] Querying Overpass for " + destination + "...");
             JsonNode elements = queryOverpass(overpassQuery);
             System.out.println("[NominatimPlaces] Got " + elements.size() + " elements");
-            List<Activity> result = parseElements(elements);
+            List<Activity> result = parseElements(elements, MAX_RESULTS);
             System.out.println("[NominatimPlaces] Parsed " + result.size() + " activities");
             return result;
         } catch (InterruptedException exception) {
@@ -166,16 +188,48 @@ public final class NominatimPlacesService implements PlacesService {
             + "out body " + MAX_RESULTS + ";";
     }
 
+    private String buildBoundingBoxQuery(double south, double west, double north, double east,
+                                         int maxResults) {
+        return "[out:json][timeout:30];"
+            + "("
+            + "node[\"amenity\"=\"restaurant\"](bbox:" + south + "," + west + "," + north + "," + east + ");"
+            + "node[\"amenity\"=\"cafe\"](bbox:" + south + "," + west + "," + north + "," + east + ");"
+            + "node[\"tourism\"=\"museum\"](bbox:" + south + "," + west + "," + north + "," + east + ");"
+            + "node[\"tourism\"=\"attraction\"](bbox:" + south + "," + west + "," + north + "," + east + ");"
+            + "node[\"shop\"](bbox:" + south + "," + west + "," + north + "," + east + ");"
+            + ");"
+            + "out body " + maxResults + ";";
+    }
+
     private JsonNode queryOverpass(String query) {
-        for (URI endpoint : overpassCandidates()) {
+        int busyRetries = 0;
+        while (true) {
+            boolean sawBusy = false;
+            for (URI endpoint : overpassCandidates()) {
+                try {
+                    return queryEndpoint(endpoint, query);
+                } catch (OverpassBusyException busy) {
+                    sawBusy = true;
+                    System.err.println("[NominatimPlaces] Overpass " + endpoint.getHost()
+                            + " unavailable (server busy), will retry");
+                } catch (Exception e) {
+                    System.err.println("[NominatimPlaces] Overpass " + endpoint.getHost()
+                            + " failed: " + e.getMessage());
+                }
+            }
+            if (!sawBusy || busyRetries >= MAX_BUSY_RETRIES) {
+                return mapper.createArrayNode();
+            }
+            long delay = BUSY_RETRY_DELAY_MILLIS[Math.min(busyRetries,
+                    BUSY_RETRY_DELAY_MILLIS.length - 1)];
+            busyRetries++;
             try {
-                return queryEndpoint(endpoint, query);
-            } catch (Exception e) {
-                System.err.println("[NominatimPlaces] Overpass " + endpoint.getHost()
-                        + " failed: " + e.getMessage());
+                Thread.sleep(delay);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return mapper.createArrayNode();
             }
         }
-        return mapper.createArrayNode();
     }
 
     private List<URI> overpassCandidates() {
@@ -205,21 +259,26 @@ public final class NominatimPlacesService implements PlacesService {
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             throw new IOException("Overpass HTTP " + response.statusCode());
         }
-        JsonNode tree = mapper.readTree(response.body());
+        String text = response.body();
+        String trimmed = text == null ? "" : text.strip();
+        if (!trimmed.isEmpty() && !trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+            throw new OverpassBusyException("Overpass returned a non-JSON (overloaded) page");
+        }
+        JsonNode tree = mapper.readTree(trimmed);
         return tree.has("elements") ? tree.get("elements") : mapper.createArrayNode();
     }
 
-    private List<Activity> parseElements(JsonNode elements) {
+    private List<Activity> parseElements(JsonNode elements, int limit) {
         List<Activity> activities = new ArrayList<>();
         if (elements == null || !elements.isArray()) return activities;
         int idx = 0;
         for (JsonNode el : elements) {
-            if (idx >= MAX_RESULTS) break;
+            if (idx >= limit) break;
             double lat = el.has("lat") ? el.get("lat").asDouble() : 0;
             double lon = el.has("lon") ? el.get("lon").asDouble() : 0;
             if (!Double.isFinite(lat) || !Double.isFinite(lon)) continue;
             JsonNode tags = el.has("tags") ? el.get("tags") : mapper.createObjectNode();
-            String name = tags.has("name") ? tags.get("name").asText() : null;
+            String name = englishName(tags);
             if (name == null || name.trim().isEmpty()) continue;
             String amenity = tags.has("amenity") ? tags.get("amenity").asText() : "";
             String tourism = tags.has("tourism") ? tags.get("tourism").asText() : "";
@@ -229,21 +288,37 @@ public final class NominatimPlacesService implements PlacesService {
             String address = buildAddress(tags);
             String id = "osm-" + el.get("id").asLong();
             int duration = estimateDuration(category);
-            // The Overpass query already asks for "out body", so every tag the place has is
-            // in this response -- opening_hours included. Most OSM places do not carry it,
-            // and OpeningHoursParser returns unknown for those, which leaves the fallback
-            // window below in charge exactly as it was before hours were read at all.
-            OpeningHours hours = OpeningHoursParser.parse(
-                    tags.has("opening_hours") ? tags.get("opening_hours").asText() : null);
+            String hoursText = tags.has("opening_hours") ? tags.get("opening_hours").asText() : null;
+            LocalTime[] openClose = deriveOpenClose(hoursText);
+            // The same text, read a second way. deriveOpenClose above deliberately flattens
+            // the week into one window so that every caller always has something valid;
+            // OpeningHoursParser keeps the weekdays and the gaps, which is what the
+            // scheduler needs and what the flattened window cannot express. Anything the
+            // parser cannot fully understand comes back unknown, and the flattened window
+            // stays in charge -- so this never makes a place less schedulable than before.
+            OpeningHours hours = OpeningHoursParser.parse(hoursText);
             activities.add(new Activity(
                     id, name.trim(), category,
                     new Location(lat, lon, address),
                     4.0, duration,
-                    FALLBACK_OPENS, FALLBACK_CLOSES,
-                    ioType, riskLevel(ioType), hours));
+                    openClose[0], openClose[1],
+                    ioType, riskLevel(ioType), hoursText, hours));
             idx++;
         }
         return activities;
+    }
+
+    /**
+     * Prefers an English name for a place when OSM maps one, so foreign-language places
+     * appear translated. Falls back from name:en to int_name to the original name tag.
+     */
+    private static String englishName(JsonNode tags) {
+        String english = tags.has("name:en") ? tags.get("name:en").asText() : null;
+        if (english != null && !english.trim().isEmpty()) return english.trim();
+        String international = tags.has("int_name") ? tags.get("int_name").asText() : null;
+        if (international != null && !international.trim().isEmpty()) return international.trim();
+        String original = tags.has("name") ? tags.get("name").asText() : null;
+        return original == null ? null : original.trim();
     }
 
     private ActivityCategory categorize(String amenity, String tourism, String shop) {
@@ -291,8 +366,64 @@ public final class NominatimPlacesService implements PlacesService {
     private String riskLevel(IndoorOutdoorType type) {
         return type == IndoorOutdoorType.INDOOR ? "Low" : "Medium";
     }
-
-    private static String encode(String value) {
+private static String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private static final class OverpassBusyException extends IOException {
+        OverpassBusyException(String message) {
+            super(message);
+        }
+    }
+
+    /**
+     * Derives a single representative open/close window from an OSM opening_hours value.
+     * Falls back to a 09:00-21:00 default when the value is missing or unparseable so that
+     * scheduling logic always has a valid window.
+     */
+    private static LocalTime[] deriveOpenClose(String openingHours) {
+        LocalTime defaultOpen = LocalTime.of(9, 0);
+        LocalTime defaultClose = LocalTime.of(21, 0);
+        if (openingHours == null || openingHours.trim().isEmpty()) {
+            return new LocalTime[]{defaultOpen, defaultClose};
+        }
+        String text = openingHours.toLowerCase();
+        if (text.contains("24/7")) {
+            return new LocalTime[]{LocalTime.of(0, 0), LocalTime.of(23, 59)};
+        }
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("(\\d{1,2}):(\\d{2})\\s*-\\s*(\\d{1,2}):(\\d{2})")
+                .matcher(text);
+        LocalTime earliest = null;
+        LocalTime latest = null;
+        while (matcher.find()) {
+            LocalTime start = LocalTime.of(parseHour(matcher.group(1)), parseMinute(matcher.group(2)));
+            LocalTime end = LocalTime.of(parseHour(matcher.group(3)), parseMinute(matcher.group(4)));
+            if (start.isAfter(end)) continue;
+            if (earliest == null || start.isBefore(earliest)) earliest = start;
+            if (latest == null || end.isAfter(latest)) latest = end;
+        }
+        if (earliest == null || latest == null) {
+            return new LocalTime[]{defaultOpen, defaultClose};
+        }
+        return new LocalTime[]{earliest, latest};
+    }
+
+    private static int parseHour(String token) {
+        try {
+            int value = Integer.parseInt(token);
+            return value >= 0 && value <= 23 ? value : 0;
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private static int parseMinute(String token) {
+        try {
+            int value = Integer.parseInt(token);
+            return value >= 0 && value <= 59 ? value : 0;
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 }

@@ -10,21 +10,25 @@ import closeai.domain.entities.Activity;
 import closeai.domain.valueobjects.ActivityCategory;
 import closeai.domain.valueobjects.IndoorOutdoorType;
 import java.awt.BorderLayout;
+import java.awt.Cursor;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.Cursor;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 
 /** Activity discovery view backed by application-layer search, filter, and bookmark use cases. */
@@ -35,6 +39,7 @@ public final class SearchPanel extends JPanel {
     private final ManualPlanController manualPlan;
     private final ActivitySelectionViewModel selection;
     private final JPanel results = new JPanel();
+    private final JScrollPane scroll;
     private final JTextField search = new JTextField();
     private final JComboBox<String> category = new JComboBox<>(new String[]{
         "All categories", "Food", "Museum", "Outdoor", "Shopping", "Coffee", "Attraction"
@@ -77,7 +82,7 @@ public final class SearchPanel extends JPanel {
         add(searchControls(), BorderLayout.NORTH);
         results.setLayout(new BoxLayout(results, BoxLayout.Y_AXIS));
         results.setBackground(SwingTheme.PANEL);
-        JScrollPane scroll = new JScrollPane(results);
+        scroll = new JScrollPane(results);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(14);
         add(scroll, BorderLayout.CENTER);
@@ -175,32 +180,71 @@ public final class SearchPanel extends JPanel {
                 ? state.getActivities().size() + " nearby activities" : state.getFeedback());
         results.removeAll();
         if (state.getActivities().isEmpty()) {
-            JLabel empty = new JLabel("No activities match your search and filters");
+            JLabel empty = new JLabel(state.isLoading()
+                    ? "Loading places…"
+                    : "No activities match your search and filters");
             empty.setFont(SwingTheme.BODY);
             empty.setForeground(SwingTheme.MUTED);
             results.add(empty);
-        } else {
-            for (Activity activity : state.getActivities()) {
-                results.add(activityCard(activity, state));
-                results.add(Box.createVerticalStrut(8));
-            }
+            results.revalidate();
+            results.repaint();
+            scroll.getVerticalScrollBar().setValue(0);
+            return;
         }
+        String selectedId = state.getSelectedActivityId();
+        List<Activity> ordered = orderSelectedFirst(state.getActivities(), selectedId);
+        final JComponent[] focused = {null};
+        for (Activity activity : ordered) {
+            JComponent card = activityCard(activity, state, activity.getId().equals(selectedId));
+            results.add(card);
+            results.add(Box.createVerticalStrut(8));
+            if (activity.getId().equals(selectedId)) focused[0] = card;
+        }
+        final JComponent focusedCard = focused[0];
         results.revalidate();
         results.repaint();
+        if (focusedCard != null) {
+            SwingUtilities.invokeLater(() -> {
+                results.validate();
+                scroll.getVerticalScrollBar().setValue(0);
+            });
+        }
     }
 
-    private JPanel activityCard(Activity activity, SearchState state) {
+    /** Keeps the selected place first so it is always visible at the top of the sidebar. */
+    private static List<Activity> orderSelectedFirst(List<Activity> activities, String selectedId) {
+        if (selectedId == null) return new ArrayList<>(activities);
+        List<Activity> ordered = new ArrayList<>();
+        for (Activity activity : activities) {
+            if (activity.getId().equals(selectedId)) {
+                ordered.add(activity);
+                break;
+            }
+        }
+        for (Activity activity : activities) {
+            if (!activity.getId().equals(selectedId)) ordered.add(activity);
+        }
+        return ordered;
+    }
+
+    private JComponent activityCard(Activity activity, SearchState state, boolean focused) {
         JPanel card = new JPanel(new BorderLayout(10, 8));
         SwingTheme.styleCard(card);
-        makeSelectable(card, activity);
+        card.putClientProperty("activityId", activity.getId());
+        makeSelectable(card, activity, focused);
         JLabel name = new JLabel(activity.getName());
         name.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         name.setForeground(SwingTheme.NAVY);
         card.add(name, BorderLayout.NORTH);
+        String hoursText = activity.getOpeningHoursText();
+        boolean hasHours = hoursText != null && !hoursText.trim().isEmpty();
+        String hoursLine = "<br><font color='#1f68e1'>Hours:</font> "
+                + (hasHours ? htmlEscape(hoursText) : "Not on record");
         JLabel details = new JLabel(String.format(
-                "<html><font color='#1f68e1'>%s</font> - &#9733; %.1f<br>%s - %d min - %s</html>",
+                "<html><font color='#1f68e1'>%s</font> - &#9733; %.1f<br>%s - %d min - %s%s</html>",
                 activity.getCategory(), activity.getRating(), activity.getLocation().getAddress(),
-                activity.getEstimatedDurationMinutes(), activity.getIndoorOutdoorType()));
+                activity.getEstimatedDurationMinutes(), activity.getIndoorOutdoorType(),
+                hoursLine));
         details.setFont(SwingTheme.SMALL);
         details.setForeground(SwingTheme.MUTED);
         card.add(details, BorderLayout.CENTER);
@@ -230,21 +274,25 @@ public final class SearchPanel extends JPanel {
         return card;
     }
 
-    private void makeSelectable(JPanel card, Activity activity) {
-        if (selection == null) return;
+    private void makeSelectable(JPanel card, Activity activity, boolean focused) {
         card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         card.setToolTipText("Show " + activity.getName() + " on the map");
-        if (activity.getId().equals(selection.getSelectedActivityId())) {
-            card.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(SwingTheme.BLUE, 2),
-                    BorderFactory.createEmptyBorder(11, 13, 11, 13)));
-        }
+        card.setBorder(BorderFactory.createLineBorder(
+                focused ? SwingTheme.BLUE : new java.awt.Color(0, 0, 0, 0), 2));
+        card.setBackground(focused ? SwingTheme.BLUE_SOFT : SwingTheme.PANEL);
         card.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent event) {
-                selection.select(activity.getId());
+                if (selection != null) {
+                    selection.select(activity.getId());
+                }
             }
         });
+    }
+
+    private static String htmlEscape(String text) {
+        return text.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace("\"", "&quot;");
     }
 
     private void addToPlan(Activity activity) {
