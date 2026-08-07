@@ -148,8 +148,11 @@ class WeatherPreferenceTest {
         assertNotNull(notConsidered);
         assertFalse(notConsidered.getActivePolicies().contains(PolicyId.WEATHER),
                 "weather that was never consulted must not be listed as applied");
-        assertTrue(notConsidered.getWarnings().isEmpty(),
-                "declining weather is a choice, not a degradation to warn about");
+        for (String warning : notConsidered.getWarnings()) {
+            assertFalse(warning.toLowerCase().contains("forecast"),
+                    "declining weather is a choice, not a degradation to warn about: "
+                            + warning);
+        }
 
         // The same day with the same forecast, this time asked for: the score is the
         // comparison that proves the unticked run really was weather-free.

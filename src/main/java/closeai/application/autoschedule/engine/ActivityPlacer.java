@@ -42,19 +42,28 @@ public final class ActivityPlacer {
             return null;
         }
 
-        LocalTime start = max(leg.getArrival(), task.getOpeningTime(), availability.getStart());
+        LocalTime start = intoOpeningHours(task,
+                later(leg.getArrival(), availability.getStart()));
+        if (start == null) {
+            return null;
+        }
         LocalTime end = plusMinutes(start, task.getDurationMinutes());
         if (end == null) {
             return null;
         }
 
-        // Slide the activity past anything it would collide with, then re-check.
+        // Slide the activity past anything it would collide with, then back into an opening
+        // window, then re-check. Both moves only ever go forwards, so this settles.
         for (int attempt = 0; attempt <= blocked.getWindows().size() + 1; attempt++) {
             LocalTime pushed = start;
             for (TimeWindow window : blocked.getWindows()) {
                 if (window.overlaps(new TimeWindow(start, end))) {
                     pushed = later(pushed, window.getEnd());
                 }
+            }
+            pushed = intoOpeningHours(task, pushed);
+            if (pushed == null) {
+                return null;
             }
             if (pushed.equals(start)) {
                 break;
@@ -69,10 +78,10 @@ public final class ActivityPlacer {
         if (blocked.blocks(new TimeWindow(start, end))) {
             return null;
         }
-        if (end.isAfter(task.getClosingTime()) || end.isAfter(availability.getEnd())) {
+        if (end.isAfter(availability.getEnd()) || start.isBefore(availability.getStart())) {
             return null;
         }
-        if (start.isBefore(task.getOpeningTime()) || start.isBefore(availability.getStart())) {
+        if (!task.isOpenThroughout(start, end)) {
             return null;
         }
         if (!allowedByRules(problem, task, start, end, leg.getMinutes())) {
@@ -99,11 +108,40 @@ public final class ActivityPlacer {
         return build(task, window.getStart(), window.getEnd(), cursor, leg, blocked);
     }
 
+    /**
+     * The earliest time at or after {@code earliest} where the whole visit fits inside one
+     * opening window.
+     *
+     * <p>Returns null when no window can hold it: the venue is shut all day, every window
+     * is already past, or each is shorter than the visit. That is a hard refusal — opening
+     * hours are not something the schedule may overrun to make the day work.</p>
+     *
+     * <p>When the venue's hours are unknown the task carries a single permissive window, so
+     * this behaves exactly as the old single opening/closing pair did.</p>
+     */
+    private static LocalTime intoOpeningHours(ScheduleTask task, LocalTime earliest) {
+        LocalTime best = null;
+        for (TimeWindow window : task.getOpeningWindows()) {
+            LocalTime candidate = later(earliest, window.getStart());
+            LocalTime finish = plusMinutes(candidate, task.getDurationMinutes());
+            if (finish == null || finish.isAfter(window.getEnd())) {
+                continue;
+            }
+            if (best == null || candidate.isBefore(best)) {
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
     private PlacedActivity build(ScheduleTask task, LocalTime start, LocalTime end,
                                  LocalTime cursor, TravelLeg leg, BlockedPeriods blocked) {
         int idle = minutesBetween(cursor, start) - leg.getMinutes();
+        // Waiting for the doors to open is not avoidable, so the opening time that matters
+        // is the one for the window this visit is actually in.
+        TimeWindow window = task.openingWindowFor(start, end);
         int avoidable = legPlanner.avoidableIdleMinutes(leg.getArrival(), start,
-                task.getOpeningTime(), blocked);
+                window == null ? task.getOpeningTime() : window.getStart(), blocked);
         return new PlacedActivity(task, start, end, leg.getDeparture(), leg.getMinutes(),
                 Math.max(0, idle), avoidable);
     }
@@ -136,9 +174,5 @@ public final class ActivityPlacer {
 
     static LocalTime earlier(LocalTime left, LocalTime right) {
         return left.isBefore(right) ? left : right;
-    }
-
-    private static LocalTime max(LocalTime first, LocalTime second, LocalTime third) {
-        return later(later(first, second), third);
     }
 }

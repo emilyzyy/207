@@ -12,6 +12,7 @@ import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.Trip;
 import closeai.domain.valueobjects.EventType;
 import closeai.domain.valueobjects.TransportationMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -106,7 +107,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         if (availability == null) {
             return;
         }
-        List<ScheduleTask> tasks = buildTasks(activityEvents, inputData);
+        List<ScheduleTask> tasks = buildTasks(activityEvents, inputData, trip.getDate());
         if (tasks == null) {
             return;
         }
@@ -132,6 +133,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         }
 
         List<String> warnings = new ArrayList<>();
+        addOpeningHoursWarnings(tasks, warnings);
         WeatherContext weather = weatherFor(trip, inputData.isConsiderWeather(), warnings);
 
         SchedulingPreferences preferences = SchedulingPreferences.builtIn(registeredPolicies,
@@ -378,9 +380,67 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         return new TimeWindow(start, end);
     }
 
-    /** Turns the Day Plan's events into scheduling tasks, applying the user's locks. */
+    /**
+     * Says out loud which venues were scheduled with no knowledge of their opening hours.
+     *
+     * <p>Most places have no hours recorded, and the scheduler treats an unknown venue as
+     * unconstrained rather than shut — the alternative would be refusing to plan almost any
+     * real day. But that permissiveness is a guess, and a schedule that quietly guesses is
+     * worse than one that says where it did. Being told plainly is what lets a traveller
+     * check the two visits that matter instead of doubting all five.</p>
+     *
+     * <p>Venues known to be shut all day get their own warning: the search will simply fail
+     * to place them, and "could not be scheduled" with no reason is the least helpful thing
+     * this feature could say.</p>
+     */
+    private static void addOpeningHoursWarnings(List<ScheduleTask> tasks,
+                                                List<String> warnings) {
+        List<String> unknown = new ArrayList<>();
+        List<String> closed = new ArrayList<>();
+        for (ScheduleTask task : tasks) {
+            if (task.isClosedAllDay()) {
+                closed.add(task.getActivity().getName());
+            } else if (!task.hasKnownHours()) {
+                unknown.add(task.getActivity().getName());
+            }
+        }
+        if (!unknown.isEmpty()) {
+            warnings.add("Opening hours unavailable for " + namesOf(unknown)
+                    + ", so " + (unknown.size() == 1 ? "it was" : "they were")
+                    + " scheduled without that limit. Please check before you set off.");
+        }
+        if (!closed.isEmpty()) {
+            warnings.add(namesOf(closed) + (closed.size() == 1 ? " is" : " are")
+                    + " closed on this date, so " + (closed.size() == 1 ? "it" : "they")
+                    + " could not be scheduled.");
+        }
+    }
+
+    /** "A", "A and B", "A, B and C", then "A, B and 3 more" so a long day stays readable. */
+    private static String namesOf(List<String> names) {
+        if (names.size() == 1) {
+            return names.get(0);
+        }
+        if (names.size() == 2) {
+            return names.get(0) + " and " + names.get(1);
+        }
+        if (names.size() == 3) {
+            return names.get(0) + ", " + names.get(1) + " and " + names.get(2);
+        }
+        return names.get(0) + ", " + names.get(1) + " and " + (names.size() - 2) + " more";
+    }
+
+    /**
+     * Turns the Day Plan's events into scheduling tasks, applying the user's locks.
+     *
+     * <p>The trip date is what turns a venue's week of opening hours into the windows for
+     * <em>this</em> day. Resolving the weekday here rather than in the engine keeps the
+     * search working on one day's plain time windows, and means nothing below this point
+     * needs a calendar.</p>
+     */
     private List<ScheduleTask> buildTasks(List<ScheduledEvent> activityEvents,
-                                          AutoScheduleInputData inputData) {
+                                          AutoScheduleInputData inputData,
+                                          LocalDate tripDate) {
         List<String> knownIds = new ArrayList<>();
         for (ScheduledEvent event : activityEvents) {
             knownIds.add(event.getId());
@@ -405,7 +465,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
             TimeWindow lockedAt = inputData.getLockedEventIds().contains(event.getId())
                     ? new TimeWindow(event.getStartTime(), event.getEndTime()) : null;
             tasks.add(new ScheduleTask(event.getId(), event.getActivity(), duration, index,
-                    lockedAt));
+                    lockedAt, tripDate));
         }
         return tasks;
     }

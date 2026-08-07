@@ -135,4 +135,57 @@ class LockValidationTest {
                 .filter(placed -> placed.getTask().getEventId().equals(eventId))
                 .findFirst().orElseThrow(AssertionError::new);
     }
+
+    @Test
+    void aLockAtAVenueThatIsShutAllDayIsRejectedByName() {
+        // Real hours, and they say Saturday. The trip is a Wednesday.
+        List<ScheduleTask> items = tasks(ProblemFixtures.lockedTaskWithHours("saturdaysOnly",
+                60, 0, ProblemFixtures.hoursOn(java.time.DayOfWeek.SATURDAY, "10:00-16:00"),
+                at(12, 0)));
+
+        ScheduleConflict conflict = validator.validate(window(9, 21), items, noBlockedWindows());
+
+        assertNotNull(conflict);
+        assertEquals(ScheduleConflict.Kind.LOCK_OUTSIDE_OPENING_HOURS, conflict.getKind());
+        assertEquals("saturdaysOnly", conflict.getBlockingEventId());
+        assertEquals("saturdaysOnly", conflict.getSubject(),
+                "the traveller must be told which pinned activity is the problem");
+    }
+
+    @Test
+    void aLockSpanningAVenuesMiddayClosureIsOutsideItsOpeningHours() {
+        // Open 09:00-12:00 and 14:00-18:00; pinned 11:30-12:30, which straddles the closure.
+        // Reading the day as "open 09:00 to 18:00" would wrongly allow this.
+        List<ScheduleTask> items = tasks(ProblemFixtures.lockedTaskWithHours("siesta", 60, 0,
+                ProblemFixtures.hoursOn(java.time.DayOfWeek.WEDNESDAY,
+                        "09:00-12:00", "14:00-18:00"),
+                at(11, 30)));
+
+        ScheduleConflict conflict = validator.validate(window(9, 21), items, noBlockedWindows());
+
+        assertNotNull(conflict);
+        assertEquals(ScheduleConflict.Kind.LOCK_OUTSIDE_OPENING_HOURS, conflict.getKind());
+    }
+
+    @Test
+    void aLockInsideOneOfSeveralOpeningWindowsIsAccepted() {
+        List<ScheduleTask> items = tasks(ProblemFixtures.lockedTaskWithHours("afternoon", 60, 0,
+                ProblemFixtures.hoursOn(java.time.DayOfWeek.WEDNESDAY,
+                        "09:00-12:00", "14:00-18:00"),
+                at(15, 0)));
+
+        assertNull(validator.validate(window(9, 21), items, noBlockedWindows()),
+                "a pin in the afternoon shift is perfectly lawful");
+    }
+
+    @Test
+    void aLockAtAVenueWithUnknownHoursIsNotRejected() {
+        List<ScheduleTask> items = tasks(new ScheduleTask("mystery",
+                ProblemFixtures.activityWithHours("mystery",
+                        closeai.domain.valueobjects.OpeningHours.unknown()),
+                60, 0, new TimeWindow(at(12, 0), at(13, 0)), ProblemFixtures.TRIP_DATE));
+
+        assertNull(validator.validate(window(9, 21), items, noBlockedWindows()),
+                "no provider data must not turn a pin into a conflict");
+    }
 }

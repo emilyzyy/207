@@ -248,15 +248,28 @@ public final class ScheduleEngine {
                 active.orderPenaltyFor(displacement), tieBreak.toString());
     }
 
+    /**
+     * Names the activity that made the day impossible, when one of them plainly did.
+     *
+     * <p>The usable time is the longest single opening window overlapping the traveller's
+     * day, not the stretch from first opening to last closing: a venue open 09:00-11:00 and
+     * 15:00-17:00 offers a visitor two hours, never eight. A venue shut for the whole date
+     * offers none, and is reported by name rather than as a vague "no feasible order".</p>
+     */
     private ScheduleConflict diagnose(ScheduleProblem problem) {
         TimeWindow availability = problem.getAvailability();
         for (ScheduleTask task : problem.allTasks()) {
-            LocalTime windowStart = ActivityPlacer.later(task.getOpeningTime(),
-                    availability.getStart());
-            LocalTime windowEnd = ActivityPlacer.earlier(task.getClosingTime(),
-                    availability.getEnd());
-            int usable = windowEnd.isAfter(windowStart)
-                    ? ActivityPlacer.minutesBetween(windowStart, windowEnd) : 0;
+            int usable = 0;
+            for (TimeWindow open : task.getOpeningWindows()) {
+                LocalTime windowStart = ActivityPlacer.later(open.getStart(),
+                        availability.getStart());
+                LocalTime windowEnd = ActivityPlacer.earlier(open.getEnd(),
+                        availability.getEnd());
+                if (windowEnd.isAfter(windowStart)) {
+                    usable = Math.max(usable,
+                            ActivityPlacer.minutesBetween(windowStart, windowEnd));
+                }
+            }
             if (usable < task.getDurationMinutes()) {
                 return ScheduleConflict.activityCannotFit(task.getEventId(),
                         task.getActivity().getName(), task.getDurationMinutes(), usable);
