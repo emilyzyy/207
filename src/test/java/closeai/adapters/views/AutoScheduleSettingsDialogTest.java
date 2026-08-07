@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import javax.swing.JLabel;
+import javax.swing.AbstractButton;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.AfterEach;
@@ -167,9 +168,140 @@ class AutoScheduleSettingsDialogTest {
         assertFalse(problems.get(0).contains("09:00"), problems.get(0));
     }
 
+    // --- unavailable periods speak the same clock -------------------------------------
+
+    private static AbstractButton addPeriodButton(Component root) {
+        for (Component component : all(root)) {
+            if (component instanceof AbstractButton
+                    && "Add unavailable time".equals(((AbstractButton) component).getText())) {
+                return (AbstractButton) component;
+            }
+        }
+        return null;
+    }
+
+    /** Fires focusLost on every listener, which is what a real focus change does. */
+    private static void loseFocus(JTextField field) {
+        java.awt.event.FocusEvent event = new java.awt.event.FocusEvent(
+                field, java.awt.event.FocusEvent.FOCUS_LOST);
+        for (java.awt.event.FocusListener listener : field.getFocusListeners()) {
+            listener.focusLost(event);
+        }
+    }
+
+    /** The two time fields of the first unavailable row, after the availability pair. */
+    private static List<JTextField> periodFields(AutoScheduleSettingsDialog dialog) {
+        List<JTextField> fields = fields(dialog.getRootPane());
+        return fields.subList(2, fields.size());
+    }
+
+    private AutoScheduleSettingsDialog dialogWithOnePeriod() throws Exception {
+        AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
+        SwingUtilities.invokeAndWait(() -> addPeriodButton(dialog.getRootPane()).doClick());
+        return dialog;
+    }
+
+    @Test
+    void anUnavailablePeriodIsRenderedOnATwelveHourClock() throws Exception {
+        AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
+
+        List<JTextField> period = periodFields(dialog);
+
+        assertEquals(2, period.size(), "one period contributes two time fields");
+        assertEquals("12:00 PM", period.get(0).getText(),
+                "a new period is prefilled in the same clock as everything else");
+        assertEquals("1:00 PM", period.get(1).getText());
+        assertTrue(allText(dialog.getRootPane()).contains("e.g. 1:00 PM"),
+                "the row should show the format it wants");
+    }
+
+    @Test
+    void amAndPmUnavailablePeriodInputIsUnderstood() throws Exception {
+        AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
+        List<JTextField> period = periodFields(dialog);
+
+        SwingUtilities.invokeAndWait(() -> {
+            period.get(0).setText("9:30 AM");
+            period.get(1).setText("1:45 PM");
+        });
+
+        AutoScheduleSettings settings = dialog.read();
+        assertNotNull(settings);
+        assertEquals(1, settings.getUnavailableWindows().size());
+        assertEquals(LocalTime.of(9, 30), settings.getUnavailableWindows().get(0).getStart());
+        assertEquals(LocalTime.of(13, 45), settings.getUnavailableWindows().get(0).getEnd());
+    }
+
+    @Test
+    void midnightAndNoonRoundTripThroughAnUnavailablePeriod() throws Exception {
+        AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
+        List<JTextField> period = periodFields(dialog);
+
+        SwingUtilities.invokeAndWait(() -> {
+            period.get(0).setText("12:00 AM");
+            period.get(1).setText("12:00 PM");
+        });
+
+        AutoScheduleSettings settings = dialog.read();
+        assertEquals(LocalTime.MIDNIGHT, settings.getUnavailableWindows().get(0).getStart(),
+                "12:00 AM is midnight, not noon");
+        assertEquals(LocalTime.NOON, settings.getUnavailableWindows().get(0).getEnd(),
+                "12:00 PM is noon, not midnight");
+    }
+
+    @Test
+    void typedTwentyFourHourTextIsNormalisedBackToTheTwelveHourClock() throws Exception {
+        AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
+        List<JTextField> period = periodFields(dialog);
+
+        SwingUtilities.invokeAndWait(() -> {
+            period.get(0).setText("13:30");
+            loseFocus(period.get(0));
+        });
+
+        assertEquals("1:30 PM", period.get(0).getText(),
+                "an older habit still works, and is shown back in the dialog's own clock");
+        assertEquals(LocalTime.of(13, 30),
+                dialog.read().getUnavailableWindows().get(0).getStart(),
+                "normalising the text must not change the time it means");
+    }
+
+    @Test
+    void unreadableTextIsLeftAloneRatherThanOverwritten() throws Exception {
+        AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
+        List<JTextField> period = periodFields(dialog);
+
+        SwingUtilities.invokeAndWait(() -> {
+            period.get(0).setText("half past one");
+            loseFocus(period.get(0));
+        });
+
+        assertEquals("half past one", period.get(0).getText(),
+                "silently erasing what someone typed is worse than showing it back to them");
+        assertNull(dialog.read(), "and it still refuses to become a schedule");
+    }
+
+    @Test
+    void everyUnavailablePeriodFieldRoundTripsToTheSameLocalTime() throws Exception {
+        AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
+        List<JTextField> period = periodFields(dialog);
+
+        for (int hour = 0; hour < 24; hour++) {
+            LocalTime expected = LocalTime.of(hour, 15);
+            final String shown = closeai.adapters.viewmodels.TimeDisplay.format(expected);
+            SwingUtilities.invokeAndWait(() -> {
+                period.get(0).setText(shown);
+                period.get(1).setText(shown);
+            });
+            AutoScheduleSettings settings = dialog.read();
+            assertEquals(expected, settings.getUnavailableWindows().get(0).getStart(),
+                    "an unavailable period must mean the same LocalTime it displays: " + shown);
+        }
+    }
+
     /**
-     * Unavailable periods are unchanged by this pass beyond field width and labelling, so
-     * the rules that mattered before still hold.
+     * Unavailable periods are unchanged by this pass beyond presentation, so the rules that
+     * mattered before still hold.
      */
     @Test
     void unavailablePeriodValidationIsUnchanged() {

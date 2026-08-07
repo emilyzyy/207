@@ -250,7 +250,9 @@ public final class AutoScheduleSettingsDialog extends JDialog {
     }
 
     private void addUnavailableRow() {
-        TimeRangeRow row = new TimeRangeRow();
+        // A readable example beats an empty box: it shows the expected clock before the
+        // traveller types, rather than correcting them afterwards.
+        TimeRangeRow row = new TimeRangeRow(LocalTime.of(12, 0), LocalTime.of(13, 0));
         rows.add(row);
         unavailableRows.add(row.panel);
         row.remove.addActionListener(event -> {
@@ -342,13 +344,26 @@ public final class AutoScheduleSettingsDialog extends JDialog {
     }
 
     /** One start-and-end pair for a time the traveller is unavailable. */
+    /**
+     * One start-and-end pair for a time the traveller is unavailable.
+     *
+     * <p>The fields speak the same 12-hour clock as the availability inputs above: they are
+     * prefilled with a readable example rather than left blank, they show the format they
+     * want, and whatever is typed is normalised back to AM/PM when focus leaves. A field
+     * that silently keeps "13:30" after everything else on the screen says "1:30 PM" is how
+     * two clocks end up in one dialog.</p>
+     *
+     * <p>Only the presentation changed. Adding, removing and validating a period behave
+     * exactly as before, and {@code TimeDisplay.parse} still accepts the 24-hour text an
+     * older habit produces.</p>
+     */
     private static final class TimeRangeRow {
         private final JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         private final JTextField start = new JTextField(9);
         private final JTextField end = new JTextField(9);
         private final JButton remove = SwingTheme.secondaryButton("Remove");
 
-        TimeRangeRow() {
+        TimeRangeRow(LocalTime defaultStart, LocalTime defaultEnd) {
             panel.setOpaque(false);
             JLabel fromLabel = new JLabel("From");
             fromLabel.setFont(SwingTheme.BODY);
@@ -358,14 +373,44 @@ public final class AutoScheduleSettingsDialog extends JDialog {
             toLabel.setFont(SwingTheme.BODY);
             toLabel.setForeground(SwingTheme.NAVY);
             toLabel.setLabelFor(end);
-            start.getAccessibleContext().setAccessibleName("Unavailable from, for example 1:00 PM");
-            end.getAccessibleContext().setAccessibleName("Unavailable until, for example 2:00 PM");
+
+            start.setText(TimeDisplay.format(defaultStart));
+            end.setText(TimeDisplay.format(defaultEnd));
+            start.getAccessibleContext().setAccessibleName(
+                    "Unavailable from, for example 1:00 PM");
+            end.getAccessibleContext().setAccessibleName(
+                    "Unavailable until, for example 2:00 PM");
+            normaliseOnFocusLoss(start);
+            normaliseOnFocusLoss(end);
+
+            JLabel hint = new JLabel("e.g. 1:00 PM");
+            hint.setFont(SwingTheme.SMALL);
+            hint.setForeground(SwingTheme.MUTED);
+
             remove.setFont(SwingTheme.SMALL);
             panel.add(fromLabel);
             panel.add(start);
             panel.add(toLabel);
             panel.add(end);
+            panel.add(hint);
             panel.add(remove);
+        }
+
+        /**
+         * Rewrites whatever was typed as the clock the rest of the dialog shows, so "13:30"
+         * becomes "1:30 PM". Unreadable text is left exactly as typed: overwriting it would
+         * destroy what the traveller entered before they could see what was wrong with it.
+         */
+        private static void normaliseOnFocusLoss(JTextField field) {
+            field.addFocusListener(new java.awt.event.FocusAdapter() {
+                @Override
+                public void focusLost(java.awt.event.FocusEvent event) {
+                    LocalTime parsed = TimeDisplay.parse(field.getText());
+                    if (parsed != null) {
+                        field.setText(TimeDisplay.format(parsed));
+                    }
+                }
+            });
         }
     }
 }
