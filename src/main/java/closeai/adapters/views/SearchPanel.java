@@ -237,9 +237,9 @@ public final class SearchPanel extends JPanel {
         name.setForeground(SwingTheme.NAVY);
         card.add(name, BorderLayout.NORTH);
         String hoursText = activity.getOpeningHoursText();
-        String hoursLine = (hoursText != null && !hoursText.trim().isEmpty())
-                ? "<br><font color='#1f68e1'>Hours:</font> " + htmlEscape(hoursText)
-                : "";
+        boolean hasHours = hoursText != null && !hoursText.trim().isEmpty();
+        String hoursLine = "<br><font color='#1f68e1'>Hours:</font> "
+                + (hasHours ? htmlEscape(hoursText) : "Not on record");
         JLabel details = new JLabel(String.format(
                 "<html><font color='#1f68e1'>%s</font> - &#9733; %.1f<br>%s - %d min - %s%s</html>",
                 activity.getCategory(), activity.getRating(), activity.getLocation().getAddress(),

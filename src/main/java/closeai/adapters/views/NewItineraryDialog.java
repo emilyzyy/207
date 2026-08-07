@@ -21,10 +21,8 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
@@ -34,10 +32,8 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
-import javax.swing.SpinnerDateModel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
@@ -64,7 +60,7 @@ public final class NewItineraryDialog extends JDialog {
     private final DefaultListModel<String> suggestionModel = new DefaultListModel<>();
     private final JList<String> suggestionList = new JList<>(suggestionModel);
     private final JScrollPane suggestionScroll;
-    private final JSpinner dateSpinner = new JSpinner(new SpinnerDateModel());
+    private final DatePickerPanel datePicker = new DatePickerPanel();
     private final JLabel statusLabel = new JLabel("Start typing a city name...");
     private final JButton okButton = SwingTheme.primaryButton("Create Itinerary");
     private final Timer debounce = new Timer(400, e -> loadSuggestions(cityField.getText().trim()));
@@ -115,9 +111,7 @@ public final class NewItineraryDialog extends JDialog {
 
         gbc.gridy = 4;
         gbc.insets = new Insets(0, 0, 12, 0);
-        dateSpinner.setEditor(new JSpinner.DateEditor(dateSpinner, "MMMM d, yyyy"));
-        dateSpinner.setFont(SwingTheme.BODY);
-        form.add(dateSpinner, gbc);
+        form.add(datePicker, gbc);
 
         gbc.gridy = 5;
         gbc.insets = new Insets(0, 0, 12, 0);
@@ -203,8 +197,7 @@ public final class NewItineraryDialog extends JDialog {
     }
 
     public LocalDate getDate() {
-        Date value = (Date) dateSpinner.getValue();
-        return value.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        return datePicker.getDate();
     }
 
     private void onCityTyped() {
