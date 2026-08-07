@@ -3,6 +3,7 @@ package closeai.adapters.views;
 import closeai.adapters.controllers.AutoScheduleController;
 import closeai.adapters.controllers.AutoScheduleSettings;
 import closeai.adapters.controllers.ManualPlanController;
+import closeai.adapters.controllers.TripDayController;
 import closeai.adapters.viewmodels.ActivitySelectionViewModel;
 import closeai.adapters.viewmodels.AutoScheduleStatus;
 import closeai.adapters.viewmodels.DayPlanState;
@@ -13,8 +14,8 @@ import closeai.adapters.viewmodels.TimeDisplay;
 import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.WeatherWarning;
 import closeai.domain.valueobjects.EventType;
-import closeai.domain.valueobjects.TransportationMode;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -53,10 +54,12 @@ public final class DayPlanPanel extends JPanel {
     private final DayPlanViewModel viewModel;
     private final AutoScheduleController autoScheduleController;
     private final ManualPlanController manualPlanController;
+    private final TripDayController tripDayController;
     private final ActivitySelectionViewModel selection;
     private final JPanel eventList = new JPanel();
     private final JPanel previewArea = new JPanel();
     private final JPanel sidebarSlot = new JPanel(new BorderLayout());
+    private final JPanel dayStrip = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     private final JLabel status = new JLabel();
     private final JLabel objective = new JLabel();
     private final JButton autoscheduleButton = SwingTheme.primaryButton("Autoschedule");
@@ -66,11 +69,10 @@ public final class DayPlanPanel extends JPanel {
 
     private LocalTime tripStart = LocalTime.of(9, 0);
     private LocalTime tripEnd = LocalTime.of(21, 0);
-    private TransportationMode tripMode = TransportationMode.WALKING;
     private Runnable openCalendarAction = () -> { };
 
     public DayPlanPanel(DayPlanViewModel viewModel, AutoScheduleController autoScheduleController) {
-        this(viewModel, autoScheduleController, null, null);
+        this(viewModel, autoScheduleController, null, null, null);
     }
 
     /**
@@ -80,7 +82,7 @@ public final class DayPlanPanel extends JPanel {
      */
     public DayPlanPanel(DayPlanViewModel viewModel, AutoScheduleController autoScheduleController,
                         ManualPlanController manualPlanController) {
-        this(viewModel, autoScheduleController, manualPlanController, null);
+        this(viewModel, autoScheduleController, manualPlanController, null, null);
     }
 
     /**
@@ -91,10 +93,19 @@ public final class DayPlanPanel extends JPanel {
     public DayPlanPanel(DayPlanViewModel viewModel, AutoScheduleController autoScheduleController,
                         ManualPlanController manualPlanController,
                         ActivitySelectionViewModel selection) {
+        this(viewModel, autoScheduleController, manualPlanController, selection, null);
+    }
+
+    /** Multi-day form: also accepts the controller that switches the active day. */
+    public DayPlanPanel(DayPlanViewModel viewModel, AutoScheduleController autoScheduleController,
+                        ManualPlanController manualPlanController,
+                        ActivitySelectionViewModel selection,
+                        TripDayController tripDayController) {
         this.viewModel = viewModel;
         this.autoScheduleController = autoScheduleController;
         this.manualPlanController = manualPlanController;
         this.selection = selection;
+        this.tripDayController = tripDayController;
 
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
@@ -106,9 +117,14 @@ public final class DayPlanPanel extends JPanel {
         previewArea.setLayout(new BoxLayout(previewArea, BoxLayout.Y_AXIS));
         previewArea.setBackground(SwingTheme.PANEL);
 
+        dayStrip.setOpaque(false);
+        dayStrip.setAlignmentX(Component.LEFT_ALIGNMENT);
+        dayStrip.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE, 40));
+
         JPanel centre = new JPanel();
         centre.setLayout(new BoxLayout(centre, BoxLayout.Y_AXIS));
         centre.setBackground(SwingTheme.PANEL);
+        centre.add(dayStrip);
         centre.add(eventList);
         centre.add(previewArea);
 
@@ -170,16 +186,13 @@ public final class DayPlanPanel extends JPanel {
         openCalendarAction = action == null ? () -> { } : action;
     }
 
-    /** Tells the panel the trip's own hours and mode, used to prefill the dialog. */
-    public void setTripDefaults(LocalTime start, LocalTime end, TransportationMode mode) {
+    /** Tells the panel the trip's own hours, used to prefill the dialog. */
+    public void setTripDefaults(LocalTime start, LocalTime end) {
         if (start != null) {
             tripStart = start;
         }
         if (end != null) {
             tripEnd = end;
-        }
-        if (mode != null) {
-            tripMode = mode;
         }
     }
 
@@ -199,6 +212,35 @@ public final class DayPlanPanel extends JPanel {
         contract.setForeground(SwingTheme.MUTED);
         header.add(contract, BorderLayout.EAST);
         return header;
+    }
+
+    /** A strip of one toggle per trip day; hidden for single-day trips. */
+    private JPanel daySwitcher(DayPlanState state) {
+        JPanel strip = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        strip.setOpaque(false);
+        List<java.time.LocalDate> dates = state.getTripDates();
+        if (dates.size() <= 1 || tripDayController == null) {
+            strip.setVisible(false);
+            return strip;
+        }
+        for (int i = 0; i < dates.size(); i++) {
+            final int index = i;
+            boolean active = index == state.getActiveDayIndex();
+            JToggleButton day = new JToggleButton((active ? "\u25cf " : "") + "Day "
+                    + (i + 1) + " \u00b7 " + dates.get(i), active);
+            day.setFont(SwingTheme.SMALL);
+            day.setFocusPainted(true);
+            day.setOpaque(true);
+            day.setBackground(active ? SwingTheme.BLUE : SwingTheme.BACKGROUND);
+            day.setForeground(active ? Color.WHITE : SwingTheme.MUTED);
+            day.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(active ? SwingTheme.BLUE : SwingTheme.LINE),
+                    BorderFactory.createEmptyBorder(4, 10, 4, 10)));
+            day.setToolTipText("Show " + dates.get(i));
+            day.addActionListener(event -> tripDayController.switchTo(index));
+            strip.add(day);
+        }
+        return strip;
     }
 
     /**
@@ -258,7 +300,7 @@ public final class DayPlanPanel extends JPanel {
 
     private void openSettings() {
         AutoScheduleSettingsDialog dialog =
-                new AutoScheduleSettingsDialog(this, tripStart, tripEnd, tripMode);
+                new AutoScheduleSettingsDialog(this, tripStart, tripEnd);
         // Asking whether weather is usable means asking a forecast service, so it happens
         // off the event thread while the dialog is already on screen. The answer comes
         // back on a background thread and is applied here, on the EDT, because knowing
@@ -298,6 +340,12 @@ public final class DayPlanPanel extends JPanel {
     }
 
     private void renderItinerary(DayPlanState state) {
+        dayStrip.removeAll();
+        JPanel switcher = daySwitcher(state);
+        if (switcher.isVisible()) {
+            dayStrip.add(switcher);
+            dayStrip.add(Box.createVerticalStrut(8));
+        }
         eventList.removeAll();
         eventList.add(SwingTheme.sectionHeader("YOUR DAY PLAN",
                 state.getStatus() == AutoScheduleStatus.PREVIEW ? "unchanged so far" : "",

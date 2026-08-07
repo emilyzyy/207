@@ -137,8 +137,9 @@ public final class Main {
                     galleryFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                     new Thread(() -> {
                         try {
-                            Trip created = app.createTrip.execute(dest, date,
-                                    LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING);
+                    Trip created = app.createTrip.execute(dest, date,
+                            LocalTime.of(9, 0), LocalTime.of(18, 0),
+                            TransportationMode.WALKING, dialog.getDayCount());
                             SwingUtilities.invokeLater(() -> {
                                 CloseAIFrame tripFrame =
                                         openTripFrame(builder, app, created, galleryFrame, auth);

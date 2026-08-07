@@ -8,6 +8,7 @@ import closeai.application.ports.TripRepository;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.Trip;
+import closeai.domain.entities.TripDay;
 import closeai.domain.valueobjects.EventType;
 import closeai.domain.valueobjects.TransportationMode;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -83,14 +84,24 @@ public final class SupabaseItineraryDataAccess
         tripRow.put("id", itinerary.getId());
         tripRow.put("user_id", session.getUserId());
         tripRow.put("destination", itinerary.getDestination());
-        tripRow.put("trip_date", itinerary.getDate().toString());
-        tripRow.put("start_time", itinerary.getStartTime().toString());
-        tripRow.put("end_time", itinerary.getEndTime().toString());
+        tripRow.put("trip_date", itinerary.getDay(0).getDate().toString());
+        tripRow.put("start_time", itinerary.getDay(0).getStartTime().toString());
+        tripRow.put("end_time", itinerary.getDay(0).getEndTime().toString());
         tripRow.put("transportation_mode", itinerary.getTransportationMode().name());
         tripRow.put("updated_at", java.time.Instant.now().toString());
 
         request("POST", "/rest/v1/trips?on_conflict=id", tripRow.toString(),
                 "resolution=merge-duplicates,return=minimal");
+
+        request("DELETE", "/rest/v1/trip_days?trip_id=eq." + enc(itinerary.getId()),
+                null, null);
+        ArrayNode days = mapper.createArrayNode();
+        for (int i = 0; i < itinerary.getDayCount(); i++) {
+            days.add(dayRow(itinerary.getId(), i, itinerary.getDay(i)));
+        }
+        if (days.size() > 0) {
+            request("POST", "/rest/v1/trip_days", days.toString(), "return=minimal");
+        }
 
         request("DELETE", "/rest/v1/trip_bookmarks?trip_id=eq." + enc(itinerary.getId()),
                 null, null);
@@ -105,9 +116,11 @@ public final class SupabaseItineraryDataAccess
         request("DELETE", "/rest/v1/scheduled_events?trip_id=eq." + enc(itinerary.getId()),
                 null, null);
         ArrayNode events = mapper.createArrayNode();
-        int order = 0;
-        for (ScheduledEvent event : itinerary.getScheduledEvents()) {
-            events.add(eventRow(itinerary.getId(), event, order++));
+        for (int dayIndex = 0; dayIndex < itinerary.getDayCount(); dayIndex++) {
+            int order = 0;
+            for (ScheduledEvent event : itinerary.getDay(dayIndex).getScheduledEvents()) {
+                events.add(eventRow(itinerary.getId(), event, dayIndex, order++));
+            }
         }
         if (events.size() > 0) {
             request("POST", "/rest/v1/scheduled_events", events.toString(), "return=minimal");
@@ -127,7 +140,7 @@ public final class SupabaseItineraryDataAccess
         }
         requireSession();
         String path = "/rest/v1/trips?id=eq." + enc(itineraryId.trim())
-                + "&select=*,trip_bookmarks(*),scheduled_events(*)";
+                + "&select=*,trip_bookmarks(*),trip_days(*),scheduled_events(*)";
         JsonNode rows = readArray(request("GET", path, null, null));
         if (rows == null || rows.size() == 0) {
             return Optional.empty();
@@ -143,7 +156,7 @@ public final class SupabaseItineraryDataAccess
     @Override
     public List<Trip> findAll() {
         requireSession();
-        String path = "/rest/v1/trips?select=*,trip_bookmarks(*),scheduled_events(*)"
+        String path = "/rest/v1/trips?select=*,trip_bookmarks(*),trip_days(*),scheduled_events(*)"
                 + "&order=updated_at.desc";
         JsonNode rows = readArray(request("GET", path, null, null));
         List<Trip> trips = new ArrayList<Trip>();
@@ -162,7 +175,7 @@ public final class SupabaseItineraryDataAccess
         LocalTime start = LocalTime.parse(normalizeTime(text(row, "start_time")));
         LocalTime end = LocalTime.parse(normalizeTime(text(row, "end_time")));
         TransportationMode mode = TransportationMode.valueOf(text(row, "transportation_mode"));
-        Trip trip = new Trip(id, destination, date, start, end, mode);
+        Trip trip = new Trip(id, destination, mode, loadDays(row, date, start, end));
 
         JsonNode bookmarks = row.get("trip_bookmarks");
         if (bookmarks != null && bookmarks.isArray()) {
@@ -185,6 +198,10 @@ public final class SupabaseItineraryDataAccess
             }
             ordered.sort(Comparator.comparingInt(node -> node.path("sort_order").asInt(0)));
             for (JsonNode event : ordered) {
+                int dayIndex = event.path("day_index").asInt(0);
+                if (dayIndex < 0 || dayIndex >= trip.getDayCount()) {
+                    dayIndex = 0;
+                }
                 EventType type = EventType.valueOf(text(event, "event_type"));
                 LocalTime eventStart = LocalTime.parse(normalizeTime(text(event, "start_time")));
                 LocalTime eventEnd = LocalTime.parse(normalizeTime(text(event, "end_time")));
@@ -201,11 +218,43 @@ public final class SupabaseItineraryDataAccess
                             event.path("longitude").asDouble(),
                             destination);
                 }
-                trip.addEvent(new ScheduledEvent(
+                trip.getDay(dayIndex).addEvent(new ScheduledEvent(
                         text(event, "id"), activity, eventStart, eventEnd, type, notes));
             }
         }
         return trip;
+    }
+
+    private List<TripDay> loadDays(JsonNode row, LocalDate fallbackDate,
+                                   LocalTime fallbackStart, LocalTime fallbackEnd) {
+        List<TripDay> days = new ArrayList<TripDay>();
+        JsonNode dayRows = row.get("trip_days");
+        if (dayRows == null || !dayRows.isArray() || dayRows.size() == 0) {
+            days.add(new TripDay(fallbackDate, fallbackStart, fallbackEnd));
+            return days;
+        }
+        List<JsonNode> ordered = new ArrayList<JsonNode>();
+        for (JsonNode day : dayRows) {
+            ordered.add(day);
+        }
+        ordered.sort(Comparator.comparingInt(node -> node.path("day_index").asInt(0)));
+        for (JsonNode day : ordered) {
+            days.add(new TripDay(
+                    LocalDate.parse(text(day, "trip_date")),
+                    LocalTime.parse(normalizeTime(text(day, "start_time"))),
+                    LocalTime.parse(normalizeTime(text(day, "end_time")))));
+        }
+        return days;
+    }
+
+    private ObjectNode dayRow(String tripId, int dayIndex, TripDay day) {
+        ObjectNode row = mapper.createObjectNode();
+        row.put("trip_id", tripId);
+        row.put("day_index", dayIndex);
+        row.put("trip_date", day.getDate().toString());
+        row.put("start_time", day.getStartTime().toString());
+        row.put("end_time", day.getEndTime().toString());
+        return row;
     }
 
     private ObjectNode bookmarkRow(String tripId, Activity activity) {
@@ -218,10 +267,11 @@ public final class SupabaseItineraryDataAccess
         return row;
     }
 
-    private ObjectNode eventRow(String tripId, ScheduledEvent event, int sortOrder) {
+    private ObjectNode eventRow(String tripId, ScheduledEvent event, int dayIndex, int sortOrder) {
         ObjectNode row = mapper.createObjectNode();
         row.put("id", event.getId());
         row.put("trip_id", tripId);
+        row.put("day_index", dayIndex);
         row.put("event_type", event.getEventType().name());
         row.put("start_time", event.getStartTime().toString());
         row.put("end_time", event.getEndTime().toString());

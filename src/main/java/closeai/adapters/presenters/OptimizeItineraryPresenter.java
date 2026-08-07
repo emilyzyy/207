@@ -24,7 +24,9 @@ public final class OptimizeItineraryPresenter implements OptimizeItineraryOutput
                 outputData.getTrip().getScheduledEvents(),
                 outputData.getMessage(),
                 false,
-                current.getHourlyWeather()));
+                current.getHourlyWeather(),
+                outputData.getTrip().getTripDates(),
+                outputData.getTrip().getActiveDayIndex()));
     }
 
     @Override
@@ -35,6 +37,8 @@ public final class OptimizeItineraryPresenter implements OptimizeItineraryOutput
                 current.getEvents(),
                 errorMessage == null ? "Unable to compact itinerary" : errorMessage,
                 true,
-                current.getHourlyWeather()));
+                current.getHourlyWeather(),
+                current.getTripDates(),
+                current.getActiveDayIndex()));
     }
 }

@@ -1,4 +1,4 @@
--- CloseAI Supabase schema: per-user itineraries with lean place refs.
+-- CloseAI Supabase schema: per-user itineraries with lean place refs and per-day schedules.
 
 create extension if not exists "pgcrypto";
 
@@ -16,6 +16,17 @@ create table if not exists public.trips (
 
 create index if not exists trips_user_id_idx on public.trips (user_id);
 
+create table if not exists public.trip_days (
+  trip_id uuid not null references public.trips (id) on delete cascade,
+  day_index int not null,
+  trip_date date not null,
+  start_time time not null,
+  end_time time not null,
+  primary key (trip_id, day_index)
+);
+
+create index if not exists trip_days_trip_id_idx on public.trip_days (trip_id);
+
 create table if not exists public.trip_bookmarks (
   trip_id uuid not null references public.trips (id) on delete cascade,
   place_id text not null,
@@ -28,6 +39,7 @@ create table if not exists public.trip_bookmarks (
 create table if not exists public.scheduled_events (
   id text primary key,
   trip_id uuid not null references public.trips (id) on delete cascade,
+  day_index int not null default 0,
   event_type text not null check (event_type in ('ACTIVITY', 'TRAVEL')),
   start_time time not null,
   end_time time not null,
@@ -42,6 +54,7 @@ create table if not exists public.scheduled_events (
 create index if not exists scheduled_events_trip_id_idx on public.scheduled_events (trip_id);
 
 alter table public.trips enable row level security;
+alter table public.trip_days enable row level security;
 alter table public.trip_bookmarks enable row level security;
 alter table public.scheduled_events enable row level security;
 
@@ -58,6 +71,28 @@ create policy trips_update_own on public.trips
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy trips_delete_own on public.trips
   for delete using (auth.uid() = user_id);
+
+drop policy if exists days_select_own on public.trip_days;
+drop policy if exists days_insert_own on public.trip_days;
+drop policy if exists days_update_own on public.trip_days;
+drop policy if exists days_delete_own on public.trip_days;
+
+create policy days_select_own on public.trip_days
+  for select using (
+    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
+  );
+create policy days_insert_own on public.trip_days
+  for insert with check (
+    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
+  );
+create policy days_update_own on public.trip_days
+  for update using (
+    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
+  );
+create policy days_delete_own on public.trip_days
+  for delete using (
+    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
+  );
 
 drop policy if exists bookmarks_select_own on public.trip_bookmarks;
 drop policy if exists bookmarks_insert_own on public.trip_bookmarks;
