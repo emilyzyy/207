@@ -1,4 +1,8 @@
 out/
 target/
 .DS_Store
+
+# Never commit local credentials. OsrmDistanceService reads TOMTOM_API_KEY from a .env in
+# the working directory, and the Supabase client takes its anon key the same way.
 .env
+.env.*

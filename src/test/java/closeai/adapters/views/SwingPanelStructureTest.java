@@ -1,6 +1,5 @@
 package closeai.adapters.views;
 
-import closeai.adapters.controllers.OptimizeItineraryController;
 import closeai.adapters.viewmodels.BookmarksState;
 import closeai.adapters.viewmodels.BookmarksViewModel;
 import closeai.adapters.viewmodels.ActivitySelectionViewModel;
@@ -10,8 +9,6 @@ import closeai.adapters.viewmodels.SearchState;
 import closeai.adapters.viewmodels.SearchViewModel;
 import closeai.adapters.viewmodels.TripOptionsState;
 import closeai.adapters.viewmodels.TripOptionsViewModel;
-import closeai.application.usecases.OptimizeItineraryInputBoundary;
-import closeai.application.usecases.OptimizeItineraryInputData;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.WeatherWarning;
@@ -32,6 +29,7 @@ import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -48,10 +46,12 @@ final class SwingPanelStructureTest {
         BookmarksPanel bookmarks = new BookmarksPanel(new BookmarksViewModel(
                 new BookmarksState(Collections.singletonList(activity("saved")))),
                 null, null, selection);
-        RecordingOptimizer optimizer = new RecordingOptimizer();
         DayPlanPanel dayPlan = new DayPlanPanel(
                 dayPlanViewModel,
-                new OptimizeItineraryController(optimizer, "trip-1"), null, selection);
+                new closeai.adapters.controllers.AutoScheduleController(
+                        new RecordingAutoSchedule(), dayPlanViewModel,
+                        closeai.adapters.controllers.TaskRunner.immediate()),
+                null, selection);
         TripOptionsPanel options = new TripOptionsPanel(new TripOptionsViewModel(
                 new TripOptionsState("Toronto", LocalDate.of(2026, 7, 23),
                         LocalTime.of(9, 0), LocalTime.of(18, 0))));
@@ -71,30 +71,32 @@ final class SwingPanelStructureTest {
         clickCard(bookmarks, "Show saved on the map");
         assertEquals("saved", selection.getSelectedActivityId());
 
-        AbstractButton optimize = findButton(dayPlan, "Optimize Itinerary");
-        assertNotNull(optimize);
-        assertTrue(optimize.isEnabled());
-        assertTrue(optimize.isVisible());
-        assertTrue(optimize.isOpaque());
-        optimize.doClick();
-        assertNotNull(optimizer.input);
-        assertEquals("trip-1", optimizer.input.getTripId());
+        AbstractButton autoschedule = findButton(dayPlan, "Autoschedule");
+        assertNotNull(autoschedule, "the Day Plan should offer Autoschedule");
+        assertTrue(autoschedule.isEnabled());
+        assertTrue(autoschedule.isVisible());
+        assertTrue(autoschedule.isOpaque());
+        assertNull(findButton(dayPlan, "Optimize Itinerary"),
+                "the old mockup button should be gone");
 
         ScheduledEvent event = new ScheduledEvent(
                 "event-rom", activity("rom"), LocalTime.of(10, 0),
                 LocalTime.of(11, 0), EventType.ACTIVITY, "Visit");
         SwingUtilities.invokeAndWait(() -> dayPlanViewModel.setState(
                 new DayPlanState("trip-1", Collections.singletonList(event),
-                        "Current itinerary compacted successfully", false,
+                        "Autoschedule applied. Your Day Plan has been updated.", false,
                         Collections.singletonList(new WeatherWarning(
                                 new Location(43.65, -79.38, "Toronto"),
                                 LocalTime.of(10, 0), "Rain", WeatherSeverity.MEDIUM,
                                 "18°C · 65% precipitation")))));
 
         assertTrue(allText(dayPlan).contains("rom"));
+        assertTrue(allText(dayPlan).contains("Autoschedule applied"));
+        // Shiyuan's per-hour forecast lines render on the activity card.
         assertTrue(allText(dayPlan).contains("10:00 · Rain"));
         assertTrue(allText(dayPlan).contains("65% precipitation"));
-        assertTrue(allText(dayPlan).contains("Current itinerary compacted successfully"));
+        // Alex's per-event controls render alongside the Lock checkbox. This panel is built
+        // without a manual controller, so they are present but disabled.
         assertNotNull(findButton(dayPlan, "Edit"));
         assertNotNull(findButton(dayPlan, "Remove"));
         clickCard(dayPlan, "Show rom on the map");
@@ -175,12 +177,20 @@ final class SwingPanelStructureTest {
         return null;
     }
 
-    private static final class RecordingOptimizer implements OptimizeItineraryInputBoundary {
-        private OptimizeItineraryInputData input;
+    /** Stands in for the use case so the panel can be exercised without scheduling. */
+    private static final class RecordingAutoSchedule
+            implements closeai.application.autoschedule.AutoScheduleInputBoundary {
+        @Override
+        public void preview(closeai.application.autoschedule.AutoScheduleInputData inputData) {
+        }
 
         @Override
-        public void execute(OptimizeItineraryInputData inputData) {
-            input = inputData;
+        public void apply(closeai.application.autoschedule.AutoScheduleApplyInputData inputData) {
+        }
+
+        @Override
+        public closeai.application.autoschedule.WeatherOption weatherOptionFor(String tripId) {
+            return closeai.application.autoschedule.WeatherOption.available();
         }
     }
 }

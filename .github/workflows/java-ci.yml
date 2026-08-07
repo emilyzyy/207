@@ -21,5 +21,26 @@ jobs:
           distribution: temurin
           java-version: '11'
           cache: maven
+      # The suite builds a real Swing frame to prove the production wiring, so the
+      # runner needs a display. ubuntu-24.04 ships xvfb, but ubuntu-latest is a moving
+      # label and its package set is not a promise, so this installs only when the
+      # command is genuinely missing and costs nothing on an image that has it.
+      - name: Ensure a virtual display is available
+        run: |
+          if ! command -v xvfb-run > /dev/null; then
+            echo "xvfb-run not present on this image; installing it."
+            sudo apt-get update
+            sudo apt-get install --yes --no-install-recommends xvfb
+          fi
+          # command -v is used rather than `xvfb-run --help`: the help flag's exit
+          # status differs between versions, and steps run under `bash -e`, so a
+          # harmless check must not be able to fail the build by itself.
+          command -v xvfb-run
+          Xvfb -help 2>&1 | head -1 || true
+      # -a picks a free display number, so nothing collides with a concurrent job.
+      # The screen is given 24-bit colour explicitly: some xvfb-run builds still
+      # default to an 8-bit screen, which Swing renders badly or refuses outright.
       - name: Run unit tests
-        run: ./mvnw --batch-mode --no-transfer-progress clean test
+        run: >-
+          xvfb-run -a --server-args="-screen 0 1920x1080x24"
+          ./mvnw --batch-mode --no-transfer-progress clean test

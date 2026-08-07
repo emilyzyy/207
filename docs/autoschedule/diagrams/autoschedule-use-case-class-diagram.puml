@@ -1,0 +1,473 @@
+@startuml autoschedule-use-case-class-diagram
+'
+' Autoschedule - full use-case class diagram
+' CSC207 Summer 2026, Team 6. Use case owner: Emily Yan.
+'
+' Notation follows the course: UML class diagram boxes carrying name / attributes /
+' methods (04-entity-discovery, p.4) drawn in PlantUML, the tool the Clean Architecture
+' lecture uses (10-CleanArchitecture, p.54).
+'
+' Every class, interface, member and relationship below was read out of the source on
+' branch feature/emily-autoschedule - constructors, implemented interfaces, field types
+' and the AppBuilder wiring. Nothing is aspirational and no test double appears.
+'
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 22
+skinparam ranksep 34
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam ArrowColor #4A4A4A
+skinparam ArrowFontSize 11
+skinparam ArrowFontColor #333333
+
+skinparam class {
+  BorderColor #38618C
+  BackgroundColor #FFFFFF
+  FontSize 13
+  AttributeFontSize 11
+  BorderThickness 1
+}
+skinparam package {
+  BorderColor #9AA5B1
+  BackgroundColor #FAFBFC
+  FontSize 13
+  FontStyle bold
+  FontColor #38618C
+}
+hide empty members
+' Layers read left-to-right, which is also the direction dependencies point.
+left to right direction
+
+' ===================== FRAMEWORKS & DRIVERS (outermost) =====================
+package "Frameworks & Drivers" #F4F7FA {
+
+  class DayPlanPanel <<Swing View>> {
+    - viewModel : DayPlanViewModel
+    - autoScheduleController : AutoScheduleController
+    - openSettings() : void
+    - render(state : DayPlanState) : void
+  }
+
+  class AutoScheduleSettingsDialog <<Swing View>> {
+    - keepOrder : JCheckBox
+    - considerWeather : JCheckBox
+    - weatherNote : JLabel
+    + showDialog() : AutoScheduleSettings
+    + applyWeatherOption(option : WeatherOption) : void
+    ~ read() : AutoScheduleSettings
+  }
+
+  class SwingTaskRunner {
+    + run(work : Runnable) : void
+  }
+
+  class OsrmDistanceService {
+    + estimateTravelMinutes(from, to, mode, departure) : int
+    - estimateTomtom(from, to, departure, key) : Integer
+  }
+
+  class OpenMeteoWeatherService {
+    + getWarning(trip : Trip) : WeatherWarning
+  }
+
+  class InMemoryTripRepository {
+    + findById(id : String) : Optional<Trip>
+    + save(trip : Trip) : Trip
+  }
+
+  class AppBuilder <<composition root>> {
+    - buildAutoSchedule(app, viewModel) : AutoScheduleController
+  }
+}
+
+' ===================== INTERFACE ADAPTERS =====================
+package "Interface Adapters" #F7F9FB {
+
+  class AutoScheduleController {
+    - autoSchedule : AutoScheduleInputBoundary
+    - viewModel : DayPlanViewModel
+    - taskRunner : TaskRunner
+    + preview(settings : AutoScheduleSettings) : void
+    + apply() : void
+    + cancel() : void
+    + toggleLock(eventId : String) : void
+    + loadWeatherOption(onAnswered : Consumer<WeatherOption>) : void
+  }
+
+  class AutoScheduleSettings <<DTO>> {
+    - availableStart : LocalTime
+    - availableEnd : LocalTime
+    - transportationMode : TransportationMode
+    - unavailableWindows : List<Window>
+    - keepCurrentOrder : boolean
+    - considerWeather : boolean
+  }
+
+  class AutoScheduleSettingsValidator {
+    + validate(settings, tripStart, tripEnd) : List<String>
+  }
+
+  interface TaskRunner <<interface>> {
+    + run(work : Runnable) : void
+  }
+
+  class AutoSchedulePresenter {
+    - viewModel : DayPlanViewModel
+    + presentPreview(outputData : AutoSchedulePreviewOutputData) : void
+    + presentApplied(outputData : AutoScheduleAppliedOutputData) : void
+    + presentConflict(outputData : AutoScheduleConflictOutputData) : void
+    + presentFailure(message : String) : void
+  }
+
+  class DayPlanViewModel {
+    - changes : PropertyChangeSupport
+    - state : DayPlanState
+    + setState(state : DayPlanState) : void
+    + getState() : DayPlanState
+    + addPropertyChangeListener(l) : void
+  }
+
+  class DayPlanState <<immutable>> {
+    - tripId : String
+    - events : List<ScheduledEvent>
+    - status : AutoScheduleStatus
+    - previewRows : List<PreviewRowView>
+    - metrics : PreviewMetricsView
+    - warnings : List<String>
+    - lockedEventIds : Set<String>
+  }
+
+  class PreviewRowView <<view data>>
+  class PreviewMetricsView <<view data>>
+  enum AutoScheduleStatus {
+    IDLE
+    LOADING
+    PREVIEW
+    APPLIED
+    CONFLICT
+    FAILURE
+  }
+
+  class DistanceServiceTravelTimeEstimator {
+    - distances : DistanceService
+    + estimate(from, to, mode, departure) : TravelEstimate
+  }
+
+  class WeatherServiceContextGateway {
+    - weatherService : WeatherService
+    + contextFor(trip : Trip) : WeatherContext
+  }
+}
+
+' ===================== APPLICATION BUSINESS RULES =====================
+package "Application Business Rules (Use Case)" #F5FAF6 {
+
+  interface AutoScheduleInputBoundary <<interface>> {
+    + preview(inputData : AutoScheduleInputData) : void
+    + apply(inputData : AutoScheduleApplyInputData) : void
+    + weatherOptionFor(tripId : String) : WeatherOption
+  }
+
+  interface AutoScheduleOutputBoundary <<interface>> {
+    + presentPreview(outputData) : void
+    + presentApplied(outputData) : void
+    + presentConflict(outputData) : void
+    + presentFailure(message : String) : void
+  }
+
+  class AutoScheduleInteractor {
+    - trips : TripRepository
+    - travelEstimator : TravelTimeEstimator
+    - weatherGateway : WeatherContextGateway
+    - presenter : AutoScheduleOutputBoundary
+    - registeredPolicies : List<SoftPolicy>
+    - engine : ScheduleEngine
+    - prefetcher : TravelMatrixPrefetcher
+    - rebuilder : SchedulePlanRebuilder
+    - planValidator : PlanValidator
+    - problemValidator : ProblemValidator
+    - reasonCollector : ReasonCollector
+    + preview(inputData) : void
+    + apply(inputData) : void
+    + weatherOptionFor(tripId) : WeatherOption
+  }
+
+  class AutoScheduleInputData <<DTO>> {
+    - tripId : String
+    - availableStart : LocalTime
+    - availableEnd : LocalTime
+    - transportationMode : TransportationMode
+    - lockedEventIds : Set<String>
+    - unavailableWindows : List<TimeWindow>
+    - keepCurrentOrder : boolean
+    - considerWeather : boolean
+  }
+
+  class AutoScheduleApplyInputData <<DTO>> {
+    - tripId : String
+    - expectedFingerprint : String
+    - proposedEvents : List<ProposedEventData>
+  }
+
+  class AutoSchedulePreviewOutputData <<DTO>>
+  class AutoScheduleAppliedOutputData <<DTO>>
+  class AutoScheduleConflictOutputData <<DTO>>
+  class ProposedEventData <<DTO>>
+
+  class WeatherOption <<value object>> {
+    - available : boolean
+    - unavailableReason : String
+    + {static} available() : WeatherOption
+    + {static} unavailable(reason) : WeatherOption
+    + isSelectedByDefault() : boolean
+  }
+
+  ' ---- inward-facing gateway contracts, owned by the use case ----
+  interface TravelTimeEstimator <<interface>> {
+    + estimate(from, to, mode, departure) : TravelEstimate
+    + isTimeSensitive(mode) : boolean
+  }
+
+  interface WeatherContextGateway <<interface>> {
+    + contextFor(trip : Trip) : WeatherContext
+    + optionFor(trip : Trip) : WeatherOption
+  }
+
+  interface TripRepository <<interface>> {
+    + findById(id : String) : Optional<Trip>
+    + save(trip : Trip) : Trip
+  }
+
+  ' ---- supporting use-case collaborators ----
+  class ProblemValidator {
+    + validate(availability, tasks, windows) : ScheduleConflict
+  }
+  class TravelMatrixPrefetcher {
+    + prefetch(tasks, mode, date, availability) : TravelMatrix
+  }
+  class ReasonCollector
+  class ScheduleFingerprint
+  class WeatherContext <<value object>> {
+    + canDistinguishTimes() : boolean
+    + severityAt(time : LocalTime) : WeatherSeverity
+  }
+  class SchedulingPreferences {
+    - keepCurrentOrder : boolean
+    + activeIds() : List<PolicyId>
+  }
+  class PolicyContext
+
+  package "engine (pure search)" #EEF6EF {
+    class ScheduleEngine {
+      - placer : ActivityPlacer
+      + search(problem : ScheduleProblem, budget : SearchBudget) : ScheduleSearchResult
+      + {static} score(placements, preferences) : ScheduleScore
+    }
+    class GreedyPlanner
+    class ActivityPlacer
+    class PlanValidator {
+      + validate(problem, plan) : ScheduleConflict
+    }
+    class SchedulePlanRebuilder
+    class ScheduleSearchResult
+    class SearchBudget
+  }
+
+  package "policy (soft objectives)" #EEF6EF {
+    interface SoftPolicy <<interface>> {
+      + id() : PolicyId
+      + penaltyMinutes(placement, context) : int
+      + reasonFor(placement, context) : Reason
+    }
+    class WeatherSuitabilityPolicy
+    class MealWindowPolicy
+    class DaylightPolicy
+  }
+
+  ' ---- problem / plan model ----
+  class ScheduleProblem {
+    - availability : TimeWindow
+    - movableTasks : List<ScheduleTask>
+    - lockedTasks : List<ScheduleTask>
+    - unavailableWindows : List<TimeWindow>
+    - travel : TravelMatrix
+    - preferences : SchedulingPreferences
+  }
+  class ScheduleTask {
+    - eventId : String
+    - durationMinutes : int
+    - lockedAt : TimeWindow
+  }
+  class SchedulePlan {
+    - placements : List<PlacedActivity>
+    - score : ScheduleScore
+  }
+  class PlacedActivity {
+    - start : LocalTime
+    - end : LocalTime
+    - travelMinutes : int
+    - idleMinutes : int
+  }
+  class ScheduleScore {
+    + practicalCostMinutes() : int
+  }
+  class ScheduleConflict
+  class TravelMatrix
+  class TimeWindow <<value object>>
+}
+
+' ===================== ENTERPRISE BUSINESS RULES =====================
+package "Enterprise Business Rules (Entities)" #FBF7F0 {
+  class Trip <<entity>> {
+    - id : String
+    - date : LocalDate
+    - startTime : LocalTime
+    - endTime : LocalTime
+    + getScheduledEvents() : List<ScheduledEvent>
+    + copyWithSchedule(events) : Trip
+  }
+  class ScheduledEvent <<entity>> {
+    - id : String
+    - startTime : LocalTime
+    - endTime : LocalTime
+    - eventType : EventType
+  }
+  class Activity <<entity>> {
+    - name : String
+    - openingTime : LocalTime
+    - closingTime : LocalTime
+  }
+}
+
+' ===================== SHARED PORTS (other members' services) =====================
+package "Shared service ports" #FAFAFA {
+  interface DistanceService <<interface>>
+  interface WeatherService <<interface>>
+}
+
+' ============================================================================
+' RELATIONSHIPS
+' ============================================================================
+
+' --- realization (implements) ---
+AutoScheduleInteractor            ..|> AutoScheduleInputBoundary
+AutoSchedulePresenter             ..|> AutoScheduleOutputBoundary
+DistanceServiceTravelTimeEstimator ..|> TravelTimeEstimator
+WeatherServiceContextGateway      ..|> WeatherContextGateway
+SwingTaskRunner                   ..|> TaskRunner
+InMemoryTripRepository            ..|> TripRepository
+OsrmDistanceService               ..|> DistanceService
+OpenMeteoWeatherService           ..|> WeatherService
+WeatherSuitabilityPolicy          ..|> SoftPolicy
+MealWindowPolicy                  ..|> SoftPolicy
+DaylightPolicy                    ..|> SoftPolicy
+
+' --- View -> adapters ---
+DayPlanPanel               --> AutoScheduleController : calls
+DayPlanPanel               ..>  AutoScheduleSettingsDialog : opens
+DayPlanPanel               --> DayPlanViewModel : observes
+AutoScheduleSettingsDialog ..>  AutoScheduleSettings : creates
+AutoScheduleSettingsDialog --> AutoScheduleSettingsValidator
+AutoScheduleSettingsDialog ..>  WeatherOption : renders
+
+' --- Controller -> Input Boundary (dependency inversion) ---
+AutoScheduleController --> AutoScheduleInputBoundary : "**crosses boundary**"
+AutoScheduleController --> TaskRunner : runs off EDT
+AutoScheduleController ..> AutoScheduleInputData : creates
+AutoScheduleController ..> AutoScheduleApplyInputData : creates
+AutoScheduleController --> DayPlanViewModel : reads locks / sets loading
+AutoScheduleController ..> AutoScheduleSettings : reads
+
+' --- Interactor -> its injected ports ---
+AutoScheduleInteractor --> TripRepository
+AutoScheduleInteractor --> TravelTimeEstimator
+AutoScheduleInteractor --> WeatherContextGateway
+AutoScheduleInteractor --> AutoScheduleOutputBoundary : "**crosses boundary**"
+AutoScheduleInteractor --> ScheduleEngine
+AutoScheduleInteractor "1" o-- "3" SoftPolicy : registeredPolicies
+AutoScheduleInteractor --> TravelMatrixPrefetcher
+AutoScheduleInteractor --> ProblemValidator
+AutoScheduleInteractor --> PlanValidator
+AutoScheduleInteractor --> SchedulePlanRebuilder
+AutoScheduleInteractor --> ReasonCollector
+AutoScheduleInteractor ..> ScheduleFingerprint : stale-preview check
+AutoScheduleInteractor ..> WeatherOption : returns
+AutoScheduleInteractor ..> ScheduleProblem : builds
+AutoScheduleInteractor ..> AutoSchedulePreviewOutputData : builds
+
+' --- gateway adapters -> shared services ---
+DistanceServiceTravelTimeEstimator --> DistanceService
+WeatherServiceContextGateway       --> WeatherService
+WeatherContextGateway              ..> WeatherContext : returns
+WeatherContextGateway              ..> WeatherOption : returns
+
+' --- Presenter -> ViewModel (observer) ---
+AutoSchedulePresenter --> DayPlanViewModel : setState
+DayPlanViewModel *-- DayPlanState
+DayPlanState "1" *-- "0..*" PreviewRowView
+DayPlanState "1" *-- "0..1" PreviewMetricsView
+DayPlanState --> AutoScheduleStatus
+
+' --- DTOs crossing the output boundary ---
+AutoScheduleOutputBoundary ..> AutoSchedulePreviewOutputData
+AutoScheduleOutputBoundary ..> AutoScheduleAppliedOutputData
+AutoScheduleOutputBoundary ..> AutoScheduleConflictOutputData
+AutoSchedulePreviewOutputData "1" *-- "0..*" ProposedEventData
+AutoScheduleApplyInputData "1" *-- "1..*" ProposedEventData
+
+' --- engine internals ---
+ScheduleEngine *-- ActivityPlacer
+ScheduleEngine ..> GreedyPlanner : incumbent
+ScheduleEngine ..> SearchBudget
+ScheduleEngine ..> ScheduleSearchResult : returns
+ScheduleSearchResult ..> SchedulePlan
+SchedulePlanRebuilder ..> SchedulePlan
+PlanValidator ..> ScheduleConflict : returns
+ProblemValidator ..> ScheduleConflict : returns
+
+' --- problem / plan model ---
+ScheduleProblem "1" *-- "1..*" ScheduleTask
+ScheduleProblem *-- TravelMatrix
+ScheduleProblem *-- SchedulingPreferences
+ScheduleProblem *-- TimeWindow
+SchedulePlan "1" *-- "1..*" PlacedActivity
+SchedulePlan *-- ScheduleScore
+PlacedActivity --> ScheduleTask
+SchedulingPreferences "1" o-- "0..*" SoftPolicy
+SchedulingPreferences *-- PolicyContext
+PolicyContext *-- WeatherContext
+SoftPolicy ..> PolicyContext : reads
+TravelMatrixPrefetcher --> TravelTimeEstimator
+TravelMatrixPrefetcher ..> TravelMatrix : builds
+
+' --- entities ---
+Trip "1" *-- "0..*" ScheduledEvent
+ScheduledEvent "0..1" --> "1" Activity
+ScheduleTask --> Activity
+TripRepository ..> Trip
+AutoScheduleInteractor ..> Trip : reads / copyWithSchedule
+AutoSchedulePresenter ..> ScheduledEvent : re-times for Calendar
+
+' --- composition root ---
+' Only the edge that AppBuilder actually returns is drawn. Six <<creates>> arrows fanning
+' across the diagram would say nothing the note does not, and would cost every other
+' relationship its readability.
+AppBuilder ..> AutoScheduleController : <<creates>>
+
+note left of AppBuilder
+  The single place the graph is assembled.
+  buildAutoSchedule(..) constructs, in order:
+  AutoSchedulePresenter, the three SoftPolicy
+  instances, DistanceServiceTravelTimeEstimator,
+  WeatherServiceContextGateway, ScheduleEngine,
+  AutoScheduleInteractor, SwingTaskRunner,
+  and returns AutoScheduleController.
+  Nothing else in the feature calls **new** on a
+  dependency - that is the dependency injection.
+end note
+
+
+
+@enduml

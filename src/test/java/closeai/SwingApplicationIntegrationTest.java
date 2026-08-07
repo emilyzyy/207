@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
@@ -42,9 +43,9 @@ final class SwingApplicationIntegrationTest {
             DayPlanViewModel sharedState = frame.getCalendarDialog().getViewModel();
             assertSame(sharedState, frame.getDayPlanPanel().getViewModel());
             assertEquals("", sharedState.getState().getTripId());
-            AbstractButton optimize = findButton(frame, "Optimize Itinerary");
-            assertNotNull(optimize);
-            assertFalse(optimize.isEnabled());
+            AbstractButton autoschedule = findButton(frame, "Autoschedule");
+            assertNotNull(autoschedule, "Autoschedule should be the Day Plan action");
+            assertFalse(autoschedule.isEnabled(), "no trip yet, so there is nothing to arrange");
             AbstractButton share = findButton(frame, "Share");
             assertNotNull(share);
             assertFalse(share.isEnabled());
@@ -68,7 +69,7 @@ final class SwingApplicationIntegrationTest {
             assertEquals("Toronto", created.getDestination());
             assertEquals(TransportationMode.WALKING,
                     created.getTransportationMode());
-            assertTrue(optimize.isEnabled());
+            assertTrue(autoschedule.isEnabled(), "a trip exists, so Autoschedule is available");
 
             assertTrue(share.isEnabled());
             share.doClick();
@@ -91,10 +92,12 @@ final class SwingApplicationIntegrationTest {
                     app.trips.findById(tripId).orElseThrow().getDestination());
 
             tabs.setSelectedIndex(2);
-            optimize.doClick();
-            assertEquals(
-                    "Add activities to the Day Plan before optimizing",
-                    sharedState.getState().getMessage());
+            // Clicking Autoschedule opens a modal settings dialog, which would block this
+            // event-thread test; the settings-to-preview path is covered by the controller
+            // and interactor tests instead.
+            assertTrue(autoschedule.isEnabled());
+            assertNull(findButton(frame, "Optimize Itinerary"),
+                    "the replaced mockup path should not be reachable anywhere in the frame");
             frame.dispose();
         });
     }
