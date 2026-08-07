@@ -27,6 +27,7 @@ public final class AutoSchedulePreviewOutputData {
     private final boolean searchCompletedWithinLimit;
     private final TravelEstimateQuality travelQuality;
     private final boolean keptCurrentOrder;
+    private final List<ScheduleImprovement> improvements;
     private final int practicalCostMinutes;
 
     public AutoSchedulePreviewOutputData(List<ProposedEventData> rows,
@@ -39,8 +40,11 @@ public final class AutoSchedulePreviewOutputData {
                                          boolean searchCompletedWithinLimit,
                                          TravelEstimateQuality travelQuality,
                                          boolean keptCurrentOrder,
+                                         List<ScheduleImprovement> improvements,
                                          int practicalCostMinutes) {
         this.keptCurrentOrder = keptCurrentOrder;
+        this.improvements = Collections.unmodifiableList(new ArrayList<>(
+                improvements == null ? Collections.<ScheduleImprovement>emptyList() : improvements));
         this.practicalCostMinutes = practicalCostMinutes;
         this.rows = copy(rows);
         this.travelBeforeMinutes = travelBeforeMinutes;
@@ -127,6 +131,14 @@ public final class AutoSchedulePreviewOutputData {
     /** Whether the traveller asked to keep the order they had arranged. */
     public boolean isKeptCurrentOrder() {
         return keptCurrentOrder;
+    }
+
+    /**
+     * What this schedule provably improved, each one a before/after comparison.
+     * Empty when nothing improved — which is a real answer, not a missing one.
+     */
+    public List<ScheduleImprovement> getImprovements() {
+        return improvements;
     }
 
     /**

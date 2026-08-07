@@ -53,6 +53,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
     private final PlanValidator planValidator;
     private final ProblemValidator problemValidator;
     private final ReasonCollector reasonCollector;
+    private final ScheduleImprovementFinder improvementFinder;
 
     public AutoScheduleInteractor(TripRepository trips, TravelTimeEstimator travelEstimator,
                                   WeatherContextGateway weatherGateway,
@@ -76,6 +77,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         this.planValidator = new PlanValidator();
         this.problemValidator = new ProblemValidator();
         this.reasonCollector = new ReasonCollector();
+        this.improvementFinder = new ScheduleImprovementFinder();
     }
 
     @Override
@@ -143,7 +145,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
             return;
         }
         presenter.presentPreview(buildPreview(trip, activityEvents, outcome, preferences,
-                inputData.getUnavailableWindows(), warnings));
+                inputData.getUnavailableWindows(), warnings, mode));
     }
 
     /**
@@ -413,7 +415,8 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
                                                        RefinementOutcome outcome,
                                                        SchedulingPreferences preferences,
                                                        List<TimeWindow> unavailableWindows,
-                                                       List<String> warnings) {
+                                                       List<String> warnings,
+                                                       TransportationMode mode) {
         SchedulePlan plan = outcome.plan;
         Map<String, ScheduledEvent> originalById = new HashMap<>();
         for (ScheduledEvent event : originalEvents) {
@@ -443,7 +446,14 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         }
 
         List<Reason> reasons = reasonCollector.collect(plan, preferences, unavailableWindows);
-        ScheduleMetrics before = ScheduleMetrics.ofExistingSchedule(trip.getScheduledEvents());
+        // Measured with the journeys the current order implies, not only the travel rows it
+        // happens to contain; see ScheduleMetrics for why the simpler reading flattered us.
+        ScheduleMetrics before = ScheduleMetrics.ofExistingSchedule(trip.getScheduledEvents(),
+                travelEstimator, mode, trip.getDate());
+
+        List<ScheduleImprovement> improvements = improvementFinder.find(originalEvents, plan,
+                preferences, before, plan.totalTravelMinutes(),
+                plan.totalAvoidableIdleMinutes());
 
         return new AutoSchedulePreviewOutputData(rows, before.getTravelMinutes(),
                 plan.totalTravelMinutes(), before.getIdleMinutes(),
@@ -453,6 +463,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
                 outcome.searchCompletedWithinLimit,
                 outcome.problem.getTravel().weakestQuality(),
                 preferences.isKeepCurrentOrder(),
+                improvements,
                 plan.getScore().practicalCostMinutes());
     }
 
