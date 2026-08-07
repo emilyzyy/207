@@ -252,16 +252,20 @@ Three rules hold this together:
 |---|---|---|
 | Known | Intervals per weekday | Hard constraint |
 | Known, no intervals for the date | Shut all day | Unschedulable, named in the conflict |
-| Unknown | The provider said nothing, or something unparseable | **No constraint, plus a warning** |
+| Unknown | The provider said nothing, or something unparseable | **Falls back to the coarse single window** |
 
 Most OpenStreetMap places carry no `opening_hours` tag. Reading silence as "closed" would
-refuse to plan almost any real day, so unknown is permissive — and the Interactor adds
-"Flexible timing for X — no day-by-day hours published, so a general daily window was used."
-to the preview's warnings. Worded as flexibility rather than as missing data, and careful to
-say *a general window* rather than *any time*, because the activity's single opening/closing
-pair is still enforced. Anything the parser cannot fully understand (month ranges, `sunrise`/`sunset`,
-quoted comments) becomes unknown for the same reason: a wrong guess would either bar a venue
-that is open or book one that is shut, and both are worse than saying so.
+refuse to plan almost any real day, so unknown falls back to the activity's single
+opening/closing pair, which is still enforced.
+
+**Nothing is said about it in the preview.** An earlier version warned which venues had no
+published hours; on a real day that is most of them, so the caution appeared on nearly every
+run, and a caution that always appears devalues the ones that matter. Only a venue on record
+as *shut* for the trip date is worth naming, and that one produces a conflict rather than a
+warning. Anything the parser cannot fully understand (month ranges, `sunrise`/`sunset`,
+quoted comments) is treated as unknown for the same reason a missing tag is: a wrong guess
+would either bar a venue that is open or book one that is shut, and the coarse window is a
+better answer than either.
 
 `Activity` keeps its original single `openingTime`/`closingTime` pair alongside the new
 field. That pair is what every hand-built activity and every existing test has, and when

@@ -13,9 +13,9 @@ Three things changed visibly in that pass and are why 1, 3, 5 and 6 were re-take
 
 - **Per-row weather.** Merging `origin/main` added an hourly condition line under each Day
   Plan activity. Not an Autoschedule change, but it is in every Day Plan shot.
-- **The opening-hours warning.** Shot 3's warning band now carries a second line naming the
-  venues scheduled without hours data. This is the visible half of the honesty rule and is
-  the reason shot 3 matters more than it did.
+- **Opening hours.** Imported hours are now a hard constraint, but nothing new is visible in
+  the seeded demo, whose venues are hand-built fixtures with no published hours. Shot 3's
+  warning band still carries only the travel-estimate caveat.
 - **Dennis's forecast popup**, added as shot 7.
 
 Every shot shows the polished interface: a 12-hour clock throughout, visible padlock
@@ -150,8 +150,8 @@ Filenames below are the ones committed.
 | **Purpose** | Use-case Explanation and functionality: preview-and-confirm, before/after metrics, per-row reasons. *(not individually rubric-named — see above)* |
 | **Starting state** | From state 1, tick **Lock** on Royal Ontario Museum. |
 | **Actions and settings** | Autoschedule → keep the defaults → **Generate Preview**. |
-| **Expected visible result** | `YOUR DAY PLAN` unchanged above with the museum still locked; a `PROPOSED SCHEDULE` header marked "not applied yet"; a **`SCHEDULE IMPROVEMENTS` stack on the right** with six cards (waiting removed, less travel, pinned kept, meal moved, into daylight, better weather); an amber warning band carrying **two** lines — *"Flexible timing for Royal Ontario Museum, Distillery District and 3 more — no day-by-day hours published, so a general daily window was used."* and the travel-estimate caveat; activity rows with `Locked` / `Moved` badges; travel rows tinted, indented and prefixed `↳`. Apply and Cancel visible; Autoschedule hidden. |
-| **Must appear in the crop** | The unchanged original plan **and** the proposal together — that juxtaposition is the whole point. The improvements stack, **both lines of the warning band**, and at least one badge. Capture at **1180px or wider** so the stack sits beside the schedule; below that it moves underneath, which is correct but is not the shot to present. The panel must be sized *before* the preview runs, because the layout decision is made when the state is rendered. |
+| **Expected visible result** | `YOUR DAY PLAN` unchanged above with the museum still locked; a `PROPOSED SCHEDULE` header marked "not applied yet"; a **`SCHEDULE IMPROVEMENTS` stack on the right** with six cards (waiting removed, less travel, pinned kept, meal moved, into daylight, better weather); an amber warning band carrying the travel-estimate caveat; activity rows with `Locked` / `Moved` badges; travel rows tinted, indented and prefixed `↳`. Apply and Cancel visible; Autoschedule hidden. |
+| **Must appear in the crop** | The unchanged original plan **and** the proposal together — that juxtaposition is the whole point. The improvements stack, the warning band, and at least one badge. Capture at **1180px or wider** so the stack sits beside the schedule; below that it moves underneath, which is correct but is not the shot to present. The panel must be sized *before* the preview runs, because the layout decision is made when the state is rendered. |
 | **Must not appear** | Any suggestion the plan has already changed. |
 
 ### 4. Why these times — expanded

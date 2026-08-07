@@ -142,15 +142,6 @@ class OpeningHoursProductionWiringTest {
         return null;
     }
 
-    private static String hoursWarning(DayPlanState state) {
-        for (String warning : state.getWarnings()) {
-            if (warning.contains("Flexible timing")) {
-                return warning;
-            }
-        }
-        return null;
-    }
-
     @Test
     void hoursFromTheProviderReachTheScheduleAndMoveTheVisit() throws Exception {
         // Open 13:00-18:00; the traveller left it at 17:00 with nothing else in the day.
@@ -163,7 +154,6 @@ class OpeningHoursProductionWiringTest {
                 "the day is free from 9am, so the earliest lawful start is the moment the "
                         + "doors open -- which OpenStreetMap says is 1pm, not 9am");
         assertFalse(museum.getEnd().isAfter(LocalTime.of(18, 0)));
-        assertNull(hoursWarning(state), "these hours were known, so nothing was guessed");
     }
 
     @Test
@@ -191,15 +181,15 @@ class OpeningHoursProductionWiringTest {
     }
 
     @Test
-    void aPlaceWithNoHoursTagIsStillScheduledAndTheGuessIsStated() throws Exception {
+    void aPlaceWithNoHoursTagIsStillScheduledAndSaysNothingAboutIt() throws Exception {
         DayPlanState state = schedule(discover(null), LocalTime.of(10, 0), 60);
 
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(), state.getMessage());
         assertNotNull(rowFor(state, "City Museum"),
                 "most OpenStreetMap places have no hours; refusing them all is not an option");
-        String warning = hoursWarning(state);
-        assertNotNull(warning, state.getWarnings().toString());
-        assertTrue(warning.contains("City Museum"), warning);
+        assertTrue(state.getWarnings().isEmpty(),
+                "and it is the ordinary case, so it needs no commentary: "
+                        + state.getWarnings());
     }
 
     @Test
@@ -208,8 +198,8 @@ class OpeningHoursProductionWiringTest {
                 LocalTime.of(10, 0), 60);
 
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(), state.getMessage());
-        assertNotNull(hoursWarning(state),
-                "a tag we cannot read is a guess like any other, and must be declared");
+        assertNotNull(rowFor(state, "City Museum"),
+                "a tag we cannot read must never bar a place we could otherwise schedule");
     }
 
     /**

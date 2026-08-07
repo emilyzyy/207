@@ -10,8 +10,8 @@ disabled state is now the fallback, not the norm. Do **not** claim traffic-aware
 no TomTom key has ever reached a verification run, so no real TomTom route has been
 obtained. Driving falls back to OSRM and is not traffic-aware.
 
-The seeded demo trip's venues have **no** opening hours — it is deterministic and offline —
-so step 4b is the honest one to run. If you want to show real hours instead, launch with
+The seeded demo trip's venues publish **no** opening hours — they are deterministic offline
+fixtures — so step 4b is talked through rather than shown. To show real hours, launch with
 `-Dcloseai.places.mode=nominatim`, search a city and add a place that publishes them;
 Raashid's adapter reads the tag on both search and map panning.
 
@@ -76,26 +76,25 @@ On the improvement cards:
 > search used*. An activity that was already in daylight earns nothing. Nothing that got
 > worse is dressed up as an achievement — the trade-offs are under 'Why this schedule?'."
 
-### 4b. What it does not know (25s)
-
-Point at the amber band, at the line naming venues.
+### 4b. Opening hours (25s)
 
 > "Opening hours are a hard constraint — an activity has to sit entirely inside one opening
 > interval, and a venue that shuts for lunch gets two intervals, not one long one. Travel is
 > allowed outside them, because walking to a museum before it opens is how you get there.
 >
-> But look at what it says: *flexible timing for these five*. Day-by-day hours come from
-> OpenStreetMap's `opening_hours` tag — Raashid's places adapter reads it — and most places
-> simply do not publish one. These five are hand-built demo fixtures, so none of them has a
-> tag at all, which is why all five are named. They still each have a general daily window,
-> and that window is still obeyed — which is why it says *a general window* and not *any
-> time*. I could have
-> treated silence as 'closed', and then it would refuse to plan almost any real day. So
-> unknown means no constraint — and it tells you exactly where it made that assumption. A
-> silent guess and a stated one look identical in a screenshot and are not the same promise.
+> They come from OpenStreetMap's `opening_hours` tag, which Raashid's places adapter reads.
+> When a venue publishes them they are obeyed strictly: shut on your date and it cannot be
+> scheduled at all, and you are told which one and why.
 >
-> When a venue *does* publish hours they are obeyed strictly: shut on your date and it
-> cannot be scheduled at all, and you are told which one and why."
+> Most places do not publish them, and those fall back to a general daily window, which is
+> still obeyed. Treating no data as 'closed' would refuse to plan almost any real day."
+
+If asked why the screen says nothing about that:
+
+> "It used to. It named every venue with no published hours, which on a real day is most of
+> them, so the caution appeared on nearly every schedule. A warning that always appears just
+> teaches you to skip warnings, so it went. A venue that is genuinely shut still gets named,
+> and that one stops the schedule rather than decorating it."
 
 If asked where the parsing lives:
 

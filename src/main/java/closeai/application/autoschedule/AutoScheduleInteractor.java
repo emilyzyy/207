@@ -381,42 +381,20 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
     }
 
     /**
-     * Says out loud which venues were scheduled with no knowledge of their opening hours.
+     * Warns only about venues that are on record as shut for the whole trip date.
      *
-     * <p>Most places have no hours recorded, and the scheduler treats an unknown venue as
-     * unconstrained rather than shut — the alternative would be refusing to plan almost any
-     * real day. But that permissiveness is a guess, and a schedule that quietly guesses is
-     * worse than one that says where it did. Being told plainly is what lets a traveller
-     * check the two visits that matter instead of doubting all five.</p>
-     *
-     * <p>Worded as flexibility rather than as a missing-data complaint, because that is what
-     * it actually means for the traveller: these are the activities the day has the most
-     * freedom to move. The fact is the same either way, and leading with the absence would
-     * make a schedule that is working well read as though something had gone wrong.</p>
-     *
-     * <p>It says "a general daily window was used" rather than "any time", because a general
-     * window is exactly what still applies: with no per-weekday hours the task falls back to
-     * the activity's single opening/closing pair, and that pair is still enforced. Claiming
-     * the activity could go anywhere would be a nicer sentence and a false one.</p>
-     *
-     * <p>Venues known to be shut all day get their own warning: the search will simply fail
-     * to place them, and "could not be scheduled" with no reason is the least helpful thing
-     * this feature could say.</p>
+     * <p>Nothing is said about venues with no published hours, which is most of them. The
+     * scheduler treats those as unconstrained beyond their general daily window, and that is
+     * the ordinary case rather than a problem — warning about it put a caution on almost
+     * every schedule and made the real warnings worth less.</p>
      */
     private static void addOpeningHoursWarnings(List<ScheduleTask> tasks,
                                                 List<String> warnings) {
-        List<String> unknown = new ArrayList<>();
         List<String> closed = new ArrayList<>();
         for (ScheduleTask task : tasks) {
             if (task.isClosedAllDay()) {
                 closed.add(task.getActivity().getName());
-            } else if (!task.hasKnownHours()) {
-                unknown.add(task.getActivity().getName());
             }
-        }
-        if (!unknown.isEmpty()) {
-            warnings.add("Flexible timing for " + namesOf(unknown)
-                    + " — no day-by-day hours published, so a general daily window was used.");
         }
         if (!closed.isEmpty()) {
             warnings.add(namesOf(closed) + (closed.size() == 1 ? " is" : " are")

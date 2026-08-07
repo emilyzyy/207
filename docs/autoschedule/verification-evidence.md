@@ -437,7 +437,7 @@ activity carried the same hard-coded 09:00-21:00 window, so there were no real h
 | Duration extending past closing refused, not truncated | `…aVisitOneMinuteTooLongForTheIntervalIsRefused`, `…aDurationThatWouldRunPastClosingIsRefusedRatherThanTruncated` |
 | Multiple intervals; no straddling the gap | `…aVisitMustFitInsideOneIntervalNotAcrossTheGapBetweenTwo`, `…aVisitTooLongForTheMorningShiftFallsToTheAfternoonOne` |
 | Closed day → unschedulable, named, zero minutes | `…aVenueClosedOnTheTripDateCannotBeScheduledAtAll`, `OpeningHoursWarningTest.aVenueClosedOnTheTripDateBecomesANamedConflict` |
-| Unknown hours → permissive, with a warning | `…unknownHoursConstrainNothingAndAreNotTreatedAsClosed`, `OpeningHoursWarningTest` (5 tests) |
+| Unknown hours → permissive, and silent | `…unknownHoursConstrainNothingAndAreNotTreatedAsClosed`, `OpeningHoursWarningTest` (5 tests) |
 | Malformed provider data degrades safely | `OpeningHoursParserTest.anythingNotFullyUnderstoodIsUnknownRatherThanGuessedAt` (12 values), `NominatimPlacesServiceTest.anUnparseableOpeningHoursTagDegradesToUnknownRatherThanFailingTheSearch` |
 | Locked activity outside hours → named conflict | `LockValidationTest.aLockAtAVenueThatIsShutAllDayIsRejectedByName`, `…aLockSpanningAVenuesMiddayClosureIsOutsideItsOpeningHours` |
 | Overnight hours, split at midnight onto both days | `OpeningHoursParserTest.aSpanPastMidnightIsSplitOntoBothDays`, `RealOpeningHoursTest.theEveningHalfOfAnOvernightVenueIsUsable`, `…theMorningHalfOfAnOvernightVenueBelongsToTheFollowingDay` |
@@ -528,8 +528,8 @@ was no provider path to test this way.
 | `hoursFromTheProviderReachTheScheduleAndMoveTheVisit` | `Mo-Fr 13:00-18:00` → the visit starts at 13:00, not at the day's 09:00 |
 | `aMiddayClosureFromTheProviderIsRespectedEndToEnd` | `We 10:00-11:30,15:00-19:00`, two-hour visit → 15:00, not straddling the closure |
 | `aVenueClosedOnTheTripDateIsRefusedByName` | `Sa 10:00-16:00` on a Wednesday → conflict naming the venue |
-| `aPlaceWithNoHoursTagIsStillScheduledAndTheGuessIsStated` | no tag → scheduled, and the warning names it |
-| `anUnreadableTagIsTreatedAsNoTagRatherThanAsAClosedDoor` | `Mo-Su sunrise-sunset` → scheduled, warning stated |
+| `aPlaceWithNoHoursTagIsStillScheduledAndSaysNothingAboutIt` | no tag → scheduled inside the coarse window, no warning |
+| `anUnreadableTagIsTreatedAsNoTagRatherThanAsAClosedDoor` | `Mo-Su sunrise-sunset` → scheduled, no warning |
 | `theScheduleBelievesTheWeekdayRatherThanTheFlattenedWeek` | flattened window says 23:00, Wednesday says 17:00, the visit ends by 17:00 |
 
 Three more in `NominatimPlacesServiceTest` pin the division of labour: the flattened window
@@ -541,3 +541,20 @@ when unparseable.
 flattened window. That coarse guard is the entity's — it has no idea which day it is being
 asked about — and the per-weekday rule is the scheduler's, stricter one. Documented in
 `architecture.md` rather than changed.
+
+### 9c. The unknown-hours warning, added and removed
+
+§9 recorded a preview warning naming every venue with no published hours. **It has been
+removed.** On real OpenStreetMap data most venues have no tag, so the caution appeared on
+nearly every schedule, and a warning that always appears is one people learn to skip — it
+cost the travel-estimate caveat and the genuine conflicts some of their weight.
+
+What did *not* change is the behaviour: a venue with no published hours is still scheduled
+inside the activity's coarse single window, and that window is still enforced.
+`OpeningHoursWarningTest.aVenueWithNoRecordedHoursIsStillActuallyScheduled` pins that
+separately from the wording, so the permissiveness cannot be lost while nobody is looking.
+
+A venue on record as *shut* for the trip date is still named — and it produces a conflict,
+which stops the schedule rather than decorating it.
+
+Test count 472 → 471; the removed assertions were about wording that no longer exists.

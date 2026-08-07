@@ -231,18 +231,15 @@ Three outcomes, and the last is the one that matters:
 |---|---|
 | Real hours for the trip date | Places the activity inside one interval; a pin outside one is a named conflict |
 | The venue is shut that day | Refuses to schedule it, naming the venue and reporting zero minutes available |
-| **Nothing, or something unreadable** | **Schedules it with no opening-hours limit at all, and says so** |
+| **Nothing, or something unreadable** | **Schedules it inside its general daily window** |
 
 The third row is the common one: most OpenStreetMap places carry no `opening_hours` tag, and
-treating silence as "shut" would refuse to plan almost any real day. So unknown hours stay
-permissive — and the preview names the venues it had no day-by-day data for
-("Flexible timing for Casa Loma — no day-by-day hours published, so a general daily window
-was used."). It is worded as flexibility because that is what it means for the traveller:
-these are the activities the day has the most freedom to move. It says *a general window*
-rather than *any time* because the activity's single opening/closing pair is still enforced.
-A silent guess and a stated one look identical in a screenshot and are not the same promise.
-Anything the parser cannot fully understand — month ranges, `sunrise`/`sunset`, free text —
-becomes unknown rather than a guess.
+treating silence as "shut" would refuse to plan almost any real day. So those venues fall
+back to the single opening/closing window the activity already carries, which is still
+enforced — and the preview says nothing about it, because a caution that appears on almost
+every schedule only teaches people to ignore the ones that matter. Anything the parser cannot
+fully understand — month ranges, `sunrise`/`sunset`, free text — is treated the same way
+rather than guessed at.
 
 ### Preview and Apply
 

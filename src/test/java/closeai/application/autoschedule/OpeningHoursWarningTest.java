@@ -68,75 +68,50 @@ class OpeningHoursWarningTest {
                         Collections.emptySet(), Collections.emptyList(), true, false));
     }
 
-    private String openingHoursWarning() {
-        for (String warning : presenter.getPreview().getWarnings()) {
-            if (warning.contains("Flexible timing")) {
-                return warning;
-            }
-        }
-        return null;
-    }
-
     @Test
-    void aVenueWithNoRecordedHoursIsScheduledAndSaidSoAbout() {
+    void aVenueWithNoRecordedHoursIsScheduledWithoutComment() {
         run(tripWith(event("Casa Loma", 10, OpeningHours.unknown())));
 
         assertNotNull(presenter.getPreview(), "unknown hours must not prevent a schedule");
-        String warning = openingHoursWarning();
-        assertNotNull(warning, "the guess must be stated: "
-                + presenter.getPreview().getWarnings());
-        assertTrue(warning.contains("Casa Loma"), warning);
-        assertTrue(warning.contains("no day-by-day hours published"), warning);
-        assertTrue(warning.contains("a general daily window was used"),
-                "the coarse window still applies, so the warning must not promise any time: "
-                        + warning);
-    }
-
-    @Test
-    void aVenueWithRealHoursIsNotWarnedAbout() {
-        run(tripWith(event("Gallery", 10, ProblemFixtures.hoursOn(DayOfWeek.WEDNESDAY,
-                "09:00-18:00"))));
-
-        assertNotNull(presenter.getPreview());
-        assertNull(openingHoursWarning(),
-                "hours we actually have need no caveat: "
+        assertTrue(presenter.getPreview().getWarnings().isEmpty(),
+                "no published hours is the ordinary case, not something to caution about: "
                         + presenter.getPreview().getWarnings());
     }
 
     @Test
-    void severalUnknownVenuesAreNamedTogetherInOneWarning() {
-        run(tripWith(event("Casa Loma", 10, OpeningHours.unknown()),
-                event("High Park", 13, OpeningHours.unknown())));
+    void aVenueWithRealHoursIsNotWarnedAboutEither() {
+        run(tripWith(event("Gallery", 10, ProblemFixtures.hoursOn(DayOfWeek.WEDNESDAY,
+                "09:00-18:00"))));
 
-        String warning = openingHoursWarning();
-        assertNotNull(warning);
-        assertTrue(warning.contains("Casa Loma and High Park"), warning);
-        assertTrue(warning.contains("a general daily window was used"), warning);
+        assertNotNull(presenter.getPreview());
+        assertTrue(presenter.getPreview().getWarnings().isEmpty(),
+                presenter.getPreview().getWarnings().toString());
     }
 
     @Test
-    void aLongDayOfUnknownVenuesIsSummarisedRatherThanListedInFull() {
+    void awholeDayOfVenuesWithoutHoursProducesNoWarningsAtAll() {
         run(tripWith(event("A", 9, OpeningHours.unknown()),
                 event("B", 11, OpeningHours.unknown()),
                 event("C", 13, OpeningHours.unknown()),
                 event("D", 15, OpeningHours.unknown())));
 
-        String warning = openingHoursWarning();
-        assertNotNull(warning);
-        assertTrue(warning.contains("A, B and 2 more"), warning);
+        assertNotNull(presenter.getPreview());
+        assertTrue(presenter.getPreview().getWarnings().isEmpty(),
+                "four unknowns is a normal day, not four problems: "
+                        + presenter.getPreview().getWarnings());
     }
 
+    /**
+     * The permissiveness itself is unchanged — it is only the commentary that went. An
+     * activity with no published hours is still placed inside its general daily window
+     * rather than refused, and that is what actually matters.
+     */
     @Test
-    void onlyTheVenuesWeReallyKnowNothingAboutAreNamed() {
-        run(tripWith(event("Known", 10, ProblemFixtures.hoursOn(DayOfWeek.WEDNESDAY,
-                        "09:00-18:00")),
-                event("Unknown", 13, OpeningHours.unknown())));
+    void aVenueWithNoRecordedHoursIsStillActuallyScheduled() {
+        run(tripWith(event("Casa Loma", 10, OpeningHours.unknown())));
 
-        String warning = openingHoursWarning();
-        assertNotNull(warning);
-        assertTrue(warning.contains("Unknown"), warning);
-        assertFalse(warning.contains("Known,"), warning);
-        assertFalse(warning.contains("and Known"), warning);
+        assertEquals(1, presenter.getPreview().getRows().size());
+        assertEquals("Casa Loma", presenter.getPreview().getRows().get(0).getTitle());
     }
 
     /**
