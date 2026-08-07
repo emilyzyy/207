@@ -95,6 +95,7 @@ closeai.AppBuilder / Main
 - `TripSetupController` chooses Create Trip when there is no active trip and Edit Itinerary afterward.
 - `TripSetupPresenter` updates Dashboard, Trip Options, Bookmarks, and the Day Plan with the same saved trip ID.
 - Destination weather and place refresh happens asynchronously; failure never rolls back a successfully created trip.
+- The Overview weather card opens a modeless hourly forecast window. It shows every available hour for the trip date and refreshes automatically when the shared weather state changes.
 
 ## Edit Itinerary
 

@@ -10,12 +10,16 @@ import closeai.adapters.viewmodels.SearchViewModel;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.ScheduledEvent;
 import java.awt.BorderLayout;
+import java.awt.Frame;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Color;
+import java.awt.Window;
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,6 +35,9 @@ public final class OverviewPanel extends JPanel {
     private final MapPanel mapPanel;
     private final JLabel conditionLabel = new JLabel();
     private final JLabel messageLabel = new JLabel();
+    private final JButton weatherPreviewButton =
+            SwingTheme.secondaryButton("WEATHER PREVIEW");
+    private HourlyWeatherDialog hourlyWeatherDialog;
 
     public OverviewPanel(DashboardViewModel viewModel, SearchViewModel searchViewModel) {
         this(viewModel, searchViewModel, null, null, null);
@@ -90,11 +97,28 @@ public final class OverviewPanel extends JPanel {
         copy.add(messageLabel, BorderLayout.CENTER);
         card.add(copy, BorderLayout.CENTER);
 
-        JLabel preview = new JLabel("WEATHER PREVIEW");
-        preview.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
-        preview.setForeground(SwingTheme.BLUE);
-        card.add(preview, BorderLayout.EAST);
+        weatherPreviewButton.setName("hourly-weather-preview");
+        weatherPreviewButton.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
+        weatherPreviewButton.setForeground(SwingTheme.BLUE);
+        weatherPreviewButton.setToolTipText("View the full hourly forecast");
+        weatherPreviewButton.setEnabled(dayPlanViewModel != null);
+        weatherPreviewButton.addActionListener(event -> openHourlyWeatherDialog());
+        card.add(weatherPreviewButton, BorderLayout.EAST);
         return card;
+    }
+
+    private void openHourlyWeatherDialog() {
+        if (dayPlanViewModel == null) return;
+        if (hourlyWeatherDialog != null && hourlyWeatherDialog.isDisplayable()) {
+            hourlyWeatherDialog.setVisible(true);
+            hourlyWeatherDialog.toFront();
+            return;
+        }
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        Frame frameOwner = owner instanceof Frame ? (Frame) owner : null;
+        hourlyWeatherDialog = new HourlyWeatherDialog(
+                frameOwner, viewModel, dayPlanViewModel);
+        hourlyWeatherDialog.setVisible(true);
     }
 
     private void refreshDashboard(DashboardState state) {
@@ -163,5 +187,9 @@ public final class OverviewPanel extends JPanel {
 
     public MapPanel getMapPanel() {
         return mapPanel;
+    }
+
+    public JButton getWeatherPreviewButton() {
+        return weatherPreviewButton;
     }
 }
