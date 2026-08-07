@@ -27,7 +27,9 @@ public final class SearchViewModel {
     public void selectActivity(String activityId) {
         SearchState current = state;
         setState(new SearchState(current.getActivities(), current.getQuery(),
-                current.getBookmarkedIds(), current.getScheduledIds(), activityId));
+                current.getBookmarkedIds(), current.getScheduledIds(), activityId,
+                current.isLoading(), current.getCategory(), current.getMinimumRating(),
+                current.getType(), current.getFeedback()));
     }
 
     /** Toggles the loading indicator shown while places are being fetched. */
@@ -36,7 +38,9 @@ public final class SearchViewModel {
         if (current.isLoading() == loading) return;
         setState(new SearchState(current.getActivities(), current.getQuery(),
                 current.getBookmarkedIds(), current.getScheduledIds(),
-                current.getSelectedActivityId(), loading));
+                current.getSelectedActivityId(), loading,
+                current.getCategory(), current.getMinimumRating(),
+                current.getType(), current.getFeedback()));
     }
 
     public void addPropertyChangeListener(PropertyChangeListener listener) {

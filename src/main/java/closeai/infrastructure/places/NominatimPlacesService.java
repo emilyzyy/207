@@ -85,14 +85,25 @@ public final class NominatimPlacesService implements PlacesService {
         if (destination == null || destination.trim().isEmpty()) {
             return new ArrayList<>();
         }
-        String key = destination.trim().toLowerCase() + "|" + (query == null ? "" : query);
+        String key = destination.trim().toLowerCase();
         List<Activity> cached = cache.get(key);
-        if (cached != null) {
-            return cached;
+        if (cached == null) {
+            cached = searchUncached(destination);
+            if (!cached.isEmpty()) {
+                cache.put(key, cached);
+            }
         }
-        List<Activity> result = searchUncached(destination);
-        if (!result.isEmpty()) {
-            cache.put(key, result);
+        String needle = query == null ? "" : query.trim().toLowerCase();
+        if (needle.isEmpty()) {
+            return new ArrayList<>(cached);
+        }
+        List<Activity> result = new ArrayList<>();
+        for (Activity activity : cached) {
+            if (activity.getName().toLowerCase().contains(needle)
+                    || activity.getCategory().name().toLowerCase().contains(needle)
+                    || activity.getLocation().getAddress().toLowerCase().contains(needle)) {
+                result.add(activity);
+            }
         }
         return result;
     }

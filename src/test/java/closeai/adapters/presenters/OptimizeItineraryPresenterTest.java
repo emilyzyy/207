@@ -6,11 +6,13 @@ import closeai.application.usecases.OptimizeItineraryOutputData;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.Trip;
+import closeai.domain.entities.WeatherWarning;
 import closeai.domain.valueobjects.ActivityCategory;
 import closeai.domain.valueobjects.EventType;
 import closeai.domain.valueobjects.IndoorOutdoorType;
 import closeai.domain.valueobjects.Location;
 import closeai.domain.valueobjects.TransportationMode;
+import closeai.domain.valueobjects.WeatherSeverity;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collections;
@@ -30,6 +32,13 @@ final class OptimizeItineraryPresenterTest {
         AtomicInteger stateChanges = new AtomicInteger();
         viewModel.addPropertyChangeListener(event -> stateChanges.incrementAndGet());
         OptimizeItineraryPresenter presenter = new OptimizeItineraryPresenter(viewModel);
+        WeatherWarning hourly = new WeatherWarning(
+                new Location(43.65, -79.38, "Toronto"), LocalTime.of(10, 0),
+                "Rain", WeatherSeverity.MEDIUM, "18°C");
+        viewModel.setState(new DayPlanState(
+                "trip-1", Collections.emptyList(), "", false,
+                Collections.singletonList(hourly)));
+        stateChanges.set(0);
         Trip trip = tripWithOneEvent();
 
         presenter.presentSuccess(new OptimizeItineraryOutputData(trip, "Compacted"));
@@ -37,6 +46,8 @@ final class OptimizeItineraryPresenterTest {
         assertEquals(trip.getScheduledEvents(), viewModel.getState().getEvents());
         assertEquals("Compacted", viewModel.getState().getMessage());
         assertFalse(viewModel.getState().isError());
+        assertEquals(Collections.singletonList(hourly),
+                viewModel.getState().getHourlyWeather());
 
         presenter.presentFailure("Cannot compact");
 

@@ -16,5 +16,7 @@ public interface PlacesService {
      * @param east the eastern longitude of the window
      * @param maxResults the maximum number of places to return for this window
      */
-    List<Activity> searchInBounds(double south, double west, double north, double east, int maxResults);
+    default List<Activity> searchInBounds(double south, double west, double north, double east, int maxResults) {
+        return java.util.Collections.emptyList();
+    }
 }

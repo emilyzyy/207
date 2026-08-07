@@ -52,8 +52,18 @@ public final class JsonPresenter {
     }
 
     public String weather(WeatherWarning warning) {
-        return "{\"condition\":\"" + escape(warning.getWeatherCondition()) + "\",\"severity\":\""
+        return "{\"time\":\"" + warning.getTime() + "\",\"condition\":\""
+                + escape(warning.getWeatherCondition()) + "\",\"severity\":\""
                 + warning.getSeverity() + "\",\"message\":\"" + escape(warning.getMessage()) + "\"}";
+    }
+
+    public String hourlyWeather(List<WeatherWarning> hourlyWeather) {
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < hourlyWeather.size(); i++) {
+            if (i > 0) json.append(',');
+            json.append(weather(hourlyWeather.get(i)));
+        }
+        return json.append(']').toString();
     }
 
     public String message(String value) { return "{\"message\":\"" + escape(value) + "\"}"; }

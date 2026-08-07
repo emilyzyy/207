@@ -18,11 +18,13 @@ public final class OptimizeItineraryPresenter implements OptimizeItineraryOutput
 
     @Override
     public void presentSuccess(OptimizeItineraryOutputData outputData) {
+        DayPlanState current = viewModel.getState();
         viewModel.setState(new DayPlanState(
                 outputData.getTrip().getId(),
                 outputData.getTrip().getScheduledEvents(),
                 outputData.getMessage(),
-                false));
+                false,
+                current.getHourlyWeather()));
     }
 
     @Override
@@ -32,6 +34,7 @@ public final class OptimizeItineraryPresenter implements OptimizeItineraryOutput
                 current.getTripId(),
                 current.getEvents(),
                 errorMessage == null ? "Unable to compact itinerary" : errorMessage,
-                true));
+                true,
+                current.getHourlyWeather()));
     }
 }

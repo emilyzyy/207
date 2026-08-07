@@ -1,13 +1,20 @@
 package closeai;
 
-import closeai.adapters.controllers.OptimizeItineraryController;
+import closeai.adapters.controllers.ActivityDiscoveryController;
+import closeai.adapters.controllers.AutoScheduleController;
+import closeai.adapters.controllers.BookmarkController;
+import closeai.adapters.controllers.ManualPlanController;
 import closeai.adapters.controllers.ShareTripController;
+import closeai.adapters.controllers.SwingTaskRunner;
 import closeai.adapters.controllers.TripSetupController;
-import closeai.adapters.presenters.OptimizeItineraryPresenter;
+import closeai.adapters.presenters.ActivityDiscoveryPresenter;
+import closeai.adapters.presenters.AutoSchedulePresenter;
+import closeai.adapters.presenters.ManualPlanPresenter;
 import closeai.adapters.presenters.ShareTripPresenter;
 import closeai.adapters.presenters.TripSetupPresenter;
 import closeai.adapters.viewmodels.BookmarksState;
 import closeai.adapters.viewmodels.BookmarksViewModel;
+import closeai.adapters.viewmodels.ActivitySelectionViewModel;
 import closeai.adapters.viewmodels.CalendarViewModel;
 import closeai.adapters.viewmodels.DashboardState;
 import closeai.adapters.viewmodels.DashboardViewModel;
@@ -27,12 +34,22 @@ import closeai.adapters.views.OverviewPanel;
 import closeai.adapters.views.PlannerPanel;
 import closeai.adapters.views.SearchPanel;
 import closeai.adapters.views.TripOptionsPanel;
+import closeai.adapters.gateways.DistanceServiceTravelTimeEstimator;
+import closeai.adapters.gateways.WeatherServiceContextGateway;
 import closeai.application.AppContainer;
+import closeai.application.PlaceHydrator;
+import closeai.application.autoschedule.AutoScheduleInteractor;
+import closeai.application.autoschedule.engine.ScheduleEngine;
+import closeai.application.autoschedule.policy.DaylightPolicy;
+import closeai.application.autoschedule.policy.MealWindowPolicy;
+import closeai.application.autoschedule.policy.SoftPolicy;
+import closeai.application.autoschedule.policy.WeatherSuitabilityPolicy;
+import closeai.application.ports.AuthService;
 import closeai.application.ports.PlacesService;
+import closeai.application.ports.TripRepository;
 import closeai.application.ports.WeatherService;
 import closeai.application.scheduling.DefaultActivityScoringPolicy;
 import closeai.application.usecases.CreateTripInputData;
-import closeai.application.usecases.OptimizeItineraryInteractor;
 import closeai.application.usecases.TripSetupOutputData;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.ScheduledEvent;
@@ -41,38 +58,49 @@ import closeai.domain.entities.WeatherWarning;
 import closeai.domain.valueobjects.Location;
 import closeai.domain.valueobjects.TransportationMode;
 import closeai.domain.valueobjects.WeatherSeverity;
+import closeai.infrastructure.config.DotEnv;
 import closeai.infrastructure.mock.MockPlacesService;
 import closeai.infrastructure.mock.MockWeatherService;
 import closeai.infrastructure.places.CachingPlacesService;
 import closeai.infrastructure.places.NominatimPlacesService;
 import closeai.infrastructure.persistence.CachedPlacesRepository;
+import closeai.infrastructure.persistence.DualModeItineraryDataAccess;
 import closeai.infrastructure.persistence.InMemoryItineraryDataAccessObject;
 import closeai.infrastructure.routing.OsrmDistanceService;
+import closeai.infrastructure.supabase.SupabaseItineraryDataAccess;
 import closeai.infrastructure.weather.OpenMeteoWeatherService;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import javax.swing.SwingUtilities;
 
 /** Outer composition root for selecting infrastructure without leaking it into application code. */
 public final class AppBuilder {
     public AppContainer build() {
+        return build(null);
+    }
+
+    /** Builds the app; pass a signed-in {@link AuthService} when using Supabase persistence. */
+    public AppContainer build(AuthService authSession) {
         String weatherMode = System.getProperty("closeai.weather.mode", "mock");
         String placesMode = System.getProperty("closeai.places.mode", "mock");
         WeatherService weather = "open-meteo".equalsIgnoreCase(weatherMode)
                 ? new OpenMeteoWeatherService() : new MockWeatherService();
         return buildWithServices(
-                weather, "nominatim".equalsIgnoreCase(placesMode));
+                weather, "nominatim".equalsIgnoreCase(placesMode), authSession);
     }
 
     public AppContainer buildOffline() {
-        return buildWithServices(new MockWeatherService(), false);
+        return buildWithServices(new MockWeatherService(), false, null);
     }
 
     public AppContainer buildLive() {
-        return buildWithServices(new OpenMeteoWeatherService(), false);
+        return buildWithServices(new OpenMeteoWeatherService(), false, null);
     }
 
     /** Builds Swing with a seeded demo trip so the interactive map is populated on launch. */
@@ -99,11 +127,13 @@ public final class AppBuilder {
         SearchViewModel searchViewModel = new SearchViewModel(searchStateFor(trip));
         BookmarksViewModel bookmarksViewModel = new BookmarksViewModel(
                 new BookmarksState(trip.getBookmarkedActivities()));
+        ActivitySelectionViewModel activitySelectionViewModel =
+                new ActivitySelectionViewModel();
         DayPlanViewModel dayPlanViewModel = new DayPlanViewModel(
                 new DayPlanState(
                         trip.getId(),
                         trip.getScheduledEvents(),
-                        "Seeded demo · optimizer uses Day Plan activities only",
+                        "Seeded demo. Choose Autoschedule to arrange this day.",
                         false));
         TripOptionsViewModel tripOptionsViewModel = new TripOptionsViewModel(
                 new TripOptionsState(
@@ -116,28 +146,46 @@ public final class AppBuilder {
         ShareViewModel shareViewModel = new ShareViewModel(
                 new ShareState("", "", false));
 
-        OptimizeItineraryPresenter optimizePresenter =
-                new OptimizeItineraryPresenter(dayPlanViewModel);
-        OptimizeItineraryInteractor optimizeInteractor =
-                new OptimizeItineraryInteractor(app.trips, optimizePresenter);
-        OptimizeItineraryController optimizeController =
-                new OptimizeItineraryController(optimizeInteractor, dayPlanViewModel);
+        AutoScheduleController autoScheduleController =
+                buildAutoSchedule(app, dayPlanViewModel);
         ShareTripPresenter sharePresenter = new ShareTripPresenter(shareViewModel);
         ShareTripController shareController = new ShareTripController(
                 app.share,
                 () -> dayPlanViewModel.getState().getTripId(),
                 sharePresenter);
+        ActivityDiscoveryPresenter discoveryPresenter = new ActivityDiscoveryPresenter(
+                searchViewModel, bookmarksViewModel);
+        ActivityDiscoveryController discoveryController = new ActivityDiscoveryController(
+                app.searchActivities, app.filterActivities,
+                () -> dashboardViewModel.getState().getDestination(), discoveryPresenter);
+        BookmarkController bookmarkController = new BookmarkController(
+                app.bookmarkActivity, app.removeBookmark,
+                () -> dayPlanViewModel.getState().getTripId(), searchViewModel, discoveryPresenter);
+        ManualPlanPresenter manualPlanPresenter = new ManualPlanPresenter(
+                dayPlanViewModel, searchViewModel);
+        ManualPlanController manualPlanController = new ManualPlanController(
+                app.addActivityToPlan, app.editEvent, app.removeEvent,
+                () -> dayPlanViewModel.getState().getTripId(), manualPlanPresenter);
 
         HeaderPanel headerPanel = new HeaderPanel(
                 dashboardViewModel, dayPlanViewModel, shareController);
-        OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel, searchViewModel);
+        OverviewPanel overviewPanel = new OverviewPanel(
+                dashboardViewModel, searchViewModel, bookmarksViewModel,
+                dayPlanViewModel, activitySelectionViewModel);
         overviewPanel.setViewportPlacesLoader(
                 (south, west, north, east, maxResults) ->
                         app.places.searchInBounds(south, west, north, east, maxResults));
-        SearchPanel searchPanel = new SearchPanel(searchViewModel);
-        BookmarksPanel bookmarksPanel = new BookmarksPanel(bookmarksViewModel);
+        SearchPanel searchPanel = new SearchPanel(
+                searchViewModel, discoveryController, bookmarkController,
+                manualPlanController, activitySelectionViewModel);
+        BookmarksPanel bookmarksPanel = new BookmarksPanel(
+                bookmarksViewModel, bookmarkController,
+                manualPlanController, activitySelectionViewModel);
         DayPlanPanel dayPlanPanel =
-                new DayPlanPanel(dayPlanViewModel, optimizeController);
+                new DayPlanPanel(dayPlanViewModel, autoScheduleController,
+                        manualPlanController, activitySelectionViewModel);
+        dayPlanPanel.setTripDefaults(trip.getStartTime(), trip.getEndTime(),
+                trip.getTransportationMode());
         TripOptionsPanel tripOptionsPanel =
                 new TripOptionsPanel(tripOptionsViewModel);
         PlannerPanel plannerPanel = new PlannerPanel(
@@ -152,7 +200,7 @@ public final class AppBuilder {
                 shareViewModel,
                 searchViewModel,
                 bookmarksViewModel);
-        refreshWeatherAsync(app, trip, dashboardViewModel);
+        refreshWeatherAsync(app, trip, dashboardViewModel, dayPlanViewModel);
         return frame;
     }
 
@@ -173,10 +221,12 @@ public final class AppBuilder {
                 new SearchState(app.activities.findAll(), ""));
         BookmarksViewModel bookmarksViewModel = new BookmarksViewModel(
                 new BookmarksState(Collections.emptyList()));
+        ActivitySelectionViewModel activitySelectionViewModel =
+                new ActivitySelectionViewModel();
         DayPlanViewModel dayPlanViewModel = new DayPlanViewModel(
                 new DayPlanState(
                         "", Collections.emptyList(),
-                        "Create a trip before planning or optimizing.", false));
+                        "Create a trip before planning or autoscheduling.", false));
         CalendarViewModel calendarViewModel = new CalendarViewModel(
                 dashboardViewModel, dayPlanViewModel);
         ShareViewModel shareViewModel = new ShareViewModel(
@@ -202,28 +252,44 @@ public final class AppBuilder {
                 () -> tripOptionsViewModel.getState().getTripId(),
                 tripSetupPresenter);
 
-        OptimizeItineraryPresenter optimizePresenter =
-                new OptimizeItineraryPresenter(dayPlanViewModel);
-        OptimizeItineraryInteractor optimizeInteractor =
-                new OptimizeItineraryInteractor(app.trips, optimizePresenter);
-        OptimizeItineraryController optimizeController =
-                new OptimizeItineraryController(optimizeInteractor, dayPlanViewModel);
+        AutoScheduleController autoScheduleController =
+                buildAutoSchedule(app, dayPlanViewModel);
         ShareTripPresenter sharePresenter = new ShareTripPresenter(shareViewModel);
         ShareTripController shareController = new ShareTripController(
                 app.share,
                 () -> dayPlanViewModel.getState().getTripId(),
                 sharePresenter);
+        ActivityDiscoveryPresenter discoveryPresenter = new ActivityDiscoveryPresenter(
+                searchViewModel, bookmarksViewModel);
+        ActivityDiscoveryController discoveryController = new ActivityDiscoveryController(
+                app.searchActivities, app.filterActivities,
+                () -> dashboardViewModel.getState().getDestination(), discoveryPresenter);
+        BookmarkController bookmarkController = new BookmarkController(
+                app.bookmarkActivity, app.removeBookmark,
+                () -> dayPlanViewModel.getState().getTripId(), searchViewModel, discoveryPresenter);
+        ManualPlanPresenter manualPlanPresenter = new ManualPlanPresenter(
+                dayPlanViewModel, searchViewModel);
+        ManualPlanController manualPlanController = new ManualPlanController(
+                app.addActivityToPlan, app.editEvent, app.removeEvent,
+                () -> dayPlanViewModel.getState().getTripId(), manualPlanPresenter);
 
         HeaderPanel headerPanel = new HeaderPanel(
                 dashboardViewModel, dayPlanViewModel, shareController);
-        OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel, searchViewModel);
+        OverviewPanel overviewPanel = new OverviewPanel(
+                dashboardViewModel, searchViewModel, bookmarksViewModel,
+                dayPlanViewModel, activitySelectionViewModel);
         overviewPanel.setViewportPlacesLoader(
                 (south, west, north, east, maxResults) ->
                         app.places.searchInBounds(south, west, north, east, maxResults));
-        SearchPanel searchPanel = new SearchPanel(searchViewModel);
-        BookmarksPanel bookmarksPanel = new BookmarksPanel(bookmarksViewModel);
+        SearchPanel searchPanel = new SearchPanel(
+                searchViewModel, discoveryController, bookmarkController,
+                manualPlanController, activitySelectionViewModel);
+        BookmarksPanel bookmarksPanel = new BookmarksPanel(
+                bookmarksViewModel, bookmarkController,
+                manualPlanController, activitySelectionViewModel);
         DayPlanPanel dayPlanPanel =
-                new DayPlanPanel(dayPlanViewModel, optimizeController);
+                new DayPlanPanel(dayPlanViewModel, autoScheduleController,
+                        manualPlanController, activitySelectionViewModel);
         TripOptionsPanel tripOptionsPanel =
                 new TripOptionsPanel(tripOptionsViewModel, tripSetupController);
         PlannerPanel plannerPanel = new PlannerPanel(
@@ -257,11 +323,36 @@ public final class AppBuilder {
     public void refreshFrameForTrip(Trip trip, CloseAIFrame frame) {
         frame.getSearchViewModel().setState(searchStateFor(trip));
         frame.getBookmarksViewModel().setState(new BookmarksState(trip.getBookmarkedActivities()));
+        DayPlanState current = frame.getDayPlanViewModel().getState();
         frame.getDayPlanViewModel().setState(new DayPlanState(
                 trip.getId(),
                 trip.getScheduledEvents(),
-                "Seeded demo · optimizer uses Day Plan activities only",
-                false));
+                "Seeded demo. Choose Autoschedule to arrange this day.",
+                false,
+                current.getHourlyWeather()));
+    }
+
+    /**
+     * Assembles the one production Autoschedule path.
+     *
+     * <p>Everything the use case depends on is chosen here and nowhere else: the engine,
+     * the built-in policies, and the gateways that adapt the team's routing and weather
+     * services to the contracts scheduling actually needs. The use case itself has never
+     * heard of OSRM, TomTom or Open-Meteo.</p>
+     */
+    private AutoScheduleController buildAutoSchedule(AppContainer app,
+                                                     DayPlanViewModel dayPlanViewModel) {
+        AutoSchedulePresenter presenter = new AutoSchedulePresenter(dayPlanViewModel);
+        List<SoftPolicy> builtInPolicies = Arrays.asList(
+                new WeatherSuitabilityPolicy(), new MealWindowPolicy(), new DaylightPolicy());
+        AutoScheduleInteractor interactor = new AutoScheduleInteractor(
+                app.trips,
+                new DistanceServiceTravelTimeEstimator(app.distances),
+                new WeatherServiceContextGateway(app.weather),
+                presenter,
+                builtInPolicies,
+                new ScheduleEngine());
+        return new AutoScheduleController(interactor, dayPlanViewModel, new SwingTaskRunner());
     }
 
     /** Search and map view for a trip: every discovered place, tagged with its bookmark/schedule status. */
@@ -289,40 +380,63 @@ public final class AppBuilder {
     }
 
     private void refreshWeatherAsync(AppContainer app, Trip trip,
-                                     DashboardViewModel dashboardViewModel) {
+                                     DashboardViewModel dashboardViewModel,
+                                     DayPlanViewModel dayPlanViewModel) {
         Thread worker = new Thread(() -> {
-            WeatherWarning result = weatherWarningFor(app, trip);
+            List<WeatherWarning> hourlyWeather = weatherWarningsFor(app, trip);
+            WeatherWarning result = closestToTripStart(hourlyWeather, trip);
             DashboardState state = new DashboardState(
                     trip.getDestination(),
                     trip.getDate(),
                     result.getWeatherCondition(),
                     result.getMessage());
-            SwingUtilities.invokeLater(() -> dashboardViewModel.setState(state));
+            SwingUtilities.invokeLater(() -> {
+                dashboardViewModel.setState(state);
+                DayPlanState current = dayPlanViewModel.getState();
+                dayPlanViewModel.setState(new DayPlanState(
+                        current.getTripId(), current.getEvents(), current.getMessage(),
+                        current.isError(), hourlyWeather));
+            });
         }, "Weather-" + trip.getDestination());
         worker.setDaemon(true);
         worker.start();
     }
 
     /** Fetches the weather preview, degrading gracefully so network or date errors cannot crash the UI. */
-    private WeatherWarning weatherWarningFor(AppContainer app, Trip trip) {
+    private List<WeatherWarning> weatherWarningsFor(AppContainer app, Trip trip) {
         try {
-            return app.weatherWarning.execute(trip.getId());
+            return app.weatherWarning.executeHourly(trip.getId());
         } catch (Exception exception) {
             System.err.println("[AppBuilder] Weather preview unavailable for " + trip.getDestination()
                     + ": " + exception.getMessage());
-            return new WeatherWarning(
+            return Collections.singletonList(new WeatherWarning(
                     new Location(0, 0, trip.getDestination()),
                     trip.getStartTime(),
                     "Weather preview unavailable",
                     WeatherSeverity.LOW,
                     "Could not fetch a forecast for " + trip.getDestination()
-                            + ". The trip date may be outside the forecast range, or you may be offline.");
+                            + ". The trip date may be outside the forecast range, or you may be offline."));
         }
     }
 
+    private WeatherWarning closestToTripStart(
+            List<WeatherWarning> hourlyWeather, Trip trip) {
+        WeatherWarning closest = null;
+        long closestMinutes = Long.MAX_VALUE;
+        for (WeatherWarning warning : hourlyWeather) {
+            if (warning == null || warning.getTime() == null) continue;
+            long difference = Math.abs(Duration.between(
+                    trip.getStartTime(), warning.getTime()).toMinutes());
+            if (difference < closestMinutes) {
+                closest = warning;
+                closestMinutes = difference;
+            }
+        }
+        return closest == null ? placeholderWarning(trip) : closest;
+    }
+
     private AppContainer buildWithServices(
-            WeatherService weather, boolean useLivePlaces) {
-        InMemoryItineraryDataAccessObject itineraries = new InMemoryItineraryDataAccessObject();
+            WeatherService weather, boolean useLivePlaces, AuthService authSession) {
         MockPlacesService mockPlaces = new MockPlacesService();
         CachedPlacesRepository cachedPlaces = new CachedPlacesRepository();
         cachedPlaces.addAll(mockPlaces.findAll());
@@ -330,13 +444,37 @@ public final class AppBuilder {
                 ? new CachingPlacesService(
                         new NominatimPlacesService(), cachedPlaces)
                 : mockPlaces;
+
+        String persistence = System.getProperty("closeai.persistence.mode", "memory");
+        TripRepository trips;
+        if ("supabase".equalsIgnoreCase(persistence)) {
+            AuthService auth = authSession;
+            if (auth == null) {
+                throw new IllegalStateException(
+                        "Supabase persistence requires an AuthService instance");
+            }
+            String url = DotEnv.get("CLOSEAI_SUPABASE_URL", "closeai.supabase.url");
+            String anonKey = DotEnv.get("CLOSEAI_SUPABASE_ANON_KEY", "closeai.supabase.anonKey");
+            if (url == null || anonKey == null) {
+                throw new IllegalStateException(
+                        "Set CLOSEAI_SUPABASE_URL and CLOSEAI_SUPABASE_ANON_KEY in .env");
+            }
+            PlaceHydrator hydrator = new PlaceHydrator(cachedPlaces, places, cachedPlaces);
+            InMemoryItineraryDataAccessObject local = new InMemoryItineraryDataAccessObject();
+            SupabaseItineraryDataAccess remote =
+                    new SupabaseItineraryDataAccess(url, anonKey, auth, hydrator);
+            trips = new DualModeItineraryDataAccess(local, remote, auth);
+        } else {
+            trips = new InMemoryItineraryDataAccessObject();
+        }
+
         return new AppContainer(
-                itineraries,
+                trips,
                 places,
                 cachedPlaces,
                 new OsrmDistanceService(),
                 weather,
                 new DefaultActivityScoringPolicy(),
-                itineraries);
+                (closeai.application.ports.ItineraryDataAccessInterface) trips);
     }
 }

@@ -12,6 +12,17 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>11</maven.compiler.release>
         <junit.version>5.12.2</junit.version>
+        <!--
+            0.8.13 or newer is required here: this repository is built and run on Java 24,
+            whose class files are major version 68, and 0.8.12's bundled ASM refuses to read
+            them. The agent still instruments the project's own classes (compiled to release
+            11) correctly, so coverage figures were never wrong, but every JDK class it
+            touched raised IllegalClassFormatException and buried the build output in
+            hundreds of stack traces.
+        -->
+        <jacoco.version>0.8.13</jacoco.version>
+        <checkstyle.plugin.version>3.6.0</checkstyle.plugin.version>
+        <checkstyle.tool.version>10.21.4</checkstyle.tool.version>
         <jackson.version>2.18.4</jackson.version>
     </properties>
 
@@ -43,6 +54,70 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.3</version>
+            </plugin>
+            <!--
+                Coverage evidence. Reports only: the build is not failed on a threshold,
+                because much of the repository is other members' in-progress work and a
+                gate here would block the whole team rather than improve anything.
+                Run: ./mvnw clean test  ->  target/site/jacoco/index.html
+            -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <configuration>
+                    <excludes>
+                        <!-- Swing rendering: exercised by hand, not meaningfully unit-testable. -->
+                        <exclude>closeai/adapters/views/**</exclude>
+                        <!-- Opt-in live adapters: covered by tests that require network access. -->
+                        <exclude>closeai/infrastructure/web/**</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!--
+                Style evidence (Piazza @275). Reports only, for the same reason as above.
+                Run: ./mvnw checkstyle:check  ->  target/checkstyle-result.xml
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${checkstyle.plugin.version}</version>
+                <!--
+                    The plugin ships with an older Checkstyle than the course configuration
+                    needs: config/mystyle.xml uses SuppressWithNearbyTextFilter and
+                    NoCodeInFile, added in Checkstyle 10.10 and 10.9. Pinning the tool here
+                    is what lets the course file be used exactly as distributed, rather than
+                    editing the course's rules to suit our build.
+                -->
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>${checkstyle.tool.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <configLocation>config/mystyle.xml</configLocation>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                    <consoleOutput>true</consoleOutput>
+                    <failOnViolation>false</failOnViolation>
+                    <violationSeverity>error</violationSeverity>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
