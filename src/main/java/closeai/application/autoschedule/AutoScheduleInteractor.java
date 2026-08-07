@@ -389,6 +389,16 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
      * worse than one that says where it did. Being told plainly is what lets a traveller
      * check the two visits that matter instead of doubting all five.</p>
      *
+     * <p>Worded as flexibility rather than as a missing-data complaint, because that is what
+     * it actually means for the traveller: these are the activities the day has the most
+     * freedom to move. The fact is the same either way, and leading with the absence would
+     * make a schedule that is working well read as though something had gone wrong.</p>
+     *
+     * <p>It says "a general daily window was used" rather than "any time", because a general
+     * window is exactly what still applies: with no per-weekday hours the task falls back to
+     * the activity's single opening/closing pair, and that pair is still enforced. Claiming
+     * the activity could go anywhere would be a nicer sentence and a false one.</p>
+     *
      * <p>Venues known to be shut all day get their own warning: the search will simply fail
      * to place them, and "could not be scheduled" with no reason is the least helpful thing
      * this feature could say.</p>
@@ -405,9 +415,8 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
             }
         }
         if (!unknown.isEmpty()) {
-            warnings.add("Opening hours unavailable for " + namesOf(unknown)
-                    + ", so " + (unknown.size() == 1 ? "it was" : "they were")
-                    + " scheduled without that limit.");
+            warnings.add("Flexible timing for " + namesOf(unknown)
+                    + " — no day-by-day hours published, so a general daily window was used.");
         }
         if (!closed.isEmpty()) {
             warnings.add(namesOf(closed) + (closed.size() == 1 ? " is" : " are")

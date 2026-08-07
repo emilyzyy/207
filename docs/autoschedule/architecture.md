@@ -256,8 +256,10 @@ Three rules hold this together:
 
 Most OpenStreetMap places carry no `opening_hours` tag. Reading silence as "closed" would
 refuse to plan almost any real day, so unknown is permissive — and the Interactor adds
-"Opening hours unavailable for X, so it was scheduled without that limit." to the preview's
-warnings. Anything the parser cannot fully understand (month ranges, `sunrise`/`sunset`,
+"Flexible timing for X — no day-by-day hours published, so a general daily window was used."
+to the preview's warnings. Worded as flexibility rather than as missing data, and careful to
+say *a general window* rather than *any time*, because the activity's single opening/closing
+pair is still enforced. Anything the parser cannot fully understand (month ranges, `sunrise`/`sunset`,
 quoted comments) becomes unknown for the same reason: a wrong guess would either bar a venue
 that is open or book one that is shut, and both are worse than saying so.
 

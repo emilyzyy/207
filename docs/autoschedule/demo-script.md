@@ -84,9 +84,12 @@ Point at the amber band, at the line naming venues.
 > interval, and a venue that shuts for lunch gets two intervals, not one long one. Travel is
 > allowed outside them, because walking to a museum before it opens is how you get there.
 >
-> But look at what it says: *opening hours unavailable for these five*. Real hours come from
+> But look at what it says: *flexible timing for these five*. Day-by-day hours come from
 > OpenStreetMap's `opening_hours` tag — Raashid's places adapter reads it — and most places
-> simply do not have one. The seeded demo has none at all, which is why all five are named. I could have
+> simply do not publish one. These five are hand-built demo fixtures, so none of them has a
+> tag at all, which is why all five are named. They still each have a general daily window,
+> and that window is still obeyed — which is why it says *a general window* and not *any
+> time*. I could have
 > treated silence as 'closed', and then it would refuse to plan almost any real day. So
 > unknown means no constraint — and it tells you exactly where it made that assumption. A
 > silent guess and a stated one look identical in a screenshot and are not the same promise.

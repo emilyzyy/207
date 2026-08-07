@@ -144,7 +144,7 @@ class OpeningHoursProductionWiringTest {
 
     private static String hoursWarning(DayPlanState state) {
         for (String warning : state.getWarnings()) {
-            if (warning.contains("Opening hours unavailable")) {
+            if (warning.contains("Flexible timing")) {
                 return warning;
             }
         }

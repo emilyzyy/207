@@ -235,9 +235,12 @@ Three outcomes, and the last is the one that matters:
 
 The third row is the common one: most OpenStreetMap places carry no `opening_hours` tag, and
 treating silence as "shut" would refuse to plan almost any real day. So unknown hours stay
-permissive — and the preview names the venues it guessed about
-("Opening hours unavailable for Casa Loma, so it was scheduled without that limit."). A
-silent guess and a stated one look identical in a screenshot and are not the same promise.
+permissive — and the preview names the venues it had no day-by-day data for
+("Flexible timing for Casa Loma — no day-by-day hours published, so a general daily window
+was used."). It is worded as flexibility because that is what it means for the traveller:
+these are the activities the day has the most freedom to move. It says *a general window*
+rather than *any time* because the activity's single opening/closing pair is still enforced.
+A silent guess and a stated one look identical in a screenshot and are not the same promise.
 Anything the parser cannot fully understand — month ranges, `sunrise`/`sunset`, free text —
 becomes unknown rather than a guess.
 

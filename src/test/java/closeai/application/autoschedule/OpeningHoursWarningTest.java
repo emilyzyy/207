@@ -70,7 +70,7 @@ class OpeningHoursWarningTest {
 
     private String openingHoursWarning() {
         for (String warning : presenter.getPreview().getWarnings()) {
-            if (warning.contains("Opening hours unavailable")) {
+            if (warning.contains("Flexible timing")) {
                 return warning;
             }
         }
@@ -86,7 +86,10 @@ class OpeningHoursWarningTest {
         assertNotNull(warning, "the guess must be stated: "
                 + presenter.getPreview().getWarnings());
         assertTrue(warning.contains("Casa Loma"), warning);
-        assertTrue(warning.contains("it was scheduled without that limit"), warning);
+        assertTrue(warning.contains("no day-by-day hours published"), warning);
+        assertTrue(warning.contains("a general daily window was used"),
+                "the coarse window still applies, so the warning must not promise any time: "
+                        + warning);
     }
 
     @Test
@@ -108,7 +111,7 @@ class OpeningHoursWarningTest {
         String warning = openingHoursWarning();
         assertNotNull(warning);
         assertTrue(warning.contains("Casa Loma and High Park"), warning);
-        assertTrue(warning.contains("they were scheduled"), warning);
+        assertTrue(warning.contains("a general daily window was used"), warning);
     }
 
     @Test
