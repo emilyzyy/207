@@ -47,6 +47,13 @@ class OsrmDistanceServiceTest {
         return new OsrmDistanceService(client, new ObjectMapper());
     }
 
+    private OsrmDistanceService serviceWithoutTomtomKey(String... bodies) {
+        for (String body : bodies) {
+            client.enqueue(200, body);
+        }
+        return new OsrmDistanceService(client, new ObjectMapper(), () -> null);
+    }
+
     private static String tomtomBody(int seconds) {
         return "{\"routes\":[{\"summary\":{\"travelTimeInSeconds\":" + seconds + "}}]}";
     }
@@ -123,16 +130,14 @@ class OsrmDistanceServiceTest {
 
     @Test
     void drivingUsesOsrmDirectlyWhenNoKeyIsConfigured() {
-        withoutTomtomKey(() -> {
-            OsrmDistanceService service = serviceWith(osrmBody(600));
+        OsrmDistanceService service = serviceWithoutTomtomKey(osrmBody(600));
 
-            int minutes = service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
-                    TransportationMode.DRIVING, DEPARTURE);
+        int minutes = service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
+                TransportationMode.DRIVING, DEPARTURE);
 
-            assertEquals(10, minutes);
-            assertEquals(1, client.requestCount());
-            assertTrue(client.lastUri().toString().contains("routed-car"));
-        });
+        assertEquals(10, minutes);
+        assertEquals(1, client.requestCount());
+        assertTrue(client.lastUri().toString().contains("routed-car"));
     }
 
     @Test
@@ -175,13 +180,11 @@ class OsrmDistanceServiceTest {
     @Test
     void noApiKeyIsHardCodedInTheAdapter() {
         // The key must come from configuration; a literal here would be committed to Git.
-        withoutTomtomKey(() -> {
-            OsrmDistanceService service = serviceWith(osrmBody(600));
-            service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
-                    TransportationMode.DRIVING, DEPARTURE);
-            assertFalse(client.lastUri().toString().contains("key="),
-                    "without configuration there is no key to send");
-        });
+        OsrmDistanceService service = serviceWithoutTomtomKey(osrmBody(600));
+        service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
+                TransportationMode.DRIVING, DEPARTURE);
+        assertFalse(client.lastUri().toString().contains("key="),
+                "without configuration there is no key to send");
     }
 
     private void withTomtomKey(Runnable body) {
@@ -193,18 +196,6 @@ class OsrmDistanceServiceTest {
             if (previous == null) {
                 System.clearProperty("tomtom.api.key");
             } else {
-                System.setProperty("tomtom.api.key", previous);
-            }
-        }
-    }
-
-    private void withoutTomtomKey(Runnable body) {
-        String previous = System.getProperty("tomtom.api.key");
-        System.clearProperty("tomtom.api.key");
-        try {
-            body.run();
-        } finally {
-            if (previous != null) {
                 System.setProperty("tomtom.api.key", previous);
             }
         }
