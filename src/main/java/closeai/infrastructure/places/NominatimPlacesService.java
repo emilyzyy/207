@@ -5,6 +5,7 @@ import closeai.domain.entities.Activity;
 import closeai.domain.valueobjects.ActivityCategory;
 import closeai.domain.valueobjects.IndoorOutdoorType;
 import closeai.domain.valueobjects.Location;
+import closeai.domain.valueobjects.OpeningHours;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -32,6 +33,17 @@ public final class NominatimPlacesService implements PlacesService {
     private static final Duration OVERPASS_TIMEOUT = Duration.ofSeconds(15);
     private static final double SEARCH_RADIUS_METERS = 1500;
     private static final int MAX_RESULTS = 25;
+
+    /**
+     * Assumed hours for a place whose real ones OpenStreetMap does not record.
+     *
+     * <p>A guess, and knowingly so. It is not a claim that the venue is shut outside these
+     * times: the activity also carries {@link OpeningHours#unknown()}, which is what the
+     * scheduler actually consults, and which makes it treat the place as unconstrained and
+     * say so. These two values only survive as the coarse window older code reads.</p>
+     */
+    private static final LocalTime FALLBACK_OPENS = LocalTime.of(9, 0);
+    private static final LocalTime FALLBACK_CLOSES = LocalTime.of(21, 0);
 
     private final HttpClient client;
     private final ObjectMapper mapper;
@@ -217,12 +229,18 @@ public final class NominatimPlacesService implements PlacesService {
             String address = buildAddress(tags);
             String id = "osm-" + el.get("id").asLong();
             int duration = estimateDuration(category);
+            // The Overpass query already asks for "out body", so every tag the place has is
+            // in this response -- opening_hours included. Most OSM places do not carry it,
+            // and OpeningHoursParser returns unknown for those, which leaves the fallback
+            // window below in charge exactly as it was before hours were read at all.
+            OpeningHours hours = OpeningHoursParser.parse(
+                    tags.has("opening_hours") ? tags.get("opening_hours").asText() : null);
             activities.add(new Activity(
                     id, name.trim(), category,
                     new Location(lat, lon, address),
                     4.0, duration,
-                    LocalTime.of(9, 0), LocalTime.of(21, 0),
-                    ioType, riskLevel(ioType)));
+                    FALLBACK_OPENS, FALLBACK_CLOSES,
+                    ioType, riskLevel(ioType), hours));
             idx++;
         }
         return activities;
