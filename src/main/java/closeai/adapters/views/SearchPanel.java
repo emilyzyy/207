@@ -6,19 +6,24 @@ import closeai.domain.entities.Activity;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 
 /** Seeded activity-discovery skeleton. Search actions are intentionally unwired. */
 public final class SearchPanel extends JPanel {
     private final SearchViewModel viewModel;
     private final JPanel results = new JPanel();
+    private final JScrollPane scroll;
 
     public SearchPanel(SearchViewModel viewModel) {
         this.viewModel = viewModel;
@@ -29,7 +34,7 @@ public final class SearchPanel extends JPanel {
         add(searchControls(), BorderLayout.NORTH);
         results.setLayout(new BoxLayout(results, BoxLayout.Y_AXIS));
         results.setBackground(SwingTheme.PANEL);
-        JScrollPane scroll = new JScrollPane(results);
+        scroll = new JScrollPane(results);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(14);
         add(scroll, BorderLayout.CENTER);
@@ -71,12 +76,13 @@ public final class SearchPanel extends JPanel {
     private void render(SearchState state) {
         results.removeAll();
         if (state.getActivities().isEmpty()) {
-            JLabel empty = new JLabel("No results");
+            JLabel empty = new JLabel(state.isLoading() ? "Loading places…" : "No results");
             empty.setFont(SwingTheme.BODY);
             empty.setForeground(SwingTheme.MUTED);
             results.add(empty);
             results.revalidate();
             results.repaint();
+            scroll.getVerticalScrollBar().setValue(0);
             return;
         }
         JLabel count = new JLabel(state.getActivities().size() + " seeded places");
@@ -84,26 +90,63 @@ public final class SearchPanel extends JPanel {
         count.setForeground(SwingTheme.MUTED);
         results.add(count);
         results.add(Box.createVerticalStrut(8));
-        for (Activity activity : state.getActivities()) {
-            results.add(activityCard(activity));
+        String selectedId = state.getSelectedActivityId();
+        List<Activity> ordered = orderSelectedFirst(state.getActivities(), selectedId);
+        final JComponent[] focused = {null};
+        for (Activity activity : ordered) {
+            JComponent card = activityCard(activity, activity.getId().equals(selectedId));
+            results.add(card);
             results.add(Box.createVerticalStrut(8));
+            if (activity.getId().equals(selectedId)) focused[0] = card;
         }
+        final JComponent focusedCard = focused[0];
         results.revalidate();
         results.repaint();
+        if (focusedCard != null) {
+            SwingUtilities.invokeLater(() -> {
+                results.validate();
+                scroll.getVerticalScrollBar().setValue(0);
+            });
+        }
     }
 
-    private JPanel activityCard(Activity activity) {
+    /** Keeps the selected place first so it is always visible at the top of the sidebar. */
+    private static List<Activity> orderSelectedFirst(List<Activity> activities, String selectedId) {
+        if (selectedId == null) return new ArrayList<>(activities);
+        List<Activity> ordered = new ArrayList<>();
+        for (Activity activity : activities) {
+            if (activity.getId().equals(selectedId)) {
+                ordered.add(activity);
+                break;
+            }
+        }
+        for (Activity activity : activities) {
+            if (!activity.getId().equals(selectedId)) ordered.add(activity);
+        }
+        return ordered;
+    }
+
+    private JComponent activityCard(Activity activity, boolean focused) {
         JPanel card = new JPanel(new BorderLayout(10, 8));
         SwingTheme.styleCard(card);
+        card.putClientProperty("activityId", activity.getId());
+        card.setBorder(BorderFactory.createLineBorder(
+                focused ? SwingTheme.BLUE : new java.awt.Color(0, 0, 0, 0), 2));
+        card.setBackground(focused ? SwingTheme.BLUE_SOFT : SwingTheme.PANEL);
         JLabel name = new JLabel(activity.getName());
         name.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         name.setForeground(SwingTheme.NAVY);
         card.add(name, BorderLayout.NORTH);
+        String hoursText = activity.getOpeningHoursText();
+        String hoursLine = (hoursText != null && !hoursText.trim().isEmpty())
+                ? "<br><font color='#1f68e1'>Hours:</font> " + htmlEscape(hoursText)
+                : "";
         JLabel details = new JLabel(String.format(
-                "<html><font color='#1f68e1'>%s</font> · ★ %.1f<br>%s · %d min · %s</html>",
+                "<html><font color='#1f68e1'>%s</font> · ★ %.1f<br>%s · %d min · %s%s</html>",
                 activity.getCategory(), activity.getRating(),
                 activity.getLocation().getAddress(),
-                activity.getEstimatedDurationMinutes(), activity.getIndoorOutdoorType()));
+                activity.getEstimatedDurationMinutes(), activity.getIndoorOutdoorType(),
+                hoursLine));
         details.setFont(SwingTheme.SMALL);
         details.setForeground(SwingTheme.MUTED);
         card.add(details, BorderLayout.CENTER);
@@ -113,5 +156,10 @@ public final class SearchPanel extends JPanel {
         actions.add(SwingTheme.placeholderButton("Add to plan (not wired)"));
         card.add(actions, BorderLayout.SOUTH);
         return card;
+    }
+
+    private static String htmlEscape(String text) {
+        return text.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace("\"", "&quot;");
     }
 }

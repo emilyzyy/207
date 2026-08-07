@@ -13,13 +13,27 @@ public final class SearchState {
     private final String query;
     private final Set<String> bookmarkedIds;
     private final Set<String> scheduledIds;
+    private final String selectedActivityId;
+    private final boolean loading;
 
     public SearchState(List<Activity> activities, String query) {
-        this(activities, query, Collections.emptySet(), Collections.emptySet());
+        this(activities, query, Collections.emptySet(), Collections.emptySet(), null, false);
     }
 
     public SearchState(List<Activity> activities, String query,
                        Set<String> bookmarkedIds, Set<String> scheduledIds) {
+        this(activities, query, bookmarkedIds, scheduledIds, null, false);
+    }
+
+    public SearchState(List<Activity> activities, String query,
+                       Set<String> bookmarkedIds, Set<String> scheduledIds,
+                       String selectedActivityId) {
+        this(activities, query, bookmarkedIds, scheduledIds, selectedActivityId, false);
+    }
+
+    public SearchState(List<Activity> activities, String query,
+                       Set<String> bookmarkedIds, Set<String> scheduledIds,
+                       String selectedActivityId, boolean loading) {
         this.activities = Collections.unmodifiableList(new ArrayList<Activity>(
                 activities == null ? Collections.emptyList() : activities));
         this.query = query == null ? "" : query;
@@ -27,6 +41,8 @@ public final class SearchState {
                 bookmarkedIds == null ? Collections.emptySet() : bookmarkedIds));
         this.scheduledIds = Collections.unmodifiableSet(new HashSet<String>(
                 scheduledIds == null ? Collections.emptySet() : scheduledIds));
+        this.selectedActivityId = selectedActivityId;
+        this.loading = loading;
     }
 
     public List<Activity> getActivities() {
@@ -43,5 +59,13 @@ public final class SearchState {
 
     public Set<String> getScheduledIds() {
         return scheduledIds;
+    }
+
+    public String getSelectedActivityId() {
+        return selectedActivityId;
+    }
+
+    public boolean isLoading() {
+        return loading;
     }
 }

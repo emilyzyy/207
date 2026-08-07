@@ -4,10 +4,14 @@ import closeai.adapters.viewmodels.DashboardState;
 import closeai.adapters.viewmodels.DashboardViewModel;
 import closeai.adapters.viewmodels.SearchState;
 import closeai.adapters.viewmodels.SearchViewModel;
+import closeai.domain.entities.Activity;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Color;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -29,6 +33,12 @@ public final class OverviewPanel extends JPanel {
         mapPanel = new MapPanel(620, 520);
         mapPanel.setCity(viewModel.getState().getDestination());
         mapPanel.focusOnCity(viewModel.getState().getDestination());
+        mapPanel.setPlaceSelectionListener(searchViewModel::selectActivity);
+        mapPanel.setPlacesLoadedListener(loaded -> mergeIntoSearch(searchViewModel, loaded));
+        mapPanel.setPlacesLoadingListener(loading -> {
+            if (!loading && !searchViewModel.getState().getActivities().isEmpty()) return;
+            searchViewModel.setLoading(loading);
+        });
         add(mapPanel, BorderLayout.CENTER);
         add(weatherCard(), BorderLayout.SOUTH);
 
@@ -74,7 +84,30 @@ public final class OverviewPanel extends JPanel {
         mapPanel.setHighlightedIds(state.getBookmarkedIds(), state.getScheduledIds());
     }
 
+    /** Folds viewport-loaded places into the shared search state so the sidebar updates too. */
+    private void mergeIntoSearch(SearchViewModel searchViewModel, List<Activity> loaded) {
+        if (loaded == null || loaded.isEmpty()) return;
+        SearchState current = searchViewModel.getState();
+        Map<String, Activity> byId = new java.util.LinkedHashMap<>();
+        for (Activity activity : current.getActivities()) {
+            byId.put(activity.getId(), activity);
+        }
+        for (Activity activity : loaded) {
+            if (activity.getLocation() != null) byId.putIfAbsent(activity.getId(), activity);
+        }
+        searchViewModel.setState(new SearchState(
+                new ArrayList<>(byId.values()),
+                current.getQuery(),
+                current.getBookmarkedIds(),
+                current.getScheduledIds(),
+                current.getSelectedActivityId()));
+    }
+
     public MapPanel getMapPanel() {
         return mapPanel;
+    }
+
+    public void setViewportPlacesLoader(MapPanel.ViewportPlacesLoader loader) {
+        mapPanel.setViewportLoader(loader);
     }
 }

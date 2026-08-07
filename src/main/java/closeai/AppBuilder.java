@@ -131,6 +131,9 @@ public final class AppBuilder {
         HeaderPanel headerPanel = new HeaderPanel(
                 dashboardViewModel, dayPlanViewModel, shareController);
         OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel, searchViewModel);
+        overviewPanel.setViewportPlacesLoader(
+                (south, west, north, east, maxResults) ->
+                        app.places.searchInBounds(south, west, north, east, maxResults));
         SearchPanel searchPanel = new SearchPanel(searchViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(bookmarksViewModel);
         DayPlanPanel dayPlanPanel =
@@ -214,6 +217,9 @@ public final class AppBuilder {
         HeaderPanel headerPanel = new HeaderPanel(
                 dashboardViewModel, dayPlanViewModel, shareController);
         OverviewPanel overviewPanel = new OverviewPanel(dashboardViewModel, searchViewModel);
+        overviewPanel.setViewportPlacesLoader(
+                (south, west, north, east, maxResults) ->
+                        app.places.searchInBounds(south, west, north, east, maxResults));
         SearchPanel searchPanel = new SearchPanel(searchViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(bookmarksViewModel);
         DayPlanPanel dayPlanPanel =
