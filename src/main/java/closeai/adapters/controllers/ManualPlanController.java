@@ -1,12 +1,12 @@
 package closeai.adapters.controllers;
 
 import closeai.adapters.presenters.ManualPlanPresenter;
+import closeai.adapters.viewmodels.TimeDisplay;
 import closeai.application.usecases.AddActivityToPlanUseCase;
 import closeai.application.usecases.EditScheduledEventUseCase;
 import closeai.application.usecases.RemoveScheduledEventUseCase;
 import closeai.domain.entities.Trip;
 import java.time.LocalTime;
-import java.time.format.DateTimeParseException;
 import java.util.function.Supplier;
 
 /** Parses Swing input and invokes the manual Day Plan application use cases. */
@@ -74,11 +74,17 @@ public final class ManualPlanController {
         return value == null || value.trim().isEmpty() ? null : requiredTime(value, "Start time");
     }
 
+    /**
+     * Reads a typed time through {@link TimeDisplay}, which is what the edit dialog now
+     * shows. It still accepts the 24-hour {@code HH:MM} this previously required, so no
+     * existing caller or habit breaks; it simply also understands the AM/PM the field is
+     * prefilled with.
+     */
     private static LocalTime requiredTime(String value, String label) {
-        try {
-            return LocalTime.parse(value == null ? "" : value.trim());
-        } catch (DateTimeParseException exception) {
-            throw new IllegalArgumentException(label + " must use HH:MM");
+        LocalTime parsed = TimeDisplay.parse(value);
+        if (parsed == null) {
+            throw new IllegalArgumentException(label + " must look like 9:00 AM");
         }
+        return parsed;
     }
 }

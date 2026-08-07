@@ -1,5 +1,6 @@
 package closeai.adapters.controllers;
 
+import closeai.adapters.viewmodels.TimeDisplay;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,8 +43,9 @@ public final class AutoScheduleSettingsValidator {
         }
         if (tripStart != null && tripEnd != null
                 && (start.isBefore(tripStart) || end.isAfter(tripEnd))) {
-            problems.add("Available hours must be within the trip's hours (" + tripStart
-                    + " to " + tripEnd + "). To extend your day, edit the trip settings.");
+            problems.add("Available hours must be within the trip's hours ("
+                    + TimeDisplay.format(tripStart) + " to " + TimeDisplay.format(tripEnd)
+                    + "). To extend your day, edit the trip settings.");
         }
         if (settings.getTransportationMode() == null) {
             problems.add("Choose how you are getting around.");

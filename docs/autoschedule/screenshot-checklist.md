@@ -4,8 +4,21 @@ The screenshot list comes from `docs/autoschedule/verification-evidence.md` §7 
 not guessed. This batch added a seventh (2b) because the weather preference now has two
 distinct appearances and only one of them occurs today.
 
-Captured 2026-08-06. **Seven of seven captured automatically** and committed under
+Captured 2026-08-06, **re-captured after the UI polish pass** on
+`feature/autoschedule-ui-polish`. Seven of seven captured automatically and committed under
 `docs/autoschedule/screenshots/`.
+
+Every shot now shows the polished interface: a 12-hour clock throughout, visible padlock
+controls, section headers, before/after metric cards, `Locked`/`Moved` badges, a distinct
+warning band, and travel rows that no longer look like activities.
+
+## Which captures are automated, and which need a person
+
+| # | Capture | How |
+|---|---|---|
+| 1, 2, 2b, 3, 5, 6 | Day Plan panel and settings dialog | **Automated component render** — the real production components painted offscreen at a fixed 900×692 (dialogs at their packed size). |
+| 4 | Expanded "Why this schedule?" | **Automated, but of the scroll pane's content rather than the window.** The expanded reasoning falls below a 692px viewport, so the capture is of the scrollable view at its full height. It is the real component, not a mock-up, but it is not what a 900×692 window shows without scrolling. |
+| — | Whole application window, Calendar View after Apply | **Manual only.** The harness renders panels, not the frame, tab strip or native chrome. |
 
 ## How these were captured, and what that means
 
@@ -85,8 +98,8 @@ Filenames below are the ones committed.
 | **Purpose** | Individual rubric Required Elements: the **"before" View**. *(verified)* |
 | **Starting state** | App launched offline; seeded `demo-trip` (Toronto, 2026-08-12, 09:00–21:00, walking) loaded; Day Plan tab open; no preview run. |
 | **Actions and settings** | None. Capture as opened. |
-| **Expected visible result** | Three activities in their original, deliberately poor order: High Park 09:00–10:00, Royal Ontario Museum 11:00–12:00 (after it closes is the point of the demo narrative), St Lawrence Market 15:30–16:30. Status reads "Add activities, then choose Autoschedule." |
-| **Must appear in the crop** | All three time ranges and names; the Lock checkbox on every row; the Autoschedule button. |
+| **Expected visible result** | A `YOUR DAY PLAN` section header, then three activity cards on a 12-hour clock: High Park 9:00 AM – 10:00 AM, Royal Ontario Museum 11:00 AM – 12:00 PM (after it closes is the point of the demo narrative), St Lawrence Market 3:30 PM – 4:30 PM. Each carries an **open padlock**, Edit and Remove. Status reads "Add activities, then choose Autoschedule." |
+| **Must appear in the crop** | All three time ranges in AM/PM; the padlock control on every row; the Autoschedule button. A locked row is tinted blue and shows a **closed** padlock. |
 | **Must not appear** | Any proposed schedule; Apply or Cancel (both hidden outside a preview); any terminal window, environment variable, URL or personal information. |
 
 ### 2. Settings — weather offered (the state that occurs today)
@@ -121,8 +134,8 @@ Filenames below are the ones committed.
 | **Purpose** | Use-case Explanation and functionality: preview-and-confirm, before/after metrics, per-row reasons. *(not individually rubric-named — see above)* |
 | **Starting state** | From state 1, tick **Lock** on Royal Ontario Museum. |
 | **Actions and settings** | Autoschedule → keep the defaults → **Generate Preview**. |
-| **Expected visible result** | "Your Day Plan now" unchanged at the top with the museum's Lock still ticked; "Proposed schedule (not applied yet)" beneath it with a metrics line (travel, waiting, "2 of 3 moved"), travel rows, `[locked]` and `[moved]` tags, and per-row reasons ("you locked this time", "a usual mealtime", "in daylight"); the objective summary line; Apply and Cancel now visible. |
-| **Must appear in the crop** | The unchanged original plan **and** the proposal together — that juxtaposition is the whole point. The metrics line and at least one reason. |
+| **Expected visible result** | `YOUR DAY PLAN` unchanged above with the museum still locked; a `PROPOSED SCHEDULE` header marked "not applied yet"; three metric cards reading `0 → 132 travel, minutes`, `270 → 60 waiting, minutes`, `2 of 3 activities moved`; an amber warning band; activity rows with `Locked` / `Moved` badges and per-row reasons; travel rows tinted, indented and prefixed `↳`. Apply and Cancel visible; Autoschedule hidden. |
+| **Must appear in the crop** | The unchanged original plan **and** the proposal together — that juxtaposition is the whole point. All three metric cards, the warning band, and at least one badge. |
 | **Must not appear** | Any suggestion the plan has already changed. |
 
 ### 4. Why these times — expanded

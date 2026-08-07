@@ -235,3 +235,33 @@ roughly doubles the row count. Direction 2 mitigates this with lighter travel ro
 collapsed reasoning section, but does not eliminate it. If the day-length problem becomes
 real, Direction 1 is the natural follow-up — and this pass leaves the card components in a
 shape that a two-column layout could reuse.
+
+---
+
+## What was built
+
+Direction 2, as specified. Implemented on `feature/autoschedule-ui-polish`:
+
+| Change | Where |
+|---|---|
+| 12-hour clock, formatting and parsing | new `TimeDisplay`; used by `PreviewRowView`, `DayPlanPanel`, `AutoScheduleSettingsDialog`, `AutoScheduleSettingsValidator`, `ManualPlanController` |
+| Padlock control | new `LockIcon` (Java2D) driving a `JToggleButton` over the existing `toggleLock` |
+| Badge, metric card, warning band, section header | additive helpers on `SwingTheme` |
+| Sections, metric strip, warning band, travel treatment, grouped disclosure | `DayPlanPanel` private render methods |
+| Grouped form, white surface, aligned labels, primary/secondary buttons | `AutoScheduleSettingsDialog` |
+
+**Two decisions changed during implementation**, both recorded rather than quietly made:
+
+1. *Autoschedule was briefly demoted to a secondary button* so Apply would be the only
+   primary. That broke `SwingPanelStructureTest`'s `isOpaque()` assertion. Rather than weaken
+   the assertion, Autoschedule stayed primary and is now **hidden** while a Preview is on
+   screen — one primary is visible per state, which is what the requirement actually asked
+   for, and the assertion passes untouched.
+
+2. *`ManualPlanController` had to learn the new format.* The edit dialog now prefills
+   `9:00 AM`, and his parser only accepted `HH:MM`, so leaving it would have broken Alex's
+   edit flow the moment the field was submitted unchanged. It now accepts both.
+
+**Not done, deliberately:** no algorithm, scoring, constraint, gateway, boundary, package or
+persistence change; no new preference; no new ViewModel semantics. `DayPlanState`'s fields
+keep their exact meaning.
