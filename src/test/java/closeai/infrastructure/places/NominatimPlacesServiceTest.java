@@ -47,6 +47,138 @@ final class NominatimPlacesServiceTest {
     }
 
     @Test
+    void prefersEnglishNameTagWhenPresent() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":124,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"Tour Eiffel\",\"name:en\":\"Eiffel Tower\","
+                        + "\"tourism\":\"attraction\"}}]}");
+
+        List<Activity> results = service().search("Paris", "");
+
+        assertEquals(1, results.size());
+        assertEquals("Eiffel Tower", results.get(0).getName());
+    }
+
+    @Test
+    void fallsBackToInternationalNameTag() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":125,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"Музей\",\"int_name\":\"Museum\","
+                        + "\"tourism\":\"museum\"}}]}");
+
+        List<Activity> results = service().search("Moscow", "");
+
+        assertEquals(1, results.size());
+        assertEquals("Museum", results.get(0).getName());
+    }
+
+    @Test
+    void keepsOriginalNameWithoutEnglishTags() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":126,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"Café Local\",\"amenity\":\"cafe\"}}]}");
+
+        List<Activity> results = service().search("Paris", "");
+
+        assertEquals(1, results.size());
+        assertEquals("Café Local", results.get(0).getName());
+    }
+
+    @Test
+    void leavesEnglishNameUnchangedWhenEnglishTagMatches() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":127,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"City Museum\",\"name:en\":\"City Museum\","
+                        + "\"tourism\":\"museum\"}}]}");
+
+        List<Activity> results = service().search("Toronto", "");
+
+        assertEquals(1, results.size());
+        assertEquals("City Museum", results.get(0).getName());
+    }
+
+    @Test
+    void derivesOpeningTimesFromOpeningHoursTag() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":300,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"Cafe A\",\"amenity\":\"cafe\","
+                        + "\"opening_hours\":\"Mo-Fr 09:30-17:15; Sa 10:00-14:00\"}}]}");
+
+        List<Activity> results = service().search("Toronto", "");
+
+        assertEquals(1, results.size());
+        assertEquals(java.time.LocalTime.of(9, 30), results.get(0).getOpeningTime());
+        assertEquals(java.time.LocalTime.of(17, 15), results.get(0).getClosingTime());
+        assertEquals("Mo-Fr 09:30-17:15; Sa 10:00-14:00", results.get(0).getOpeningHoursText());
+    }
+
+    @Test
+    void treats247AsAllDayWindow() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":301,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"Cafe B\",\"amenity\":\"cafe\","
+                        + "\"opening_hours\":\"24/7\"}}]}");
+
+        List<Activity> results = service().search("Toronto", "");
+
+        assertEquals(1, results.size());
+        assertEquals(java.time.LocalTime.of(0, 0), results.get(0).getOpeningTime());
+        assertEquals(java.time.LocalTime.of(23, 59), results.get(0).getClosingTime());
+    }
+
+    @Test
+    void fallsBackToDefaultHoursWithoutOpeningHoursTag() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":302,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"Cafe C\",\"amenity\":\"cafe\"}}]}");
+
+        List<Activity> results = service().search("Toronto", "");
+
+        assertEquals(1, results.size());
+        assertEquals(java.time.LocalTime.of(9, 0), results.get(0).getOpeningTime());
+        assertEquals(java.time.LocalTime.of(21, 0), results.get(0).getClosingTime());
+        assertEquals(null, results.get(0).getOpeningHoursText());
+    }
+
+    @Test
+    void fallsBackToDefaultHoursForUnparseableOpeningHours() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":303,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"Cafe D\",\"amenity\":\"cafe\","
+                        + "\"opening_hours\":\"by appointment only\"}}]}");
+
+        List<Activity> results = service().search("Toronto", "");
+
+        assertEquals(1, results.size());
+        assertEquals(java.time.LocalTime.of(9, 0), results.get(0).getOpeningTime());
+        assertEquals(java.time.LocalTime.of(21, 0), results.get(0).getClosingTime());
+    }
+
+    @Test
     void returnsEmptyWhenGeocodingHasNoResult() throws Exception {
         startServer(200, "[]", 200, "{\"elements\":[]}");
 
@@ -69,6 +201,59 @@ final class NominatimPlacesServiceTest {
                 "{not-json");
 
         assertTrue(service().search("Toronto", "").isEmpty());
+    }
+
+    @Test
+    void returnsEmptyWhenOverpassReturnsHtmlErrorPage() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "<html><body><p><strong style=\"color:#FF0000\">Error</strong>: "
+                        + "runtime error: ... too busy ...</p></body></html>");
+
+        assertTrue(service().search("Toronto", "").isEmpty());
+    }
+
+    @Test
+    void searchInBoundsParsesBoundingBoxElements() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":200,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"Cafe A\",\"amenity\":\"cafe\"}},"
+                        + "{\"id\":201,\"lat\":43.67,\"lon\":-79.38,"
+                        + "\"tags\":{\"name\":\"Museum B\",\"tourism\":\"museum\"}},"
+                        + "{\"id\":202,\"lat\":43.68,\"lon\":-79.37,"
+                        + "\"tags\":{\"name\":\"Shop C\",\"shop\":\"supermarket\"}}]}");
+
+        List<Activity> results =
+                service().searchInBounds(43.6, -79.4, 43.7, -79.3, 100);
+
+        assertEquals(3, results.size());
+        assertEquals("osm-200", results.get(0).getId());
+        assertEquals(ActivityCategory.COFFEE, results.get(0).getCategory());
+        assertEquals("osm-201", results.get(1).getId());
+        assertEquals("osm-202", results.get(2).getId());
+    }
+
+    @Test
+    void searchInBoundsHonorsMaxResults() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":200,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"Cafe A\",\"amenity\":\"cafe\"}},"
+                        + "{\"id\":201,\"lat\":43.67,\"lon\":-79.38,"
+                        + "\"tags\":{\"name\":\"Cafe B\",\"amenity\":\"cafe\"}}]}");
+
+        List<Activity> result =
+                service().searchInBounds(43.6, -79.4, 43.7, -79.3, 1);
+
+        assertEquals(1, result.size());
+        assertEquals("osm-200", result.get(0).getId());
     }
 
     private void startServer(

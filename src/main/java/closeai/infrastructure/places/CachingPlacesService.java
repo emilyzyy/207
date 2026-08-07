@@ -24,4 +24,12 @@ public final class CachingPlacesService implements PlacesService {
         cache.addAll(results);
         return results;
     }
+
+    @Override
+    public List<Activity> searchInBounds(double south, double west, double north, double east,
+                                         int maxResults) {
+        List<Activity> results = delegate.searchInBounds(south, west, north, east, maxResults);
+        cache.addAll(results);
+        return results;
+    }
 }

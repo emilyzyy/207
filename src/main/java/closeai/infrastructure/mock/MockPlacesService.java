@@ -47,6 +47,20 @@ public final class MockPlacesService implements PlacesService, ActivityRepositor
         return result;
     }
 
+    public List<Activity> searchInBounds(double south, double west, double north, double east,
+                                         int maxResults) {
+        List<Activity> result = new ArrayList<Activity>();
+        for (Activity activity : activities) {
+            Location loc = activity.getLocation();
+            if (loc.getLatitude() >= south && loc.getLatitude() <= north
+                    && loc.getLongitude() >= west && loc.getLongitude() <= east) {
+                result.add(activity);
+            }
+            if (result.size() >= maxResults) break;
+        }
+        return result;
+    }
+
     public List<Activity> findAll() { return new ArrayList<Activity>(activities); }
     public Optional<Activity> findById(String id) {
         for (Activity activity : activities) if (activity.getId().equals(id)) return Optional.of(activity);

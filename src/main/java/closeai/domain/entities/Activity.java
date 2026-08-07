@@ -16,10 +16,18 @@ public final class Activity {
     private final LocalTime closingTime;
     private final IndoorOutdoorType indoorOutdoorType;
     private final String weatherRisk;
+    private final String openingHoursText;
 
     public Activity(String id, String name, ActivityCategory category, Location location, double rating,
                     int estimatedDurationMinutes, LocalTime openingTime, LocalTime closingTime,
                     IndoorOutdoorType indoorOutdoorType, String weatherRisk) {
+        this(id, name, category, location, rating, estimatedDurationMinutes, openingTime, closingTime,
+                indoorOutdoorType, weatherRisk, null);
+    }
+
+    public Activity(String id, String name, ActivityCategory category, Location location, double rating,
+                    int estimatedDurationMinutes, LocalTime openingTime, LocalTime closingTime,
+                    IndoorOutdoorType indoorOutdoorType, String weatherRisk, String openingHoursText) {
         this.id = id;
         this.name = name;
         this.category = category;
@@ -30,6 +38,7 @@ public final class Activity {
         this.closingTime = closingTime;
         this.indoorOutdoorType = indoorOutdoorType;
         this.weatherRisk = weatherRisk;
+        this.openingHoursText = openingHoursText;
     }
 
     public String getId() { return id; }
@@ -42,4 +51,5 @@ public final class Activity {
     public LocalTime getClosingTime() { return closingTime; }
     public IndoorOutdoorType getIndoorOutdoorType() { return indoorOutdoorType; }
     public String getWeatherRisk() { return weatherRisk; }
+    public String getOpeningHoursText() { return openingHoursText; }
 }
