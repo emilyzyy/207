@@ -1,12 +1,14 @@
 package closeai.adapters.views;
 
 import closeai.domain.entities.Activity;
+import closeai.domain.entities.ScheduledEvent;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Polygon;
 import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.event.ComponentAdapter;
@@ -55,6 +57,8 @@ public final class MapPanel extends JPanel {
     private String city = "the area";
     private Set<String> bookmarkedIds = Collections.emptySet();
     private Set<String> scheduledIds = Collections.emptySet();
+    private List<String> scheduledActivityIds = Collections.emptyList();
+    private String selectedActivityId = "";
     private boolean showHighlightedOnly = false;
 
     private final JCheckBox highlightOnly = new JCheckBox("Bookmarks & calendar only");
@@ -174,6 +178,33 @@ public final class MapPanel extends JPanel {
         this.bookmarkedIds = (bookmarked == null) ? Collections.emptySet() : new HashSet<>(bookmarked);
         this.scheduledIds = (scheduled == null) ? Collections.emptySet() : new HashSet<>(scheduled);
         repaint();
+    }
+
+    /** Supplies ordered Day Plan activities so scheduled pins use itinerary numbering. */
+    public void setSchedule(List<ScheduledEvent> events) {
+        List<String> ordered = new ArrayList<>();
+        if (events != null) {
+            for (ScheduledEvent event : events) {
+                if (event.getActivity() != null
+                        && !ordered.contains(event.getActivity().getId())) {
+                    ordered.add(event.getActivity().getId());
+                }
+            }
+        }
+        scheduledActivityIds = ordered;
+        scheduledIds = new HashSet<>(ordered);
+        repaint();
+    }
+
+    /** Selects, centers, and visually emphasizes one activity marker. */
+    public void selectActivity(Activity activity) {
+        selectedActivityId = activity == null ? "" : activity.getId();
+        if (activity != null) {
+            zoom = Math.max(zoom, 15);
+            flyTo(activity.getLocation().getLatitude(), activity.getLocation().getLongitude());
+        } else {
+            repaint();
+        }
     }
 
     private List<Activity> visibleActivities() {
@@ -343,7 +374,6 @@ public final class MapPanel extends JPanel {
 
     private void drawMarkers(Graphics2D g2, int w, int h,
                              double centerPixelX, double centerPixelY) {
-        int idx = 1;
         for (Activity a : visibleActivities()) {
             double lng = a.getLocation().getLongitude();
             double lat = a.getLocation().getLatitude();
@@ -352,25 +382,87 @@ public final class MapPanel extends JPanel {
             int sx = (int) (w / 2.0 + (markerPxX - centerPixelX));
             int sy = (int) (h / 2.0 + (markerPxY - centerPixelY));
             if (sx < -30 || sx > w + 30 || sy < -30 || sy > h + 30) {
-                idx++;
                 continue;
             }
-            String label = String.valueOf(idx);
-            g2.setColor(new Color(0, 0, 0, 40));
-            g2.fillOval(sx - 13, sy - 9, 28, 28);
-            g2.setColor(markerColor(a.getId()));
-            g2.fillOval(sx - 14, sy - 14, 28, 28);
-            g2.setColor(Color.WHITE);
-            g2.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
-            int textWidth = g2.getFontMetrics().stringWidth(label);
-            g2.drawString(label, sx - textWidth / 2, sy + 5);
+            drawMarker(g2, a.getId(), sx, sy);
             g2.setColor(new Color(0x1a, 0x1f, 0x36));
             g2.setFont(SwingTheme.SMALL);
             String name = a.getName();
             if (name.length() > 25) name = name.substring(0, 22) + "...";
             g2.drawString(name, sx + 18, sy + 4);
-            idx++;
         }
+    }
+
+    private void drawMarker(Graphics2D g2, String activityId, int sx, int sy) {
+        boolean selected = activityId.equals(selectedActivityId);
+        boolean bookmarked = bookmarkedIds.contains(activityId);
+        int scheduleIndex = scheduledActivityIds.indexOf(activityId);
+        int radius = selected ? 18 : 14;
+
+        if (selected) {
+            g2.setColor(new Color(255, 255, 255, 225));
+            g2.fillOval(sx - radius - 5, sy - radius - 5,
+                    (radius + 5) * 2, (radius + 5) * 2);
+            g2.setColor(SwingTheme.NAVY);
+            g2.drawOval(sx - radius - 5, sy - radius - 5,
+                    (radius + 5) * 2, (radius + 5) * 2);
+        }
+
+        g2.setColor(new Color(0, 0, 0, 45));
+        g2.fillOval(sx - radius + 1, sy - radius + 4, radius * 2, radius * 2);
+        g2.setColor(markerColor(activityId));
+        g2.fillPolygon(new Polygon(
+                new int[]{sx - 7, sx + 7, sx},
+                new int[]{sy + radius - 5, sy + radius - 5, sy + radius + 9}, 3));
+        g2.fillOval(sx - radius, sy - radius, radius * 2, radius * 2);
+
+        if (scheduleIndex >= 0) {
+            String label = String.valueOf(scheduleIndex + 1);
+            g2.setColor(Color.WHITE);
+            g2.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
+            int textWidth = g2.getFontMetrics().stringWidth(label);
+            g2.drawString(label, sx - textWidth / 2, sy + 5);
+            if (bookmarked) {
+                drawBookmarkBadge(g2, sx + radius - 4, sy - radius + 3);
+            }
+        } else if (bookmarked) {
+            drawBookmarkGlyph(g2, sx, sy, radius);
+        } else {
+            g2.setColor(Color.WHITE);
+            g2.fillOval(sx - 4, sy - 4, 8, 8);
+        }
+    }
+
+    private void drawBookmarkGlyph(Graphics2D g2, int sx, int sy, int radius) {
+        int width = Math.max(10, radius - 3);
+        int height = Math.max(15, radius + 3);
+        int left = sx - width / 2;
+        int top = sy - height / 2;
+        Polygon ribbon = new Polygon(
+                new int[]{left, left + width, left + width, sx, left},
+                new int[]{top, top, top + height, top + height - 5, top + height}, 5);
+        g2.setColor(Color.WHITE);
+        g2.fillPolygon(ribbon);
+    }
+
+    private void drawBookmarkBadge(Graphics2D g2, int sx, int sy) {
+        g2.setColor(COLOR_BOOKMARKED);
+        g2.fillOval(sx - 7, sy - 7, 14, 14);
+        g2.setColor(Color.WHITE);
+        Polygon ribbon = new Polygon(
+                new int[]{sx - 3, sx + 3, sx + 3, sx, sx - 3},
+                new int[]{sy - 4, sy - 4, sy + 4, sy + 1, sy + 4}, 5);
+        g2.fillPolygon(ribbon);
+    }
+
+    String markerText(String activityId) {
+        int index = scheduledActivityIds.indexOf(activityId);
+        if (index >= 0) return String.valueOf(index + 1);
+        return bookmarkedIds.contains(activityId) ? "bookmark" : "pin";
+    }
+
+    public String getSelectedActivityId() {
+        return selectedActivityId;
     }
 
     private void loadTile(int x, int y, int z, String key) {

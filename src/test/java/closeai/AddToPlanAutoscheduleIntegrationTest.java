@@ -129,14 +129,17 @@ class AddToPlanAutoscheduleIntegrationTest {
         assertNotNull(app.removeEvent);
 
         // The panels the application builds are handed a manual controller, which is what
-        // makes the buttons live rather than decorative.
-        String builder = new java.io.File(
-                "src/main/java/closeai/AppBuilder.java").exists()
-                ? readFile("src/main/java/closeai/AppBuilder.java") : "";
+        // makes the buttons live rather than decorative. Line breaks are collapsed first:
+        // this is a claim about wiring, and it should not fail because a call was wrapped.
+        String builder = readFile("src/main/java/closeai/AppBuilder.java")
+                .replaceAll("\\s+", " ");
         assertTrue(builder.contains("new ManualPlanController("),
                 "AppBuilder must construct the manual plan controller");
-        assertTrue(builder.contains("autoScheduleController, manualPlanController"),
-                "the Day Plan panel must receive both controllers");
+        assertTrue(builder.contains("new DayPlanPanel( dayPlanViewModel, autoScheduleController, "
+                        + "manualPlanController")
+                        || builder.contains("new DayPlanPanel(dayPlanViewModel, "
+                        + "autoScheduleController, manualPlanController"),
+                "the Day Plan panel must receive the Autoschedule and manual controllers");
     }
 
     // --- 2-3. adding reaches the Trip, and the Day Plan shows it -------------------------

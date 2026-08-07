@@ -3,6 +3,7 @@ package closeai.adapters.views;
 import closeai.adapters.controllers.AutoScheduleController;
 import closeai.adapters.controllers.AutoScheduleSettings;
 import closeai.adapters.controllers.ManualPlanController;
+import closeai.adapters.viewmodels.ActivitySelectionViewModel;
 import closeai.adapters.viewmodels.AutoScheduleStatus;
 import closeai.adapters.viewmodels.DayPlanState;
 import closeai.adapters.viewmodels.DayPlanViewModel;
@@ -16,6 +17,9 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Cursor;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.LocalTime;
 import java.util.List;
 import javax.swing.BorderFactory;
@@ -46,6 +50,7 @@ public final class DayPlanPanel extends JPanel {
     private final DayPlanViewModel viewModel;
     private final AutoScheduleController autoScheduleController;
     private final ManualPlanController manualPlanController;
+    private final ActivitySelectionViewModel selection;
     private final JPanel eventList = new JPanel();
     private final JPanel previewArea = new JPanel();
     private final JLabel status = new JLabel();
@@ -61,19 +66,31 @@ public final class DayPlanPanel extends JPanel {
     private Runnable openCalendarAction = () -> { };
 
     public DayPlanPanel(DayPlanViewModel viewModel, AutoScheduleController autoScheduleController) {
-        this(viewModel, autoScheduleController, null);
+        this(viewModel, autoScheduleController, null, null);
     }
 
     /**
-     * The three-argument form adds Alex's manual add/edit/remove actions. It stays optional
-     * so the panel can still be built by tests and by callers that only drive Autoschedule;
-     * where no manual controller is supplied the per-event buttons are simply disabled.
+     * Adds Alex's manual add/edit/remove actions. Optional, so the panel can still be built
+     * by tests and by callers that only drive Autoschedule; where no manual controller is
+     * supplied the per-event buttons are disabled rather than hidden.
      */
     public DayPlanPanel(DayPlanViewModel viewModel, AutoScheduleController autoScheduleController,
                         ManualPlanController manualPlanController) {
+        this(viewModel, autoScheduleController, manualPlanController, null);
+    }
+
+    /**
+     * Adds Alex's map selection: clicking an activity card highlights it on the map. Also
+     * optional, for the same reason. Autoschedule replaced the Optimize Itinerary mockup, so
+     * that controller is deliberately absent — there is one production path for this panel.
+     */
+    public DayPlanPanel(DayPlanViewModel viewModel, AutoScheduleController autoScheduleController,
+                        ManualPlanController manualPlanController,
+                        ActivitySelectionViewModel selection) {
         this.viewModel = viewModel;
         this.autoScheduleController = autoScheduleController;
         this.manualPlanController = manualPlanController;
+        this.selection = selection;
 
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
@@ -100,6 +117,12 @@ public final class DayPlanPanel extends JPanel {
         render(viewModel.getState());
         viewModel.addPropertyChangeListener(event ->
                 onEventThread(() -> render(viewModel.getState())));
+        if (selection != null) {
+            // Selection changes arrive on the event thread already, but they are marshalled
+            // the same way so there is one rendering path rather than two.
+            selection.addPropertyChangeListener(event ->
+                    onEventThread(() -> render(viewModel.getState())));
+        }
     }
 
     /**
@@ -380,8 +403,9 @@ public final class DayPlanPanel extends JPanel {
         JPanel card = new JPanel(new BorderLayout(12, 5));
         SwingTheme.styleCard(card);
         card.setAlignmentX(Component.LEFT_ALIGNMENT);
+        makeSelectable(card, event);
 
-        JLabel time = new JLabel(event.getStartTime() + " - " + event.getEndTime());
+        JLabel time = new JLabel(event.getStartTime() + " – " + event.getEndTime());
         time.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         time.setForeground(SwingTheme.BLUE);
         card.add(time, BorderLayout.WEST);
@@ -443,6 +467,23 @@ public final class DayPlanPanel extends JPanel {
 
     private static String escape(String text) {
         return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    private void makeSelectable(JPanel card, ScheduledEvent event) {
+        if (selection == null || event.getActivity() == null) return;
+        card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        card.setToolTipText("Show " + event.getActivity().getName() + " on the map");
+        if (event.getActivity().getId().equals(selection.getSelectedActivityId())) {
+            card.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(SwingTheme.BLUE, 2),
+                    BorderFactory.createEmptyBorder(11, 13, 11, 13)));
+        }
+        card.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent mouseEvent) {
+                selection.select(event.getActivity().getId());
+            }
+        });
     }
 
     private void editEvent(ScheduledEvent event) {
