@@ -185,6 +185,20 @@ Individual activities can be pinned with the **Lock** checkbox on their row. A p
 activity keeps its exact time and everything else is arranged around it. Pins last as long
 as the application is open and are never written to the trip.
 
+### Schedule improvements
+
+The Preview reports what it can prove. Each card is a before/after comparison computed in the
+use case — waiting removed, travel saved, a pin honoured, a meal moved toward its window, an
+outdoor activity moved into daylight or milder weather, an order genuinely preserved.
+
+A card appears only when the comparison supports it. An activity already in daylight earns
+nothing, a whole-day forecast cannot produce a weather card, and "order preserved" compares
+the actual sequence rather than the preference you set. Anything that got *worse* is not
+dressed as an achievement: trade-offs and the complete before/after figures sit under
+**Why this schedule?**. When nothing improved, it says so.
+
+The cards stack beside the schedule on a wide window and below it on a narrow one.
+
 ### Preview and Apply
 
 Generating a preview shows the proposal underneath the unchanged Day Plan, with before and

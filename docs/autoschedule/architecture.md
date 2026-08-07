@@ -179,6 +179,37 @@ discovery classes.
 Alex's Edit and Remove buttons. Travel rows carry neither, because the scheduler generates
 them.
 
+## Schedule improvements
+
+The Preview reports what it can prove. `ScheduleImprovementFinder` compares each activity's
+original placement with its proposed one and, for the policy-driven cards, re-runs the same
+`SoftPolicy` objects the search used against the original time. A lower penalty is a real
+improvement measured by the rule that produced the schedule.
+
+```text
+  original events ─┐
+                   ├─▶ ScheduleImprovementFinder ─▶ ScheduleImprovement (+ Type)
+  SchedulePlan ────┘            │                            │
+                                └── re-runs SoftPolicy       ▼
+                                    at the original time   AutoSchedulePreviewOutputData
+                                                             │
+                                    AutoSchedulePresenter ───┘
+                                                             ▼
+                                    DayPlanState ─▶ ScheduleImprovementsPanel
+```
+
+Deliberately not claimed: daylight for an activity already in daylight, weather on a
+whole-day forecast, order preservation from the *preference* flag rather than the actual
+sequence, and anything that got worse. Trade-offs and the complete before/after figures live
+under "Why this schedule?".
+
+### The "before" figures
+
+`ScheduleMetrics.ofExistingSchedule(events, estimator, mode, date)` charges consecutive
+activities the journey their order implies, because a hand-built plan records no travel rows
+and the older reading therefore reported zero travel for a day spread across a city. Explicit
+travel rows are still trusted, so an already-applied plan is not counted twice.
+
 ## Class diagram
 
 The full use-case class diagram — 63 production classes and interfaces, every node

@@ -9,8 +9,8 @@ Environment: Java 24.0.2 (Temurin), macOS, aarch64. Maven via `./mvnw`.
 ./mvnw clean test
 ```
 
-**319 tests, 0 failures, 0 errors, 9 skipped** (re-run 2026-08-06 after integrating
-`origin/main` including Shiyuan's hourly weather; previous figures were 270, 297, 300, 314). The six skips are all opt-in live tests that require
+**390 tests, 0 failures, 0 errors, 9 skipped** (re-run 2026-08-06 after integrating
+`origin/main` including Shiyuan's hourly weather; previous figures were 270, 297, 300, 314, 319, 354). The six skips are all opt-in live tests that require
 network access and an explicit environment variable: the pre-existing
 `OpenMeteoWeatherServiceLiveTest` (1, needs `RUN_LIVE_OPEN_METEO_TEST=true`) and
 `AutoScheduleLiveVerificationTest` (5, needs `RUN_LIVE_AUTOSCHEDULE_TEST=true`) and
@@ -38,9 +38,9 @@ below were therefore never wrong — the noise was.
 
 | Scope | Line | Branch |
 |---|---|---|
-| Repository-wide (after exclusions) | **71.1%** | 52.4% |
-| Autoschedule slice (`application.autoschedule*` + gateways) | **90.5%** | 73.7% |
-| `AutoScheduleInteractor` (the use-case interactor) | **92.3%** | 80.8% |
+| Repository-wide (after exclusions) | **72.7%** | 54.3% |
+| Autoschedule slice (`application.autoschedule*` + gateways) | **91.1%** | 74.1% |
+| `AutoScheduleInteractor` (the use-case interactor) | **92.5%** | 80.8% |
 
 New in this batch: `WeatherOption` 100% line, `WeatherContextGateway` 100% line,
 `SchedulingPreferences` 100% line, `AutoScheduleController` 94.6% line.
@@ -54,8 +54,8 @@ New in this batch: `WeatherOption` 100% line, `WeatherContextGateway` 100% line,
 > submission.
 
 Against the group rubric's testing descriptors — 5/5 wants more than 90% interactor
-coverage and more than 70% overall — the interactor is at 92.3% and the repository is at
-71.1%. Both thresholds are met on line coverage, which Piazza @339 confirms is an
+coverage and more than 70% overall — the interactor is at 92.5% and the repository is at
+72.7%. Both thresholds are met on line coverage, which Piazza @339 confirms is an
 acceptable metric. The Autoschedule slice as a whole also reaches 90.4%.
 
 **Exclusions, and why each is justified:**
@@ -211,6 +211,27 @@ in the shipped dialog — captured in `screenshots/02-settings-weather-available
 The degraded paths are still covered and still honest: a single known hour is reported as
 trip-level so it cannot pretend to inform timing, and an empty, severity-less or throwing
 provider becomes unavailable, contributes zero, and withholds the checkbox with a reason.
+
+## 4b. A metric defect found and fixed
+
+`ScheduleMetrics.ofExistingSchedule` summed only `EventType.TRAVEL` rows. A plan the
+traveller built by hand contains none, so a day spread across Toronto reported **0 minutes of
+travel before**, and the Preview compared travel the user happened to record against travel
+the scheduler computed. Autoschedule therefore appeared to *add* journeys it had only made
+visible.
+
+Fixed in the application layer: consecutive activities with no travel row are charged the
+journey their order requires, using the same estimator the search uses, with the gap credited
+as waiting only for the remainder. Explicit travel rows are still trusted, so an
+already-applied plan is not double counted.
+
+| Same three-activity day | travel before | waiting before |
+|---|---|---|
+| Old reading | 0 min | 270 min |
+| Corrected | **114 min** | **173 min** |
+
+Six regression tests in `ScheduleMetricsTest`, including the double-count case and the
+degradation path when the estimator throws.
 
 ## 5. Manual functional, EDT and accessibility checks
 

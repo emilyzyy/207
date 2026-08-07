@@ -8,9 +8,14 @@ Captured 2026-08-06, **re-captured after the UI polish pass** on
 `feature/autoschedule-ui-polish`. Seven of seven captured automatically and committed under
 `docs/autoschedule/screenshots/`.
 
-Every shot now shows the polished interface: a 12-hour clock throughout, visible padlock
-controls, section headers, before/after metric cards, `Locked`/`Moved` badges, a distinct
-warning band, and travel rows that no longer look like activities.
+Every shot shows the polished interface: a 12-hour clock throughout, visible padlock
+controls, section headers, the `SCHEDULE IMPROVEMENTS` stack, `Locked`/`Moved` badges, a
+distinct warning band, and travel rows that no longer look like activities.
+
+The shots use the deterministic five-activity `AutoscheduleDemoTrip` with its fixed hourly
+forecast, so they can be reproduced exactly on any machine without a network. The six
+improvement cards visible in shot 3 are produced by the real Interactor and asserted by
+`AutoscheduleDemoImprovementsTest`.
 
 ## Which captures are automated, and which need a person
 
@@ -134,8 +139,8 @@ Filenames below are the ones committed.
 | **Purpose** | Use-case Explanation and functionality: preview-and-confirm, before/after metrics, per-row reasons. *(not individually rubric-named — see above)* |
 | **Starting state** | From state 1, tick **Lock** on Royal Ontario Museum. |
 | **Actions and settings** | Autoschedule → keep the defaults → **Generate Preview**. |
-| **Expected visible result** | `YOUR DAY PLAN` unchanged above with the museum still locked; a `PROPOSED SCHEDULE` header marked "not applied yet"; three metric cards reading `0 → 132 travel, minutes`, `270 → 60 waiting, minutes`, `2 of 3 activities moved`; an amber warning band; activity rows with `Locked` / `Moved` badges and per-row reasons; travel rows tinted, indented and prefixed `↳`. Apply and Cancel visible; Autoschedule hidden. |
-| **Must appear in the crop** | The unchanged original plan **and** the proposal together — that juxtaposition is the whole point. All three metric cards, the warning band, and at least one badge. |
+| **Expected visible result** | `YOUR DAY PLAN` unchanged above with the museum still locked; a `PROPOSED SCHEDULE` header marked "not applied yet"; a **`SCHEDULE IMPROVEMENTS` stack on the right** with six cards (waiting removed, less travel, pinned kept, meal moved, into daylight, better weather); an amber warning band; activity rows with `Locked` / `Moved` badges; travel rows tinted, indented and prefixed `↳`. Apply and Cancel visible; Autoschedule hidden. |
+| **Must appear in the crop** | The unchanged original plan **and** the proposal together — that juxtaposition is the whole point. The improvements stack, the warning band, and at least one badge. Capture at **1180px or wider** so the stack sits beside the schedule; below that it moves underneath, which is correct but is not the shot to present. |
 | **Must not appear** | Any suggestion the plan has already changed. |
 
 ### 4. Why these times — expanded

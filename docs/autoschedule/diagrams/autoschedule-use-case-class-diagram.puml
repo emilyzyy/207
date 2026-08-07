@@ -63,6 +63,16 @@ package "Frameworks & Drivers" #F4F7FA {
     + run(work : Runnable) : void
   }
 
+  class ScheduleImprovementsPanel <<Swing View>> {
+    + {static} PREFERRED_WIDTH : int
+    - card(improvement : ImprovementView) : JPanel
+  }
+
+  class LockIcon <<Swing Icon>> {
+    - locked : boolean
+    + paintIcon(c, g, x, y) : void
+  }
+
   class OsrmDistanceService {
     + estimateTravelMinutes(from, to, mode, departure) : int
     - estimateTomtom(from, to, departure, key) : Integer
@@ -140,7 +150,20 @@ package "Interface Adapters" #F7F9FB {
   }
 
   class PreviewRowView <<view data>>
-  class PreviewMetricsView <<view data>>
+  class PreviewMetricsView <<view data>> {
+    + getTravelSavedMinutes() : int
+    + getIdleSavedMinutes() : int
+  }
+  class ImprovementView <<view data>> {
+    - marker : String
+    - headline : String
+    - detail : String
+  }
+  class TimeDisplay <<utility>> {
+    + {static} format(time : LocalTime) : String
+    + {static} range(start, end) : String
+    + {static} parse(text : String) : LocalTime
+  }
   enum AutoScheduleStatus {
     IDLE
     LOADING
@@ -243,6 +266,28 @@ package "Application Business Rules (Use Case)" #F5FAF6 {
   ' ---- supporting use-case collaborators ----
   class ProblemValidator {
     + validate(availability, tasks, windows) : ScheduleConflict
+  }
+  class ScheduleImprovementFinder {
+    + find(originalEvents, plan, preferences, before, afterTravel, afterIdle) : List<ScheduleImprovement>
+    - orderPreserved(originalEvents, plan) : boolean
+  }
+  class ScheduleImprovement <<value object>> {
+    - type : ScheduleImprovementType
+    - amount : int
+    - subject : String
+  }
+  enum ScheduleImprovementType {
+    WAITING_REDUCED
+    TRAVEL_REDUCED
+    LOCK_PRESERVED
+    MOVED_INTO_DAYLIGHT
+    MOVED_TO_BETTER_WEATHER
+    MEAL_MOVED_TOWARD_WINDOW
+    ORDER_PRESERVED
+  }
+  class ScheduleMetrics {
+    + {static} ofExistingSchedule(events) : ScheduleMetrics
+    + {static} ofExistingSchedule(events, estimator, mode, date) : ScheduleMetrics
   }
   class TravelMatrixPrefetcher {
     + prefetch(tasks, mode, date, availability) : TravelMatrix
@@ -449,6 +494,28 @@ ScheduleTask --> Activity
 TripRepository ..> Trip
 AutoScheduleInteractor ..> Trip : reads / copyWithSchedule
 AutoSchedulePresenter ..> ScheduledEvent : re-times for Calendar
+
+' --- improvements: computed inward, worded outward, stacked at the edge ---
+AutoScheduleInteractor --> ScheduleImprovementFinder
+ScheduleImprovementFinder ..> ScheduleImprovement : produces
+ScheduleImprovementFinder ..> SoftPolicy : re-runs at the original time
+ScheduleImprovementFinder ..> ScheduleMetrics : reads before-totals
+ScheduleImprovement --> ScheduleImprovementType
+AutoSchedulePreviewOutputData "1" *-- "0..*" ScheduleImprovement
+AutoSchedulePresenter ..> ImprovementView : words each improvement
+DayPlanState "1" *-- "0..*" ImprovementView
+DayPlanPanel ..> ScheduleImprovementsPanel : hosts, side or below
+ScheduleImprovementsPanel ..> ImprovementView : renders
+
+' --- travel measured honestly for the "before" half of the comparison ---
+AutoScheduleInteractor ..> ScheduleMetrics : measures the current plan
+ScheduleMetrics --> TravelTimeEstimator : charges implied journeys
+
+' --- presentation-only formatting ---
+DayPlanPanel ..> TimeDisplay
+AutoScheduleSettingsDialog ..> TimeDisplay
+PreviewRowView ..> TimeDisplay
+DayPlanPanel ..> LockIcon : draws the pin control
 
 ' --- composition root ---
 ' Only the edge that AppBuilder actually returns is drawn. Six <<creates>> arrows fanning
