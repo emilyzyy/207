@@ -136,11 +136,7 @@ public final class AppBuilder {
                         "Seeded demo. Choose Autoschedule to arrange this day.",
                         false));
         TripOptionsViewModel tripOptionsViewModel = new TripOptionsViewModel(
-                new TripOptionsState(
-                        trip.getDestination(),
-                        trip.getDate(),
-                        trip.getStartTime(),
-                        trip.getEndTime()));
+                TripOptionsState.fromTrip(trip, "", false));
         CalendarViewModel calendarViewModel = new CalendarViewModel(
                 dashboardViewModel, dayPlanViewModel);
         ShareViewModel shareViewModel = new ShareViewModel(
@@ -166,6 +162,19 @@ public final class AppBuilder {
         ManualPlanController manualPlanController = new ManualPlanController(
                 app.addActivityToPlan, app.editEvent, app.removeEvent,
                 () -> dayPlanViewModel.getState().getTripId(), manualPlanPresenter);
+        TripSetupPresenter tripSetupPresenter = new TripSetupPresenter(
+                dashboardViewModel,
+                searchViewModel,
+                bookmarksViewModel,
+                dayPlanViewModel,
+                tripOptionsViewModel,
+                app.weatherWarning,
+                app.searchActivities);
+        TripSetupController tripSetupController = new TripSetupController(
+                app.createTrip,
+                app.editItinerary,
+                () -> tripOptionsViewModel.getState().getTripId(),
+                tripSetupPresenter);
 
         HeaderPanel headerPanel = new HeaderPanel(
                 dashboardViewModel, dayPlanViewModel, shareController);
@@ -177,17 +186,24 @@ public final class AppBuilder {
                         app.places.searchInBounds(south, west, north, east, maxResults));
         SearchPanel searchPanel = new SearchPanel(
                 searchViewModel, discoveryController, bookmarkController,
-                manualPlanController, activitySelectionViewModel);
+                manualPlanController, activitySelectionViewModel,
+                dayPlanViewModel, tripOptionsViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(
                 bookmarksViewModel, bookmarkController,
-                manualPlanController, activitySelectionViewModel);
+                manualPlanController, activitySelectionViewModel,
+                dayPlanViewModel, tripOptionsViewModel);
         DayPlanPanel dayPlanPanel =
                 new DayPlanPanel(dayPlanViewModel, autoScheduleController,
                         manualPlanController, activitySelectionViewModel);
         dayPlanPanel.setTripDefaults(trip.getStartTime(), trip.getEndTime(),
                 trip.getTransportationMode());
+        tripOptionsViewModel.addPropertyChangeListener(event -> {
+            TripOptionsState options = tripOptionsViewModel.getState();
+            dayPlanPanel.setTripDefaults(options.getStartTime(), options.getEndTime(),
+                    trip.getTransportationMode());
+        });
         TripOptionsPanel tripOptionsPanel =
-                new TripOptionsPanel(tripOptionsViewModel);
+                new TripOptionsPanel(tripOptionsViewModel, tripSetupController);
         PlannerPanel plannerPanel = new PlannerPanel(
                 searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel);
         CloseAIFrame frame = new CloseAIFrame(
@@ -283,13 +299,23 @@ public final class AppBuilder {
                         app.places.searchInBounds(south, west, north, east, maxResults));
         SearchPanel searchPanel = new SearchPanel(
                 searchViewModel, discoveryController, bookmarkController,
-                manualPlanController, activitySelectionViewModel);
+                manualPlanController, activitySelectionViewModel,
+                dayPlanViewModel, tripOptionsViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(
                 bookmarksViewModel, bookmarkController,
-                manualPlanController, activitySelectionViewModel);
+                manualPlanController, activitySelectionViewModel,
+                dayPlanViewModel, tripOptionsViewModel);
         DayPlanPanel dayPlanPanel =
                 new DayPlanPanel(dayPlanViewModel, autoScheduleController,
                         manualPlanController, activitySelectionViewModel);
+        tripOptionsViewModel.addPropertyChangeListener(event -> {
+            TripOptionsState options = tripOptionsViewModel.getState();
+            dayPlanPanel.setTripDefaults(options.getStartTime(), options.getEndTime(),
+                    TransportationMode.WALKING);
+        });
+        TripOptionsState initialOptions = tripOptionsViewModel.getState();
+        dayPlanPanel.setTripDefaults(initialOptions.getStartTime(), initialOptions.getEndTime(),
+                TransportationMode.WALKING);
         TripOptionsPanel tripOptionsPanel =
                 new TripOptionsPanel(tripOptionsViewModel, tripSetupController);
         PlannerPanel plannerPanel = new PlannerPanel(

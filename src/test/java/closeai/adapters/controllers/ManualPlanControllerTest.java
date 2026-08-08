@@ -75,4 +75,25 @@ final class ManualPlanControllerTest {
         assertEquals(1, app.trips.findById(trip.getId()).orElseThrow()
                 .getScheduledEvents().size());
     }
+
+    @Test
+    void addsUsingTheStartAndEndChosenInThePlanningDialog() {
+        AppContainer app = new AppBuilder().buildOffline();
+        Trip trip = app.createTrip.execute(
+                "Toronto", LocalDate.of(2026, 8, 8), LocalTime.of(9, 0),
+                LocalTime.of(18, 0), TransportationMode.WALKING);
+        DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
+                trip.getId(), Collections.emptyList(), "", false));
+        SearchViewModel search = new SearchViewModel(new SearchState(
+                app.activities.findAll(), ""));
+        ManualPlanController controller = new ManualPlanController(
+                app.addActivityToPlan, app.editEvent, app.removeEvent,
+                trip::getId, new ManualPlanPresenter(dayPlan, search));
+
+        controller.add("rom", LocalTime.of(10, 15), LocalTime.of(11, 0));
+
+        ScheduledEvent added = dayPlan.getState().getEvents().get(0);
+        assertEquals(LocalTime.of(10, 15), added.getStartTime());
+        assertEquals(LocalTime.of(11, 0), added.getEndTime());
+    }
 }

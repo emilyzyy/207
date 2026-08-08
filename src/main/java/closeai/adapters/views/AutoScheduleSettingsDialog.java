@@ -48,8 +48,8 @@ public final class AutoScheduleSettingsDialog extends JDialog {
      */
     static final String CHECKING_WEATHER = "Checking hourly weather for this trip date...";
 
-    private final JTextField availableFrom = new JTextField(9);
-    private final JTextField availableUntil = new JTextField(9);
+    private final TimeSelectorPanel availableFrom;
+    private final TimeSelectorPanel availableUntil;
     private final JComboBox<TransportationMode> mode =
             new JComboBox<>(TransportationMode.values());
     private final JCheckBox keepOrder = new JCheckBox("Keep my current order where possible", true);
@@ -69,11 +69,11 @@ public final class AutoScheduleSettingsDialog extends JDialog {
                 "Autoschedule", ModalityType.APPLICATION_MODAL);
         this.tripStart = tripStart;
         this.tripEnd = tripEnd;
-
-        availableFrom.setText(TimeDisplay.format(
-                tripStart == null ? LocalTime.of(9, 0) : tripStart));
-        availableUntil.setText(TimeDisplay.format(
-                tripEnd == null ? LocalTime.of(21, 0) : tripEnd));
+        availableFrom = new TimeSelectorPanel(
+                tripStart == null ? LocalTime.of(9, 0) : tripStart);
+        availableUntil = new TimeSelectorPanel(
+                tripEnd == null ? LocalTime.of(21, 0) : tripEnd);
+        SwingTheme.styleComboBox(mode);
         if (tripMode != null) {
             mode.setSelectedItem(tripMode);
         }
@@ -103,10 +103,8 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         JPanel hours = new JPanel(new GridBagLayout());
         hours.setOpaque(false);
         hours.setAlignmentX(Component.LEFT_ALIGNMENT);
-        addField(hours, 0, "Available from", availableFrom,
-                "For example 9:00 AM");
-        addField(hours, 1, "Available until", availableUntil,
-                "For example 9:00 PM");
+        addField(hours, 0, "Available from", availableFrom, "");
+        addField(hours, 1, "Available until", availableUntil, "");
         addField(hours, 2, "Getting around by", mode, "");
         hours.setMaximumSize(new Dimension(Integer.MAX_VALUE,
                 hours.getPreferredSize().height));
@@ -312,11 +310,8 @@ public final class AutoScheduleSettingsDialog extends JDialog {
 
     /** Reads the fields, or null when a time cannot be understood. */
     AutoScheduleSettings read() {
-        LocalTime from = parse(availableFrom.getText());
-        LocalTime until = parse(availableUntil.getText());
-        if (from == null || until == null) {
-            return null;
-        }
+        LocalTime from = availableFrom.getTime();
+        LocalTime until = availableUntil.getTime();
         List<AutoScheduleSettings.Window> windows = new ArrayList<>();
         for (TimeRangeRow row : rows) {
             LocalTime start = parse(row.start.getText());

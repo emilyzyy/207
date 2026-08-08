@@ -53,7 +53,7 @@ public final class OverviewPanel extends JPanel {
         mapPanel = new MapPanel(620, 520);
         mapPanel.setCity(viewModel.getState().getDestination());
         mapPanel.focusOnCity(viewModel.getState().getDestination());
-        mapPanel.setPlaceSelectionListener(searchViewModel::selectActivity);
+        mapPanel.setPlaceSelectionListener(this::selectPlaceFromMap);
         mapPanel.setPlacesLoadedListener(loaded -> mergeIntoSearch(searchViewModel, loaded));
         mapPanel.setPlacesLoadingListener(loading -> {
             if (!loading && !searchViewModel.getState().getActivities().isEmpty()) return;
@@ -145,6 +145,21 @@ public final class OverviewPanel extends JPanel {
             }
         }
         mapPanel.selectActivity(selected);
+    }
+
+    /** Keeps a map click synchronized with both the Search state and shared card selection. */
+    private void selectPlaceFromMap(String activityId) {
+        searchViewModel.selectActivity(activityId);
+        if (selectionViewModel != null) {
+            selectionViewModel.select(activityId);
+            return;
+        }
+        for (Activity activity : mapActivities()) {
+            if (activity.getId().equals(activityId)) {
+                mapPanel.selectActivity(activity);
+                return;
+            }
+        }
     }
 
     private List<Activity> mapActivities() {

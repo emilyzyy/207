@@ -26,6 +26,7 @@ public final class HeaderPanel extends JPanel {
     private final JLabel tripLabel = new JLabel();
     private final JLabel dateLabel = new JLabel();
     private final JButton shareButton = SwingTheme.primaryButton("Share");
+    private final ThemeToggleButton themeToggle = new ThemeToggleButton();
     private final JButton authButton = new JButton("Sign in");
     private Runnable openShareAction = () -> { };
     private Runnable onHomeAction = () -> { };
@@ -88,6 +89,7 @@ public final class HeaderPanel extends JPanel {
             shareController.execute();
             openShareAction.run();
         });
+        actions.add(themeToggle);
         actions.add(shareButton);
         authButton.setFont(SwingTheme.BODY);
         authButton.setVisible(false);

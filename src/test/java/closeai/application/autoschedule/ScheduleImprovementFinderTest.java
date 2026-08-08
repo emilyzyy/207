@@ -143,8 +143,8 @@ class ScheduleImprovementFinderTest {
     @Test
     void anOutdoorActivityMovedFromDarknessIntoDaylightIsAnImprovement() {
         List<ScheduledEvent> before = Collections.singletonList(
-                original("park", ActivityCategory.OUTDOOR, IndoorOutdoorType.OUTDOOR, 21));
-        SchedulePlan after = planWith("park", ActivityCategory.OUTDOOR,
+                original("park", ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR, 21));
+        SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
                 IndoorOutdoorType.OUTDOOR, 13, false);
 
         List<ScheduleImprovement> improvements = finder.find(before, after,
@@ -159,8 +159,8 @@ class ScheduleImprovementFinderTest {
     @Test
     void anActivityAlreadyInDaylightEarnsNoDaylightCard() {
         List<ScheduledEvent> before = Collections.singletonList(
-                original("park", ActivityCategory.OUTDOOR, IndoorOutdoorType.OUTDOOR, 11));
-        SchedulePlan after = planWith("park", ActivityCategory.OUTDOOR,
+                original("park", ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR, 11));
+        SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
                 IndoorOutdoorType.OUTDOOR, 14, false);
 
         List<ScheduleImprovement> improvements = finder.find(before, after,
@@ -173,8 +173,8 @@ class ScheduleImprovementFinderTest {
     @Test
     void anActivityPushedOutOfDaylightEarnsNoCard() {
         List<ScheduledEvent> before = Collections.singletonList(
-                original("park", ActivityCategory.OUTDOOR, IndoorOutdoorType.OUTDOOR, 13));
-        SchedulePlan after = planWith("park", ActivityCategory.OUTDOOR,
+                original("park", ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR, 13));
+        SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
                 IndoorOutdoorType.OUTDOOR, 21, false);
 
         List<ScheduleImprovement> improvements = finder.find(before, after,
@@ -191,8 +191,8 @@ class ScheduleImprovementFinderTest {
         WeatherContext hourly = WeatherContext.hourly(
                 forecast(WeatherSeverity.LOW, WeatherSeverity.HIGH));
         List<ScheduledEvent> before = Collections.singletonList(
-                original("park", ActivityCategory.OUTDOOR, IndoorOutdoorType.OUTDOOR, 19));
-        SchedulePlan after = planWith("park", ActivityCategory.OUTDOOR,
+                original("park", ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR, 19));
+        SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
                 IndoorOutdoorType.OUTDOOR, 13, false);
 
         List<ScheduleImprovement> improvements =
@@ -207,8 +207,8 @@ class ScheduleImprovementFinderTest {
         WeatherContext flat = WeatherContext.hourly(
                 forecast(WeatherSeverity.LOW, WeatherSeverity.LOW));
         List<ScheduledEvent> before = Collections.singletonList(
-                original("park", ActivityCategory.OUTDOOR, IndoorOutdoorType.OUTDOOR, 19));
-        SchedulePlan after = planWith("park", ActivityCategory.OUTDOOR,
+                original("park", ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR, 19));
+        SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
                 IndoorOutdoorType.OUTDOOR, 13, false);
 
         List<ScheduleImprovement> improvements =
@@ -221,8 +221,8 @@ class ScheduleImprovementFinderTest {
     @Test
     void aWholeDayForecastCannotProduceAWeatherCard() {
         List<ScheduledEvent> before = Collections.singletonList(
-                original("park", ActivityCategory.OUTDOOR, IndoorOutdoorType.OUTDOOR, 19));
-        SchedulePlan after = planWith("park", ActivityCategory.OUTDOOR,
+                original("park", ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR, 19));
+        SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
                 IndoorOutdoorType.OUTDOOR, 13, false);
 
         List<ScheduleImprovement> improvements = finder.find(before, after,

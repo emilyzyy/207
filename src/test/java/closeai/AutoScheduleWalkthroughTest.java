@@ -76,7 +76,7 @@ class AutoScheduleWalkthroughTest {
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING);
         List<ScheduledEvent> events = new ArrayList<>();
         events.add(new ScheduledEvent("event-park",
-                activity("park", "High Park", ActivityCategory.OUTDOOR,
+                activity("park", "High Park", ActivityCategory.PARKS_NATURE,
                         IndoorOutdoorType.OUTDOOR, 43.6465, -79.4637, 6, 22),
                 LocalTime.of(9, 0), LocalTime.of(10, 0), EventType.ACTIVITY, ""));
         events.add(new ScheduledEvent("event-museum",

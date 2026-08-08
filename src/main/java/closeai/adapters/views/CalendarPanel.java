@@ -47,6 +47,7 @@ public final class CalendarPanel extends JPanel {
             throw new IllegalArgumentException("Calendar ViewModel is required");
         }
         this.viewModel = viewModel;
+        SwingTheme.styleComboBox(viewMode);
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(14, 16, 16, 16));
@@ -282,6 +283,10 @@ public final class CalendarPanel extends JPanel {
     private JPanel eventCard(ScheduledEvent event) {
         JPanel card = new JPanel(new BorderLayout(14, 4));
         SwingTheme.styleCard(card);
+        if (event.getActivity() != null) {
+            card.setBackground(SwingTheme.categorySurface(
+                    event.getActivity().getCategory()));
+        }
         JLabel time = new JLabel(TIME.format(event.getStartTime())
                 + " – " + TIME.format(event.getEndTime()));
         time.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));

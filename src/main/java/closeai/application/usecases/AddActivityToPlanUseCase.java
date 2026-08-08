@@ -22,7 +22,22 @@ public final class AddActivityToPlanUseCase {
         Trip trip = trips.findById(tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
         Activity activity = activities.findById(activityId).orElseThrow(() -> new IllegalArgumentException("Activity not found"));
         LocalTime start = preferredStart == null ? nextAvailableTime(trip) : preferredStart;
-        LocalTime end = start.plusMinutes(activity.getEstimatedDurationMinutes());
+        return add(trip, activity, start,
+                start.plusMinutes(activity.getEstimatedDurationMinutes()));
+    }
+
+    public Trip execute(String tripId, String activityId, LocalTime start, LocalTime end) {
+        Trip trip = trips.findById(tripId).orElseThrow(
+                () -> new IllegalArgumentException("Trip not found"));
+        Activity activity = activities.findById(activityId).orElseThrow(
+                () -> new IllegalArgumentException("Activity not found"));
+        if (start == null || end == null || !end.isAfter(start)) {
+            throw new IllegalArgumentException("End time must follow start time");
+        }
+        return add(trip, activity, start, end);
+    }
+
+    private Trip add(Trip trip, Activity activity, LocalTime start, LocalTime end) {
         List<ScheduledEvent> updated = new ArrayList<>(trip.getScheduledEvents());
         updated.add(new ScheduledEvent(UUID.randomUUID().toString(), activity, start, end,
                 EventType.ACTIVITY, "Added manually"));

@@ -24,6 +24,9 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collections;
 import javax.swing.AbstractButton;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
@@ -64,6 +67,17 @@ final class SwingPanelStructureTest {
         assertEquals("Day Plan", tabs.getTitleAt(2));
         assertEquals("Trip Options", tabs.getTitleAt(3));
         assertTrue(allText(planner).contains("Discover activities"));
+        JLabel searchTitle = findLabel(search, "Discover activities");
+        JLabel resultCount = findLabel(search, "1 nearby activities");
+        assertNotNull(searchTitle);
+        assertNotNull(resultCount);
+        assertEquals(JLabel.CENTER, searchTitle.getHorizontalAlignment());
+        assertEquals(JLabel.CENTER, resultCount.getHorizontalAlignment());
+        assertTrue(searchTitle.getParent().getLayout() instanceof java.awt.BorderLayout);
+        assertTrue(resultCount.getParent().getLayout() instanceof java.awt.BorderLayout);
+        assertNotNull(findComboItem(search, "Filter by rating"));
+        assertNotNull(findComboItem(search, "3.5+"));
+        assertNotNull(findComboItem(search, "3.0+"));
         assertTrue(allText(planner).contains("Saved for later"));
         assertNotNull(findButton(search, "Add to plan"));
         clickCard(search, "Show rom on the map");
@@ -103,6 +117,15 @@ final class SwingPanelStructureTest {
         assertNotNull(findButton(dayPlan, "Remove"));
         clickCard(dayPlan, "Show rom on the map");
         assertEquals("rom", selection.getSelectedActivityId());
+        SwingUtilities.invokeAndWait(() -> { });
+        Component timeline = findByName(dayPlan, "Day schedule timeline");
+        assertNotNull(timeline);
+        assertEquals(1, ((Container) timeline).getComponentCount());
+        JScrollPane dayPlanScroll = (JScrollPane) SwingUtilities.getAncestorOfClass(
+                JScrollPane.class, timeline);
+        assertNotNull(dayPlanScroll);
+        assertEquals(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER,
+                dayPlanScroll.getHorizontalScrollBarPolicy());
 
         SwingUtilities.invokeAndWait(() -> dayPlanViewModel.setState(
                 new DayPlanState("trip-1", Collections.singletonList(event),
@@ -154,6 +177,35 @@ final class SwingPanelStructureTest {
         return null;
     }
 
+    private JLabel findLabel(Component component, String text) {
+        if (component instanceof JLabel && text.equals(((JLabel) component).getText())) {
+            return (JLabel) component;
+        }
+        if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                JLabel found = findLabel(child, text);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private JComboBox<?> findComboItem(Component component, String item) {
+        if (component instanceof JComboBox) {
+            JComboBox<?> combo = (JComboBox<?>) component;
+            for (int i = 0; i < combo.getItemCount(); i++) {
+                if (item.equals(combo.getItemAt(i))) return combo;
+            }
+        }
+        if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                JComboBox<?> found = findComboItem(child, item);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
     private void clickCard(Component component, String tooltip) {
         Component card = findByTooltip(component, tooltip);
         assertNotNull(card);
@@ -173,6 +225,17 @@ final class SwingPanelStructureTest {
         if (component instanceof Container) {
             for (Component child : ((Container) component).getComponents()) {
                 Component found = findByTooltip(child, tooltip);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private Component findByName(Component component, String name) {
+        if (name.equals(component.getName())) return component;
+        if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                Component found = findByName(child, name);
                 if (found != null) return found;
             }
         }

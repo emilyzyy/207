@@ -85,7 +85,7 @@ public final class AutoscheduleDemoTrip {
 
         // Outdoors at half past seven: after dark and in the worst of the forecast below.
         events.add(event("event-park", activity("park", "High Park",
-                ActivityCategory.OUTDOOR, IndoorOutdoorType.OUTDOOR,
+                ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR,
                 43.6465, -79.4637, 6, 22), LocalTime.of(19, 30), 60));
 
         trip.replaceSchedule(events);

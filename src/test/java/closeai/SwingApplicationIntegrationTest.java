@@ -2,6 +2,8 @@ package closeai;
 
 import closeai.adapters.viewmodels.DayPlanViewModel;
 import closeai.adapters.views.CloseAIFrame;
+import closeai.adapters.views.DateSelectionButton;
+import closeai.adapters.views.TimeSelectorPanel;
 import closeai.application.AppContainer;
 import closeai.domain.entities.Trip;
 import closeai.domain.valueobjects.TransportationMode;
@@ -53,11 +55,15 @@ final class SwingApplicationIntegrationTest {
             tabs.setSelectedIndex(3);
             Container tripSetup = (Container) tabs.getComponentAt(3);
             List<JTextField> fields = findTextFields(tripSetup);
-            assertEquals(4, fields.size());
+            assertEquals(1, fields.size());
             fields.get(0).setText("Toronto");
-            fields.get(1).setText("2026-08-02");
-            fields.get(2).setText("09:00");
-            fields.get(3).setText("18:00");
+            DateSelectionButton date = findComponent(tripSetup, DateSelectionButton.class);
+            List<TimeSelectorPanel> times = findComponents(tripSetup, TimeSelectorPanel.class);
+            assertNotNull(date);
+            assertEquals(2, times.size());
+            date.setDate(java.time.LocalDate.of(2026, 8, 2));
+            times.get(0).setTime(java.time.LocalTime.of(9, 0));
+            times.get(1).setTime(java.time.LocalTime.of(18, 0));
 
             AbstractButton create = findButton(tripSetup, "Create Trip");
             assertNotNull(create);
@@ -67,6 +73,8 @@ final class SwingApplicationIntegrationTest {
             assertFalse(tripId.isEmpty());
             Trip created = app.trips.findById(tripId).orElseThrow();
             assertEquals("Toronto", created.getDestination());
+            assertFalse(fields.get(0).isEditable(),
+                    "destination becomes read-only after the day plan is created");
             assertEquals(TransportationMode.WALKING,
                     created.getTransportationMode());
             assertTrue(autoschedule.isEnabled(), "a trip exists, so Autoschedule is available");
@@ -84,12 +92,19 @@ final class SwingApplicationIntegrationTest {
             calendar.doClick();
             assertTrue(frame.getCalendarDialog().isVisible());
 
-            fields.get(0).setText("Ottawa");
+            date.setDate(java.time.LocalDate.of(2026, 8, 3));
+            times.get(0).setTime(java.time.LocalTime.of(10, 0));
+            times.get(1).setTime(java.time.LocalTime.of(19, 30));
             AbstractButton save = findButton(tripSetup, "Save Trip Options");
             assertNotNull(save);
             save.doClick();
-            assertEquals("Ottawa",
-                    app.trips.findById(tripId).orElseThrow().getDestination());
+            Trip updated = app.trips.findById(tripId).orElseThrow();
+            assertEquals("Toronto", updated.getDestination());
+            assertEquals(java.time.LocalDate.of(2026, 8, 3), updated.getDate());
+            assertEquals(java.time.LocalTime.of(10, 0), updated.getStartTime());
+            assertEquals(java.time.LocalTime.of(19, 30), updated.getEndTime());
+            assertEquals(updated.getDate(), frame.getCalendarDialog()
+                    .getCalendarViewModel().getState().getTripDate());
 
             tabs.setSelectedIndex(2);
             // Clicking Autoschedule opens a modal settings dialog, which would block this
@@ -121,6 +136,30 @@ final class SwingApplicationIntegrationTest {
         List<JTextField> result = new ArrayList<JTextField>();
         collectTextFields(component, result);
         return result;
+    }
+
+    private static <T extends Component> T findComponent(Component component, Class<T> type) {
+        List<T> matches = findComponents(component, type);
+        return matches.isEmpty() ? null : matches.get(0);
+    }
+
+    private static <T extends Component> List<T> findComponents(
+            Component component, Class<T> type) {
+        List<T> matches = new ArrayList<>();
+        collectComponents(component, type, matches);
+        return matches;
+    }
+
+    private static <T extends Component> void collectComponents(
+            Component component, Class<T> type, List<T> matches) {
+        if (type.isInstance(component)) {
+            matches.add(type.cast(component));
+        }
+        if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                collectComponents(child, type, matches);
+            }
+        }
     }
 
     private static void collectTextFields(

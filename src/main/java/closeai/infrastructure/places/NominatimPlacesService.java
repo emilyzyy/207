@@ -28,15 +28,12 @@ public final class NominatimPlacesService implements PlacesService {
     private static final List<URI> OVERPASS_ENDPOINTS = List.of(
             URI.create("https://overpass-api.de/api/interpreter"),
             URI.create("https://overpass.kumi.systems/api/interpreter"),
-            URI.create("https://overpass.private.coffee/api/interpreter"),
-            URI.create("https://overpass.osm.jp/api/interpreter"));
+            URI.create("https://overpass.private.coffee/api/interpreter"));
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(15);
     private static final Duration OVERPASS_TIMEOUT = Duration.ofSeconds(20);
     private static final double SEARCH_RADIUS_METERS = 1500;
     private static final int MAX_RESULTS = 25;
-    private static final int MAX_BUSY_RETRIES = 3;
-    private static final long[] BUSY_RETRY_DELAY_MILLIS =
-            {300L, 800L, 2000L};
+    private static final long OVERPASS_FAILURE_COOLDOWN_MILLIS = 30_000L;
 
     private final HttpClient client;
     private final ObjectMapper mapper;
@@ -45,6 +42,8 @@ public final class NominatimPlacesService implements PlacesService {
     private final boolean tryFallbacks;
     private final Map<String, List<Activity>> cache = new ConcurrentHashMap<>();
     private final Map<String, List<Activity>> boundsCache = new ConcurrentHashMap<>();
+    private final Map<String, List<Activity>> namedSearchCache = new ConcurrentHashMap<>();
+    private volatile long overpassCooldownUntil;
 
     public NominatimPlacesService() {
         this(
@@ -97,8 +96,26 @@ public final class NominatimPlacesService implements PlacesService {
         if (needle.isEmpty()) {
             return new ArrayList<>(cached);
         }
+        List<Activity> result = filterByText(cached, needle);
+        if (!result.isEmpty()) {
+            return result;
+        }
+
+        String namedKey = key + "|" + needle;
+        List<Activity> discovered = namedSearchCache.get(namedKey);
+        if (discovered == null) {
+            discovered = searchNamedPlace(destination, query);
+            namedSearchCache.put(namedKey, discovered);
+            if (!discovered.isEmpty()) {
+                cache.put(key, mergeById(cached, discovered));
+            }
+        }
+        return filterByText(discovered, needle);
+    }
+
+    private static List<Activity> filterByText(List<Activity> activities, String needle) {
         List<Activity> result = new ArrayList<>();
-        for (Activity activity : cached) {
+        for (Activity activity : activities) {
             if (activity.getName().toLowerCase().contains(needle)
                     || activity.getCategory().name().toLowerCase().contains(needle)
                     || activity.getLocation().getAddress().toLowerCase().contains(needle)) {
@@ -106,6 +123,39 @@ public final class NominatimPlacesService implements PlacesService {
             }
         }
         return result;
+    }
+
+    private List<Activity> searchNamedPlace(String destination, String query) {
+        try {
+            JsonNode matches = geocodeResults(query.trim() + ", " + destination.trim(), 5);
+            StringBuilder selectors = new StringBuilder();
+            for (JsonNode match : matches) {
+                String type = match.path("osm_type").asText();
+                long id = match.path("osm_id").asLong(-1);
+                if (id > 0 && oneOf(type, "node", "way", "relation")) {
+                    selectors.append(type).append('(').append(id).append(");");
+                }
+            }
+            if (selectors.length() == 0) {
+                return new ArrayList<>();
+            }
+            String overpassQuery = "[out:json][timeout:30];(" + selectors + ");out center;";
+            return parseElements(queryOverpass(overpassQuery), MAX_RESULTS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return new ArrayList<>();
+        } catch (IOException | RuntimeException exception) {
+            System.err.println("[NominatimPlaces] Named search failed: "
+                    + exception.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    private static List<Activity> mergeById(List<Activity> first, List<Activity> second) {
+        Map<String, Activity> merged = new java.util.LinkedHashMap<>();
+        for (Activity activity : first) merged.put(activity.getId(), activity);
+        for (Activity activity : second) merged.put(activity.getId(), activity);
+        return new ArrayList<>(merged.values());
     }
 
     @Override
@@ -155,8 +205,18 @@ public final class NominatimPlacesService implements PlacesService {
     }
 
     private double[] geocode(String destination) throws IOException, InterruptedException {
+        JsonNode results = geocodeResults(destination, 1);
+        if (results.isEmpty()) {
+            throw new IOException("Nominatim found no location for: " + destination);
+        }
+        JsonNode first = results.get(0);
+        return new double[]{first.get("lat").asDouble(), first.get("lon").asDouble()};
+    }
+
+    private JsonNode geocodeResults(String query, int limit)
+            throws IOException, InterruptedException {
         URI uri = URI.create(geocodingEndpoint.toString()
-                + "?q=" + encode(destination) + "&format=json&limit=1");
+                + "?q=" + encode(query) + "&format=json&limit=" + limit);
         HttpRequest request = HttpRequest.newBuilder(uri).timeout(REQUEST_TIMEOUT)
                 .header("User-Agent", "CloseAI-CSC207/1.0")
                 .GET().build();
@@ -166,68 +226,67 @@ public final class NominatimPlacesService implements PlacesService {
             throw new IOException("Nominatim HTTP " + response.statusCode());
         }
         JsonNode results = mapper.readTree(response.body());
-        if (!results.isArray() || results.isEmpty()) {
-            throw new IOException("Nominatim found no location for: " + destination);
-        }
-        JsonNode first = results.get(0);
-        return new double[]{first.get("lat").asDouble(), first.get("lon").asDouble()};
+        if (!results.isArray()) throw new IOException("Invalid Nominatim response");
+        return results;
     }
 
     private String buildOverpassQuery(double lat, double lon) {
         int r = (int) SEARCH_RADIUS_METERS;
         return "[out:json][timeout:30];"
-            + "("
-            + "node[\"amenity\"=\"restaurant\"](around:" + r + "," + lat + "," + lon + ");"
-            + "node[\"amenity\"=\"cafe\"](around:" + r + "," + lat + "," + lon + ");"
-            + "node[\"tourism\"=\"museum\"](around:" + r + "," + lat + "," + lon + ");"
-            + "node[\"tourism\"=\"attraction\"](around:" + r + "," + lat + "," + lon + ");"
-            + "node[\"shop\"](around:" + r + "," + lat + "," + lon + ");"
-            + ");"
-            + "out body " + MAX_RESULTS + ";";
+            + "(" + activitySelectors("around:" + r + "," + lat + "," + lon) + ");"
+            + "out center " + MAX_RESULTS + ";";
     }
 
     private String buildBoundingBoxQuery(double south, double west, double north, double east,
                                          int maxResults) {
         return "[out:json][timeout:30];"
-            + "("
-            + "node[\"amenity\"=\"restaurant\"](bbox:" + south + "," + west + "," + north + "," + east + ");"
-            + "node[\"amenity\"=\"cafe\"](bbox:" + south + "," + west + "," + north + "," + east + ");"
-            + "node[\"tourism\"=\"museum\"](bbox:" + south + "," + west + "," + north + "," + east + ");"
-            + "node[\"tourism\"=\"attraction\"](bbox:" + south + "," + west + "," + north + "," + east + ");"
-            + "node[\"shop\"](bbox:" + south + "," + west + "," + north + "," + east + ");"
-            + ");"
-            + "out body " + maxResults + ";";
+            + "(" + activitySelectors("bbox:" + south + "," + west + "," + north
+                    + "," + east) + ");"
+            + "out center " + maxResults + ";";
+    }
+
+    private static String activitySelectors(String area) {
+        return "nwr[\"amenity\"~\"^(restaurant|cafe|fast_food|food_court|pub|bar|biergarten|"
+                + "ice_cream|bbq|internet_cafe|cinema|theatre|music_venue|nightclub|"
+                + "events_venue|casino|arts_centre|exhibition_centre|planetarium|"
+                + "community_centre|marketplace)$\"](" + area + ");"
+                + "nwr[\"tourism\"~\"^(museum|gallery|artwork|attraction|aquarium|zoo|"
+                + "theme_park|viewpoint|picnic_site|camp_site)$\"](" + area + ");"
+                + "nwr[\"leisure\"~\"^(park|garden|nature_reserve|bowling_alley|escape_game|"
+                + "amusement_arcade|sports_centre|fitness_centre|swimming_pool|golf_course|"
+                + "pitch|track|ice_rink|miniature_golf|playground|dog_park|beach_resort|"
+                + "marina|water_park)$\"](" + area + ");"
+                + "nwr[\"natural\"~\"^(beach|waterfall|peak|cave_entrance|spring|hot_spring)$\"]("
+                + area + ");"
+                + "nwr[\"historic\"~\"^(castle|fort|ruins|monument|memorial|"
+                + "archaeological_site|city_gate|manor)$\"](" + area + ");"
+                + "nwr[\"boundary\"=\"national_park\"](" + area + ");"
+                + "nwr[\"highway\"=\"trailhead\"](" + area + ");"
+                + "nwr[\"man_made\"~\"^(observatory|tower)$\"](" + area + ");"
+                + "nwr[\"attraction\"~\"^(roller_coaster|carousel|dark_ride)$\"](" + area + ");"
+                + "nwr[\"shop\"](" + area + ");";
     }
 
     private JsonNode queryOverpass(String query) {
-        int busyRetries = 0;
-        while (true) {
-            boolean sawBusy = false;
-            for (URI endpoint : overpassCandidates()) {
-                try {
-                    return queryEndpoint(endpoint, query);
-                } catch (OverpassBusyException busy) {
-                    sawBusy = true;
-                    System.err.println("[NominatimPlaces] Overpass " + endpoint.getHost()
-                            + " unavailable (server busy), will retry");
-                } catch (Exception e) {
-                    System.err.println("[NominatimPlaces] Overpass " + endpoint.getHost()
-                            + " failed: " + e.getMessage());
-                }
-            }
-            if (!sawBusy || busyRetries >= MAX_BUSY_RETRIES) {
-                return mapper.createArrayNode();
-            }
-            long delay = BUSY_RETRY_DELAY_MILLIS[Math.min(busyRetries,
-                    BUSY_RETRY_DELAY_MILLIS.length - 1)];
-            busyRetries++;
+        if (System.currentTimeMillis() < overpassCooldownUntil) {
+            return mapper.createArrayNode();
+        }
+        for (URI endpoint : overpassCandidates()) {
             try {
-                Thread.sleep(delay);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return mapper.createArrayNode();
+                JsonNode result = queryEndpoint(endpoint, query);
+                overpassCooldownUntil = 0L;
+                return result;
+            } catch (OverpassBusyException busy) {
+                System.err.println("[NominatimPlaces] Overpass " + endpoint.getHost()
+                        + " unavailable (server busy)");
+            } catch (Exception exception) {
+                System.err.println("[NominatimPlaces] Overpass " + endpoint.getHost()
+                        + " failed: " + exception.getMessage());
             }
         }
+        overpassCooldownUntil = System.currentTimeMillis()
+                + OVERPASS_FAILURE_COOLDOWN_MILLIS;
+        return mapper.createArrayNode();
     }
 
     private List<URI> overpassCandidates() {
@@ -254,6 +313,10 @@ public final class NominatimPlacesService implements PlacesService {
                 .build();
         HttpResponse<String> response = client.send(request,
                 HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        if (response.statusCode() == 429 || response.statusCode() == 502
+                || response.statusCode() == 503 || response.statusCode() == 504) {
+            throw new OverpassBusyException("Overpass HTTP " + response.statusCode());
+        }
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             throw new IOException("Overpass HTTP " + response.statusCode());
         }
@@ -272,8 +335,11 @@ public final class NominatimPlacesService implements PlacesService {
         int idx = 0;
         for (JsonNode el : elements) {
             if (idx >= limit) break;
-            double lat = el.has("lat") ? el.get("lat").asDouble() : 0;
-            double lon = el.has("lon") ? el.get("lon").asDouble() : 0;
+            JsonNode center = el.path("center");
+            double lat = el.has("lat") ? el.get("lat").asDouble()
+                    : center.path("lat").asDouble(Double.NaN);
+            double lon = el.has("lon") ? el.get("lon").asDouble()
+                    : center.path("lon").asDouble(Double.NaN);
             if (!Double.isFinite(lat) || !Double.isFinite(lon)) continue;
             JsonNode tags = el.has("tags") ? el.get("tags") : mapper.createObjectNode();
             String name = englishName(tags);
@@ -281,7 +347,16 @@ public final class NominatimPlacesService implements PlacesService {
             String amenity = tags.has("amenity") ? tags.get("amenity").asText() : "";
             String tourism = tags.has("tourism") ? tags.get("tourism").asText() : "";
             String shop = tags.has("shop") ? tags.get("shop").asText() : "";
-            ActivityCategory category = categorize(amenity, tourism, shop);
+            String leisure = tag(tags, "leisure");
+            String natural = tag(tags, "natural");
+            String historic = tag(tags, "historic");
+            String boundary = tag(tags, "boundary");
+            String highway = tag(tags, "highway");
+            String manMade = tag(tags, "man_made");
+            String attraction = tag(tags, "attraction");
+            String museum = tag(tags, "museum");
+            ActivityCategory category = categorize(amenity, tourism, shop, leisure,
+                    natural, historic, boundary, highway, manMade, attraction, museum);
             IndoorOutdoorType ioType = inferIndoorOutdoor(category);
             String address = buildAddress(tags);
             String id = "osm-" + el.get("id").asLong();
@@ -312,19 +387,70 @@ public final class NominatimPlacesService implements PlacesService {
         return original == null ? null : original.trim();
     }
 
-    private ActivityCategory categorize(String amenity, String tourism, String shop) {
-        if ("restaurant".equals(amenity)) return ActivityCategory.FOOD;
-        if ("cafe".equals(amenity)) return ActivityCategory.COFFEE;
-        if ("museum".equals(tourism)) return ActivityCategory.MUSEUM;
-        if ("attraction".equals(tourism)) return ActivityCategory.ATTRACTION;
+    private static String tag(JsonNode tags, String key) {
+        return tags.has(key) ? tags.get(key).asText() : "";
+    }
+
+    private ActivityCategory categorize(String amenity, String tourism, String shop,
+                                        String leisure, String natural, String historic,
+                                        String boundary, String highway, String manMade,
+                                        String attraction, String museum) {
+        if (oneOf(amenity, "cinema", "theatre", "music_venue", "nightclub",
+                "events_venue", "casino")
+                || oneOf(leisure, "bowling_alley", "escape_game", "amusement_arcade")) {
+            return ActivityCategory.ENTERTAINMENT;
+        }
+        if (oneOf(leisure, "park", "garden", "nature_reserve")
+                || oneOf(natural, "beach", "waterfall", "peak", "cave_entrance")
+                || "national_park".equals(boundary)) {
+            return ActivityCategory.PARKS_NATURE;
+        }
+        if (oneOf(historic, "castle", "fort", "ruins", "monument", "memorial",
+                "archaeological_site", "city_gate")) return ActivityCategory.HISTORIC;
+        if (oneOf(leisure, "sports_centre", "fitness_centre", "swimming_pool",
+                "golf_course", "pitch", "track", "ice_rink", "miniature_golf")) {
+            return ActivityCategory.SPORTS_RECREATION;
+        }
+        if (oneOf(tourism, "gallery", "artwork")
+                || oneOf(amenity, "arts_centre", "exhibition_centre")) {
+            return ActivityCategory.ARTS_CULTURE;
+        }
+        if (oneOf(amenity, "restaurant", "fast_food", "food_court", "pub", "bar",
+                "biergarten", "ice_cream", "bbq")
+                || oneOf(shop, "bakery", "deli", "confectionery", "pastry", "cheese",
+                "chocolate", "seafood")) return ActivityCategory.FOOD;
+        if (oneOf(amenity, "cafe", "internet_cafe")
+                || oneOf(shop, "coffee", "tea")) return ActivityCategory.COFFEE;
+        if ("museum".equals(tourism) || !museum.isEmpty()) return ActivityCategory.MUSEUM;
+        if (oneOf(leisure, "playground", "dog_park", "beach_resort", "marina")
+                || oneOf(tourism, "viewpoint", "picnic_site", "camp_site")
+                || oneOf(natural, "spring", "hot_spring")
+                || "trailhead".equals(highway)) return ActivityCategory.PARKS_NATURE;
         if (!shop.isEmpty()) return ActivityCategory.SHOPPING;
+        if (oneOf(tourism, "attraction", "aquarium", "zoo", "theme_park")
+                || oneOf(amenity, "planetarium", "community_centre")
+                || "water_park".equals(leisure)
+                || oneOf(manMade, "observatory", "tower")
+                || oneOf(attraction, "roller_coaster", "carousel", "dark_ride")) {
+            return ActivityCategory.ATTRACTION;
+        }
         return ActivityCategory.ATTRACTION;
+    }
+
+    private static boolean oneOf(String value, String... candidates) {
+        for (String candidate : candidates) {
+            if (candidate.equals(value)) return true;
+        }
+        return false;
     }
 
     private IndoorOutdoorType inferIndoorOutdoor(ActivityCategory cat) {
         switch (cat) {
             case FOOD: case COFFEE: case MUSEUM: case SHOPPING:
+            case ENTERTAINMENT: case ARTS_CULTURE:
                 return IndoorOutdoorType.INDOOR;
+            case SPORTS_RECREATION: case HISTORIC:
+                return IndoorOutdoorType.MIXED;
             default:
                 return IndoorOutdoorType.OUTDOOR;
         }
@@ -346,10 +472,14 @@ public final class NominatimPlacesService implements PlacesService {
         switch (category) {
             case FOOD: return 60;
             case MUSEUM: return 120;
-            case OUTDOOR: return 90;
             case SHOPPING: return 60;
             case COFFEE: return 30;
             case ATTRACTION: return 90;
+            case ENTERTAINMENT: return 120;
+            case PARKS_NATURE: return 90;
+            case HISTORIC: return 90;
+            case SPORTS_RECREATION: return 90;
+            case ARTS_CULTURE: return 90;
             default: return 60;
         }
     }

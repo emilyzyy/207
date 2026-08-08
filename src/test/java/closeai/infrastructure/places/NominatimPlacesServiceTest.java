@@ -11,6 +11,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -270,6 +272,102 @@ final class NominatimPlacesServiceTest {
 
         assertEquals(1, result.size());
         assertEquals("osm-200", result.get(0).getId());
+    }
+
+    @Test
+    void mapsExpandedOsmTagsToNewAndExistingCategories() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":["
+                        + element(401, "Cinema", "\"amenity\":\"cinema\"") + ","
+                        + element(402, "Park", "\"leisure\":\"park\"") + ","
+                        + element(403, "Fort", "\"historic\":\"fort\"") + ","
+                        + element(404, "Pool", "\"leisure\":\"swimming_pool\"") + ","
+                        + element(405, "Gallery", "\"tourism\":\"gallery\"") + ","
+                        + element(406, "Bakery", "\"shop\":\"bakery\"") + ","
+                        + element(407, "Tea Shop", "\"shop\":\"tea\"") + ","
+                        + element(408, "Science Museum", "\"museum\":\"science\"") + ","
+                        + element(409, "Trail", "\"highway\":\"trailhead\"") + ","
+                        + element(410, "Book Shop", "\"shop\":\"books\"") + ","
+                        + element(411, "Aquarium", "\"tourism\":\"aquarium\"")
+                        + "]}");
+
+        List<Activity> results = service().search("Toronto", "");
+
+        assertEquals(ActivityCategory.ENTERTAINMENT, results.get(0).getCategory());
+        assertEquals(ActivityCategory.PARKS_NATURE, results.get(1).getCategory());
+        assertEquals(ActivityCategory.HISTORIC, results.get(2).getCategory());
+        assertEquals(ActivityCategory.SPORTS_RECREATION, results.get(3).getCategory());
+        assertEquals(ActivityCategory.ARTS_CULTURE, results.get(4).getCategory());
+        assertEquals(ActivityCategory.FOOD, results.get(5).getCategory());
+        assertEquals(ActivityCategory.COFFEE, results.get(6).getCategory());
+        assertEquals(ActivityCategory.MUSEUM, results.get(7).getCategory());
+        assertEquals(ActivityCategory.PARKS_NATURE, results.get(8).getCategory());
+        assertEquals(ActivityCategory.SHOPPING, results.get(9).getCategory());
+        assertEquals(ActivityCategory.ATTRACTION, results.get(10).getCategory());
+    }
+
+    @Test
+    void parsesCenterCoordinatesForAreaActivities() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"type\":\"way\",\"id\":500,"
+                        + "\"center\":{\"lat\":43.70,\"lon\":-79.40},"
+                        + "\"tags\":{\"name\":\"Large Park\",\"leisure\":\"park\"}}]}");
+
+        List<Activity> results = service().search("Toronto", "");
+
+        assertEquals(1, results.size());
+        assertEquals(ActivityCategory.PARKS_NATURE, results.get(0).getCategory());
+        assertEquals(43.70, results.get(0).getLocation().getLatitude());
+        assertEquals(-79.40, results.get(0).getLocation().getLongitude());
+    }
+
+    @Test
+    void cacheMissSearchesNominatimAndFetchesExactOsmObject() throws Exception {
+        AtomicInteger geocodingCalls = new AtomicInteger();
+        AtomicInteger overpassCalls = new AtomicInteger();
+        AtomicReference<String> exactQuery = new AtomicReference<>("");
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/search", exchange -> {
+            String body = geocodingCalls.getAndIncrement() == 0
+                    ? "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]"
+                    : "[{\"lat\":\"43.647\",\"lon\":\"-79.414\","
+                            + "\"osm_type\":\"relation\",\"osm_id\":16751345}]";
+            respond(exchange, 200, body);
+        });
+        server.createContext("/interpreter", exchange -> {
+            String request = new String(exchange.getRequestBody().readAllBytes(),
+                    StandardCharsets.UTF_8);
+            int call = overpassCalls.getAndIncrement();
+            if (call > 0) exactQuery.set(java.net.URLDecoder.decode(
+                    request.substring("data=".length()), StandardCharsets.UTF_8));
+            String body = call == 0
+                    ? "{\"elements\":[" + element(600, "Nearby Cafe",
+                            "\"amenity\":\"cafe\"") + "]}"
+                    : "{\"elements\":[{\"type\":\"relation\",\"id\":16751345,"
+                            + "\"center\":{\"lat\":43.647,\"lon\":-79.414},"
+                            + "\"tags\":{\"name\":\"Trinity Bellwoods Park\","
+                            + "\"leisure\":\"park\"}}]}";
+            respond(exchange, 200, body);
+        });
+        server.start();
+
+        List<Activity> results = service().search("Toronto", "Trinity Bellwoods Park");
+
+        assertEquals(1, results.size());
+        assertEquals("Trinity Bellwoods Park", results.get(0).getName());
+        assertEquals(ActivityCategory.PARKS_NATURE, results.get(0).getCategory());
+        assertTrue(exactQuery.get().contains("relation(16751345)"));
+    }
+
+    private static String element(long id, String name, String extraTags) {
+        return "{\"id\":" + id + ",\"lat\":43.66,\"lon\":-79.39,\"tags\":{"
+                + "\"name\":\"" + name + "\"," + extraTags + "}}";
     }
 
     private void startServer(

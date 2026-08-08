@@ -46,7 +46,7 @@ class BuiltInObjectivesTest {
     }
 
     private static ScheduleTask outdoor(String id, int duration, int index) {
-        return ScheduleTask.movable(id, ProblemFixtures.activity(id, ActivityCategory.OUTDOOR,
+        return ScheduleTask.movable(id, ProblemFixtures.activity(id, ActivityCategory.PARKS_NATURE,
                 IndoorOutdoorType.OUTDOOR, at(0, 0), at(23, 59)), duration, index);
     }
 
