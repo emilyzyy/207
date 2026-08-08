@@ -22,11 +22,30 @@ public final class AutoScheduleSettings {
     private final List<Window> unavailableWindows;
     private final boolean keepCurrentOrder;
     private final boolean considerWeather;
+    private final boolean minimizeTravel;
+    private final boolean minimizeGaps;
+    private final boolean preserveMealtimes;
+    private final boolean preferDaylight;
 
+    /** Everything the schedule normally weighs, with only the two usual choices given. */
     public AutoScheduleSettings(LocalTime availableStart, LocalTime availableEnd,
                                 TransportationMode transportationMode,
                                 List<Window> unavailableWindows, boolean keepCurrentOrder,
                                 boolean considerWeather) {
+        this(availableStart, availableEnd, transportationMode, unavailableWindows,
+                keepCurrentOrder, considerWeather, true, true, true, true);
+    }
+
+    public AutoScheduleSettings(LocalTime availableStart, LocalTime availableEnd,
+                                TransportationMode transportationMode,
+                                List<Window> unavailableWindows, boolean keepCurrentOrder,
+                                boolean considerWeather, boolean minimizeTravel,
+                                boolean minimizeGaps, boolean preserveMealtimes,
+                                boolean preferDaylight) {
+        this.minimizeTravel = minimizeTravel;
+        this.minimizeGaps = minimizeGaps;
+        this.preserveMealtimes = preserveMealtimes;
+        this.preferDaylight = preferDaylight;
         this.availableStart = availableStart;
         this.availableEnd = availableEnd;
         this.transportationMode = transportationMode;
@@ -50,6 +69,22 @@ public final class AutoScheduleSettings {
 
     public List<Window> getUnavailableWindows() {
         return unavailableWindows;
+    }
+
+    public boolean isMinimizeTravel() {
+        return minimizeTravel;
+    }
+
+    public boolean isMinimizeGaps() {
+        return minimizeGaps;
+    }
+
+    public boolean isPreserveMealtimes() {
+        return preserveMealtimes;
+    }
+
+    public boolean isPreferDaylight() {
+        return preferDaylight;
     }
 
     public boolean isKeepCurrentOrder() {

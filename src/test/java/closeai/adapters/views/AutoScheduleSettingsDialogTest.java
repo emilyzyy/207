@@ -330,9 +330,11 @@ class AutoScheduleSettingsDialogTest {
     }
 
     /**
-     * Every factor the schedule weighs is on screen, and only the two the user can
-     * actually answer are movable. A pale always-on switch that could be flicked would
-     * promise a control the scheduler does not have.
+     * Every factor the schedule weighs is on screen, on by default, and switchable.
+     *
+     * <p>None of them is a hard rule, so switching any off can only change the ranking —
+     * it can never make a day impossible. Weather is the one that may also be disabled by
+     * circumstance, which {@code AutoScheduleWeatherCheckBoxTest} covers.</p>
      */
     @Test
     void allSixFactorsAreShownAndOnlyTheTwoRealChoicesCanBeChanged() {
@@ -358,9 +360,11 @@ class AutoScheduleSettingsDialogTest {
                 fixedOn++;
             }
         }
-        assertEquals(2, movable, "only weather and plan order are the user's to answer");
-        assertEquals(4, fixedOn,
-                "travel, gaps, mealtimes and daylight are shown but not negotiable");
+        assertEquals(6, movable, "every soft factor is the traveller's to switch off");
+        assertEquals(0, fixedOn);
+        for (ToggleSwitch control : switches) {
+            assertTrue(control.isSelected(), "all six start on");
+        }
         dialog.dispose();
     }
 

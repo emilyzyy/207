@@ -11,6 +11,7 @@ import closeai.application.autoschedule.DeparturePeriod;
 import closeai.application.autoschedule.PeriodPlan;
 import closeai.application.autoschedule.PlacedActivity;
 import closeai.application.autoschedule.ScheduleProblem;
+import closeai.application.autoschedule.SchedulingPreferences;
 import closeai.application.autoschedule.ScheduleScore;
 import closeai.application.autoschedule.ScheduleTask;
 import closeai.application.autoschedule.TimeWindow;
@@ -126,6 +127,50 @@ class BruteForceCrossCheckTest {
                 assertEquals(exhaustive, searched.getPlan().getScore());
             }
         }
+    }
+
+    /**
+     * The same cross-check with travel switched out of the ranking.
+     *
+     * <p>This is the one that could have gone silently wrong. The incumbent bound adds the
+     * cheapest travel still to come, and that is only a valid floor while the score charges
+     * travel at all. If the bound had kept counting travel the score no longer counts, it
+     * would exceed the true cost and prune the optimum — and nothing else in the suite
+     * would have noticed, because the answer would still be a perfectly valid schedule,
+     * just not the best one.</p>
+     */
+    @Test
+    void prunedSearchStillMatchesExhaustiveSearchWhenTravelIsNotBeingMinimised() {
+        Random random = new Random(20260808L);
+        int compared = 0;
+
+        for (int trial = 0; trial < 60; trial++) {
+            TimeWindow availability = window(9, 21);
+            List<ScheduleTask> items = randomTasks(3 + random.nextInt(3), random);
+            TravelMatrix matrix = randomBucketedMatrix(items, availability, random);
+            // Travel and gaps both switched off: only the tie-break separates the days.
+            SchedulingPreferences ignoringTravel = new SchedulingPreferences(
+                    java.util.Collections.emptyList(), false,
+                    closeai.application.autoschedule.PolicyContext.empty(), false, false);
+            ScheduleProblem problem = new ScheduleProblem(availability, items,
+                    noBlockedWindows(), matrix, ignoringTravel);
+
+            ScheduleSearchResult searched = engine.search(problem, SearchBudget.defaultBudget());
+            ScheduleScore exhaustive = bestByExhaustiveEnumeration(problem);
+
+            if (exhaustive == null) {
+                assertTrue(!searched.isFound());
+                continue;
+            }
+            assertTrue(searched.isFound(),
+                    "exhaustive enumeration found a schedule the pruned search missed");
+            assertEquals(exhaustive, searched.getPlan().getScore(),
+                    "pruning changed the answer on trial " + trial);
+            assertEquals(0, searched.getPlan().getScore().practicalCostMinutes(),
+                    "with travel and gaps ignored there is nothing left to charge");
+            compared++;
+        }
+        assertTrue(compared > 20, "expected feasible trials, got " + compared);
     }
 
     private List<ScheduleTask> randomTasks(int count, Random random) {

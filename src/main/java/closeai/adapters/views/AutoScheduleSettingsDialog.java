@@ -51,6 +51,10 @@ public final class AutoScheduleSettingsDialog extends JDialog {
     private final JTextField availableUntil = new JTextField(9);
     private final JComboBox<TransportationMode> mode =
             new JComboBox<>(TransportationMode.values());
+    private final ToggleSwitch minimizeTravel = new ToggleSwitch("Minimize travel time");
+    private final ToggleSwitch minimizeGaps = new ToggleSwitch("Minimize gaps");
+    private final ToggleSwitch preserveMealtimes = new ToggleSwitch("Preserve mealtimes");
+    private final ToggleSwitch preferDaylight = new ToggleSwitch("Prefer daylight outdoors");
     private final ToggleSwitch keepOrder = new ToggleSwitch("Preserve plan order");
     private final ToggleSwitch considerWeather = new ToggleSwitch("Avoid bad weather");
     private final JLabel weatherNote = new JLabel(CHECKING_WEATHER);
@@ -134,22 +138,24 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         form.add(Box.createVerticalStrut(18));
         form.add(group("PREFERENCES"));
 
-        // The four factors that are always on are shown as switches too, fixed in the on
-        // position. They are not choices, and pretending otherwise would be worse -- but
-        // leaving them off the screen made the schedule look like it weighed two things
-        // when it weighs six.
-        form.add(alwaysOnRow("Minimize travel time",
-                "Total time spent getting between places. This is what Autoschedule is for."));
+        // All six factors, all switchable. Turning one off removes it from the ranking
+        // only -- none of them is a hard rule, so none can make a day infeasible, and the
+        // traveller can see and steer every consideration rather than two of six.
+        form.add(softRow(minimizeTravel, "Minimize travel time",
+                "Total time spent getting between places. You still have to reach "
+                        + "everywhere either way; this decides whether a shorter journey "
+                        + "makes one plan better than another."));
         form.add(Box.createVerticalStrut(6));
-        form.add(alwaysOnRow("Minimize gaps",
+        form.add(softRow(minimizeGaps, "Minimize gaps",
                 "Waiting that is not caused by opening hours or a time you marked "
                         + "unavailable."));
         form.add(Box.createVerticalStrut(6));
-        form.add(alwaysOnRow("Preserve mealtimes",
+        form.add(softRow(preserveMealtimes, "Preserve mealtimes",
                 "Prefer a customary lunch or dinner window for places to eat."));
         form.add(Box.createVerticalStrut(6));
-        form.add(alwaysOnRow("Prefer daylight outdoors",
-                "Prefer daylight hours for outdoor activities."));
+        form.add(softRow(preferDaylight, "Prefer daylight outdoors",
+                "Prefer daylight hours for outdoor activities. Indoor places are never "
+                        + "affected."));
 
         form.add(Box.createVerticalStrut(10));
 
@@ -265,20 +271,19 @@ public final class AutoScheduleSettingsDialog extends JDialog {
      * a checkbox's text is -- a 40-pixel switch alone would be a mean thing to aim for.</p>
      */
     /**
-     * A factor the schedule always weighs, drawn as a switch that cannot be moved.
+     * A soft factor: on by default, and the traveller's to switch off.
      *
-     * <p>Disabled rather than absent: the user asked what is being considered, and four of
-     * the six answers used to be invisible. Disabled rather than live-but-ignored, because
-     * a switch that does nothing when flicked is worse than one that plainly cannot be.</p>
+     * <p>Every one of these only affects how candidate days are ranked, so switching one
+     * off can never make a day impossible — it just stops that consideration breaking
+     * ties. Weather is the exception, and it is built separately because it can also be
+     * genuinely unavailable.</p>
      */
-    private JPanel alwaysOnRow(String text, String explanation) {
-        ToggleSwitch fixed = new ToggleSwitch(text);
-        fixed.setSelected(true);
-        fixed.setEnabled(false);
-        fixed.setToolTipText(explanation + " Always on.");
-        fixed.getAccessibleContext().setAccessibleDescription(explanation + " Always on.");
-        JPanel row = switchRow(fixed, text);
-        row.setToolTipText(fixed.getToolTipText());
+    private JPanel softRow(ToggleSwitch control, String text, String explanation) {
+        control.setSelected(true);
+        control.setToolTipText(explanation);
+        control.getAccessibleContext().setAccessibleDescription(explanation);
+        JPanel row = switchRow(control, text);
+        row.setToolTipText(explanation);
         return row;
     }
 
@@ -287,11 +292,11 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         row.setLayout(new javax.swing.BoxLayout(row, javax.swing.BoxLayout.X_AXIS));
         row.setOpaque(false);
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // Not greyed to match a disabled switch: only weather can be disabled, that
+        // happens after this row is built, and a label dimmed at construction stayed dim
+        // once the forecast arrived. The sentence under the switch already explains it.
         JLabel label = new JLabel(text);
         label.setFont(SwingTheme.BODY);
-        if (!control.isEnabled()) {
-            label.setForeground(SwingTheme.MUTED);
-        }
         label.setLabelFor(control);
         label.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
@@ -398,7 +403,8 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         boolean weather = considerWeather.isEnabled() && considerWeather.isSelected();
         return new AutoScheduleSettings(from, until,
                 (TransportationMode) mode.getSelectedItem(), windows, keepOrder.isSelected(),
-                weather);
+                weather, minimizeTravel.isSelected(), minimizeGaps.isSelected(),
+                preserveMealtimes.isSelected(), preferDaylight.isSelected());
     }
 
     /**

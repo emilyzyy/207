@@ -136,8 +136,10 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         addOpeningHoursWarnings(tasks, warnings);
         WeatherContext weather = weatherFor(trip, inputData.isConsiderWeather(), warnings);
 
-        SchedulingPreferences preferences = SchedulingPreferences.builtIn(registeredPolicies,
-                inputData.isKeepCurrentOrder(), new PolicyContext(weather));
+        SchedulingPreferences preferences = SchedulingPreferences.builtIn(
+                chosenPolicies(inputData), inputData.isKeepCurrentOrder(),
+                new PolicyContext(weather),
+                inputData.isMinimizeTravel(), inputData.isMinimizeGaps());
 
         RefinementOutcome outcome = searchWithExactTravel(availability, tasks,
                 inputData.getUnavailableWindows(), matrix, preferences, mode, trip.getDate());
@@ -415,6 +417,27 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
             return names.get(0) + ", " + names.get(1) + " and " + names.get(2);
         }
         return names.get(0) + ", " + names.get(1) + " and " + (names.size() - 2) + " more";
+    }
+
+    /**
+     * The soft policies the traveller left switched on.
+     *
+     * <p>Weather is not filtered here even when it is declined: it is switched off by
+     * giving it a context that cannot distinguish times, which makes it score zero and
+     * keeps one reason for its absence instead of two.</p>
+     */
+    private List<SoftPolicy> chosenPolicies(AutoScheduleInputData inputData) {
+        List<SoftPolicy> chosen = new ArrayList<>();
+        for (SoftPolicy policy : registeredPolicies) {
+            if (policy.id() == PolicyId.MEAL_TIME && !inputData.isPreserveMealtimes()) {
+                continue;
+            }
+            if (policy.id() == PolicyId.DAYLIGHT && !inputData.isPreferDaylight()) {
+                continue;
+            }
+            chosen.add(policy);
+        }
+        return chosen;
     }
 
     /**

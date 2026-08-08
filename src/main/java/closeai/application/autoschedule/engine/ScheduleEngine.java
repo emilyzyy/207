@@ -202,11 +202,19 @@ public final class ScheduleEngine {
         SchedulingPreferences preferences = state.problem.getPreferences();
         int costSoFar = 0;
         for (PlacedActivity placed : placements) {
-            costSoFar += placed.getTravelMinutesBefore();
-            costSoFar += placed.getAvoidableIdleMinutes();
+            if (preferences.countsTravel()) {
+                costSoFar += placed.getTravelMinutesBefore();
+            }
+            if (preferences.countsIdle()) {
+                costSoFar += placed.getAvoidableIdleMinutes();
+            }
             costSoFar += policyPenalty(placed, preferences);
         }
-        int floor = costSoFar + minimumRemainingTravel(state, previous, remaining);
+        // The floor must only contain terms the score itself charges. Adding travel the
+        // ranking has been told to ignore would make this bound inadmissible and let the
+        // search prune the very schedule it was looking for.
+        int floor = costSoFar + (preferences.countsTravel()
+                ? minimumRemainingTravel(state, previous, remaining) : 0);
         return floor > state.best.getScore().practicalCostMinutes();
     }
 
@@ -243,6 +251,15 @@ public final class ScheduleEngine {
             avoidableIdle += placed.getAvoidableIdleMinutes();
             displacement += Math.abs(position - placed.getTask().getOriginalIndex());
             tieBreak.append(placed.getTask().getEventId()).append('/');
+        }
+        // Zeroed rather than never measured: the placer still needed real travel to decide
+        // what was reachable, and the metrics still report it. Only the ranking stops
+        // caring, which is exactly what switching the factor off should mean.
+        if (!active.countsTravel()) {
+            travel = 0;
+        }
+        if (!active.countsIdle()) {
+            avoidableIdle = 0;
         }
         return new ScheduleScore(travel, avoidableIdle, penalty,
                 active.orderPenaltyFor(displacement), tieBreak.toString());
