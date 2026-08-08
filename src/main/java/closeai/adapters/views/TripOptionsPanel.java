@@ -4,6 +4,7 @@ import closeai.adapters.controllers.TripSetupController;
 import closeai.adapters.viewmodels.TripOptionsState;
 import closeai.adapters.viewmodels.TripOptionsViewModel;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -20,9 +21,14 @@ public final class TripOptionsPanel extends JPanel {
     private final TripOptionsViewModel viewModel;
     private final TripSetupController controller;
     private final JTextField destination = new JTextField();
-    private final JTextField date = new JTextField();
-    private final JTextField startTime = new JTextField();
-    private final JTextField endTime = new JTextField();
+    private final CardLayout destinationLayout = new CardLayout();
+    private final JPanel destinationValue = new JPanel(destinationLayout);
+    private final JLabel destinationDisplay = new JLabel();
+    private final DateSelectionButton date = new DateSelectionButton(java.time.LocalDate.now());
+    private final TimeSelectorPanel startTime =
+            new TimeSelectorPanel(java.time.LocalTime.of(9, 0));
+    private final TimeSelectorPanel endTime =
+            new TimeSelectorPanel(java.time.LocalTime.of(18, 0));
     private final JLabel status = new JLabel();
     private final JButton submit = SwingTheme.primaryButton("Create Trip");
 
@@ -58,22 +64,33 @@ public final class TripOptionsPanel extends JPanel {
 
         JPanel fields = new JPanel(new GridBagLayout());
         fields.setOpaque(false);
-        addField(fields, 0, "Destination", destination);
+        destinationValue.setOpaque(false);
+        destinationDisplay.setFont(SwingTheme.BODY.deriveFont(java.awt.Font.BOLD));
+        destinationDisplay.setForeground(SwingTheme.NAVY);
+        destinationValue.add(destination, "editable");
+        destinationValue.add(destinationDisplay, "display");
+        addField(fields, 0, "Destination", destinationValue);
         addField(fields, 1, "Date (YYYY-MM-DD)", date);
         addField(fields, 2, "Day starts (HH:MM)", startTime);
         addField(fields, 3, "Day ends (HH:MM)", endTime);
-        add(fields, BorderLayout.CENTER);
 
-        JPanel footer = new JPanel();
-        footer.setOpaque(false);
-        footer.setLayout(new BoxLayout(footer, BoxLayout.Y_AXIS));
-        status.setFont(SwingTheme.SMALL);
-        footer.add(status);
-        footer.add(Box.createVerticalStrut(8));
+        GridBagConstraints buttonConstraints = new GridBagConstraints();
+        buttonConstraints.gridx = 1;
+        buttonConstraints.gridy = 4;
+        buttonConstraints.anchor = GridBagConstraints.WEST;
+        buttonConstraints.insets = new Insets(8, 0, 0, 0);
         submit.setEnabled(controller != null);
         submit.addActionListener(event -> submit());
-        footer.add(submit);
-        add(footer, BorderLayout.SOUTH);
+        fields.add(submit, buttonConstraints);
+
+        GridBagConstraints statusConstraints = new GridBagConstraints();
+        statusConstraints.gridx = 1;
+        statusConstraints.gridy = 5;
+        statusConstraints.anchor = GridBagConstraints.WEST;
+        statusConstraints.insets = new Insets(8, 0, 0, 0);
+        status.setFont(SwingTheme.SMALL);
+        fields.add(status, statusConstraints);
+        add(fields, BorderLayout.CENTER);
 
         renderState(viewModel.getState());
         viewModel.addPropertyChangeListener(event -> {
@@ -91,28 +108,35 @@ public final class TripOptionsPanel extends JPanel {
 
     private void submit() {
         if (controller != null) {
+            String submittedDestination = viewModel.getState().hasActiveTrip()
+                    ? viewModel.getState().getDestination() : destination.getText();
             controller.execute(
-                    destination.getText(),
-                    date.getText(),
-                    startTime.getText(),
-                    endTime.getText());
+                    submittedDestination,
+                    date.getDate().toString(),
+                    startTime.getTime().toString(),
+                    endTime.getTime().toString());
         }
     }
 
     private void renderState(TripOptionsState state) {
         destination.setText(state.getDestination());
-        date.setText(state.getDate() == null ? "" : state.getDate().toString());
-        startTime.setText(
-                state.getStartTime() == null ? "" : state.getStartTime().toString());
-        endTime.setText(
-                state.getEndTime() == null ? "" : state.getEndTime().toString());
+        destinationDisplay.setText(state.getDestination());
+        destination.setEditable(!state.hasActiveTrip());
+        destination.setFocusable(!state.hasActiveTrip());
+        destination.setToolTipText(state.hasActiveTrip()
+                ? "Destination is fixed for this day plan" : "Enter the trip destination");
+        destinationDisplay.setToolTipText("Destination is fixed for this day plan");
+        destinationLayout.show(destinationValue,
+                state.hasActiveTrip() ? "display" : "editable");
+        date.setDate(state.getDate());
+        startTime.setTime(state.getStartTime());
+        endTime.setTime(state.getEndTime());
         submit.setText(state.hasActiveTrip() ? "Save Trip Options" : "Create Trip");
         renderFeedback(state);
     }
 
     private void renderFeedback(TripOptionsState state) {
-        status.setText(state.getMessage().isEmpty()
-                ? "Enter trip details to begin." : state.getMessage());
+        status.setText(state.getMessage());
         status.setForeground(state.isError() ? SwingTheme.ERROR : SwingTheme.SUCCESS);
     }
 

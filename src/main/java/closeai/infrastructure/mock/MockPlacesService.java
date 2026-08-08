@@ -18,7 +18,7 @@ public final class MockPlacesService implements PlacesService, ActivityRepositor
                  "100 Queens Park", 4.7, 120, IndoorOutdoorType.INDOOR, "Low"),
         activity("cn-tower", "CN Tower", ActivityCategory.ATTRACTION, 43.6426, -79.3871,
                  "290 Bremner Blvd", 4.6, 90, IndoorOutdoorType.MIXED, "Low"),
-        activity("islands", "Toronto Islands", ActivityCategory.OUTDOOR, 43.6214, -79.3789,
+        activity("islands", "Toronto Islands", ActivityCategory.PARKS_NATURE, 43.6214, -79.3789,
                  "Toronto Islands", 4.8, 180, IndoorOutdoorType.OUTDOOR, "High"),
         activity("pai", "Pai Northern Thai Kitchen", ActivityCategory.FOOD, 43.6477, -79.3886,
                  "18 Duncan St", 4.5, 60, IndoorOutdoorType.INDOOR, "Low"),

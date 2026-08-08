@@ -2,6 +2,7 @@ package closeai.adapters.views;
 
 import closeai.adapters.viewmodels.DashboardState;
 import closeai.adapters.viewmodels.DashboardViewModel;
+import closeai.adapters.viewmodels.ActivitySelectionViewModel;
 import closeai.adapters.viewmodels.SearchState;
 import closeai.adapters.viewmodels.SearchViewModel;
 import closeai.domain.entities.Activity;
@@ -9,6 +10,8 @@ import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.valueobjects.EventType;
 import closeai.infrastructure.mock.MockPlacesService;
 import java.time.LocalTime;
+import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -115,9 +118,61 @@ final class OverviewPanelMapTest {
         assertEquals("bookmark", map.markerText(bookmark.getId()));
         assertEquals("1", map.markerText(first.getId()));
         assertEquals("2", map.markerText(secondBookmarked.getId()));
-
         map.selectActivity(secondBookmarked);
         assertEquals(secondBookmarked.getId(), map.getSelectedActivityId());
+    }
+
+    @Test
+    void markersDrawGenericThenBookmarkedThenPlannedAndSelectedLast() {
+        MapPanel map = new MapPanel(600, 500, false);
+        List<Activity> places = new MockPlacesService().findAll();
+        Activity selectedGeneric = places.get(0);
+        Activity planned = places.get(1);
+        Activity generic = places.get(2);
+        Activity bookmarked = places.get(3);
+        map.setActivities(Arrays.asList(
+                planned, selectedGeneric, bookmarked, generic));
+        map.setHighlightedIds(
+                Collections.singleton(bookmarked.getId()),
+                Collections.singleton(planned.getId()));
+        map.selectActivity(selectedGeneric);
+
+        List<Activity> ordered = map.markerDrawingOrder();
+
+        assertEquals(generic.getId(), ordered.get(0).getId());
+        assertEquals(bookmarked.getId(), ordered.get(1).getId());
+        assertEquals(planned.getId(), ordered.get(2).getId());
+        assertEquals(selectedGeneric.getId(), ordered.get(3).getId());
+    }
+
+    @Test
+    void clickingMarkerSelectsSearchCardAndKeepsMapFocused() {
+        System.setProperty("closeai.map.tiles.mode", "offline");
+        Activity activity = new MockPlacesService().findAll().get(0);
+        DashboardViewModel dashboard = new DashboardViewModel(
+                new DashboardState("Toronto", null, "", ""));
+        SearchViewModel search = new SearchViewModel(new SearchState(
+                Collections.singletonList(activity), ""));
+        ActivitySelectionViewModel selection = new ActivitySelectionViewModel();
+        OverviewPanel overview = new OverviewPanel(
+                dashboard, search, null, null, selection);
+        MapPanel map = overview.getMapPanel();
+        map.setSize(600, 500);
+        map.selectActivity(activity);
+        map.paint(new BufferedImage(600, 500, BufferedImage.TYPE_INT_ARGB).getGraphics());
+
+        MouseEvent press = new MouseEvent(map, MouseEvent.MOUSE_PRESSED,
+                System.currentTimeMillis(), 0, 300, 250, 1, false);
+        MouseEvent release = new MouseEvent(map, MouseEvent.MOUSE_RELEASED,
+                System.currentTimeMillis(), 0, 300, 250, 1, false);
+        for (java.awt.event.MouseListener listener : map.getMouseListeners()) {
+            listener.mousePressed(press);
+            listener.mouseReleased(release);
+        }
+
+        assertEquals(activity.getId(), selection.getSelectedActivityId());
+        assertEquals(activity.getId(), search.getState().getSelectedActivityId());
+        assertEquals(activity.getId(), map.getSelectedActivityId());
     }
 
     private ScheduledEvent event(String id, Activity activity, LocalTime start) {

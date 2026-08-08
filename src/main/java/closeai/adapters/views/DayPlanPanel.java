@@ -15,15 +15,22 @@ import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.WeatherWarning;
 import closeai.domain.valueobjects.EventType;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.Cursor;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.LocalTime;
 import java.util.List;
 import javax.swing.BorderFactory;
+import javax.swing.AbstractButton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -31,6 +38,8 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.Scrollable;
+import javax.swing.SwingConstants;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.SwingUtilities;
@@ -55,6 +64,7 @@ public final class DayPlanPanel extends JPanel {
     private final ManualPlanController manualPlanController;
     private final ActivitySelectionViewModel selection;
     private final JPanel eventList = new JPanel();
+    private final ScheduleTimeline timeline = new ScheduleTimeline();
     private final JPanel previewArea = new JPanel();
     private final JPanel sidebarSlot = new JPanel(new BorderLayout());
     private final JLabel status = new JLabel();
@@ -109,7 +119,7 @@ public final class DayPlanPanel extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
         add(header(), BorderLayout.NORTH);
 
-        eventList.setLayout(new BoxLayout(eventList, BoxLayout.Y_AXIS));
+        eventList.setLayout(new BorderLayout(0, 8));
         eventList.setBackground(SwingTheme.PANEL);
         previewArea.setLayout(new BoxLayout(previewArea, BoxLayout.Y_AXIS));
         previewArea.setBackground(SwingTheme.PANEL);
@@ -123,6 +133,7 @@ public final class DayPlanPanel extends JPanel {
         JScrollPane scroll = new JScrollPane(centre);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(14);
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         sidebarSlot.setOpaque(false);
         sidebarSlot.setBorder(BorderFactory.createEmptyBorder(0, 14, 0, 0));
@@ -320,21 +331,9 @@ public final class DayPlanPanel extends JPanel {
         eventList.removeAll();
         eventList.add(SwingTheme.sectionHeader("YOUR DAY PLAN",
                 state.getStatus() == AutoScheduleStatus.PREVIEW ? "unchanged so far" : "",
-                SwingTheme.NAVY));
-        eventList.add(Box.createVerticalStrut(8));
-
-        if (state.getEvents().isEmpty()) {
-            JLabel empty = new JLabel("No activities are currently scheduled.");
-            empty.setFont(SwingTheme.BODY);
-            empty.setForeground(SwingTheme.MUTED);
-            empty.setAlignmentX(Component.LEFT_ALIGNMENT);
-            eventList.add(empty);
-            return;
-        }
-        for (ScheduledEvent event : state.getEvents()) {
-            eventList.add(eventCard(event, state, state.getHourlyWeatherFor(event)));
-            eventList.add(Box.createVerticalStrut(8));
-        }
+                SwingTheme.NAVY), BorderLayout.NORTH);
+        timeline.setSchedule(state);
+        eventList.add(timeline, BorderLayout.CENTER);
     }
 
     private void renderPreview(DayPlanState state) {
@@ -591,18 +590,12 @@ public final class DayPlanPanel extends JPanel {
         boolean locked = state.getLockedEventIds().contains(event.getId());
         JPanel card = new JPanel(new BorderLayout(12, 5));
         SwingTheme.styleCard(card);
-        if (locked) {
-            // A pinned activity is tinted as well as badged, so the state is visible from
-            // the shape of the list rather than only from the control at the end of the row.
-            card.setBackground(SwingTheme.BLUE_SOFT);
+        if (event.getActivity() != null) {
+            card.setBackground(SwingTheme.categorySurface(
+                    event.getActivity().getCategory()));
         }
         card.setAlignmentX(Component.LEFT_ALIGNMENT);
         makeSelectable(card, event);
-
-        JLabel time = new JLabel(TimeDisplay.range(event.getStartTime(), event.getEndTime()));
-        time.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
-        time.setForeground(SwingTheme.BLUE);
-        card.add(time, BorderLayout.WEST);
 
         String name = event.getActivity() == null
                 ? (event.getNotes().isEmpty() ? event.getEventType().toString() : event.getNotes())
@@ -612,7 +605,8 @@ public final class DayPlanPanel extends JPanel {
         details.setLayout(new BoxLayout(details, BoxLayout.Y_AXIS));
         details.setOpaque(false);
 
-        JLabel title = new JLabel(name);
+        JLabel title = new JLabel("<html><b>" + escape(name) + "</b> &nbsp; "
+                + escape(TimeDisplay.range(event.getStartTime(), event.getEndTime())) + "</html>");
         title.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         title.setForeground(SwingTheme.NAVY);
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -667,6 +661,185 @@ public final class DayPlanPanel extends JPanel {
         card.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE,
                 card.getPreferredSize().height));
         return card;
+    }
+
+    /** Google Calendar-style day grid whose event blocks are positioned by start time. */
+    private final class ScheduleTimeline extends JPanel implements Scrollable {
+        private static final int HOUR_HEIGHT = 72;
+        private static final int TIME_GUTTER = 68;
+        private static final int EVENT_GAP = 8;
+        private DayPlanState state;
+
+        private ScheduleTimeline() {
+            setLayout(null);
+            setName("Day schedule timeline");
+            getAccessibleContext().setAccessibleName("Day schedule timeline");
+            setBackground(SwingTheme.PANEL);
+            setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
+        }
+
+        private void setSchedule(DayPlanState updatedState) {
+            state = updatedState;
+            removeAll();
+            for (ScheduledEvent event : updatedState.getEvents()) {
+                JPanel card = eventCard(event, updatedState,
+                        updatedState.getHourlyWeatherFor(event));
+                add(card);
+                if (event.getEventType() == EventType.ACTIVITY
+                        && manualPlanController != null) {
+                    installDragHandling(card, event);
+                }
+            }
+            updatePreferredSize();
+            revalidate();
+            repaint();
+        }
+
+        private void updatePreferredSize() {
+            int minutes = Math.max(60, minutesBetween(tripStart, tripEnd));
+            int height = Math.max(360, minutes * HOUR_HEIGHT / 60 + 1);
+            setPreferredSize(new Dimension(520, height));
+            setMinimumSize(new Dimension(0, height));
+        }
+
+        @Override
+        public void doLayout() {
+            if (state == null) return;
+            int cardWidth = Math.max(160, getWidth() - TIME_GUTTER - EVENT_GAP * 2);
+            List<ScheduledEvent> events = state.getEvents();
+            for (int i = 0; i < events.size() && i < getComponentCount(); i++) {
+                ScheduledEvent event = events.get(i);
+                int start = signedMinutesBetween(tripStart, event.getStartTime());
+                int duration = Math.max(1, minutesBetween(
+                        event.getStartTime(), event.getEndTime()));
+                int y = Math.max(0, start * HOUR_HEIGHT / 60 + 2);
+                int height = Math.max(64, duration * HOUR_HEIGHT / 60 - 4);
+                getComponent(i).setBounds(
+                        TIME_GUTTER + EVENT_GAP, y, cardWidth, height);
+            }
+        }
+
+        @Override
+        protected void paintComponent(Graphics graphics) {
+            super.paintComponent(graphics);
+            Graphics2D g2 = (Graphics2D) graphics.create();
+            g2.setFont(SwingTheme.SMALL);
+            int totalMinutes = Math.max(60, minutesBetween(tripStart, tripEnd));
+            for (int minute = 0; minute <= totalMinutes; minute += 60) {
+                int y = minute * HOUR_HEIGHT / 60;
+                LocalTime time = tripStart.plusMinutes(minute);
+                String label = TimeDisplay.format(time);
+                g2.setColor(SwingTheme.MUTED);
+                g2.drawString(label, 8, Math.min(y + 5, getHeight() - 4));
+                g2.setColor(SwingTheme.LINE);
+                g2.drawLine(TIME_GUTTER, y, getWidth(), y);
+            }
+            g2.dispose();
+        }
+
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visibleRect,
+                                              int orientation, int direction) {
+            return orientation == SwingConstants.VERTICAL ? HOUR_HEIGHT / 2 : 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visibleRect,
+                                               int orientation, int direction) {
+            return orientation == SwingConstants.VERTICAL
+                    ? Math.max(HOUR_HEIGHT, visibleRect.height - HOUR_HEIGHT) : 64;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return false;
+        }
+
+        private void installDragHandling(JPanel card, ScheduledEvent event) {
+            MouseAdapter drag = new MouseAdapter() {
+                private int pointerOffset;
+                private boolean moved;
+
+                @Override
+                public void mousePressed(MouseEvent mouseEvent) {
+                    java.awt.Point point = SwingUtilities.convertPoint(
+                            mouseEvent.getComponent(), mouseEvent.getPoint(), ScheduleTimeline.this);
+                    pointerOffset = point.y - card.getY();
+                    moved = false;
+                }
+
+                @Override
+                public void mouseDragged(MouseEvent mouseEvent) {
+                    java.awt.Point point = SwingUtilities.convertPoint(
+                            mouseEvent.getComponent(), mouseEvent.getPoint(), ScheduleTimeline.this);
+                    int duration = Math.max(1, minutesBetween(
+                            event.getStartTime(), event.getEndTime()));
+                    int total = Math.max(1, minutesBetween(tripStart, tripEnd));
+                    int latestStart = Math.max(0, total - duration);
+                    int maximumY = latestStart * HOUR_HEIGHT / 60;
+                    int y = Math.max(0, Math.min(maximumY, point.y - pointerOffset));
+                    card.setLocation(card.getX(), y);
+                    moved = true;
+                    repaint();
+                }
+
+                @Override
+                public void mouseReleased(MouseEvent mouseEvent) {
+                    if (!moved) return;
+                    int duration = Math.max(1, minutesBetween(
+                            event.getStartTime(), event.getEndTime()));
+                    LocalTime start = draggedStartFor(
+                            tripStart, tripEnd, card.getY(), HOUR_HEIGHT, duration);
+                    LocalTime end = start.plusMinutes(duration);
+                    manualPlanController.edit(
+                            event.getId(), start.toString(), end.toString(), event.getNotes());
+                }
+            };
+            addDragListener(card, drag);
+            card.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
+            String tooltip = card.getToolTipText();
+            card.setToolTipText((tooltip == null ? "Scheduled activity" : tooltip)
+                    + "; drag to change its time");
+        }
+
+        private void addDragListener(Component component, MouseAdapter listener) {
+            if (component instanceof AbstractButton) return;
+            component.addMouseListener(listener);
+            component.addMouseMotionListener(listener);
+            if (component instanceof Container) {
+                for (Component child : ((Container) component).getComponents()) {
+                    addDragListener(child, listener);
+                }
+            }
+        }
+    }
+
+    static LocalTime draggedStartFor(LocalTime dayStart, LocalTime dayEnd,
+                                     int y, int hourHeight, int durationMinutes) {
+        int total = Math.max(1, minutesBetween(dayStart, dayEnd));
+        int latestStart = Math.max(0, total - Math.max(1, durationMinutes));
+        double rawMinutes = Math.max(0, y) * 60.0 / Math.max(1, hourHeight);
+        int snapped = (int) Math.round(rawMinutes / 15.0) * 15;
+        return dayStart.plusMinutes(Math.max(0, Math.min(latestStart, snapped)));
+    }
+
+    private static int minutesBetween(LocalTime start, LocalTime end) {
+        int minutes = (int) java.time.Duration.between(start, end).toMinutes();
+        return minutes < 0 ? minutes + 24 * 60 : minutes;
+    }
+
+    private static int signedMinutesBetween(LocalTime start, LocalTime end) {
+        return (int) java.time.Duration.between(start, end).toMinutes();
     }
 
     /**

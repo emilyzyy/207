@@ -77,7 +77,8 @@ public final class MapPanel extends JPanel {
     private java.util.function.Consumer<List<Activity>> placesLoadedListener;
     private java.util.function.Consumer<Boolean> placesLoadingListener;
 
-    private final JCheckBox highlightOnly = new JCheckBox("Bookmarks & calendar only");
+    private final JCheckBox highlightOnly =
+            new JCheckBox("Bookmarked & added to plan only");
 
     private final ConcurrentHashMap<String, BufferedImage> tileCache = new ConcurrentHashMap<>();
     private final Set<String> pendingLoads = ConcurrentHashMap.newKeySet();
@@ -92,6 +93,10 @@ public final class MapPanel extends JPanel {
             r -> { Thread t = new Thread(r, "ViewportLoader"); t.setDaemon(true); return t; });
 
     private ViewportPlacesLoader viewportLoader;
+    private boolean viewportLoadRunning;
+    private ViewportRequest queuedViewportRequest;
+    private String activeViewportKey = "";
+    private String lastLoadedViewportKey = "";
 
     /**
      * Supplies places for a visible map window. Implementations should perform blocking
@@ -249,7 +254,10 @@ public final class MapPanel extends JPanel {
         if (!showHighlightedOnly) return activities;
         List<Activity> visible = new ArrayList<>();
         for (Activity activity : activities) {
-            if (isHighlighted(activity.getId())) visible.add(activity);
+            if (isHighlighted(activity.getId())
+                    || activity.getId().equals(selectedActivityId)) {
+                visible.add(activity);
+            }
         }
         return visible;
     }
@@ -309,7 +317,8 @@ public final class MapPanel extends JPanel {
         int dx = e.getX() - pressStart.x;
         int dy = e.getY() - pressStart.y;
         if (Math.sqrt(dx * dx + dy * dy) > 6) return;
-        for (int i = 0; i < markerHitboxesX.size(); i++) {
+        // Hit-test from front to back, matching the reverse of the paint order.
+        for (int i = markerHitboxesX.size() - 1; i >= 0; i--) {
             int mx = markerHitboxesX.get(i);
             int my = markerHitboxesY.get(i);
             if (Math.hypot(e.getX() - mx, e.getY() - my) <= 16) {
@@ -339,18 +348,87 @@ public final class MapPanel extends JPanel {
         final double west = corners[0][1];
         final double north = corners[1][0];
         final double east = corners[1][1];
-        viewportLoaderExecutor.submit(() -> {
-            try {
-                List<Activity> found = viewportLoader.load(south, west, north, east, maxResults);
-                SwingUtilities.invokeLater(() -> {
-                    mergeViewportResults(found);
-                    notifyPlacesLoading(false);
-                });
-            } catch (Exception ignored) {
-                SwingUtilities.invokeLater(() -> notifyPlacesLoading(false));
+        ViewportRequest request = new ViewportRequest(
+                south, west, north, east, maxResults, viewportKey(corners, maxResults));
+        synchronized (this) {
+            if (request.key.equals(activeViewportKey)
+                    || request.key.equals(lastLoadedViewportKey)
+                    || queuedViewportRequest != null
+                    && request.key.equals(queuedViewportRequest.key)) {
+                return;
             }
-        });
+            queuedViewportRequest = request;
+            if (viewportLoadRunning) return;
+            request = takeQueuedViewportRequest();
+        }
         notifyPlacesLoading(true);
+        loadViewport(request);
+    }
+
+    private synchronized ViewportRequest takeQueuedViewportRequest() {
+        ViewportRequest request = queuedViewportRequest;
+        queuedViewportRequest = null;
+        viewportLoadRunning = true;
+        activeViewportKey = request.key;
+        return request;
+    }
+
+    private void loadViewport(ViewportRequest request) {
+        viewportLoaderExecutor.submit(() -> {
+            List<Activity> found = Collections.emptyList();
+            try {
+                found = viewportLoader.load(request.south, request.west,
+                        request.north, request.east, request.maxResults);
+            } catch (Exception ignored) {
+                // A failed public lookup leaves the current markers intact.
+            }
+            List<Activity> completed = found;
+            SwingUtilities.invokeLater(() -> finishViewportLoad(request, completed));
+        });
+    }
+
+    private void finishViewportLoad(ViewportRequest completed, List<Activity> found) {
+        ViewportRequest next = null;
+        boolean apply;
+        synchronized (this) {
+            apply = queuedViewportRequest == null;
+            if (apply) lastLoadedViewportKey = completed.key;
+            viewportLoadRunning = false;
+            activeViewportKey = "";
+            if (queuedViewportRequest != null) next = takeQueuedViewportRequest();
+        }
+        if (apply && found != null && !found.isEmpty()) mergeViewportResults(found);
+        if (next == null) {
+            notifyPlacesLoading(false);
+        } else {
+            loadViewport(next);
+        }
+    }
+
+    private static String viewportKey(double[][] corners, int maxResults) {
+        return Math.round(corners[0][0] * 100) + ","
+                + Math.round(corners[0][1] * 100) + ","
+                + Math.round(corners[1][0] * 100) + ","
+                + Math.round(corners[1][1] * 100) + "," + maxResults;
+    }
+
+    private static final class ViewportRequest {
+        private final double south;
+        private final double west;
+        private final double north;
+        private final double east;
+        private final int maxResults;
+        private final String key;
+
+        private ViewportRequest(double south, double west, double north, double east,
+                                int maxResults, String key) {
+            this.south = south;
+            this.west = west;
+            this.north = north;
+            this.east = east;
+            this.maxResults = maxResults;
+            this.key = key;
+        }
     }
 
     private void notifyPlacesLoading(boolean loading) {
@@ -557,7 +635,7 @@ public final class MapPanel extends JPanel {
         markerHitboxesX.clear();
         markerHitboxesY.clear();
         markerIds.clear();
-        for (Activity a : visibleActivities()) {
+        for (Activity a : markerDrawingOrder()) {
             double lng = a.getLocation().getLongitude();
             double lat = a.getLocation().getLatitude();
             double markerPxX = latLngToPixelX(lng);
@@ -577,6 +655,21 @@ public final class MapPanel extends JPanel {
             if (name.length() > 25) name = name.substring(0, 22) + "...";
             g2.drawString(name, sx + 18, sy + 4);
         }
+    }
+
+    /** Back-to-front marker order: generic, bookmarked, planned, then selected. */
+    List<Activity> markerDrawingOrder() {
+        List<Activity> ordered = new ArrayList<>(visibleActivities());
+        ordered.sort((left, right) -> Integer.compare(
+                markerLayer(left.getId()), markerLayer(right.getId())));
+        return ordered;
+    }
+
+    private int markerLayer(String activityId) {
+        if (activityId.equals(selectedActivityId)) return 3;
+        if (scheduledIds.contains(activityId)) return 2;
+        if (bookmarkedIds.contains(activityId)) return 1;
+        return 0;
     }
 
     private void drawMarker(Graphics2D g2, String activityId, int sx, int sy) {

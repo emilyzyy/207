@@ -160,11 +160,7 @@ public final class AppBuilder {
                         trip.getTripDates(),
                         trip.getActiveDayIndex()));
         TripOptionsViewModel tripOptionsViewModel = new TripOptionsViewModel(
-                new TripOptionsState(
-                        trip.getDestination(),
-                        trip.getDate(),
-                        trip.getStartTime(),
-                        trip.getEndTime()));
+                TripOptionsState.fromTrip(trip, "", false));
         CalendarViewModel calendarViewModel = new CalendarViewModel(
                 dashboardViewModel, dayPlanViewModel);
         ShareViewModel shareViewModel = new ShareViewModel(
@@ -204,10 +200,12 @@ public final class AppBuilder {
                         app.places.searchInBounds(south, west, north, east, maxResults));
         SearchPanel searchPanel = new SearchPanel(
                 searchViewModel, discoveryController, bookmarkController,
-                manualPlanController, activitySelectionViewModel);
+                manualPlanController, activitySelectionViewModel,
+                dayPlanViewModel, tripOptionsViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(
                 bookmarksViewModel, bookmarkController,
-                manualPlanController, activitySelectionViewModel);
+                manualPlanController, activitySelectionViewModel,
+                dayPlanViewModel, tripOptionsViewModel);
         DayPlanPanel dayPlanPanel =
                 new DayPlanPanel(dayPlanViewModel, autoScheduleController,
                         manualPlanController, activitySelectionViewModel,
@@ -320,10 +318,12 @@ public final class AppBuilder {
                         app.places.searchInBounds(south, west, north, east, maxResults));
         SearchPanel searchPanel = new SearchPanel(
                 searchViewModel, discoveryController, bookmarkController,
-                manualPlanController, activitySelectionViewModel);
+                manualPlanController, activitySelectionViewModel,
+                dayPlanViewModel, tripOptionsViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(
                 bookmarksViewModel, bookmarkController,
-                manualPlanController, activitySelectionViewModel);
+                manualPlanController, activitySelectionViewModel,
+                dayPlanViewModel, tripOptionsViewModel);
         DayPlanPanel dayPlanPanel =
                 new DayPlanPanel(dayPlanViewModel, autoScheduleController,
                         manualPlanController, activitySelectionViewModel,

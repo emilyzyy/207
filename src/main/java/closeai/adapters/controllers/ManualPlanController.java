@@ -42,6 +42,15 @@ public final class ManualPlanController {
         }
     }
 
+    public void add(String activityId, LocalTime start, LocalTime end) {
+        try {
+            Trip trip = add.execute(requireTripId(), activityId, start, end);
+            presenter.presentSuccess(trip, "Activity added to the Day Plan");
+        } catch (IllegalArgumentException exception) {
+            presenter.presentFailure(exception.getMessage());
+        }
+    }
+
     public void edit(String eventId, String start, String end, String notes) {
         try {
             Trip trip = edit.execute(

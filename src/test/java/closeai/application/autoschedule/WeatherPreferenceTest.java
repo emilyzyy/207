@@ -244,7 +244,7 @@ class WeatherPreferenceTest {
         Map<Integer, WeatherSeverity> byHour = allDay(WeatherSeverity.HIGH);
         PolicyContext worst = new PolicyContext(WeatherContext.hourly(byHour));
         ScheduleTask park = ScheduleTask.movable("park", ProblemFixtures.activity("park",
-                ActivityCategory.OUTDOOR, IndoorOutdoorType.OUTDOOR, at(0, 0), at(23, 59)),
+                ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR, at(0, 0), at(23, 59)),
                 480, 0);
 
         int penalty = policy.penaltyMinutes(PlacedActivity.first(park, at(9, 0), at(17, 0), 0, 0),
@@ -291,7 +291,7 @@ class WeatherPreferenceTest {
     }
 
     private static ScheduledEvent outdoorEvent(String id, int startHour, int minutes) {
-        return event(id, ActivityCategory.OUTDOOR, IndoorOutdoorType.OUTDOOR, startHour, minutes);
+        return event(id, ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR, startHour, minutes);
     }
 
     private static ScheduledEvent indoorEvent(String id, int startHour, int minutes) {

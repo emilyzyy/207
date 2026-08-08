@@ -25,8 +25,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The settings dialog after the polish pass: it shows a 12-hour clock, reads one back, and
- * still refuses what it cannot understand.
+ * The settings dialog uses constrained 24-hour selectors for its availability window.
  *
  * <p>Dialogs allocate native windows, and Surefire shares one JVM, so every one built here
  * is disposed again — the same reason {@code AutoScheduleWeatherCheckBoxTest} does it.</p>
@@ -79,6 +78,16 @@ class AutoScheduleSettingsDialogTest {
         return found;
     }
 
+    private static List<TimeSelectorPanel> timeSelectors(Component root) {
+        List<TimeSelectorPanel> found = new ArrayList<>();
+        for (Component component : all(root)) {
+            if (component instanceof TimeSelectorPanel) {
+                found.add((TimeSelectorPanel) component);
+            }
+        }
+        return found;
+    }
+
     private static String allText(Component root) {
         StringBuilder text = new StringBuilder();
         for (Component component : all(root)) {
@@ -90,17 +99,17 @@ class AutoScheduleSettingsDialogTest {
     }
 
     @Test
-    void availabilityIsPrefilledOnATwelveHourClock() throws Exception {
+    void availabilityIsPrefilledInTheTimeSelectors() throws Exception {
         AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
 
-        List<JTextField> times = fields(dialog.getRootPane());
+        List<TimeSelectorPanel> times = timeSelectors(dialog.getRootPane());
 
-        assertEquals("9:00 AM", times.get(0).getText());
-        assertEquals("9:00 PM", times.get(1).getText());
+        assertEquals(LocalTime.of(9, 0), times.get(0).getTime());
+        assertEquals(LocalTime.of(21, 0), times.get(1).getTime());
     }
 
     @Test
-    void theDialogIsGroupedAndSaysWhatFormatItWants() throws Exception {
+    void theDialogIsGroupedWithoutObsoleteTypingExamples() throws Exception {
         AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
 
         String text = allText(dialog.getRootPane());
@@ -108,8 +117,7 @@ class AutoScheduleSettingsDialogTest {
         assertTrue(text.contains("WHEN YOU ARE FREE"), text);
         assertTrue(text.contains("TIMES YOU ARE NOT AVAILABLE"), text);
         assertTrue(text.contains("PREFERENCES"), text);
-        assertTrue(text.contains("For example 9:00 AM"),
-                "the field should teach its format rather than wait to reject: " + text);
+        assertFalse(text.contains("For example"), text);
     }
 
     @Test
@@ -125,29 +133,27 @@ class AutoScheduleSettingsDialogTest {
     }
 
     @Test
-    void typedAmPmAndTwentyFourHourTextBothParse() throws Exception {
+    void selectedQuarterHourTimesAreRead() throws Exception {
         AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
-        List<JTextField> times = fields(dialog.getRootPane());
+        List<TimeSelectorPanel> times = timeSelectors(dialog.getRootPane());
 
         SwingUtilities.invokeAndWait(() -> {
-            times.get(0).setText("10:30 am");
-            times.get(1).setText("19:45");
+            times.get(0).setTime(LocalTime.of(10, 30));
+            times.get(1).setTime(LocalTime.of(19, 45));
         });
 
         AutoScheduleSettings settings = dialog.read();
         assertEquals(LocalTime.of(10, 30), settings.getAvailableStart());
         assertEquals(LocalTime.of(19, 45), settings.getAvailableEnd(),
-                "the older 24-hour habit still works");
+                "the selected military time should be preserved");
     }
 
     @Test
-    void unparseableTextIsRefusedRatherThanGuessed() throws Exception {
+    void selectorsOnlyExposeHoursAndQuarterHours() throws Exception {
         AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
-        List<JTextField> times = fields(dialog.getRootPane());
-
-        SwingUtilities.invokeAndWait(() -> times.get(0).setText("half past nine"));
-
-        assertNull(dialog.read(), "a time nobody can read must not become a schedule");
+        List<TimeSelectorPanel> times = timeSelectors(dialog.getRootPane());
+        times.get(0).setTime(LocalTime.of(23, 45));
+        assertEquals(LocalTime.of(23, 45), times.get(0).getTime());
     }
 
     /**
@@ -187,10 +193,9 @@ class AutoScheduleSettingsDialogTest {
         }
     }
 
-    /** The two time fields of the first unavailable row, after the availability pair. */
+    /** The two text fields of the first unavailable row; availability now uses dropdowns. */
     private static List<JTextField> periodFields(AutoScheduleSettingsDialog dialog) {
-        List<JTextField> fields = fields(dialog.getRootPane());
-        return fields.subList(2, fields.size());
+        return fields(dialog.getRootPane());
     }
 
     private AutoScheduleSettingsDialog dialogWithOnePeriod() throws Exception {

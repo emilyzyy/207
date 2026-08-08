@@ -5,6 +5,8 @@ import closeai.adapters.controllers.ManualPlanController;
 import closeai.adapters.viewmodels.ActivitySelectionViewModel;
 import closeai.adapters.viewmodels.BookmarksState;
 import closeai.adapters.viewmodels.BookmarksViewModel;
+import closeai.adapters.viewmodels.DayPlanViewModel;
+import closeai.adapters.viewmodels.TripOptionsViewModel;
 import closeai.domain.entities.Activity;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
@@ -27,28 +29,40 @@ public final class BookmarksPanel extends JPanel {
     private final BookmarkController controller;
     private final ManualPlanController manualPlan;
     private final ActivitySelectionViewModel selection;
+    private final DayPlanViewModel dayPlan;
+    private final TripOptionsViewModel tripOptions;
     private final JPanel list = new JPanel();
 
     public BookmarksPanel(BookmarksViewModel viewModel) {
-        this(viewModel, null, null, null);
+        this(viewModel, null, null, null, null, null);
     }
 
     public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller) {
-        this(viewModel, controller, null, null);
+        this(viewModel, controller, null, null, null, null);
     }
 
     public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller,
                           ManualPlanController manualPlan) {
-        this(viewModel, controller, manualPlan, null);
+        this(viewModel, controller, manualPlan, null, null, null);
     }
 
     public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller,
                           ManualPlanController manualPlan,
                           ActivitySelectionViewModel selection) {
+        this(viewModel, controller, manualPlan, selection, null, null);
+    }
+
+    public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller,
+                          ManualPlanController manualPlan,
+                          ActivitySelectionViewModel selection,
+                          DayPlanViewModel dayPlan,
+                          TripOptionsViewModel tripOptions) {
         this.viewModel = viewModel;
         this.controller = controller;
         this.manualPlan = manualPlan;
         this.selection = selection;
+        this.dayPlan = dayPlan;
+        this.tripOptions = tripOptions;
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -89,6 +103,7 @@ public final class BookmarksPanel extends JPanel {
         for (Activity activity : state.getBookmarks()) {
             JPanel card = new JPanel(new BorderLayout());
             SwingTheme.styleCard(card);
+            card.setBackground(SwingTheme.categorySurface(activity.getCategory()));
             makeSelectable(card, activity);
             JLabel name = new JLabel(activity.getName());
             name.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
@@ -108,12 +123,11 @@ public final class BookmarksPanel extends JPanel {
             JButton add = SwingTheme.primaryButton("Add to plan");
             add.setEnabled(manualPlan != null);
             add.addActionListener(event -> {
-                String start = JOptionPane.showInputDialog(
-                        this, "Preferred start time for " + activity.getName()
-                                + " (HH:MM). Leave blank for the next available time.",
-                        "Add activity to Day Plan", JOptionPane.PLAIN_MESSAGE);
-                if (start != null) {
-                    manualPlan.add(activity.getId(), start);
+                if (dayPlan != null && tripOptions != null) {
+                    AddToPlanDialog.open(
+                            this, activity, dayPlan, tripOptions, manualPlan);
+                } else {
+                    manualPlan.add(activity.getId(), "");
                 }
             });
             actions.add(add);

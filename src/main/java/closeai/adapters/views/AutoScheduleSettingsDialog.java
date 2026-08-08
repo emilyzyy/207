@@ -48,8 +48,8 @@ public final class AutoScheduleSettingsDialog extends JDialog {
      */
     static final String CHECKING_WEATHER = "Checking hourly weather for this trip date...";
 
-    private final JTextField availableFrom = new JTextField(9);
-    private final JTextField availableUntil = new JTextField(9);
+    private final TimeSelectorPanel availableFrom;
+    private final TimeSelectorPanel availableUntil;
     private final JComboBox<TransportationMode> mode =
             new JComboBox<>(TransportationMode.values());
     private final ToggleSwitch minimizeTravel = new ToggleSwitch("Minimize travel time");
@@ -397,11 +397,8 @@ public final class AutoScheduleSettingsDialog extends JDialog {
 
     /** Reads the fields, or null when a time cannot be understood. */
     AutoScheduleSettings read() {
-        LocalTime from = parse(availableFrom.getText());
-        LocalTime until = parse(availableUntil.getText());
-        if (from == null || until == null) {
-            return null;
-        }
+        LocalTime from = availableFrom.getTime();
+        LocalTime until = availableUntil.getTime();
         List<AutoScheduleSettings.Window> windows = new ArrayList<>();
         for (TimeRangeRow row : rows) {
             LocalTime start = parse(row.start.getText());
