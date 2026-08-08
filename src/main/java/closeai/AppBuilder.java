@@ -30,6 +30,7 @@ import closeai.adapters.viewmodels.TripOptionsViewModel;
 import closeai.adapters.views.BookmarksPanel;
 import closeai.adapters.views.CloseAIFrame;
 import closeai.adapters.views.DayPlanPanel;
+import closeai.adapters.views.DaySwitcherPanel;
 import closeai.adapters.views.HeaderPanel;
 import closeai.adapters.views.OverviewPanel;
 import closeai.adapters.views.PlannerPanel;
@@ -197,8 +198,11 @@ public final class AppBuilder {
         dayPlanPanel.setTripDefaults(trip.getStartTime(), trip.getEndTime());
         TripOptionsPanel tripOptionsPanel =
                 new TripOptionsPanel(tripOptionsViewModel);
+        DaySwitcherPanel daySwitcherPanel =
+                new DaySwitcherPanel(dayPlanViewModel, tripDayController);
         PlannerPanel plannerPanel = new PlannerPanel(
-                searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel);
+                searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel,
+                daySwitcherPanel);
         CloseAIFrame frame = new CloseAIFrame(
                 headerPanel,
                 overviewPanel,
@@ -305,8 +309,11 @@ public final class AppBuilder {
                         tripDayController);
         TripOptionsPanel tripOptionsPanel =
                 new TripOptionsPanel(tripOptionsViewModel, tripSetupController);
+        DaySwitcherPanel daySwitcherPanel =
+                new DaySwitcherPanel(dayPlanViewModel, tripDayController);
         PlannerPanel plannerPanel = new PlannerPanel(
-                searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel);
+                searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel,
+                daySwitcherPanel);
         CloseAIFrame frame = new CloseAIFrame(
                 headerPanel,
                 overviewPanel,

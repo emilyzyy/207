@@ -12,6 +12,16 @@ public final class PlannerPanel extends JPanel {
             BookmarksPanel bookmarksPanel,
             DayPlanPanel dayPlanPanel,
             TripOptionsPanel tripOptionsPanel) {
+        this(searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel, null);
+    }
+
+    /** The day switcher sits above the tabs so it stays visible from any tab. */
+    public PlannerPanel(
+            SearchPanel searchPanel,
+            BookmarksPanel bookmarksPanel,
+            DayPlanPanel dayPlanPanel,
+            TripOptionsPanel tripOptionsPanel,
+            DaySwitcherPanel daySwitcherPanel) {
         setLayout(new BorderLayout());
         setBackground(SwingTheme.PANEL);
 
@@ -22,5 +32,9 @@ public final class PlannerPanel extends JPanel {
         tabs.addTab("Day Plan", dayPlanPanel);
         tabs.addTab("Trip Options", tripOptionsPanel);
         add(tabs, BorderLayout.CENTER);
+
+        if (daySwitcherPanel != null) {
+            add(daySwitcherPanel, BorderLayout.NORTH);
+        }
     }
 }
