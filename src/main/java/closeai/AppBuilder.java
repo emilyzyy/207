@@ -81,6 +81,7 @@ import closeai.infrastructure.persistence.InMemoryItineraryDataAccessObject;
 import closeai.infrastructure.routing.OsrmDistanceService;
 import closeai.infrastructure.supabase.SupabaseItineraryDataAccess;
 import closeai.infrastructure.weather.OpenMeteoWeatherService;
+import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -93,6 +94,10 @@ import javax.swing.SwingUtilities;
 
 /** Outer composition root for selecting infrastructure without leaking it into application code. */
 public final class AppBuilder {
+    private static final String DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
+    private static final String DEFAULT_PROXY_ENDPOINT =
+            "https://closeai-george-proxy.power-feast.workers.dev/v1/responses";
+
     public AppContainer build() {
         return build(null);
     }
@@ -352,7 +357,17 @@ public final class AppBuilder {
 
     private TripAssistantGateway tripAssistantGateway() {
         TripAssistantGateway offline = new OfflineTripAssistantGateway();
-        String mode = System.getProperty("closeai.chatbot.mode", "offline");
+        String mode = System.getProperty("closeai.chatbot.mode", "proxy");
+        if ("offline".equalsIgnoreCase(mode)) {
+            return offline;
+        }
+        String model = DotEnv.get("OPENAI_MODEL", "closeai.openai.model");
+        if (model == null) {
+            model = DEFAULT_OPENAI_MODEL;
+        }
+        if ("proxy".equalsIgnoreCase(mode)) {
+            return proxyTripAssistantGateway(offline, model);
+        }
         if (!"openai".equalsIgnoreCase(mode)) {
             return offline;
         }
@@ -365,12 +380,31 @@ public final class AppBuilder {
                         "OPENAI_API_KEY is not configured, so George used offline recommendations.");
             };
         }
-        String model = DotEnv.get("OPENAI_MODEL", "closeai.openai.model");
-        if (model == null) {
-            model = "gpt-5.6-sol";
-        }
         return new FallbackTripAssistantGateway(
                 new OpenAiTripAssistantGateway(apiKey, model), offline);
+    }
+
+    private TripAssistantGateway proxyTripAssistantGateway(
+            TripAssistantGateway offline, String model) {
+        String endpoint = DotEnv.get("CLOSEAI_AI_PROXY_URL", "closeai.ai.proxy.url");
+        if (endpoint == null) {
+            endpoint = DEFAULT_PROXY_ENDPOINT;
+        }
+        if (endpoint.trim().isEmpty()) {
+            return request -> {
+                TripAssistantDecision decision = offline.answer(request);
+                return new TripAssistantDecision(
+                        decision.getIntent(), decision.getActivityIds(),
+                        "George's live service is not configured, so offline recommendations "
+                                + "were used.");
+            };
+        }
+        try {
+            return new FallbackTripAssistantGateway(
+                    OpenAiTripAssistantGateway.viaProxy(URI.create(endpoint), model), offline);
+        } catch (IllegalArgumentException exception) {
+            return offline;
+        }
     }
 
     /**

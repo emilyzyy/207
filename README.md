@@ -69,20 +69,43 @@ and hourly weather. Useful questions include:
 - `Which of my bookmarked activities should I visit?`
 - `Why is this activity a good choice?`
 
-George runs in deterministic offline mode by default, so the app and normal test suite need no
-API key or internet connection:
+George uses the project's public Cloudflare Worker proxy by default. The OpenAI key stays in the
+Worker secret store and is never distributed with the desktop app or committed to Git. If the
+live service is unavailable, George automatically falls back to deterministic offline
+recommendations.
+
+Run the app with the default proxy mode:
 
 ```bash
 ./mvnw compile exec:java -Dexec.mainClass=closeai.Main
 ```
 
-To enable the live implementation, put the key in the gitignored `.env` file (or export it as a
-real environment variable), then explicitly opt in when launching:
+The checked-in default endpoint is
+`https://closeai-george-proxy.power-feast.workers.dev/v1/responses`. It is an account-owned
+Cloudflare Worker for the course demo, backed by an OpenAI project with a 5 USD monthly hard
+spend limit.
+
+To force fully offline behavior:
+
+```bash
+./mvnw compile exec:java -Dexec.mainClass=closeai.Main \
+  -Dcloseai.chatbot.mode=offline
+```
+
+Developers can point the app at another compatible proxy without rebuilding it:
+
+```bash
+./mvnw compile exec:java -Dexec.mainClass=closeai.Main \
+  -Dcloseai.ai.proxy.url=https://your-worker.example/v1/responses
+```
+
+Direct OpenAI mode remains available only for local development. Put the key in the gitignored
+`.env` file (or export it as a real environment variable), then explicitly opt in:
 
 ```dotenv
 OPENAI_API_KEY=your-project-key
-# Optional; the current default is gpt-5.6-sol
-OPENAI_MODEL=gpt-5.6-sol
+# Optional; the current default is gpt-5.4-mini
+OPENAI_MODEL=gpt-5.4-mini
 ```
 
 ```bash
@@ -90,17 +113,40 @@ OPENAI_MODEL=gpt-5.6-sol
   -Dcloseai.chatbot.mode=openai
 ```
 
-The live gateway calls `POST https://api.openai.com/v1/responses` with `store: false` and a strict
-Structured Outputs schema. OpenAI can select only activity IDs supplied by the current trip.
+The live gateway calls the Responses API with `store: false` and a strict Structured Outputs
+schema. OpenAI can select only activity IDs supplied by the current trip.
 George's displayed names and recommendation details are then rendered from CloseAI entities, so
 the model cannot introduce an unrecognized place. A live API, authentication, timeout, or schema
 failure is shown in the answer and automatically falls back to the deterministic offline gateway.
 All gateway and weather work runs through a background `SwingWorker`, never on Swing's event-
-dispatch thread. Keys are read through the existing `DotEnv` resolution order and are never logged.
+dispatch thread. The default desktop client does not read or send an OpenAI API key.
+
+### Deploying the George proxy
+
+The Worker lives in [`george-proxy`](george-proxy). It fixes the model to `gpt-5.4-mini`, caps
+output at 300 tokens, validates and trims trip context, accepts only grounded activity IDs, and
+rate-limits requests. From that directory:
+
+```bash
+pnpm install
+pnpm test
+pnpm exec wrangler login
+pnpm exec wrangler deploy --secrets-file ../.env.proxy
+```
+
+`../.env.proxy` must contain only the server-side secret and is ignored by Git:
+
+```dotenv
+OPENAI_API_KEY=your-project-key
+```
+
+After deployment, set `DEFAULT_PROXY_ENDPOINT` in `AppBuilder` to the Worker's
+`/v1/responses` URL. OpenAI spending limits are project-wide, so use a dedicated OpenAI project
+for this Worker before setting a 5 USD hard project limit.
 
 Current limitations:
 
-- Offline recommendations use a small deterministic ranking heuristic rather than natural-language
+- Fallback recommendations use a small deterministic ranking heuristic rather than natural-language
   reasoning.
 - Live AI selects grounded activity IDs and an intent; final wording is deliberately generated from
   application data to enforce the no-invented-places guarantee.

@@ -41,17 +41,31 @@ public final class OpenAiTripAssistantGateway implements TripAssistantGateway {
     private final String apiKey;
     private final String model;
     private final Duration timeout;
+    private final boolean sendAuthorization;
 
     public OpenAiTripAssistantGateway(String apiKey, String model) {
         this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(),
-                new ObjectMapper(), DEFAULT_ENDPOINT, apiKey, model, Duration.ofSeconds(30));
+                new ObjectMapper(), DEFAULT_ENDPOINT, apiKey, model, Duration.ofSeconds(30), true);
     }
 
     public OpenAiTripAssistantGateway(
             HttpClient client, ObjectMapper mapper, URI endpoint, String apiKey,
             String model, Duration timeout) {
-        if (client == null || mapper == null || endpoint == null || isBlank(apiKey)
-                || isBlank(model) || timeout == null) {
+        this(client, mapper, endpoint, apiKey, model, timeout, true);
+    }
+
+    /** Builds a client for a trusted proxy that keeps the OpenAI key on the server. */
+    public static OpenAiTripAssistantGateway viaProxy(URI endpoint, String model) {
+        return new OpenAiTripAssistantGateway(
+                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(),
+                new ObjectMapper(), endpoint, null, model, Duration.ofSeconds(30), false);
+    }
+
+    private OpenAiTripAssistantGateway(
+            HttpClient client, ObjectMapper mapper, URI endpoint, String apiKey,
+            String model, Duration timeout, boolean sendAuthorization) {
+        if (client == null || mapper == null || endpoint == null
+                || (isBlank(apiKey) && sendAuthorization) || isBlank(model) || timeout == null) {
             throw new IllegalArgumentException("OpenAI client configuration is required");
         }
         this.client = client;
@@ -60,6 +74,7 @@ public final class OpenAiTripAssistantGateway implements TripAssistantGateway {
         this.apiKey = apiKey;
         this.model = model;
         this.timeout = timeout;
+        this.sendAuthorization = sendAuthorization;
     }
 
     @Override
@@ -69,12 +84,14 @@ public final class OpenAiTripAssistantGateway implements TripAssistantGateway {
                     TripAssistantDecision.Intent.GENERAL, Collections.<String>emptyList());
         }
         try {
-            HttpRequest httpRequest = HttpRequest.newBuilder(endpoint)
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(endpoint)
                     .timeout(timeout)
-                    .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(requestJson(request)))
-                    .build();
+                    .POST(HttpRequest.BodyPublishers.ofString(requestJson(request)));
+            if (sendAuthorization) {
+                requestBuilder.header("Authorization", "Bearer " + apiKey);
+            }
+            HttpRequest httpRequest = requestBuilder.build();
             HttpResponse<String> response = client.send(
                     httpRequest, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
