@@ -104,7 +104,7 @@ class AddToPlanAutoscheduleIntegrationTest {
 
     private static AutoScheduleSettings settings() {
         return new AutoScheduleSettings(LocalTime.of(9, 0), LocalTime.of(21, 0),
-                TransportationMode.WALKING, Collections.emptyList(), true, false);
+                Collections.emptyList(), true, false);
     }
 
     private static boolean previewContains(DayPlanViewModel dayPlan, String activityId) {

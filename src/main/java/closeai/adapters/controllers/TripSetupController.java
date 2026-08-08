@@ -40,6 +40,15 @@ public final class TripSetupController {
             String date,
             String startTime,
             String endTime) {
+        execute(destination, date, startTime, endTime, 1);
+    }
+
+    public void execute(
+            String destination,
+            String date,
+            String startTime,
+            String endTime,
+            int dayCount) {
         try {
             LocalDate parsedDate = parseDate(date);
             LocalTime parsedStart = parseTime(startTime, "Start time");
@@ -51,7 +60,7 @@ public final class TripSetupController {
             if (created) {
                 trip = createTrip.execute(new CreateTripInputData(
                         destination, parsedDate, parsedStart, parsedEnd,
-                        TransportationMode.WALKING));
+                        TransportationMode.WALKING, dayCount));
             } else {
                 trip = editItinerary.execute(new EditItineraryInputData(
                         tripId, destination, parsedDate, parsedStart, parsedEnd,

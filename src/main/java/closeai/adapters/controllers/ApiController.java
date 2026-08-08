@@ -68,13 +68,15 @@ public final class ApiController implements HttpHandler {
             }
             if ("POST".equals(method) && "/api/trips".equals(path)) {
                 JsonRequest request = new JsonRequest(readBody(exchange));
+                int dayCount = parseDayCount(request.get("dayCount", "1"));
                 Trip trip = app.createTrip.execute(new CreateTripInputData(
                         request.get("destination", "Toronto"),
                         LocalDate.parse(request.get("date", "2026-07-18")),
                         LocalTime.parse(request.get("startTime", "09:00")),
                         LocalTime.parse(request.get("endTime", "19:00")),
                         TransportationMode.valueOf(
-                                request.get("transportationMode", "WALKING"))));
+                                request.get("transportationMode", "WALKING")),
+                        dayCount));
                 respond(exchange, 201, presenter.trip(trip)); return;
             }
             if (parts.length >= 4 && "trips".equals(parts[2])) {
@@ -145,6 +147,15 @@ public final class ApiController implements HttpHandler {
     }
 
     private static LocalTime optionalTime(String value) { return value == null || value.isEmpty() ? null : LocalTime.parse(value); }
+
+    private static int parseDayCount(String value) {
+        try {
+            int count = Integer.parseInt(value);
+            return count < 1 ? 1 : count;
+        } catch (NumberFormatException exception) {
+            return 1;
+        }
+    }
 
     private List<Activity> parsePlacesFromJs(String json) {
         try {

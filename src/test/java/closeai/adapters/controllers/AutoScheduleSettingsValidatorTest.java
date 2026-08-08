@@ -3,7 +3,6 @@ package closeai.adapters.controllers;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import closeai.domain.valueobjects.TransportationMode;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Collections;
@@ -19,7 +18,7 @@ class AutoScheduleSettingsValidatorTest {
 
     private static AutoScheduleSettings settings(LocalTime from, LocalTime until,
                                                  AutoScheduleSettings.Window... windows) {
-        return new AutoScheduleSettings(from, until, TransportationMode.WALKING,
+        return new AutoScheduleSettings(from, until,
                 Arrays.asList(windows), true, true);
     }
 
@@ -96,7 +95,7 @@ class AutoScheduleSettingsValidatorTest {
     @Test
     void missingTimesAreReportedBeforeAnythingElse() {
         List<String> problems = validator.validate(
-                new AutoScheduleSettings(null, null, TransportationMode.WALKING,
+                new AutoScheduleSettings(null, null,
                         Collections.emptyList(), true, true),
                 TRIP_START, TRIP_END);
 

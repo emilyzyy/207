@@ -54,7 +54,7 @@ public final class AutoScheduleController {
 
         AutoScheduleInputData input = new AutoScheduleInputData(state.getTripId(),
                 settings.getAvailableStart(), settings.getAvailableEnd(),
-                settings.getTransportationMode(), state.getLockedEventIds(), unavailable,
+                null, state.getLockedEventIds(), unavailable,
                 settings.isKeepCurrentOrder(), settings.isConsiderWeather());
 
         viewModel.setState(state.loading("Working out a better arrangement..."));

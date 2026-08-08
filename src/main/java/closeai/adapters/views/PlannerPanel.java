@@ -11,8 +11,36 @@ public final class PlannerPanel extends JPanel {
             SearchPanel searchPanel,
             BookmarksPanel bookmarksPanel,
             DayPlanPanel dayPlanPanel,
+            TripOptionsPanel tripOptionsPanel) {
+        this(searchPanel, bookmarksPanel, dayPlanPanel, null, tripOptionsPanel, null);
+    }
+
+    public PlannerPanel(
+            SearchPanel searchPanel,
+            BookmarksPanel bookmarksPanel,
+            DayPlanPanel dayPlanPanel,
+            TripOptionsPanel tripOptionsPanel,
+            DaySwitcherPanel daySwitcherPanel) {
+        this(searchPanel, bookmarksPanel, dayPlanPanel, null, tripOptionsPanel, daySwitcherPanel);
+    }
+
+    public PlannerPanel(
+            SearchPanel searchPanel,
+            BookmarksPanel bookmarksPanel,
+            DayPlanPanel dayPlanPanel,
             TripAssistantPanel tripAssistantPanel,
             TripOptionsPanel tripOptionsPanel) {
+        this(searchPanel, bookmarksPanel, dayPlanPanel, tripAssistantPanel, tripOptionsPanel, null);
+    }
+
+    /** The day switcher sits above the tabs so it stays visible from any tab. */
+    public PlannerPanel(
+            SearchPanel searchPanel,
+            BookmarksPanel bookmarksPanel,
+            DayPlanPanel dayPlanPanel,
+            TripAssistantPanel tripAssistantPanel,
+            TripOptionsPanel tripOptionsPanel,
+            DaySwitcherPanel daySwitcherPanel) {
         setLayout(new BorderLayout());
         setBackground(SwingTheme.PANEL);
 
@@ -21,8 +49,14 @@ public final class PlannerPanel extends JPanel {
         tabs.addTab("Search", searchPanel);
         tabs.addTab("Bookmarks", bookmarksPanel);
         tabs.addTab("Day Plan", dayPlanPanel);
-        tabs.addTab("Trip Assistant", tripAssistantPanel);
+        if (tripAssistantPanel != null) {
+            tabs.addTab("Trip Assistant", tripAssistantPanel);
+        }
         tabs.addTab("Trip Options", tripOptionsPanel);
         add(tabs, BorderLayout.CENTER);
+
+        if (daySwitcherPanel != null) {
+            add(daySwitcherPanel, BorderLayout.NORTH);
+        }
     }
 }

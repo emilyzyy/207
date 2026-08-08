@@ -2,6 +2,7 @@ package closeai.adapters.viewmodels;
 
 import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.WeatherWarning;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -26,6 +27,8 @@ public final class DayPlanState {
     private final String message;
     private final boolean error;
     private final List<WeatherWarning> hourlyWeather;
+    private final List<LocalDate> tripDates;
+    private final int activeDayIndex;
 
     private final AutoScheduleStatus status;
     private final List<PreviewRowView> previewRows;
@@ -54,6 +57,17 @@ public final class DayPlanState {
                 Collections.<String>emptySet());
     }
 
+    /** Multi-day form: the hourly forecast plus which days exist and which is active. */
+    public DayPlanState(
+            String tripId, List<ScheduledEvent> events, String message, boolean error,
+            List<WeatherWarning> hourlyWeather, List<LocalDate> tripDates, int activeDayIndex) {
+        this(tripId, events, message, error, hourlyWeather, AutoScheduleStatus.IDLE,
+                Collections.<PreviewRowView>emptyList(), null,
+                Collections.<String>emptyList(), "", true, true, "", "",
+                Collections.<String>emptySet(), Collections.<ImprovementView>emptyList(),
+                tripDates, activeDayIndex);
+    }
+
     public DayPlanState(String tripId, List<ScheduledEvent> events, String message, boolean error,
                         List<WeatherWarning> hourlyWeather,
                         AutoScheduleStatus status, List<PreviewRowView> previewRows,
@@ -75,6 +89,36 @@ public final class DayPlanState {
                         boolean searchCompletedWithinLimit, String travelQualityNote,
                         String previewFingerprint, Set<String> lockedEventIds,
                         List<ImprovementView> improvements) {
+        this(tripId, events, message, error, hourlyWeather, status, previewRows, metrics,
+                warnings, objectiveSummary, keptCurrentOrder, searchCompletedWithinLimit,
+                travelQualityNote, previewFingerprint, lockedEventIds, improvements,
+                Collections.<LocalDate>emptyList(), 0);
+    }
+
+    /** Preview/conflict/failure form without improvements, plus which days exist. */
+    public DayPlanState(String tripId, List<ScheduledEvent> events, String message, boolean error,
+                        List<WeatherWarning> hourlyWeather,
+                        AutoScheduleStatus status, List<PreviewRowView> previewRows,
+                        PreviewMetricsView metrics, List<String> warnings,
+                        String objectiveSummary, boolean keptCurrentOrder,
+                        boolean searchCompletedWithinLimit, String travelQualityNote,
+                        String previewFingerprint, Set<String> lockedEventIds,
+                        List<LocalDate> tripDates, int activeDayIndex) {
+        this(tripId, events, message, error, hourlyWeather, status, previewRows, metrics,
+                warnings, objectiveSummary, keptCurrentOrder, searchCompletedWithinLimit,
+                travelQualityNote, previewFingerprint, lockedEventIds,
+                Collections.<ImprovementView>emptyList(), tripDates, activeDayIndex);
+    }
+
+    public DayPlanState(String tripId, List<ScheduledEvent> events, String message, boolean error,
+                        List<WeatherWarning> hourlyWeather,
+                        AutoScheduleStatus status, List<PreviewRowView> previewRows,
+                        PreviewMetricsView metrics, List<String> warnings,
+                        String objectiveSummary, boolean keptCurrentOrder,
+                        boolean searchCompletedWithinLimit, String travelQualityNote,
+                        String previewFingerprint, Set<String> lockedEventIds,
+                        List<ImprovementView> improvements,
+                        List<LocalDate> tripDates, int activeDayIndex) {
         this.tripId = tripId == null ? "" : tripId.trim();
         this.events = Collections.unmodifiableList(new ArrayList<ScheduledEvent>(
                 events == null ? Collections.emptyList() : events));
@@ -82,6 +126,9 @@ public final class DayPlanState {
         this.error = error;
         this.hourlyWeather = Collections.unmodifiableList(new ArrayList<WeatherWarning>(
                 hourlyWeather == null ? Collections.<WeatherWarning>emptyList() : hourlyWeather));
+        this.tripDates = Collections.unmodifiableList(new ArrayList<LocalDate>(
+                tripDates == null ? Collections.<LocalDate>emptyList() : tripDates));
+        this.activeDayIndex = Math.max(0, activeDayIndex);
         this.status = status == null ? AutoScheduleStatus.IDLE : status;
         this.previewRows = Collections.unmodifiableList(new ArrayList<>(
                 previewRows == null ? Collections.<PreviewRowView>emptyList() : previewRows));
@@ -102,6 +149,16 @@ public final class DayPlanState {
 
     public String getTripId() {
         return tripId;
+    }
+
+    /** Every day of the trip, in order; empty for callers that predate multi-day trips. */
+    public List<LocalDate> getTripDates() {
+        return tripDates;
+    }
+
+    /** Which day the Day Plan is showing; 0 for single-day trips and legacy callers. */
+    public int getActiveDayIndex() {
+        return activeDayIndex;
     }
 
     /** The itinerary as it really stands, never a proposal. */
@@ -173,21 +230,24 @@ public final class DayPlanState {
     public DayPlanState clearedPreview(String newMessage) {
         return new DayPlanState(tripId, events, newMessage, false, hourlyWeather, AutoScheduleStatus.IDLE,
                 Collections.<PreviewRowView>emptyList(), null, Collections.<String>emptyList(),
-                "", keptCurrentOrder, true, "", "", lockedEventIds);
+                "", keptCurrentOrder, true, "", "", lockedEventIds,
+                improvements, tripDates, activeDayIndex);
     }
 
     /** Same state with a different set of pinned activities. */
     public DayPlanState withLocks(Set<String> updatedLockIds) {
         return new DayPlanState(tripId, events, message, error, hourlyWeather, status, previewRows, metrics,
                 warnings, objectiveSummary, keptCurrentOrder, searchCompletedWithinLimit,
-                travelQualityNote, previewFingerprint, updatedLockIds, improvements);
+                travelQualityNote, previewFingerprint, updatedLockIds, improvements,
+                tripDates, activeDayIndex);
     }
 
     /** Same state showing that work is under way. */
     public DayPlanState loading(String loadingMessage) {
         return new DayPlanState(tripId, events, loadingMessage, false, hourlyWeather, AutoScheduleStatus.LOADING,
                 Collections.<PreviewRowView>emptyList(), null, Collections.<String>emptyList(),
-                "", keptCurrentOrder, true, "", "", lockedEventIds);
+                "", keptCurrentOrder, true, "", "", lockedEventIds,
+                improvements, tripDates, activeDayIndex);
     }
 
     public List<WeatherWarning> getHourlyWeather() {
