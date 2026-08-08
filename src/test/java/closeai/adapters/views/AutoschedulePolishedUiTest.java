@@ -511,6 +511,24 @@ class AutoschedulePolishedUiTest {
                 "nothing improved, so nothing may be claimed");
     }
 
+    /**
+     * Resizes the panel and waits for the re-render the resize triggers.
+     *
+     * <p>Crossing the width threshold moves the improvements stack, and the panel does that
+     * from a {@code componentResized} listener. AWT delivers that event through the event
+     * queue, so it has not been handled when {@code setSize} returns — asserting straight
+     * afterwards is a race that happens to pass on a fast machine and fails under a virtual
+     * display. The second empty block drains the queue: the EDT runs events in order, so
+     * once it runs, the resize has already been handled.</p>
+     */
+    private static void resizeTo(DayPlanPanel panel, int width) throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            panel.setSize(width, 700);
+            panel.doLayout();
+        });
+        SwingUtilities.invokeAndWait(() -> { });
+    }
+
     @Test
     void theStackRendersInBothWideAndNarrowLayouts() throws Exception {
         List<ImprovementView> improvements = Collections.singletonList(
@@ -519,17 +537,11 @@ class AutoschedulePolishedUiTest {
                 new DayPlanViewModel(previewWithImprovements(improvements));
         DayPlanPanel panel = panelFor(viewModel);
 
-        SwingUtilities.invokeAndWait(() -> {
-            panel.setSize(DayPlanPanel.WIDE_LAYOUT_MINIMUM + 120, 700);
-            panel.doLayout();
-        });
+        resizeTo(panel, DayPlanPanel.WIDE_LAYOUT_MINIMUM + 120);
         assertNotNull(stackIn(panel), "wide: the stack sits beside the schedule");
         assertTrue(allText(panel).contains("63 min of waiting removed"));
 
-        SwingUtilities.invokeAndWait(() -> {
-            panel.setSize(DayPlanPanel.WIDE_LAYOUT_MINIMUM - 200, 700);
-            panel.doLayout();
-        });
+        resizeTo(panel, DayPlanPanel.WIDE_LAYOUT_MINIMUM - 200);
         assertNotNull(stackIn(panel), "narrow: the same stack moves below the schedule");
         assertTrue(allText(panel).contains("63 min of waiting removed"),
                 "the cards must survive the narrow layout, not disappear with the sidebar");
