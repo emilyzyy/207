@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class FloatingTripAssistantWidgetTest {
@@ -29,6 +30,9 @@ final class FloatingTripAssistantWidgetTest {
             reference.set(widget);
 
             assertTrue(widget.getAvatarButton().isVisible());
+            assertNotNull(widget.getAvatarButton().getIcon());
+            assertEquals(48, widget.getAvatarButton().getIcon().getIconWidth());
+            assertEquals(48, widget.getAvatarButton().getIcon().getIconHeight());
             assertFalse(widget.isExpanded());
             assertFalse(widget.getAssistantPanel().isVisible());
 

@@ -5,11 +5,8 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 
@@ -46,28 +43,15 @@ final class GeorgeAvatar {
 
     private static BufferedImage load() {
         try (InputStream stream = GeorgeAvatar.class.getResourceAsStream(
-                "/closeai/george-avatar.png.b64")) {
+                "/closeai/george-avatar.png")) {
             if (stream == null) {
                 return fallback();
             }
-            String encoded = new String(readAll(stream), StandardCharsets.US_ASCII)
-                    .replaceAll("\\s", "");
-            BufferedImage image = ImageIO.read(new java.io.ByteArrayInputStream(
-                    Base64.getDecoder().decode(encoded)));
+            BufferedImage image = ImageIO.read(stream);
             return image == null ? fallback() : image;
-        } catch (IOException | IllegalArgumentException exception) {
+        } catch (IOException exception) {
             return fallback();
         }
-    }
-
-    private static byte[] readAll(InputStream stream) throws IOException {
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        byte[] buffer = new byte[4096];
-        int count;
-        while ((count = stream.read(buffer)) >= 0) {
-            output.write(buffer, 0, count);
-        }
-        return output.toByteArray();
     }
 
     private static BufferedImage fallback() {
