@@ -7,11 +7,13 @@ import closeai.adapters.controllers.ManualPlanController;
 import closeai.adapters.controllers.ShareTripController;
 import closeai.adapters.controllers.SwingTaskRunner;
 import closeai.adapters.controllers.TripSetupController;
+import closeai.adapters.controllers.TripAssistantController;
 import closeai.adapters.presenters.ActivityDiscoveryPresenter;
 import closeai.adapters.presenters.AutoSchedulePresenter;
 import closeai.adapters.presenters.ManualPlanPresenter;
 import closeai.adapters.presenters.ShareTripPresenter;
 import closeai.adapters.presenters.TripSetupPresenter;
+import closeai.adapters.presenters.TripAssistantPresenter;
 import closeai.adapters.viewmodels.BookmarksState;
 import closeai.adapters.viewmodels.BookmarksViewModel;
 import closeai.adapters.viewmodels.ActivitySelectionViewModel;
@@ -26,6 +28,8 @@ import closeai.adapters.viewmodels.ShareState;
 import closeai.adapters.viewmodels.ShareViewModel;
 import closeai.adapters.viewmodels.TripOptionsState;
 import closeai.adapters.viewmodels.TripOptionsViewModel;
+import closeai.adapters.viewmodels.TripAssistantState;
+import closeai.adapters.viewmodels.TripAssistantViewModel;
 import closeai.adapters.views.BookmarksPanel;
 import closeai.adapters.views.CloseAIFrame;
 import closeai.adapters.views.DayPlanPanel;
@@ -34,6 +38,7 @@ import closeai.adapters.views.OverviewPanel;
 import closeai.adapters.views.PlannerPanel;
 import closeai.adapters.views.SearchPanel;
 import closeai.adapters.views.TripOptionsPanel;
+import closeai.adapters.views.TripAssistantPanel;
 import closeai.adapters.gateways.DistanceServiceTravelTimeEstimator;
 import closeai.adapters.gateways.WeatherServiceContextGateway;
 import closeai.application.AppContainer;
@@ -47,10 +52,14 @@ import closeai.application.autoschedule.policy.WeatherSuitabilityPolicy;
 import closeai.application.ports.AuthService;
 import closeai.application.ports.PlacesService;
 import closeai.application.ports.TripRepository;
+import closeai.application.ports.TripAssistantGateway;
 import closeai.application.ports.WeatherService;
 import closeai.application.scheduling.DefaultActivityScoringPolicy;
 import closeai.application.usecases.CreateTripInputData;
 import closeai.application.usecases.TripSetupOutputData;
+import closeai.application.tripassistant.TripAssistantDecision;
+import closeai.application.tripassistant.TripAssistantInteractor;
+import closeai.application.tripassistant.TripAssistantMessage;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.Trip;
@@ -59,6 +68,9 @@ import closeai.domain.valueobjects.Location;
 import closeai.domain.valueobjects.TransportationMode;
 import closeai.domain.valueobjects.WeatherSeverity;
 import closeai.infrastructure.config.DotEnv;
+import closeai.infrastructure.ai.FallbackTripAssistantGateway;
+import closeai.infrastructure.ai.OfflineTripAssistantGateway;
+import closeai.infrastructure.ai.OpenAiTripAssistantGateway;
 import closeai.infrastructure.mock.MockPlacesService;
 import closeai.infrastructure.mock.MockWeatherService;
 import closeai.infrastructure.places.CachingPlacesService;
@@ -188,13 +200,17 @@ public final class AppBuilder {
                 trip.getTransportationMode());
         TripOptionsPanel tripOptionsPanel =
                 new TripOptionsPanel(tripOptionsViewModel);
+        TripAssistantPanel tripAssistantPanel = buildTripAssistant(
+                app, dayPlanViewModel,
+                "Hi, I'm George. Ask me what to visit, what works in rain, or what fits your day.");
         PlannerPanel plannerPanel = new PlannerPanel(
-                searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel);
+                searchPanel, bookmarksPanel, dayPlanPanel, tripAssistantPanel, tripOptionsPanel);
         CloseAIFrame frame = new CloseAIFrame(
                 headerPanel,
                 overviewPanel,
                 plannerPanel,
                 dayPlanPanel,
+                tripAssistantPanel,
                 dayPlanViewModel,
                 calendarViewModel,
                 shareViewModel,
@@ -292,13 +308,17 @@ public final class AppBuilder {
                         manualPlanController, activitySelectionViewModel);
         TripOptionsPanel tripOptionsPanel =
                 new TripOptionsPanel(tripOptionsViewModel, tripSetupController);
+        TripAssistantPanel tripAssistantPanel = buildTripAssistant(
+                app, dayPlanViewModel,
+                "Hi, I'm George. Create a trip, then ask me for activity recommendations.");
         PlannerPanel plannerPanel = new PlannerPanel(
-                searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel);
+                searchPanel, bookmarksPanel, dayPlanPanel, tripAssistantPanel, tripOptionsPanel);
         CloseAIFrame frame = new CloseAIFrame(
                 headerPanel,
                 overviewPanel,
                 plannerPanel,
                 dayPlanPanel,
+                tripAssistantPanel,
                 dayPlanViewModel,
                 calendarViewModel,
                 shareViewModel,
@@ -314,6 +334,43 @@ public final class AppBuilder {
             tripSetupPresenter.presentSuccess(new TripSetupOutputData(demo, true));
         }
         return frame;
+    }
+
+    private TripAssistantPanel buildTripAssistant(
+            AppContainer app, DayPlanViewModel dayPlanViewModel, String greeting) {
+        TripAssistantViewModel viewModel = new TripAssistantViewModel(
+                new TripAssistantState(Collections.singletonList(new TripAssistantMessage(
+                        TripAssistantMessage.Role.ASSISTANT, greeting)), false, ""));
+        TripAssistantPresenter presenter = new TripAssistantPresenter(viewModel);
+        TripAssistantInteractor interactor = new TripAssistantInteractor(
+                app.trips, app.activities, app.weather, tripAssistantGateway(), presenter);
+        TripAssistantController controller = new TripAssistantController(
+                interactor, () -> dayPlanViewModel.getState().getTripId(),
+                presenter, viewModel, new SwingTaskRunner());
+        return new TripAssistantPanel(viewModel, controller);
+    }
+
+    private TripAssistantGateway tripAssistantGateway() {
+        TripAssistantGateway offline = new OfflineTripAssistantGateway();
+        String mode = System.getProperty("closeai.chatbot.mode", "offline");
+        if (!"openai".equalsIgnoreCase(mode)) {
+            return offline;
+        }
+        String apiKey = DotEnv.get("OPENAI_API_KEY", "openai.api.key");
+        if (apiKey == null) {
+            return request -> {
+                TripAssistantDecision decision = offline.answer(request);
+                return new TripAssistantDecision(
+                        decision.getIntent(), decision.getActivityIds(),
+                        "OPENAI_API_KEY is not configured, so George used offline recommendations.");
+            };
+        }
+        String model = DotEnv.get("OPENAI_MODEL", "closeai.openai.model");
+        if (model == null) {
+            model = "gpt-5.6-sol";
+        }
+        return new FallbackTripAssistantGateway(
+                new OpenAiTripAssistantGateway(apiKey, model), offline);
     }
 
     /**

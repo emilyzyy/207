@@ -55,6 +55,58 @@ Sign in is optional: the app opens on **My Trips**. Use **Sign in** (gallery or 
 
 The places and weather refresh runs in a `SwingWorker`, not on the Swing event-dispatch thread. If either service fails, the created trip remains valid and the UI retains its cached mock places.
 
+## Trip Assistant (George)
+
+Open a trip and select **Trip Assistant** to chat with George. George automatically receives the
+current destination and date, trip hours, transportation mode, available activities, bookmarks,
+Day Plan, and hourly weather. Useful questions include:
+
+- `What activities do you recommend for this trip?`
+- `What should I do if it rains?`
+- `Which activity fits into my afternoon?`
+- `Which of my bookmarked activities should I visit?`
+- `Why is this activity a good choice?`
+
+George runs in deterministic offline mode by default, so the app and normal test suite need no
+API key or internet connection:
+
+```bash
+./mvnw compile exec:java -Dexec.mainClass=closeai.Main
+```
+
+To enable the live implementation, put the key in the gitignored `.env` file (or export it as a
+real environment variable), then explicitly opt in when launching:
+
+```dotenv
+OPENAI_API_KEY=your-project-key
+# Optional; the current default is gpt-5.6-sol
+OPENAI_MODEL=gpt-5.6-sol
+```
+
+```bash
+./mvnw compile exec:java -Dexec.mainClass=closeai.Main \
+  -Dcloseai.chatbot.mode=openai
+```
+
+The live gateway calls `POST https://api.openai.com/v1/responses` with `store: false` and a strict
+Structured Outputs schema. OpenAI can select only activity IDs supplied by the current trip.
+George's displayed names and recommendation details are then rendered from CloseAI entities, so
+the model cannot introduce an unrecognized place. A live API, authentication, timeout, or schema
+failure is shown in the answer and automatically falls back to the deterministic offline gateway.
+All gateway and weather work runs through a background `SwingWorker`, never on Swing's event-
+dispatch thread. Keys are read through the existing `DotEnv` resolution order and are never logged.
+
+Current limitations:
+
+- Offline recommendations use a small deterministic ranking heuristic rather than natural-language
+  reasoning.
+- Live AI selects grounded activity IDs and an intent; final wording is deliberately generated from
+  application data to enforce the no-invented-places guarantee.
+- George uses the existing activity setting value but does not classify or change indoor/outdoor
+  data.
+- Transportation mode is included as context, but this MVP does not ask the routing service to
+  calculate a new travel-time matrix for each chat turn.
+
 Run the web prototype and open [http://localhost:8080](http://localhost:8080):
 
 ```bash
