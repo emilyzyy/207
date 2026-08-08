@@ -567,3 +567,169 @@ rather than drawn to nowhere.
 
 **Suggested Before View narration (≈4 s):** *"One, two — that's right across the city — three,
 four back east again."* Point at the line, not the list.
+
+---
+
+# Live API manual-demo scenarios
+
+> **Everything above this line is superseded for demo purposes.** All earlier candidates
+> (C1–C12, N1–N5, W/X variants) were **analysis experiments** using hand-built `Activity`
+> objects and `MockDistanceService`. They are kept as a record of the search for a good
+> narrative shape, but **none of them is the demo.** This section is the only part built on
+> the app's real search, real opening hours, real routing and real weather.
+
+## Repository state
+
+| | |
+|---|---|
+| Branch | `main` |
+| Working tree | clean |
+| Local HEAD | `b9c9d3d` (2 unpushed commits: the map route line + docs) |
+| Latest remote | `origin/main` = `df55e47` |
+| Position | 2 ahead, 3 behind |
+| Tested for search behaviour | `df55e47` in a read-only worktree; scenario runs on `b9c9d3d` |
+
+## 🚨 BLOCKER — `origin/main` does not compile
+
+`df55e47` (Alex's PR #25 merge) **fails to build**, and CI agrees: that push shows
+`failure` after 20 s. PR #24 was the last green commit on main.
+
+Six errors, all from a badly resolved merge:
+
+| File | Problem |
+|---|---|
+| `AutoScheduleSettingsDialog.java:76,78` | Fields became `TimeSelectorPanel`, but two `.setText(String)` calls remain. `TimeSelectorPanel` exposes `setTime(LocalTime)` |
+| `NominatimPlacesService.java:327,331,334` | `queryOverpass` has duplicated retry code referencing variables that no longer exist |
+| `NominatimPlacesService.java:367` | `OverpassBusyException` constructor arity mismatch |
+
+**Nothing can be demonstrated until this is fixed.** It is Alex's merge; the fixes are
+mechanical. Scenario testing below therefore ran on `b9c9d3d`, which compiles.
+
+**What is lost by not having `df55e47`:** Alex added `searchNamedPlace` — when the text
+filter finds nothing among the cached results, it geocodes `"<query>, <destination>"` and
+fetches those exact OSM objects. That would let you search a venue **by name**. On `b9c9d3d`
+you are limited to the 25 places the area query returns. The recipe below is built to work
+**without** that fallback, so it survives either way.
+
+## How the app's search actually behaves
+
+- `search("Venice", "")` geocodes Venice, then runs one Overpass query at
+  **`around:1500`** with **`out center 25`** — a hard cap of **25 places** near the centre.
+- Results are **cached per destination**, so subsequent searches filter that same 25 by
+  name / category / address.
+- **Verified deterministic:** two cold runs returned byte-identical results in identical
+  order. Three full scenario runs produced identical schedules and identical numbers.
+- Durations are auto-assigned by category: MUSEUM 120, ATTRACTION 90, FOOD 60, SHOPPING 60,
+  COFFEE 30. **You can change them by editing the row's times.**
+
+### Venues the live search returns with usable hours (Wed 12 Aug 2026)
+
+| Name | Category | In/Out | Default duration | Coordinates | Parsed hours |
+|---|---|---|---|---|---|
+| Museo Ebraico | MUSEUM | INDOOR | 120 | 45.44513, 12.32718 | 10:00–17:30 |
+| **La Zucca** | FOOD | INDOOR | 60 | 45.44083, 12.32852 | **12:30–14:30 and 19:00–22:30** |
+| Ca Macana | SHOPPING | INDOOR | 60 | 45.43335, 12.32519 | 10:00–19:00 |
+| Conad City | SHOPPING | INDOOR | 60 | 45.43399, 12.32407 | 07:30–20:30 |
+| Coop | SHOPPING | INDOOR | 60 | 45.43688, 12.33984 | 08:30–21:00 |
+| I tre Mercanti | SHOPPING | INDOOR | 60 | 45.43631, 12.33938 | 11:00–19:30 |
+| Libreria Acqua Alta | ATTRACTION | **OUTDOOR** | 90 | 45.43806, 12.34227 | 09:00–19:10 |
+| Bar pasticceria Chiusso | COFFEE | INDOOR | 30 | 45.43561, 12.34576 | **CLOSED Wednesdays** |
+| Teatro La Fenice | ATTRACTION | **OUTDOOR** | 90 | (centre) | **UNKNOWN** — unconstrained |
+
+Rejected: every other returned venue has no `opening_hours` tag, or a tag the parser
+declines (e.g. `Gam Gam`'s `Su-Th 12:00-22:00, Fr 12:00-15:00` → UNKNOWN, correctly, because
+the second rule is comma-separated rather than `;`-separated).
+
+### Real weather actually returned for Venice, 12 Aug 2026
+
+LOW 09:00–14:00 · **MEDIUM 15:00** · **HIGH thunderstorms 16:00–20:00** · MEDIUM 21:00.
+This gradient is what makes a weather card possible — it is live data and **may change**.
+
+## SELECTED live scenario
+
+**Story:** *Bob books a late lunch at half past three. La Zucca stops serving lunch at half
+past two.* One sentence, no cultural footnote, no contradiction — his 9:30 call touches
+neither the mistaken pin (15:30) nor the corrected one (12:30).
+
+### Manual setup, step by step
+
+1. **Launch** the app normally (`Main` defaults to `places.mode=nominatim`,
+   `weather.mode=open-meteo`).
+2. **Create the trip:** destination **Venice**, date **2026-08-12**, hours **09:00–21:00**.
+3. **Search tab → type `Venice`** (or leave the query empty). The 25 results appear.
+4. **Add these five, in this order**, then set each row's times with **Edit**:
+
+| # | Search result to click | Set times to | Duration |
+|---|---|---|---|
+| 1 | **Museo Ebraico** | **10:00 – 11:00** | 60 min *(trim from the default 120)* |
+| 2 | **Libreria Acqua Alta** | **13:45 – 15:15** | 90 min *(default)* |
+| 3 | **La Zucca** | **15:30 – 16:30** | 60 min *(default)* ← **the mistake** |
+| 4 | **Ca Macana** | **17:00 – 18:00** | 60 min *(default)* |
+| 5 | **Teatro La Fenice** | **19:15 – 20:45** | 90 min *(default)* |
+
+5. **Pin La Zucca** — click its padlock.
+6. **Autoschedule →** availability **09:00–21:00**; **Add unavailable time 09:30–10:30**
+   ("call with head office before the day starts"); **Getting around by: Walking**;
+   **turn OFF "Preserve plan order"**; leave the other five switches ON.
+7. **Generate Preview** → the conflict fires.
+8. **Edit La Zucca → 12:30 – 13:30.**
+9. **Autoschedule → Generate Preview** again.
+
+### Observed result — three consecutive live runs, identical
+
+**Beat 1:**
+> **La Zucca is locked to a time when it is closed. Your Day Plan was not changed.**
+
+**Beat 2:** *"Proposed schedule: 4 of 5 activities moved. Nothing changes until you choose
+Apply."* — **Travel 72 → 58 · Waiting 217 → 0**
+
+| Time | Row | Badge / reason |
+|---|---|---|
+| 10:30–11:30 | Museo Ebraico | moved — **"moved clear of your unavailable time"** |
+| 12:30–13:30 | **La Zucca** | **LOCKED — "you locked this time"** |
+| 13:49–15:19 | Libreria Acqua Alta | moved |
+| 15:31–17:01 | Teatro La Fenice | moved |
+| 17:16–18:16 | Ca Macana | moved — **"closes at 19:00"** |
+
+Cards:
+1. ⏳ **217 min of waiting removed**
+2. → **14 min less travel**
+3. ⚿ **Pinned activity kept at its time** — La Zucca
+4. ☂ **Moved to better weather** — Teatro La Fenice
+5. ☀ **Moved into daylight** — Teatro La Fenice
+
+### Guaranteed vs variable
+
+| Guaranteed (hard constraints / deterministic) | Variable (live services) |
+|---|---|
+| The conflict fires and names La Zucca | Exact travel minutes (OSRM foot routing) |
+| Corrected pin held at exactly 12:30–13:30 | Whether the **weather** card appears — needs a real bad-weather window |
+| All five activities kept once, durations unchanged | The precise waiting figure |
+| 09:30–10:30 avoided, with the row saying so | Whether the 25 search results shift if OSM data changes |
+| "closes at 19:00" reason on Ca Macana | |
+| Nothing changes until Apply | |
+
+The margins are wide — 14 min travel and 217 min waiting are not one-minute effects.
+
+## Backup A — drop the weather dependency
+
+Same five venues and times, but **leave "Preserve plan order" ON**. Verified live:
+travel 72 → 70, waiting 157 → 30, cards = waiting / travel / pin / **daylight**. Loses the
+weather card; everything else identical. Use if the forecast turns uniformly fine.
+
+## Backup B — different pinned venue
+
+If **La Zucca** vanishes from the 25, use **Bar pasticceria Chiusso** (45.43561, 12.34576),
+whose tag `Mo-Tu,Th-Su 07:00-20:00; We closed; PH closed` makes it **closed all Wednesday**.
+Pin it anywhere on 12 Aug and the conflict fires by name. Story: *"He'd pencilled in coffee
+there, but it's shut on Wednesdays."* Narratively weaker (it is a closed *day*, not a
+believable time slip) but immune to hour-tag changes.
+
+## Production bug that must be fixed before the demo
+
+Besides the compile blocker: **`WeatherSuitabilityPolicy.reasonFor` labels good-weather rows
+"poorer weather expected outdoors"**, because `LOW_PENALTY_PER_HOUR = 5` makes any outdoor
+activity score above zero. In the selected run this appears on **Libreria Acqua Alta and
+Teatro La Fenice** — and Teatro La Fenice simultaneously earns *"Moved to better weather"*.
+On a projector that reads as the feature contradicting itself. Fix: emit the reason only when
+severity is MEDIUM or HIGH.
