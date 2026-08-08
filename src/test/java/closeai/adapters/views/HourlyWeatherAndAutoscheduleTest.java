@@ -1,6 +1,7 @@
 package closeai.adapters.views;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
@@ -8,8 +9,6 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import closeai.adapters.controllers.AutoScheduleController;
 import closeai.adapters.controllers.TaskRunner;
 import closeai.adapters.viewmodels.AutoScheduleStatus;
-import closeai.adapters.viewmodels.DashboardState;
-import closeai.adapters.viewmodels.DashboardViewModel;
 import closeai.adapters.viewmodels.DayPlanState;
 import closeai.adapters.viewmodels.DayPlanViewModel;
 import closeai.application.autoschedule.AutoScheduleApplyInputData;
@@ -39,7 +38,7 @@ import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 /**
- * Dennis's hourly forecast and the polished Autoschedule Day Plan, side by side.
+ * The hourly forecast strip and the polished Autoschedule Day Plan, side by side.
  *
  * <p>They are separate features that happen to read the same {@link DayPlanViewModel}: his
  * popup lists the forecast hour by hour, and Autoschedule uses those same hours to decide
@@ -119,19 +118,17 @@ class HourlyWeatherAndAutoscheduleTest {
 
     private static final class Pair {
         private DayPlanPanel dayPlan;
-        private HourlyWeatherPanel forecast;
+        private HourlyForecastStrip forecast;
     }
 
     private Pair bothPanels(DayPlanViewModel dayPlanViewModel) throws Exception {
         assumeFalse(GraphicsEnvironment.isHeadless(), "these components need a display");
-        DashboardViewModel dashboard = new DashboardViewModel(new DashboardState(
-                "Toronto", LocalDate.of(2026, 8, 12), "Sunny", "Updated"));
         final Pair pair = new Pair();
         SwingUtilities.invokeAndWait(() -> {
             pair.dayPlan = new DayPlanPanel(dayPlanViewModel,
                     new AutoScheduleController(new RecordingUseCase(), dayPlanViewModel,
                             TaskRunner.immediate()));
-            pair.forecast = new HourlyWeatherPanel(dashboard, dayPlanViewModel);
+            pair.forecast = new HourlyForecastStrip(dayPlanViewModel);
         });
         return pair;
     }
@@ -144,8 +141,11 @@ class HourlyWeatherAndAutoscheduleTest {
 
         Pair panels = bothPanels(viewModel);
 
-        assertTrue(allText(panels.forecast).contains("Heavy rain"),
-                "the popup lists the hours Autoschedule is reasoning about");
+        String forecast = allText(panels.forecast);
+        assertTrue(forecast.contains("9 AM") && forecast.contains("7 PM"),
+                "the strip lists the hours Autoschedule is reasoning about: " + forecast);
+        assertTrue(forecast.contains("☂"),
+                "heavy rain shows as the rain glyph: " + forecast);
         assertNotNull(panels.dayPlan, "and the Day Plan is built from the same state");
         assertTrue(allText(panels.dayPlan).contains("High Park"));
     }
@@ -162,7 +162,9 @@ class HourlyWeatherAndAutoscheduleTest {
 
         Pair panels = bothPanels(viewModel);
 
-        assertTrue(allText(panels.forecast).contains("2:00 PM"), allText(panels.forecast));
+        String forecast = allText(panels.forecast);
+        assertTrue(forecast.contains("2 PM"), forecast);
+        assertFalse(forecast.contains("14:"), "no 24-hour times: " + forecast);
         assertTrue(allText(panels.dayPlan).contains("10:00 AM"), allText(panels.dayPlan));
     }
 
@@ -180,9 +182,9 @@ class HourlyWeatherAndAutoscheduleTest {
                 Collections.emptyList(), "", true, true, "", "",
                 Collections.<String>emptySet())));
 
-        assertTrue(allText(panels.forecast).contains("Clear sky"),
-                "an Autoschedule preview must not blank the forecast popup");
-        assertTrue(allText(panels.forecast).contains("9:00 AM"));
+        assertTrue(allText(panels.forecast).contains("9 AM"),
+                "an Autoschedule preview must not blank the forecast strip: "
+                        + allText(panels.forecast));
     }
 
     @Test
@@ -195,8 +197,9 @@ class HourlyWeatherAndAutoscheduleTest {
                 hour(9, "Clear sky", WeatherSeverity.LOW),
                 hour(10, "Thunderstorm", WeatherSeverity.HIGH)))));
 
-        assertTrue(allText(panels.forecast).contains("Thunderstorm"));
-        assertTrue(allText(panels.forecast).contains("2 HOURLY FORECASTS"));
+        assertTrue(allText(panels.forecast).contains("⚡"),
+                "the thunderstorm hour arrives with its glyph: " + allText(panels.forecast));
+        assertTrue(allText(panels.forecast).contains("10 AM"), allText(panels.forecast));
         assertEquals(2, viewModel.getState().getHourlyWeather().size(),
                 "and the Day Plan is looking at the same two hours");
     }

@@ -19,7 +19,6 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
@@ -52,8 +51,9 @@ public final class AutoScheduleSettingsDialog extends JDialog {
     private final JTextField availableUntil = new JTextField(9);
     private final JComboBox<TransportationMode> mode =
             new JComboBox<>(TransportationMode.values());
-    private final JCheckBox keepOrder = new JCheckBox("Keep my current order where possible", true);
-    private final JCheckBox considerWeather = new JCheckBox("Consider weather", false);
+    private final ToggleSwitch keepOrder =
+            new ToggleSwitch("Keep my current order where possible");
+    private final ToggleSwitch considerWeather = new ToggleSwitch("Consider weather");
     private final JLabel weatherNote = new JLabel(CHECKING_WEATHER);
     private final JPanel unavailableRows = new JPanel();
     private final List<TimeRangeRow> rows = new ArrayList<>();
@@ -135,22 +135,18 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         form.add(Box.createVerticalStrut(18));
         form.add(group("PREFERENCES"));
 
-        keepOrder.setFont(SwingTheme.BODY);
-        keepOrder.setOpaque(false);
-        keepOrder.setAlignmentX(Component.LEFT_ALIGNMENT);
+        keepOrder.setSelected(true);
         keepOrder.setToolTipText("Prefer the order you already arranged when the days are "
                 + "otherwise about as good.");
-        form.add(keepOrder);
+        form.add(switchRow(keepOrder, "Keep my current order where possible"));
 
-        considerWeather.setFont(SwingTheme.BODY);
-        considerWeather.setOpaque(false);
-        considerWeather.setAlignmentX(Component.LEFT_ALIGNMENT);
+        form.add(Box.createVerticalStrut(8));
+
         considerWeather.setEnabled(false);
         considerWeather.setToolTipText("Prefer to keep outdoor activities out of the worst "
                 + "weather, when the forecast is detailed enough to tell the hours apart.");
-        considerWeather.getAccessibleContext().setAccessibleName("Consider weather");
         considerWeather.getAccessibleContext().setAccessibleDescription(CHECKING_WEATHER);
-        form.add(considerWeather);
+        form.add(switchRow(considerWeather, "Consider weather"));
 
         // A visible sentence, not a greyed-out box the user has to interpret: whenever the
         // option cannot be offered, the reason is readable text sitting next to it. Colour
@@ -159,8 +155,19 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         weatherNote.setFont(SwingTheme.SMALL);
         weatherNote.setForeground(SwingTheme.MUTED);
         weatherNote.setAlignmentX(Component.LEFT_ALIGNMENT);
-        weatherNote.setBorder(BorderFactory.createEmptyBorder(2, 22, 0, 0));
+        weatherNote.setBorder(BorderFactory.createEmptyBorder(2, 52, 0, 0));
         form.add(weatherNote);
+
+        // The two switches above are the only negotiable factors. The rest of what the
+        // schedule optimises is always on -- that is what the feature is for -- and saying
+        // so here means the user sees every factor, not just the ones they can veto.
+        JLabel alwaysOn = new JLabel(
+                "Always considered: less travel · fewer gaps · mealtimes · daylight");
+        alwaysOn.setFont(SwingTheme.SMALL);
+        alwaysOn.setForeground(SwingTheme.MUTED);
+        alwaysOn.setAlignmentX(Component.LEFT_ALIGNMENT);
+        alwaysOn.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+        form.add(alwaysOn);
         // Absorbs leftover height so the groups stay together at the top instead of being
         // spread down the dialog by the BoxLayout.
         form.add(Box.createVerticalGlue());
@@ -237,9 +244,39 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         return weatherNote.isVisible() ? weatherNote.getText() : "";
     }
 
-    /** Exposed so tests can assert the checkbox's enabled and ticked state. */
-    JCheckBox weatherCheckBox() {
+    /** Exposed so tests can assert the switch's enabled and on/off state. */
+    ToggleSwitch weatherCheckBox() {
         return considerWeather;
+    }
+
+    /**
+     * A switch with its label beside it, laid on one line.
+     *
+     * <p>The label mirrors the switch's clicks to it, so the whole row is a target the way
+     * a checkbox's text is -- a 40-pixel switch alone would be a mean thing to aim for.</p>
+     */
+    private JPanel switchRow(ToggleSwitch control, String text) {
+        JPanel row = new JPanel();
+        row.setLayout(new javax.swing.BoxLayout(row, javax.swing.BoxLayout.X_AXIS));
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel label = new JLabel(text);
+        label.setFont(SwingTheme.BODY);
+        label.setLabelFor(control);
+        label.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent event) {
+                if (control.isEnabled()) {
+                    control.doClick();
+                }
+            }
+        });
+        row.add(control);
+        row.add(Box.createHorizontalStrut(12));
+        row.add(label);
+        row.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE,
+                control.getPreferredSize().height + 4));
+        return row;
     }
 
     private JLabel labelFor(String text, Component field) {
