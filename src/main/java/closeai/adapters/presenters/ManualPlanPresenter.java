@@ -25,19 +25,22 @@ public final class ManualPlanPresenter {
 
     public void presentSuccess(Trip trip, String message) {
         runOnEventThread(() -> {
+            final DayPlanState currentPlan = dayPlan.getState();
             dayPlan.setState(new DayPlanState(
-                    trip.getId(), trip.getScheduledEvents(), message, false));
+                    trip.getId(), trip.getScheduledEvents(), message, false,
+                    currentPlan.getHourlyWeather()));
             Set<String> scheduledIds = new HashSet<>();
             for (ScheduledEvent event : trip.getScheduledEvents()) {
                 if (event.getActivity() != null) {
                     scheduledIds.add(event.getActivity().getId());
                 }
             }
-            SearchState current = search.getState();
+            final SearchState currentSearch = search.getState();
             search.setState(new SearchState(
-                    current.getActivities(), current.getQuery(), current.getBookmarkedIds(),
-                    scheduledIds, current.getCategory(), current.getMinimumRating(),
-                    current.getType(), current.getFeedback()));
+                    currentSearch.getActivities(), currentSearch.getQuery(),
+                    currentSearch.getBookmarkedIds(), scheduledIds,
+                    currentSearch.getCategory(), currentSearch.getMinimumRating(),
+                    currentSearch.getType(), currentSearch.getFeedback()));
         });
     }
 
@@ -46,7 +49,8 @@ public final class ManualPlanPresenter {
             DayPlanState current = dayPlan.getState();
             dayPlan.setState(new DayPlanState(
                     current.getTripId(), current.getEvents(),
-                    message == null ? "Unable to update the Day Plan" : message, true));
+                    message == null ? "Unable to update the Day Plan" : message, true,
+                    current.getHourlyWeather()));
         });
     }
 
