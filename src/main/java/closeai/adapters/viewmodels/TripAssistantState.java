@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Immutable chat history and request status for the Trip Assistant tab. */
+/** Immutable chat history and request status for George's floating chat widget. */
 public final class TripAssistantState {
     private final List<TripAssistantMessage> messages;
     private final boolean loading;

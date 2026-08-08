@@ -57,9 +57,11 @@ The places and weather refresh runs in a `SwingWorker`, not on the Swing event-d
 
 ## Trip Assistant (George)
 
-Open a trip and select **Trip Assistant** to chat with George. George automatically receives the
-current destination and date, trip hours, transportation mode, available activities, bookmarks,
-Day Plan, and hourly weather. Useful questions include:
+Open a trip and select George's circular avatar in the bottom-right corner to expand the chat.
+The avatar remains available while you move between planner tabs, and collapsing the panel keeps
+the conversation ready for the next time you open it. George automatically receives the current
+destination and date, trip hours, transportation mode, available activities, bookmarks, Day Plan,
+and hourly weather. Useful questions include:
 
 - `What activities do you recommend for this trip?`
 - `What should I do if it rains?`

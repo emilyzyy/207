@@ -45,6 +45,11 @@ final class TripAssistantPanelTest {
         TripAssistantPanel panel = panelReference.get();
         assertEquals("What do you recommend?", question.get());
         assertTrue(panel.getHistoryArea().getText().contains("Actual Museum"));
+        SwingUtilities.invokeAndWait(() -> {
+            panel.getInputField().setText("What works in rain?");
+            panel.getInputField().postActionEvent();
+        });
+        assertEquals("What works in rain?", question.get());
         SwingUtilities.invokeAndWait(() -> viewModel.setState(new TripAssistantState(
                 viewModel.getState().getMessages(), true, "")));
         assertTrue(panel.isLoadingVisible());
@@ -53,5 +58,13 @@ final class TripAssistantPanelTest {
                 "Open or create a trip before asking George"));
         assertFalse(panel.isLoadingVisible());
         assertTrue(panel.getErrorLabel().getText().contains("Open or create"));
+        assertEquals("George chat history", panel.getHistoryArea()
+                .getAccessibleContext().getAccessibleName());
+        assertEquals("Message George", panel.getInputField()
+                .getAccessibleContext().getAccessibleName());
+        assertEquals("Send message to George", panel.getSendButton()
+                .getAccessibleContext().getAccessibleName());
+        assertEquals("Close George chat", panel.getCloseButton()
+                .getAccessibleContext().getAccessibleName());
     }
 }

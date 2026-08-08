@@ -19,6 +19,7 @@ public final class CloseAIFrame extends JFrame {
     private final DayPlanPanel dayPlanPanel;
     private final HeaderPanel headerPanel;
     private final TripAssistantPanel tripAssistantPanel;
+    private final FloatingTripAssistantWidget tripAssistantWidget;
     private final DayPlanViewModel dayPlanViewModel;
     private final SearchViewModel searchViewModel;
     private final BookmarksViewModel bookmarksViewModel;
@@ -55,7 +56,8 @@ public final class CloseAIFrame extends JFrame {
         content.setDividerSize(8);
         content.setBorder(BorderFactory.createEmptyBorder());
         root.add(content, BorderLayout.CENTER);
-        setContentPane(root);
+        tripAssistantWidget = new FloatingTripAssistantWidget(root, tripAssistantPanel);
+        setContentPane(tripAssistantWidget);
 
         this.dayPlanPanel = dayPlanPanel;
         calendarDialog = new CalendarDialog(this, calendarViewModel, dayPlanViewModel);
@@ -92,6 +94,10 @@ public final class CloseAIFrame extends JFrame {
 
     public TripAssistantPanel getTripAssistantPanel() {
         return tripAssistantPanel;
+    }
+
+    public FloatingTripAssistantWidget getTripAssistantWidget() {
+        return tripAssistantWidget;
     }
 
     public ShareDialog getShareDialog() {

@@ -4,7 +4,7 @@ import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.util.Objects;
 
-/** Observable state holder for George's chat tab. */
+/** Observable state holder for George's floating chat widget. */
 public final class TripAssistantViewModel {
     private final PropertyChangeSupport changes = new PropertyChangeSupport(this);
     private TripAssistantState state;

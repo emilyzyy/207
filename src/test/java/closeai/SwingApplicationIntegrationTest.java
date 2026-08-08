@@ -39,12 +39,21 @@ final class SwingApplicationIntegrationTest {
             CloseAIFrame frame = builder.buildSwingApplication(app);
             JTabbedPane tabs = findTabs(frame);
             assertNotNull(tabs);
-            assertEquals(5, tabs.getTabCount());
-            assertEquals("Trip Assistant", tabs.getTitleAt(3));
-            assertSame(frame.getTripAssistantPanel(), tabs.getComponentAt(3));
+            assertEquals(4, tabs.getTabCount());
+            assertEquals("Trip Options", tabs.getTitleAt(3));
+            assertSame(frame.getTripAssistantPanel(),
+                    frame.getTripAssistantWidget().getAssistantPanel());
             assertTrue(frame.getTripAssistantPanel().getHistoryArea()
                     .getText().contains("George"));
             assertNotNull(findButton(frame.getTripAssistantPanel(), "Send"));
+            assertTrue(frame.getTripAssistantWidget().getAvatarButton().isVisible());
+            assertFalse(frame.getTripAssistantWidget().isExpanded());
+            frame.getTripAssistantWidget().getAvatarButton().doClick();
+            assertTrue(frame.getTripAssistantWidget().isExpanded());
+            frame.getTripAssistantPanel().getCloseButton().doClick();
+            assertFalse(frame.getTripAssistantWidget().isExpanded());
+            assertTrue(frame.getTripAssistantPanel().getHistoryArea()
+                    .getText().contains("George"));
 
             DayPlanViewModel sharedState = frame.getCalendarDialog().getViewModel();
             assertSame(sharedState, frame.getDayPlanPanel().getViewModel());
@@ -56,8 +65,8 @@ final class SwingApplicationIntegrationTest {
             assertNotNull(share);
             assertFalse(share.isEnabled());
 
-            tabs.setSelectedIndex(4);
-            Container tripSetup = (Container) tabs.getComponentAt(4);
+            tabs.setSelectedIndex(3);
+            Container tripSetup = (Container) tabs.getComponentAt(3);
             List<JTextField> fields = findTextFields(tripSetup);
             assertEquals(4, fields.size());
             fields.get(0).setText("Toronto");

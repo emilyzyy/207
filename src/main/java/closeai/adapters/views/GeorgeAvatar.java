@@ -3,7 +3,6 @@ package closeai.adapters.views;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
-import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -21,8 +20,28 @@ final class GeorgeAvatar {
 
     static ImageIcon icon(int width, int height) {
         BufferedImage source = load();
-        Image scaled = source.getScaledInstance(width, height, Image.SCALE_SMOOTH);
-        return new ImageIcon(scaled);
+        double scale = Math.min(
+                (double) width / source.getWidth(),
+                (double) height / source.getHeight());
+        int scaledWidth = Math.max(1, (int) Math.round(source.getWidth() * scale));
+        int scaledHeight = Math.max(1, (int) Math.round(source.getHeight() * scale));
+        BufferedImage canvas = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = canvas.createGraphics();
+        graphics.setRenderingHint(
+                RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        graphics.setRenderingHint(
+                RenderingHints.KEY_RENDERING,
+                RenderingHints.VALUE_RENDER_QUALITY);
+        graphics.drawImage(
+                source,
+                (width - scaledWidth) / 2,
+                (height - scaledHeight) / 2,
+                scaledWidth,
+                scaledHeight,
+                null);
+        graphics.dispose();
+        return new ImageIcon(canvas);
     }
 
     private static BufferedImage load() {

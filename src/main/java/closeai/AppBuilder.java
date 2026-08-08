@@ -204,7 +204,7 @@ public final class AppBuilder {
                 app, dayPlanViewModel,
                 "Hi, I'm George. Ask me what to visit, what works in rain, or what fits your day.");
         PlannerPanel plannerPanel = new PlannerPanel(
-                searchPanel, bookmarksPanel, dayPlanPanel, tripAssistantPanel, tripOptionsPanel);
+                searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel);
         CloseAIFrame frame = new CloseAIFrame(
                 headerPanel,
                 overviewPanel,
@@ -312,7 +312,7 @@ public final class AppBuilder {
                 app, dayPlanViewModel,
                 "Hi, I'm George. Create a trip, then ask me for activity recommendations.");
         PlannerPanel plannerPanel = new PlannerPanel(
-                searchPanel, bookmarksPanel, dayPlanPanel, tripAssistantPanel, tripOptionsPanel);
+                searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel);
         CloseAIFrame frame = new CloseAIFrame(
                 headerPanel,
                 overviewPanel,

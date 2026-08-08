@@ -11,7 +11,6 @@ public final class PlannerPanel extends JPanel {
             SearchPanel searchPanel,
             BookmarksPanel bookmarksPanel,
             DayPlanPanel dayPlanPanel,
-            TripAssistantPanel tripAssistantPanel,
             TripOptionsPanel tripOptionsPanel) {
         setLayout(new BorderLayout());
         setBackground(SwingTheme.PANEL);
@@ -21,7 +20,6 @@ public final class PlannerPanel extends JPanel {
         tabs.addTab("Search", searchPanel);
         tabs.addTab("Bookmarks", bookmarksPanel);
         tabs.addTab("Day Plan", dayPlanPanel);
-        tabs.addTab("Trip Assistant", tripAssistantPanel);
         tabs.addTab("Trip Options", tripOptionsPanel);
         add(tabs, BorderLayout.CENTER);
     }

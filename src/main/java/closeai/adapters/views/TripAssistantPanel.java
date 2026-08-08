@@ -29,6 +29,9 @@ public final class TripAssistantPanel extends JPanel {
     private final JPanel loading = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
     private final JLabel error = new JLabel(" ");
     private final JScrollPane historyScroll;
+    private final JButton minimize = headerButton("-", "Minimize George chat");
+    private final JButton close = headerButton("x", "Close George chat");
+    private Runnable collapseAction = () -> { };
 
     public TripAssistantPanel(
             TripAssistantViewModel viewModel, TripAssistantController controller) {
@@ -39,7 +42,9 @@ public final class TripAssistantPanel extends JPanel {
         this.controller = controller;
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
-        setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(SwingTheme.LINE),
+                BorderFactory.createEmptyBorder(14, 14, 14, 14)));
 
         add(header(), BorderLayout.NORTH);
         history.setEditable(false);
@@ -49,6 +54,7 @@ public final class TripAssistantPanel extends JPanel {
         history.setBackground(SwingTheme.BACKGROUND);
         history.setForeground(SwingTheme.NAVY);
         history.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        history.setToolTipText("Conversation with George");
         history.getAccessibleContext().setAccessibleName("George chat history");
         historyScroll = new JScrollPane(history);
         historyScroll.setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
@@ -62,7 +68,7 @@ public final class TripAssistantPanel extends JPanel {
     private JPanel header() {
         JPanel panel = new JPanel(new BorderLayout(12, 0));
         panel.setOpaque(false);
-        JLabel avatar = new JLabel(GeorgeAvatar.icon(92, 64));
+        JLabel avatar = new JLabel(GeorgeAvatar.icon(52, 48));
         avatar.getAccessibleContext().setAccessibleName("George the trip assistant");
         panel.add(avatar, BorderLayout.WEST);
 
@@ -72,8 +78,7 @@ public final class TripAssistantPanel extends JPanel {
         JLabel title = new JLabel("George · Trip Assistant");
         title.setFont(SwingTheme.HEADING);
         title.setForeground(SwingTheme.NAVY);
-        JLabel subtitle = new JLabel(
-                "Recommendations grounded in this trip's activities, plan, bookmarks, and weather");
+        JLabel subtitle = new JLabel("Grounded in your current trip");
         subtitle.setFont(SwingTheme.SMALL);
         subtitle.setForeground(SwingTheme.MUTED);
         words.add(Box.createVerticalGlue());
@@ -82,7 +87,27 @@ public final class TripAssistantPanel extends JPanel {
         words.add(subtitle);
         words.add(Box.createVerticalGlue());
         panel.add(words, BorderLayout.CENTER);
+
+        JPanel controls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        controls.setOpaque(false);
+        minimize.addActionListener(event -> collapseAction.run());
+        close.addActionListener(event -> collapseAction.run());
+        controls.add(minimize);
+        controls.add(close);
+        panel.add(controls, BorderLayout.EAST);
         return panel;
+    }
+
+    private static JButton headerButton(String text, String accessibleName) {
+        JButton button = new JButton(text);
+        button.setFont(SwingTheme.BODY.deriveFont(java.awt.Font.BOLD, 16));
+        button.setForeground(SwingTheme.MUTED);
+        button.setBackground(SwingTheme.PANEL);
+        button.setFocusPainted(false);
+        button.setMargin(new java.awt.Insets(2, 7, 2, 7));
+        button.setToolTipText(accessibleName);
+        button.getAccessibleContext().setAccessibleName(accessibleName);
+        return button;
     }
 
     private JPanel composer() {
@@ -111,6 +136,8 @@ public final class TripAssistantPanel extends JPanel {
         input.setFont(SwingTheme.BODY);
         input.setToolTipText("Ask George about this trip");
         input.getAccessibleContext().setAccessibleName("Message George");
+        send.setToolTipText("Send message to George");
+        send.getAccessibleContext().setAccessibleName("Send message to George");
         input.addActionListener(event -> send());
         send.addActionListener(event -> send());
         row.add(input, BorderLayout.CENTER);
@@ -151,4 +178,12 @@ public final class TripAssistantPanel extends JPanel {
     public boolean isLoadingVisible() { return loading.isVisible(); }
 
     public JLabel getErrorLabel() { return error; }
+
+    public JButton getMinimizeButton() { return minimize; }
+
+    public JButton getCloseButton() { return close; }
+
+    public void setCollapseAction(Runnable action) {
+        collapseAction = action == null ? () -> { } : action;
+    }
 }
