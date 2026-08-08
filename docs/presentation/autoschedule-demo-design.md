@@ -733,3 +733,66 @@ activity score above zero. In the selected run this appears on **Libreria Acqua 
 Teatro La Fenice** — and Teatro La Fenice simultaneously earns *"Moved to better weather"*.
 On a projector that reads as the feature contradicting itself. Fix: emit the reason only when
 severity is MEDIUM or HIGH.
+
+
+---
+
+# Re-verification after the team merges (post `5d579e2`)
+
+Everything below supersedes the numbers in the previous section.
+
+## What changed on main
+
+- The package was renamed **`closeai` → `trippy`**. My map route line and its test moved with it.
+- The compile blocker is **fixed** by the team; `main` builds again.
+- Alex replaced the discovery path with `OsmActivityMapper` +
+  `OverpassNearbyActivityDiscovery` + `NominatimNamedPlaceSearch`. Search now returns **85**
+  places, not 25, and categories/durations changed (Libreria Acqua Alta is now
+  SHOPPING/INDOOR 60 min; Teatro La Fenice is ENTERTAINMENT/INDOOR 120 min with **no hours**).
+
+## Regression found and fixed
+
+`OsmActivityMapper` built every `Activity` with the 11-argument constructor, which stores the
+raw `opening_hours` text and leaves the parsed reading **unknown**. Everything compiled and
+all tests passed, but the opening-hours constraint had silently stopped applying to every
+discovered place. Verified live before the fix: **La Zucca arrived with
+`raw="Mo-Sa 12:30-14:30,19:00-22:30"` and `hours=UNKNOWN`, and a lunch pinned at 15:30 —
+inside its own afternoon closure — was accepted with no conflict.**
+
+Fixed by passing `OpeningHoursParser.parse(hoursText)` as the twelfth argument.
+`OsmActivityMapperHoursTest` now pins the parsed reading.
+
+The good-weather reason bug is also fixed: `WeatherSuitabilityPolicy.reasonFor` only speaks
+for MEDIUM or HIGH severity now. **557 tests pass.**
+
+## Live result — three consecutive runs, identical
+
+Setup unchanged from the previous section.
+
+**Beat 1:** `CONFLICT` — *"La Zucca is locked to a time when it is closed. Your Day Plan was
+not changed."*
+
+**Beat 2:** `PREVIEW` — **Travel 72 → 54 · Waiting 217 → 0**
+
+| Row | Reason |
+|---|---|
+| 10:30–11:30 Museo Ebraico | **moved clear of your unavailable time** |
+| 12:30–13:30 **La Zucca** | **LOCKED — you locked this time** |
+| 16:42–18:12 Libreria Acqua Alta | **closes at 19:10** |
+
+Cards: ⏳ **217 min of waiting removed** · → **18 min less travel** · ⚿ **Pinned activity
+kept at its time — La Zucca**
+
+## Honest change: the weather and daylight cards are gone
+
+Two causes, both outside my control:
+
+1. **Teatro La Fenice is now ENTERTAINMENT/INDOOR** under Alex's new categoriser, so it no
+   longer participates in the weather or daylight policies at all.
+2. Today's live forecast for 12 Aug is **LOW/MEDIUM with a single HIGH hour**, not the clean
+   afternoon thunderstorm gradient it showed yesterday.
+
+The three surviving cards are all robust, and the two hard-constraint reasons on screen
+(unavailable period, closing time) are stronger evidence than a weather card anyway. **No
+outdoor venue with real hours currently appears in the Venice results**, so a weather or
+daylight card cannot be promised on live data. Do not script one.
