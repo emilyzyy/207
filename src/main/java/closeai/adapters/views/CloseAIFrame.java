@@ -18,6 +18,8 @@ public final class CloseAIFrame extends JFrame {
     private final ShareDialog shareDialog;
     private final DayPlanPanel dayPlanPanel;
     private final HeaderPanel headerPanel;
+    private final TripAssistantPanel tripAssistantPanel;
+    private final FloatingTripAssistantWidget tripAssistantWidget;
     private final DayPlanViewModel dayPlanViewModel;
     private final SearchViewModel searchViewModel;
     private final BookmarksViewModel bookmarksViewModel;
@@ -27,6 +29,7 @@ public final class CloseAIFrame extends JFrame {
             OverviewPanel overviewPanel,
             PlannerPanel plannerPanel,
             DayPlanPanel dayPlanPanel,
+            TripAssistantPanel tripAssistantPanel,
             DayPlanViewModel dayPlanViewModel,
             CalendarViewModel calendarViewModel,
             ShareViewModel shareViewModel,
@@ -34,6 +37,7 @@ public final class CloseAIFrame extends JFrame {
             BookmarksViewModel bookmarksViewModel) {
         super("CloseAI Trip Planner");
         this.headerPanel = headerPanel;
+        this.tripAssistantPanel = tripAssistantPanel;
         this.dayPlanViewModel = dayPlanViewModel;
         this.searchViewModel = searchViewModel;
         this.bookmarksViewModel = bookmarksViewModel;
@@ -52,7 +56,8 @@ public final class CloseAIFrame extends JFrame {
         content.setDividerSize(8);
         content.setBorder(BorderFactory.createEmptyBorder());
         root.add(content, BorderLayout.CENTER);
-        setContentPane(root);
+        tripAssistantWidget = new FloatingTripAssistantWidget(root, tripAssistantPanel);
+        setContentPane(tripAssistantWidget);
 
         this.dayPlanPanel = dayPlanPanel;
         calendarDialog = new CalendarDialog(this, calendarViewModel, dayPlanViewModel);
@@ -85,6 +90,14 @@ public final class CloseAIFrame extends JFrame {
 
     public DayPlanPanel getDayPlanPanel() {
         return dayPlanPanel;
+    }
+
+    public TripAssistantPanel getTripAssistantPanel() {
+        return tripAssistantPanel;
+    }
+
+    public FloatingTripAssistantWidget getTripAssistantWidget() {
+        return tripAssistantWidget;
     }
 
     public ShareDialog getShareDialog() {

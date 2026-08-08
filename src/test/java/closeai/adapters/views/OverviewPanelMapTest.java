@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class OverviewPanelMapTest {
@@ -69,6 +70,33 @@ final class OverviewPanelMapTest {
             Thread.sleep(50);
         }
         assertEquals(mock.size(), map.getActivityCount());
+    }
+
+    @Test
+    void viewportLoaderSkipsReloadWhenMapIsFarFromTripCity() throws Exception {
+        System.setProperty("closeai.map.tiles.mode", "offline");
+        String destination = "Toronto";
+        DashboardViewModel dashboard = new DashboardViewModel(
+                new DashboardState(destination, null, "", ""));
+        SearchViewModel search = new SearchViewModel(
+                new SearchState(Collections.emptyList(), ""));
+        OverviewPanel overview = new OverviewPanel(dashboard, search);
+        MapPanel map = overview.getMapPanel();
+        map.setSize(620, 520);
+
+        double[] home = StaticTileLoader.latLngForCity(destination);
+        assertNotNull(home);
+
+        CountDownLatch loaded = new CountDownLatch(1);
+        map.setViewportLoader((south, west, north, east, max) -> {
+            loaded.countDown();
+            return new MockPlacesService().findAll();
+        });
+        map.flyTo(home[0] + 5, home[1]);
+        map.reloadViewport();
+
+        assertFalse(loaded.await(1, TimeUnit.SECONDS));
+        assertEquals(0, map.getActivityCount());
     }
 
     @Test

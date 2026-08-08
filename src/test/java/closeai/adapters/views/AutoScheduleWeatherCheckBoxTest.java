@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import closeai.adapters.controllers.AutoScheduleSettings;
 import closeai.application.autoschedule.WeatherOption;
-import closeai.domain.valueobjects.TransportationMode;
 import java.awt.GraphicsEnvironment;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +19,7 @@ import org.junit.jupiter.api.Test;
 /**
  * The settings dialog's half of the weather contract.
  *
- * <p>"Consider weather" is offered only when the forecast can distinguish one hour from
+ * <p>"Avoid bad weather" is offered only when the forecast can distinguish one hour from
  * another. When it cannot, the box is disabled, unticked, and accompanied by a sentence
  * saying why — a sentence, because a greyed-out control with no explanation leaves the
  * traveller to guess, and because the state must be readable without relying on seeing
@@ -53,7 +52,7 @@ class AutoScheduleWeatherCheckBoxTest {
         assumeFalse(GraphicsEnvironment.isHeadless(), "a dialog needs a display");
         AtomicReference<AutoScheduleSettingsDialog> built = new AtomicReference<>();
         SwingUtilities.invokeAndWait(() -> built.set(new AutoScheduleSettingsDialog(
-                null, LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING)));
+                null, LocalTime.of(9, 0), LocalTime.of(21, 0))));
         opened.add(built.get());
         return built.get();
     }
@@ -124,7 +123,7 @@ class AutoScheduleWeatherCheckBoxTest {
         // the checkbox itself as well as in the visible label beside it.
         assertEquals(WeatherOption.NO_HOURLY_FORECAST,
                 dialog.weatherCheckBox().getAccessibleContext().getAccessibleDescription());
-        assertEquals("Consider weather",
+        assertEquals("Avoid bad weather",
                 dialog.weatherCheckBox().getAccessibleContext().getAccessibleName());
     }
 
@@ -159,7 +158,6 @@ class AutoScheduleWeatherCheckBoxTest {
         AutoScheduleSettings settings = dialog.read();
         assertEquals(LocalTime.of(9, 0), settings.getAvailableStart());
         assertEquals(LocalTime.of(21, 0), settings.getAvailableEnd());
-        assertEquals(TransportationMode.WALKING, settings.getTransportationMode());
         assertTrue(settings.isKeepCurrentOrder(), "preserve-order still defaults on");
     }
 }

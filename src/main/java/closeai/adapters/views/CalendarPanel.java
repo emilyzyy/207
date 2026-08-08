@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
+import java.util.List;
 import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -155,8 +156,23 @@ public final class CalendarPanel extends JPanel {
         }
         String destination = state.getDestination().isEmpty()
                 ? "Active trip" : state.getDestination();
-        return destination + " · " + DAY_TITLE.format(state.getTripDate())
+        return destination + " · " + dateRange(state.getTripDates())
+                + " · Day " + (state.getActiveDayIndex() + 1) + " of "
+                + state.getTripDates().size()
                 + " · " + state.getEvents().size() + " scheduled item(s)";
+    }
+
+    private String dateRange(List<LocalDate> dates) {
+        if (dates.isEmpty()) {
+            return "";
+        }
+        if (dates.size() == 1) {
+            return DAY_TITLE.format(dates.get(0));
+        }
+        DateTimeFormatter shortMonth =
+                DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
+        return dates.get(0).format(shortMonth) + " – "
+                + dates.get(dates.size() - 1).format(shortMonth);
     }
 
     private JPanel dayView(CalendarState state) {
@@ -194,6 +210,10 @@ public final class CalendarPanel extends JPanel {
                     ? BorderFactory.createCompoundBorder(
                             BorderFactory.createLineBorder(SwingTheme.BLUE, 2),
                             BorderFactory.createEmptyBorder(9, 9, 9, 9))
+                    : state.isActiveTripDate(date)
+                    ? BorderFactory.createCompoundBorder(
+                            BorderFactory.createLineBorder(SwingTheme.BLUE, 2),
+                            BorderFactory.createEmptyBorder(9, 9, 9, 9))
                     : state.isTripDate(date)
                     ? BorderFactory.createCompoundBorder(
                             BorderFactory.createLineBorder(SwingTheme.BLUE),
@@ -206,17 +226,22 @@ public final class CalendarPanel extends JPanel {
             day.add(dayButton);
             day.add(Box.createVerticalStrut(8));
             if (state.isTripDate(date)) {
-                JLabel destination = new JLabel(state.getDestination());
+                JLabel destination = new JLabel(dayHeading(state, date));
                 destination.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
                 destination.setForeground(SwingTheme.BLUE);
                 day.add(destination);
-                for (ScheduledEvent event : state.getEvents()) {
-                    day.add(Box.createVerticalStrut(6));
-                    JLabel eventLabel = new JLabel("<html>" + TIME.format(event.getStartTime())
-                            + "<br><b>" + escapeHtml(eventName(event)) + "</b></html>");
-                    eventLabel.setFont(SwingTheme.SMALL);
-                    eventLabel.setForeground(SwingTheme.NAVY);
-                    day.add(eventLabel);
+                if (state.isActiveTripDate(date)) {
+                    for (ScheduledEvent event : state.getEvents()) {
+                        day.add(Box.createVerticalStrut(6));
+                        JLabel eventLabel = new JLabel("<html>" + TIME.format(event.getStartTime())
+                                + "<br><b>" + escapeHtml(eventName(event)) + "</b></html>");
+                        eventLabel.setFont(SwingTheme.SMALL);
+                        eventLabel.setForeground(SwingTheme.NAVY);
+                        day.add(eventLabel);
+                    }
+                } else {
+                    day.add(Box.createVerticalStrut(4));
+                    day.add(emptyLabel("Other trip day"));
                 }
             } else {
                 day.add(emptyLabel("No trip"));
@@ -224,6 +249,18 @@ public final class CalendarPanel extends JPanel {
             week.add(day);
         }
         return week;
+    }
+
+    private String dayHeading(CalendarState state, LocalDate date) {
+        int dayIndex = state.getTripDates().indexOf(date);
+        String label = "Day " + (dayIndex + 1);
+        if (state.isActiveTripDate(date)) {
+            label = "● " + label;
+        }
+        if (!state.getDestination().isEmpty()) {
+            label = label + " · " + state.getDestination();
+        }
+        return label;
     }
 
     private JPanel monthView(CalendarState state) {
@@ -252,6 +289,10 @@ public final class CalendarPanel extends JPanel {
                     ? SwingTheme.NAVY : SwingTheme.MUTED);
             day.setBorder(date.equals(state.getFocusDate())
                     ? BorderFactory.createLineBorder(SwingTheme.BLUE, 2)
+                    : state.isActiveTripDate(date)
+                    ? BorderFactory.createCompoundBorder(
+                            BorderFactory.createLineBorder(SwingTheme.BLUE),
+                            BorderFactory.createEmptyBorder(3, 3, 3, 3))
                     : BorderFactory.createLineBorder(SwingTheme.LINE));
             day.addActionListener(event -> viewModel.selectDate(date));
             month.add(day);
@@ -263,11 +304,14 @@ public final class CalendarPanel extends JPanel {
         StringBuilder text = new StringBuilder("<html><b>")
                 .append(date.getDayOfMonth()).append("</b>");
         if (state.isTripDate(date)) {
-            text.append("<br><font color='#1f68e1'>")
+            int dayIndex = state.getTripDates().indexOf(date);
+            String marker = state.isActiveTripDate(date) ? "● " : "";
+            text.append("<br><font color='#1f68e1'>").append(marker)
                     .append(escapeHtml(state.getDestination().isEmpty()
                             ? "Trip" : state.getDestination()))
+                    .append(" · D").append(dayIndex + 1)
                     .append("</font>");
-            if (!state.getEvents().isEmpty()) {
+            if (state.isActiveTripDate(date) && !state.getEvents().isEmpty()) {
                 text.append("<br>").append(state.getEvents().size()).append(" item(s)");
             }
         }

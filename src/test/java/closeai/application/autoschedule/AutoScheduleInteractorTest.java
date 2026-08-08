@@ -299,7 +299,11 @@ class AutoScheduleInteractorTest {
         interactorFor(trips).preview(input("trip-1", Collections.emptySet(),
                 Collections.emptyList(), true));
 
-        assertTrue(presenter.getPreview().getWarnings().isEmpty());
+        // Not "no warnings at all": these hand-built activities have no opening hours, and
+        // the run says so. The claim under test is that an hourly forecast needs no caveat.
+        for (String warning : presenter.getPreview().getWarnings()) {
+            assertFalse(warning.toLowerCase().contains("forecast"), warning);
+        }
     }
 
     @Test

@@ -50,16 +50,20 @@ public final class ReasonCollector {
             return reasons;
         }
 
-        if (placement.getStart().equals(task.getOpeningTime())
-                && placement.getIdleMinutesBefore() > 0) {
-            reasons.add(new Reason(eventId, ReasonCode.OPENS_LATER,
-                    task.getOpeningTime().toString()));
+        // The window this visit sits in, not the whole day's span: a venue that shuts for
+        // lunch has an opening and a closing time per shift, and only one of them is
+        // relevant to a given placement.
+        TimeWindow open = task.openingWindowFor(placement.getStart(), placement.getEnd());
+        LocalTime opens = open == null ? task.getOpeningTime() : open.getStart();
+        LocalTime closes = open == null ? task.getClosingTime() : open.getEnd();
+
+        if (placement.getStart().equals(opens) && placement.getIdleMinutesBefore() > 0) {
+            reasons.add(new Reason(eventId, ReasonCode.OPENS_LATER, opens.toString()));
         }
 
-        int untilClosing = minutes(placement.getEnd(), task.getClosingTime());
+        int untilClosing = minutes(placement.getEnd(), closes);
         if (untilClosing >= 0 && untilClosing <= CLOSING_SOON_MINUTES) {
-            reasons.add(new Reason(eventId, ReasonCode.CLOSING_SOON,
-                    task.getClosingTime().toString()));
+            reasons.add(new Reason(eventId, ReasonCode.CLOSING_SOON, closes.toString()));
         }
 
         if (blocked != null) {

@@ -6,3 +6,6 @@ target/
 # the working directory, and the Supabase client takes its anon key the same way.
 .env
 .env.*
+node_modules/
+.wrangler/
+george-proxy/.dev.vars*

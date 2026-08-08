@@ -3,9 +3,9 @@
 | | |
 |---|---|
 | **Source** | [`autoschedule-use-case-class-diagram.puml`](autoschedule-use-case-class-diagram.puml) |
-| **Vector** | [`autoschedule-use-case-class-diagram.svg`](autoschedule-use-case-class-diagram.svg) — 3506 × 2300, zoomable; use this on screen |
-| **Raster** | [`autoschedule-use-case-class-diagram.png`](autoschedule-use-case-class-diagram.png) — 5477 × 3592 (150 dpi), landscape; use this on a slide |
-| **Covers** | 63 production classes, interfaces and enums; 0 test doubles |
+| **Vector** | [`autoschedule-use-case-class-diagram.svg`](autoschedule-use-case-class-diagram.svg) — 3534 × 2903, zoomable; use this on screen |
+| **Raster** | [`autoschedule-use-case-class-diagram.png`](autoschedule-use-case-class-diagram.png) — 5520 × 4534 (150 dpi); use this on a slide |
+| **Covers** | 76 production classes, interfaces and enums; 0 test doubles |
 
 This is the third Required Element of the Individual Presentation Rubric — *before and
 after Views, Use Case Interactor code, and a class diagram for the full Use Case* (S-017).
@@ -123,9 +123,34 @@ Every node and relationship was read out of the source on `feature/emily-autosch
 constructor signatures, `implements` clauses, field types and the `AppBuilder` wiring — not
 from planning documents. An automated cross-check confirms:
 
-- 63 / 63 diagram nodes exist as production source files;
+- 76 / 76 diagram nodes exist as production source files;
 - every class the brief asked for is present;
 - no test double, fake or fixture appears.
+
+## Schedule improvements, on the diagram
+
+The improvement path is the clearest illustration of why the boundaries are drawn where they
+are, so it is worth following on the diagram:
+
+1. **`ScheduleImprovementFinder`** sits in the use case and compares the original placement
+   with the proposed one. It re-runs `SoftPolicy` — *the same policy objects the search
+   used* — at the activity's original time, so "did this improve" is answered by the rule
+   that produced the schedule rather than by a second definition living in the view.
+2. It produces **`ScheduleImprovement`**, a value object carrying a
+   **`ScheduleImprovementType`**, an amount and a subject. No prose.
+3. The improvements travel outward inside **`AutoSchedulePreviewOutputData`**.
+4. **`AutoSchedulePresenter`** turns each into an **`ImprovementView`** — headline, detail
+   and a glyph marker. This is where wording is chosen, for the same reason reason codes are
+   worded here.
+5. **`DayPlanState`** carries the views; **`ScheduleImprovementsPanel`** stacks them.
+
+Note the direction: the panel depends on `ImprovementView` and nothing else. It has no
+reference to a schedule, a metric or the Day Plan, which is what lets it move beside a
+future full-day calendar without being rewritten.
+
+`ScheduleMetrics` now depends on `TravelTimeEstimator` so the "before" half of the
+comparison can charge the journeys the current order implies. That arrow points inward like
+every other: the metric asks the use case's own contract, not a routing service.
 
 ## Relationship to add-to-plan
 

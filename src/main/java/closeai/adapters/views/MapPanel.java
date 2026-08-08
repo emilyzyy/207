@@ -65,6 +65,11 @@ public final class MapPanel extends JPanel {
     private String selectedActivityId = "";
     private boolean showHighlightedOnly = false;
 
+    private static final double MAX_CITY_DISTANCE_METERS = 100_000;
+    private boolean hasHomeLocation;
+    private double homeLat;
+    private double homeLng;
+
     private final List<Integer> markerHitboxesX = new ArrayList<>();
     private final List<Integer> markerHitboxesY = new ArrayList<>();
     private final List<String> markerIds = new ArrayList<>();
@@ -334,6 +339,7 @@ public final class MapPanel extends JPanel {
 
     void reloadViewport() {
         if (viewportLoader == null) return;
+        if (hasHomeLocation && distanceToHomeMeters() > MAX_CITY_DISTANCE_METERS) return;
         int w = getWidth(), h = getHeight();
         if (w <= 0 || h <= 0) return;
         double[][] corners = visibleCoords(w, h);
@@ -484,9 +490,24 @@ public final class MapPanel extends JPanel {
     public void focusOnCity(String city) {
         StaticTileLoader.cityCoords(city).thenAccept(coords -> {
             if (coords != null) {
+                homeLat = coords[0];
+                homeLng = coords[1];
+                hasHomeLocation = true;
                 SwingUtilities.invokeLater(() -> flyTo(coords[0], coords[1]));
             }
         });
+    }
+
+    private double distanceToHomeMeters() {
+        double lat1 = Math.toRadians(centerLat);
+        double lat2 = Math.toRadians(homeLat);
+        double dLat = lat2 - lat1;
+        double dLng = Math.toRadians(homeLng - centerLng);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(lat1) * Math.cos(lat2)
+                * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return 6371000.0 * c;
     }
 
     public void fitAll() {

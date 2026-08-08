@@ -3,6 +3,7 @@ package closeai.adapters.presenters;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.Trip;
+import closeai.domain.entities.TripDay;
 import closeai.domain.entities.WeatherWarning;
 import java.util.List;
 
@@ -38,10 +39,28 @@ public final class JsonPresenter {
             events.append(event(trip.getScheduledEvents().get(i)));
         }
         events.append(']');
+        StringBuilder days = new StringBuilder("[");
+        for (int i = 0; i < trip.getDayCount(); i++) {
+            if (i > 0) days.append(',');
+            days.append(day(trip.getDay(i)));
+        }
+        days.append(']');
         return "{\"id\":\"" + trip.getId() + "\",\"destination\":\"" + escape(trip.getDestination())
                 + "\",\"date\":\"" + trip.getDate() + "\",\"startTime\":\"" + trip.getStartTime()
                 + "\",\"endTime\":\"" + trip.getEndTime() + "\",\"transportationMode\":\""
-                + trip.getTransportationMode() + "\",\"bookmarks\":" + bookmarks + ",\"events\":" + events + "}";
+                + trip.getTransportationMode() + "\",\"dayCount\":" + trip.getDayCount()
+                + ",\"days\":" + days + ",\"bookmarks\":" + bookmarks + ",\"events\":" + events + "}";
+    }
+
+    private String day(TripDay day) {
+        StringBuilder events = new StringBuilder("[");
+        for (int i = 0; i < day.getScheduledEvents().size(); i++) {
+            if (i > 0) events.append(',');
+            events.append(event(day.getScheduledEvents().get(i)));
+        }
+        events.append(']');
+        return "{\"date\":\"" + day.getDate() + "\",\"startTime\":\"" + day.getStartTime()
+                + "\",\"endTime\":\"" + day.getEndTime() + "\",\"events\":" + events + "}";
     }
 
     public String event(ScheduledEvent event) {

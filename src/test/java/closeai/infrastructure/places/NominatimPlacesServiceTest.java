@@ -2,6 +2,7 @@ package closeai.infrastructure.places;
 
 import closeai.domain.entities.Activity;
 import closeai.domain.valueobjects.ActivityCategory;
+import closeai.domain.valueobjects.OpeningHours;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -10,6 +11,8 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -17,6 +20,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class NominatimPlacesServiceTest {
@@ -398,5 +402,157 @@ final class NominatimPlacesServiceTest {
         exchange.sendResponseHeaders(status, bytes.length);
         exchange.getResponseBody().write(bytes);
         exchange.close();
+    }
+
+    // --- opening hours, from the tag Overpass already returns ---------------------------
+
+    /**
+     * The Overpass query asks for "out body", so every tag is in the response and the
+     * opening_hours tag has always been sitting there unread. This is the test that it now
+     * reaches an Activity rather than being dropped on the floor.
+     */
+    @Test
+    void readsRealOpeningHoursFromTheOverpassResponse() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":123,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"City Museum\",\"tourism\":\"museum\","
+                        + "\"opening_hours\":\"Mo-Fr 10:00-17:00; Sa-Su 11:00-16:00\"}}]}");
+
+        OpeningHours hours = service().search("Toronto", "").get(0).getOpeningHours();
+
+        assertTrue(hours.isKnown());
+        // 12 August 2026 is a Wednesday, 15 August a Saturday.
+        assertEquals(LocalTime.of(10, 0),
+                hours.intervalsOn(LocalDate.of(2026, 8, 12)).get(0).getStart());
+        assertEquals(LocalTime.of(16, 0),
+                hours.intervalsOn(LocalDate.of(2026, 8, 15)).get(0).getEnd());
+    }
+
+    @Test
+    void aVenueWithNoOpeningHoursTagIsUnknownRatherThanClosed() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":123,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"City Museum\",\"tourism\":\"museum\"}}]}");
+
+        Activity activity = service().search("Toronto", "").get(0);
+
+        assertFalse(activity.getOpeningHours().isKnown());
+        assertFalse(activity.getOpeningHours().isClosedOn(LocalDate.of(2026, 8, 12)),
+                "most OSM places have no hours, and none of them are therefore shut");
+    }
+
+    @Test
+    void anUnparseableOpeningHoursTagDegradesToUnknownRatherThanFailingTheSearch() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":123,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"City Museum\",\"tourism\":\"museum\","
+                        + "\"opening_hours\":\"whenever the curator feels like it\"}}]}");
+
+        List<Activity> results = service().search("Toronto", "");
+
+        assertEquals(1, results.size(), "a tag we cannot read must not lose the place");
+        assertFalse(results.get(0).getOpeningHours().isKnown());
+    }
+
+    @Test
+    void theCoarseFallbackWindowStillExistsForCodeThatOnlyKnowsAboutOne() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":123,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"City Museum\",\"tourism\":\"museum\"}}]}");
+
+        Activity activity = service().search("Toronto", "").get(0);
+
+        assertEquals(LocalTime.of(9, 0), activity.getOpeningTime());
+        assertEquals(LocalTime.of(21, 0), activity.getClosingTime());
+    }
+
+    /**
+     * The two readings of one tag, and how they divide the work.
+     *
+     * <p>{@code deriveOpenClose} flattens the whole week into a single window so that every
+     * caller always has something valid: for this tag it reports 09:00-23:00, because 09:00
+     * is the earliest opening anywhere in the week and 23:00 the latest closing. That is a
+     * deliberately generous reading and it is wrong about Saturday, when the venue does not
+     * open until 11:00.</p>
+     *
+     * <p>The parsed {@link OpeningHours} keeps the weekdays apart, which is what the
+     * scheduler consults. Both live on the Activity because both are useful — the flat
+     * window for anything that only knows about one, the per-weekday reading for placing a
+     * visit — and this test pins the difference so neither can quietly become the other.</p>
+     */
+    @Test
+    void theFlattenedWindowAndTheParsedWeekAreBothKeptAndDoNotAgree() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":400,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"Late Bar\",\"amenity\":\"cafe\","
+                        + "\"opening_hours\":\"Mo-Fr 09:00-17:00; Sa-Su 11:00-23:00\"}}]}");
+
+        Activity activity = service().search("Toronto", "").get(0);
+
+        assertEquals(LocalTime.of(9, 0), activity.getOpeningTime());
+        assertEquals(LocalTime.of(23, 0), activity.getClosingTime());
+
+        // Saturday, 15 August 2026: the flat window says 09:00, the truth is 11:00.
+        assertEquals(LocalTime.of(11, 0), activity.getOpeningHours()
+                .intervalsOn(LocalDate.of(2026, 8, 15)).get(0).getStart());
+        // Wednesday: the flat window says 23:00, the truth is 17:00.
+        assertEquals(LocalTime.of(17, 0), activity.getOpeningHours()
+                .intervalsOn(LocalDate.of(2026, 8, 12)).get(0).getEnd());
+    }
+
+    /**
+     * Panning the map is now a production source of activities, and it goes through the same
+     * parseElements. Hours must arrive by that route too, or a place added from the map would
+     * be scheduled on different rules from the same place found by search.
+     */
+    @Test
+    void hoursArriveThroughTheBoundingBoxSearchAsWellAsTheTextSearch() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":401,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"Museum B\",\"tourism\":\"museum\","
+                        + "\"opening_hours\":\"We 10:00-13:00,14:00-18:00\"}}]}");
+
+        Activity activity = service().searchInBounds(43.6, -79.4, 43.7, -79.3, 100).get(0);
+
+        assertEquals("We 10:00-13:00,14:00-18:00", activity.getOpeningHoursText());
+        assertEquals(2, activity.getOpeningHours()
+                        .intervalsOn(LocalDate.of(2026, 8, 12)).size(),
+                "a venue that shuts for lunch has two shifts, not one long day");
+    }
+
+    /** The raw text is kept verbatim, because it is the only thing we can show a user. */
+    @Test
+    void theProvidersOwnWordsAreKeptUnmodifiedBesideTheParsedReading() throws Exception {
+        startServer(
+                200,
+                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]",
+                200,
+                "{\"elements\":[{\"id\":402,\"lat\":43.66,\"lon\":-79.39,"
+                        + "\"tags\":{\"name\":\"Odd Place\",\"tourism\":\"museum\","
+                        + "\"opening_hours\":\"Mo-Su sunrise-sunset\"}}]}");
+
+        Activity activity = service().search("Toronto", "").get(0);
+
+        assertEquals("Mo-Su sunrise-sunset", activity.getOpeningHoursText(),
+                "we could not parse it, but we can still show the user what it said");
+        assertFalse(activity.getOpeningHours().isKnown());
     }
 }

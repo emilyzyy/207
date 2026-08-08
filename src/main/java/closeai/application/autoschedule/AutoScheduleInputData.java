@@ -32,6 +32,10 @@ public final class AutoScheduleInputData {
     private final List<TimeWindow> unavailableWindows;
     private final boolean keepCurrentOrder;
     private final boolean considerWeather;
+    private final boolean minimizeTravel;
+    private final boolean minimizeGaps;
+    private final boolean preserveMealtimes;
+    private final boolean preferDaylight;
 
     public AutoScheduleInputData(String tripId, LocalTime availableStart, LocalTime availableEnd,
                                  TransportationMode transportationMode,
@@ -39,6 +43,28 @@ public final class AutoScheduleInputData {
                                  List<TimeWindow> unavailableWindows,
                                  boolean keepCurrentOrder,
                                  boolean considerWeather) {
+        this(tripId, availableStart, availableEnd, transportationMode, lockedEventIds,
+                unavailableWindows, keepCurrentOrder, considerWeather, true, true, true, true);
+    }
+
+    /**
+     * @param minimizeTravel    whether shorter journeys make one day better than another
+     * @param minimizeGaps      whether avoidable waiting counts against a day
+     * @param preserveMealtimes whether meals prefer a customary window
+     * @param preferDaylight    whether outdoor activities prefer daylight
+     */
+    public AutoScheduleInputData(String tripId, LocalTime availableStart, LocalTime availableEnd,
+                                 TransportationMode transportationMode,
+                                 Set<String> lockedEventIds,
+                                 List<TimeWindow> unavailableWindows,
+                                 boolean keepCurrentOrder,
+                                 boolean considerWeather,
+                                 boolean minimizeTravel, boolean minimizeGaps,
+                                 boolean preserveMealtimes, boolean preferDaylight) {
+        this.minimizeTravel = minimizeTravel;
+        this.minimizeGaps = minimizeGaps;
+        this.preserveMealtimes = preserveMealtimes;
+        this.preferDaylight = preferDaylight;
         this.tripId = tripId == null ? "" : tripId.trim();
         this.availableStart = availableStart;
         this.availableEnd = availableEnd;
@@ -76,6 +102,22 @@ public final class AutoScheduleInputData {
     }
 
     /** Leave my activities in the order I put them, if possible. */
+    public boolean isMinimizeTravel() {
+        return minimizeTravel;
+    }
+
+    public boolean isMinimizeGaps() {
+        return minimizeGaps;
+    }
+
+    public boolean isPreserveMealtimes() {
+        return preserveMealtimes;
+    }
+
+    public boolean isPreferDaylight() {
+        return preferDaylight;
+    }
+
     public boolean isKeepCurrentOrder() {
         return keepCurrentOrder;
     }

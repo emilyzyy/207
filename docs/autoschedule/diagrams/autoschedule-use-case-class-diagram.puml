@@ -43,6 +43,15 @@ left to right direction
 ' ===================== FRAMEWORKS & DRIVERS (outermost) =====================
 package "Frameworks & Drivers" #F4F7FA {
 
+  class OpeningHoursParser <<adapter>> {
+    + {static} parse(raw : String) : OpeningHours
+  }
+
+  class NominatimPlacesService <<adapter>> {
+    - parseElements(elements, limit) : List<Activity>
+    - {static} deriveOpenClose(openingHours) : LocalTime[]
+  }
+
   class DayPlanPanel <<Swing View>> {
     - viewModel : DayPlanViewModel
     - autoScheduleController : AutoScheduleController
@@ -61,6 +70,16 @@ package "Frameworks & Drivers" #F4F7FA {
 
   class SwingTaskRunner {
     + run(work : Runnable) : void
+  }
+
+  class ScheduleImprovementsPanel <<Swing View>> {
+    + {static} PREFERRED_WIDTH : int
+    - card(improvement : ImprovementView) : JPanel
+  }
+
+  class LockIcon <<Swing Icon>> {
+    - locked : boolean
+    + paintIcon(c, g, x, y) : void
   }
 
   class OsrmDistanceService {
@@ -140,7 +159,20 @@ package "Interface Adapters" #F7F9FB {
   }
 
   class PreviewRowView <<view data>>
-  class PreviewMetricsView <<view data>>
+  class PreviewMetricsView <<view data>> {
+    + getTravelSavedMinutes() : int
+    + getIdleSavedMinutes() : int
+  }
+  class ImprovementView <<view data>> {
+    - marker : String
+    - headline : String
+    - detail : String
+  }
+  class TimeDisplay <<utility>> {
+    + {static} format(time : LocalTime) : String
+    + {static} range(start, end) : String
+    + {static} parse(text : String) : LocalTime
+  }
   enum AutoScheduleStatus {
     IDLE
     LOADING
@@ -244,6 +276,28 @@ package "Application Business Rules (Use Case)" #F5FAF6 {
   class ProblemValidator {
     + validate(availability, tasks, windows) : ScheduleConflict
   }
+  class ScheduleImprovementFinder {
+    + find(originalEvents, plan, preferences, before, afterTravel, afterIdle) : List<ScheduleImprovement>
+    - orderPreserved(originalEvents, plan) : boolean
+  }
+  class ScheduleImprovement <<value object>> {
+    - type : ScheduleImprovementType
+    - amount : int
+    - subject : String
+  }
+  enum ScheduleImprovementType {
+    WAITING_REDUCED
+    TRAVEL_REDUCED
+    LOCK_PRESERVED
+    MOVED_INTO_DAYLIGHT
+    MOVED_TO_BETTER_WEATHER
+    MEAL_MOVED_TOWARD_WINDOW
+    ORDER_PRESERVED
+  }
+  class ScheduleMetrics {
+    + {static} ofExistingSchedule(events) : ScheduleMetrics
+    + {static} ofExistingSchedule(events, estimator, mode, date) : ScheduleMetrics
+  }
   class TravelMatrixPrefetcher {
     + prefetch(tasks, mode, date, availability) : TravelMatrix
   }
@@ -299,6 +353,12 @@ package "Application Business Rules (Use Case)" #F5FAF6 {
     - eventId : String
     - durationMinutes : int
     - lockedAt : TimeWindow
+    - openingWindows : List<TimeWindow>
+    - hoursKnown : boolean
+    + hasKnownHours() : boolean
+    + isClosedAllDay() : boolean
+    + isOpenThroughout(start, end) : boolean
+    + openingWindowFor(start, end) : TimeWindow
   }
   class SchedulePlan {
     - placements : List<PlacedActivity>
@@ -338,6 +398,21 @@ package "Enterprise Business Rules (Entities)" #FBF7F0 {
     - name : String
     - openingTime : LocalTime
     - closingTime : LocalTime
+    - openingHoursText : String
+    - openingHours : OpeningHours
+  }
+  class OpeningHours <<value object>> {
+    - byDay : Map<DayOfWeek, List<TimeInterval>>
+    - alwaysOpen : boolean
+    + {static} unknown() : OpeningHours
+    + {static} alwaysOpen() : OpeningHours
+    + isKnown() : boolean
+    + isClosedOn(date) : boolean
+    + intervalsOn(date) : List<TimeInterval>
+  }
+  class TimeInterval <<value object>> {
+    - start : LocalTime
+    - end : LocalTime
   }
 }
 
@@ -345,6 +420,7 @@ package "Enterprise Business Rules (Entities)" #FBF7F0 {
 package "Shared service ports" #FAFAFA {
   interface DistanceService <<interface>>
   interface WeatherService <<interface>>
+  interface PlacesService <<interface>>
 }
 
 ' ============================================================================
@@ -358,6 +434,7 @@ DistanceServiceTravelTimeEstimator ..|> TravelTimeEstimator
 WeatherServiceContextGateway      ..|> WeatherContextGateway
 SwingTaskRunner                   ..|> TaskRunner
 InMemoryTripRepository            ..|> TripRepository
+NominatimPlacesService            ..|> PlacesService
 OsrmDistanceService               ..|> DistanceService
 OpenMeteoWeatherService           ..|> WeatherService
 WeatherSuitabilityPolicy          ..|> SoftPolicy
@@ -446,9 +523,36 @@ TravelMatrixPrefetcher ..> TravelMatrix : builds
 Trip "1" *-- "0..*" ScheduledEvent
 ScheduledEvent "0..1" --> "1" Activity
 ScheduleTask --> Activity
+Activity "1" *-- "1" OpeningHours
+OpeningHours "1" *-- "0..*" TimeInterval
+OpeningHoursParser ..> OpeningHours : creates
+NominatimPlacesService ..> OpeningHoursParser
+NominatimPlacesService ..> Activity : builds
 TripRepository ..> Trip
 AutoScheduleInteractor ..> Trip : reads / copyWithSchedule
 AutoSchedulePresenter ..> ScheduledEvent : re-times for Calendar
+
+' --- improvements: computed inward, worded outward, stacked at the edge ---
+AutoScheduleInteractor --> ScheduleImprovementFinder
+ScheduleImprovementFinder ..> ScheduleImprovement : produces
+ScheduleImprovementFinder ..> SoftPolicy : re-runs at the original time
+ScheduleImprovementFinder ..> ScheduleMetrics : reads before-totals
+ScheduleImprovement --> ScheduleImprovementType
+AutoSchedulePreviewOutputData "1" *-- "0..*" ScheduleImprovement
+AutoSchedulePresenter ..> ImprovementView : words each improvement
+DayPlanState "1" *-- "0..*" ImprovementView
+DayPlanPanel ..> ScheduleImprovementsPanel : hosts, side or below
+ScheduleImprovementsPanel ..> ImprovementView : renders
+
+' --- travel measured honestly for the "before" half of the comparison ---
+AutoScheduleInteractor ..> ScheduleMetrics : measures the current plan
+ScheduleMetrics --> TravelTimeEstimator : charges implied journeys
+
+' --- presentation-only formatting ---
+DayPlanPanel ..> TimeDisplay
+AutoScheduleSettingsDialog ..> TimeDisplay
+PreviewRowView ..> TimeDisplay
+DayPlanPanel ..> LockIcon : draws the pin control
 
 ' --- composition root ---
 ' Only the edge that AppBuilder actually returns is drawn. Six <<creates>> arrows fanning

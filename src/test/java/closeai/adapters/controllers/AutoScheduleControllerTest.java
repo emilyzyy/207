@@ -15,7 +15,6 @@ import closeai.application.autoschedule.AutoScheduleInputBoundary;
 import closeai.application.autoschedule.AutoScheduleInputData;
 import closeai.application.autoschedule.ProposedEventData;
 import closeai.application.autoschedule.WeatherOption;
-import closeai.domain.valueobjects.TransportationMode;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -68,7 +67,7 @@ class AutoScheduleControllerTest {
     private static AutoScheduleSettings settings(boolean keepOrder,
                                                  AutoScheduleSettings.Window... windows) {
         return new AutoScheduleSettings(LocalTime.of(10, 0), LocalTime.of(18, 0),
-                TransportationMode.TRANSIT, Arrays.asList(windows), keepOrder, true);
+                Arrays.asList(windows), keepOrder, true);
     }
 
     private AutoScheduleController controllerFor(DayPlanViewModel viewModel) {
@@ -87,7 +86,10 @@ class AutoScheduleControllerTest {
         assertEquals("trip-1", input.getTripId());
         assertEquals(LocalTime.of(10, 0), input.getAvailableStart());
         assertEquals(LocalTime.of(18, 0), input.getAvailableEnd());
-        assertEquals(TransportationMode.TRANSIT, input.getTransportationMode());
+        assertEquals(closeai.domain.valueobjects.TransportationMode.FASTEST,
+                input.getTransportationMode(),
+                "the traveller's choice reaches the use case; FASTEST is the default when "
+                        + "they decline to pick one");
         assertTrue(input.isKeepCurrentOrder());
         assertEquals(1, input.getUnavailableWindows().size());
         assertEquals(LocalTime.of(12, 0), input.getUnavailableWindows().get(0).getStart());
@@ -98,7 +100,7 @@ class AutoScheduleControllerTest {
         DayPlanViewModel viewModel = viewModel("trip-1");
 
         controllerFor(viewModel).preview(new AutoScheduleSettings(LocalTime.of(10, 0),
-                LocalTime.of(18, 0), TransportationMode.TRANSIT, Collections.emptyList(),
+                LocalTime.of(18, 0), Collections.emptyList(),
                 true, false));
         assertFalse(useCase.previewInput.isConsiderWeather(),
                 "an unticked box is a decision the use case has to hear about");

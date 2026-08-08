@@ -60,8 +60,9 @@ public final class ProblemValidator {
                 return ScheduleConflict.of(ScheduleConflict.Kind.LOCK_OUTSIDE_AVAILABILITY,
                         task.getEventId(), name);
             }
-            if (lock.getStart().isBefore(task.getOpeningTime())
-                    || lock.getEnd().isAfter(task.getClosingTime())) {
+            // Must sit inside one window: a lock spanning a venue's lunchtime closure is
+            // outside its opening hours even though it starts and ends while open.
+            if (!task.isOpenThroughout(lock.getStart(), lock.getEnd())) {
                 return ScheduleConflict.of(ScheduleConflict.Kind.LOCK_OUTSIDE_OPENING_HOURS,
                         task.getEventId(), name);
             }

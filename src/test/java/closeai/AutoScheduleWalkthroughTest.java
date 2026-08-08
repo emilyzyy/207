@@ -104,7 +104,7 @@ class AutoScheduleWalkthroughTest {
     private static AutoScheduleSettings settings(boolean keepOrder,
                                                  AutoScheduleSettings.Window... unavailable) {
         return new AutoScheduleSettings(LocalTime.of(9, 0), LocalTime.of(21, 0),
-                TransportationMode.WALKING, Arrays.asList(unavailable), keepOrder, true);
+                Arrays.asList(unavailable), keepOrder, true);
     }
 
     @Test

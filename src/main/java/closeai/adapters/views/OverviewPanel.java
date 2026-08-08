@@ -13,13 +13,20 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Color;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 
 /** Left-side interactive map and weather preview. */
 public final class OverviewPanel extends JPanel {
@@ -31,6 +38,10 @@ public final class OverviewPanel extends JPanel {
     private final MapPanel mapPanel;
     private final JLabel conditionLabel = new JLabel();
     private final JLabel messageLabel = new JLabel();
+    private final JButton weatherPreviewButton =
+            SwingTheme.secondaryButton("WEATHER PREVIEW");
+    private final JLayeredPane mapLayers = new JLayeredPane();
+    private HourlyForecastStrip forecastStrip;
 
     public OverviewPanel(DashboardViewModel viewModel, SearchViewModel searchViewModel) {
         this(viewModel, searchViewModel, null, null, null);
@@ -59,7 +70,17 @@ public final class OverviewPanel extends JPanel {
             if (!loading && !searchViewModel.getState().getActivities().isEmpty()) return;
             searchViewModel.setLoading(loading);
         });
-        add(mapPanel, BorderLayout.CENTER);
+        // The map sits in a layered pane so the forecast strip can float over its
+        // bottom-right corner instead of opening yet another window.
+        mapLayers.setLayout(null);
+        mapLayers.add(mapPanel, JLayeredPane.DEFAULT_LAYER);
+        mapLayers.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent event) {
+                layOutMapLayers();
+            }
+        });
+        add(mapLayers, BorderLayout.CENTER);
         add(weatherCard(), BorderLayout.SOUTH);
 
         refreshDashboard(viewModel.getState());
@@ -96,11 +117,62 @@ public final class OverviewPanel extends JPanel {
         copy.add(messageLabel, BorderLayout.CENTER);
         card.add(copy, BorderLayout.CENTER);
 
-        JLabel preview = new JLabel("WEATHER PREVIEW");
-        preview.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
-        preview.setForeground(SwingTheme.BLUE);
-        card.add(preview, BorderLayout.EAST);
+        weatherPreviewButton.setName("hourly-weather-preview");
+        weatherPreviewButton.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
+        weatherPreviewButton.setForeground(SwingTheme.BLUE);
+        weatherPreviewButton.setToolTipText("Show or hide the hourly forecast");
+        weatherPreviewButton.setEnabled(dayPlanViewModel != null);
+        weatherPreviewButton.addActionListener(event -> toggleForecastStrip());
+        card.add(weatherPreviewButton, BorderLayout.EAST);
         return card;
+    }
+
+    /**
+     * Shows or hides the forecast strip over the map's bottom-right corner.
+     *
+     * <p>A toggle rather than a window: the same click that opens it closes it, Escape
+     * closes it, and it never takes focus away from the dashboard. The strip is created
+     * lazily on first use and kept — its view-model listener keeps it current while
+     * hidden, which costs nothing and makes reopening instant.</p>
+     */
+    private void toggleForecastStrip() {
+        if (dayPlanViewModel == null) {
+            return;
+        }
+        if (forecastStrip == null) {
+            forecastStrip = new HourlyForecastStrip(dayPlanViewModel);
+            forecastStrip.setVisible(false);
+            forecastStrip.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+                    .put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "hide-forecast");
+            forecastStrip.getActionMap().put("hide-forecast",
+                    new javax.swing.AbstractAction() {
+                        @Override
+                        public void actionPerformed(java.awt.event.ActionEvent event) {
+                            forecastStrip.setVisible(false);
+                        }
+                    });
+            mapLayers.add(forecastStrip, JLayeredPane.PALETTE_LAYER);
+        }
+        forecastStrip.setVisible(!forecastStrip.isVisible());
+        layOutMapLayers();
+    }
+
+    /** The map fills the layered pane; the strip hugs its bottom-right, above the bar. */
+    private void layOutMapLayers() {
+        int width = mapLayers.getWidth();
+        int height = mapLayers.getHeight();
+        mapPanel.setBounds(0, 0, width, height);
+        if (forecastStrip != null) {
+            int margin = 10;
+            // Deliberately short: about five hours at a glance. The strip is borrowing
+            // map space, and a wider one starts to feel like the panel it replaced.
+            int stripWidth = Math.min(400, Math.max(260, width - 2 * margin));
+            forecastStrip.setBounds(width - stripWidth - margin,
+                    height - HourlyForecastStrip.STRIP_HEIGHT - margin,
+                    stripWidth, HourlyForecastStrip.STRIP_HEIGHT);
+        }
+        mapLayers.revalidate();
+        mapLayers.repaint();
     }
 
     private void refreshDashboard(DashboardState state) {
@@ -206,6 +278,10 @@ public final class OverviewPanel extends JPanel {
 
     public MapPanel getMapPanel() {
         return mapPanel;
+    }
+
+    public JButton getWeatherPreviewButton() {
+        return weatherPreviewButton;
     }
 
     public void setViewportPlacesLoader(MapPanel.ViewportPlacesLoader loader) {

@@ -41,6 +41,21 @@ final class SwingApplicationIntegrationTest {
             CloseAIFrame frame = builder.buildSwingApplication(app);
             JTabbedPane tabs = findTabs(frame);
             assertNotNull(tabs);
+            assertEquals(4, tabs.getTabCount());
+            assertEquals("Trip Options", tabs.getTitleAt(3));
+            assertSame(frame.getTripAssistantPanel(),
+                    frame.getTripAssistantWidget().getAssistantPanel());
+            assertTrue(frame.getTripAssistantPanel().getHistoryArea()
+                    .getText().contains("George"));
+            assertNotNull(findButton(frame.getTripAssistantPanel(), "Send"));
+            assertTrue(frame.getTripAssistantWidget().getAvatarButton().isVisible());
+            assertFalse(frame.getTripAssistantWidget().isExpanded());
+            frame.getTripAssistantWidget().getAvatarButton().doClick();
+            assertTrue(frame.getTripAssistantWidget().isExpanded());
+            frame.getTripAssistantPanel().getCloseButton().doClick();
+            assertFalse(frame.getTripAssistantWidget().isExpanded());
+            assertTrue(frame.getTripAssistantPanel().getHistoryArea()
+                    .getText().contains("George"));
 
             DayPlanViewModel sharedState = frame.getCalendarDialog().getViewModel();
             assertSame(sharedState, frame.getDayPlanPanel().getViewModel());
