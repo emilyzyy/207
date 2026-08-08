@@ -3,6 +3,7 @@ package closeai.adapters.views;
 import closeai.domain.entities.User;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -84,6 +85,7 @@ public final class AvatarSupport {
         button.setContentAreaFilled(false);
         button.setFocusPainted(false);
         button.setOpaque(false);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         button.setToolTipText(user == null ? "Profile" : user.getUsername());
         return button;
     }
