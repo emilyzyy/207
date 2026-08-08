@@ -6,6 +6,8 @@ import closeai.adapters.viewmodels.SearchState;
 import closeai.adapters.viewmodels.SearchViewModel;
 import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.Trip;
+import closeai.domain.entities.WeatherWarning;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import javax.swing.SwingUtilities;
@@ -26,7 +28,9 @@ public final class ManualPlanPresenter {
     public void presentSuccess(Trip trip, String message) {
         runOnEventThread(() -> {
             dayPlan.setState(new DayPlanState(
-                    trip.getId(), trip.getScheduledEvents(), message, false));
+                    trip.getId(), trip.getScheduledEvents(), message, false,
+                    Collections.<WeatherWarning>emptyList(),
+                    trip.getTripDates(), trip.getActiveDayIndex()));
             Set<String> scheduledIds = new HashSet<>();
             for (ScheduledEvent event : trip.getScheduledEvents()) {
                 if (event.getActivity() != null) {
@@ -46,7 +50,9 @@ public final class ManualPlanPresenter {
             DayPlanState current = dayPlan.getState();
             dayPlan.setState(new DayPlanState(
                     current.getTripId(), current.getEvents(),
-                    message == null ? "Unable to update the Day Plan" : message, true));
+                    message == null ? "Unable to update the Day Plan" : message, true,
+                    current.getHourlyWeather(), current.getTripDates(),
+                    current.getActiveDayIndex()));
         });
     }
 

@@ -95,7 +95,8 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
                 outputData.isKeptCurrentOrder(), outputData.isSearchCompletedWithinLimit(),
                 travelQualityNote(outputData.getTravelQuality()),
                 outputData.getScheduleFingerprint(), current.getLockedEventIds(),
-                improvementViews(outputData.getImprovements())));
+                improvementViews(outputData.getImprovements()),
+                current.getTripDates(), current.getActiveDayIndex()));
     }
 
     /**
@@ -158,7 +159,8 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
                 current.getHourlyWeather(),
                 AutoScheduleStatus.APPLIED, java.util.Collections.<PreviewRowView>emptyList(),
                 null, java.util.Collections.<String>emptyList(), "", current.isKeptCurrentOrder(),
-                true, "", "", current.getLockedEventIds()));
+                true, "", "", current.getLockedEventIds(),
+                current.getTripDates(), current.getActiveDayIndex()));
     }
 
     @Override
@@ -169,7 +171,8 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
                 AutoScheduleStatus.CONFLICT,
                 java.util.Collections.<PreviewRowView>emptyList(), null,
                 java.util.Collections.<String>emptyList(), "", current.isKeptCurrentOrder(),
-                true, "", "", current.getLockedEventIds()));
+                true, "", "", current.getLockedEventIds(),
+                current.getTripDates(), current.getActiveDayIndex()));
     }
 
     @Override
@@ -181,7 +184,8 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
                 true, current.getHourlyWeather(), AutoScheduleStatus.FAILURE,
                 java.util.Collections.<PreviewRowView>emptyList(), null,
                 java.util.Collections.<String>emptyList(), "", current.isKeptCurrentOrder(),
-                true, "", "", current.getLockedEventIds()));
+                true, "", "", current.getLockedEventIds(),
+                current.getTripDates(), current.getActiveDayIndex()));
     }
 
     /**

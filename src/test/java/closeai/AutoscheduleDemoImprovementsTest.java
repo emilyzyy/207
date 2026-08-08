@@ -24,7 +24,6 @@ import closeai.application.autoschedule.policy.MealWindowPolicy;
 import closeai.application.autoschedule.policy.WeatherSuitabilityPolicy;
 import closeai.domain.entities.Trip;
 import closeai.domain.entities.WeatherWarning;
-import closeai.domain.valueobjects.TransportationMode;
 import closeai.domain.valueobjects.WeatherSeverity;
 import closeai.infrastructure.mock.MockDistanceService;
 import java.time.LocalTime;
@@ -74,7 +73,6 @@ class AutoscheduleDemoImprovementsTest {
 
         controller.toggleLock("event-museum");
         controller.preview(new AutoScheduleSettings(LocalTime.of(9, 0), LocalTime.of(21, 0),
-                TransportationMode.WALKING,
                 Collections.singletonList(new AutoScheduleSettings.Window(
                         AutoscheduleDemoTrip.UNAVAILABLE_FROM,
                         AutoscheduleDemoTrip.UNAVAILABLE_TO)),

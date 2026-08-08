@@ -2,9 +2,12 @@ package closeai.application.usecases;
 
 import closeai.application.ports.TripRepository;
 import closeai.domain.entities.Trip;
+import closeai.domain.entities.TripDay;
 import closeai.domain.valueobjects.TransportationMode;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /** Interactor that validates, creates, and persists a new trip aggregate. */
@@ -38,8 +41,18 @@ public final class CreateTripUseCase implements CreateTripInputBoundary {
             throw new IllegalArgumentException("Trip end must follow start");
         }
 
+        int dayCount = inputData.getDayCount();
+        if (dayCount < 1) {
+            throw new IllegalArgumentException("Trip must last at least one day");
+        }
+
+        List<TripDay> days = new ArrayList<TripDay>(dayCount);
+        for (int i = 0; i < dayCount; i++) {
+            days.add(new TripDay(date.plusDays(i), start, end));
+        }
+
         Trip trip = new Trip(
-                UUID.randomUUID().toString(), destination, date, start, end, mode);
+                UUID.randomUUID().toString(), destination, mode, days);
         return trips.save(trip);
     }
 
@@ -53,6 +66,17 @@ public final class CreateTripUseCase implements CreateTripInputBoundary {
             LocalTime end,
             TransportationMode mode) {
         return execute(new CreateTripInputData(destination, date, start, end, mode));
+    }
+
+    public Trip execute(
+            String destination,
+            LocalDate date,
+            LocalTime start,
+            LocalTime end,
+            TransportationMode mode,
+            int dayCount) {
+        return execute(new CreateTripInputData(
+                destination, date, start, end, mode, dayCount));
     }
 
     private static String requireText(String value, String message) {

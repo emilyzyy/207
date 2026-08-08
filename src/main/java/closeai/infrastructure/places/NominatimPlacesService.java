@@ -13,6 +13,7 @@ import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalTime;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /** PlacesService adapter backed by OpenStreetMap Nominatim (geocoding) and Overpass (POI search). */
 public final class NominatimPlacesService implements PlacesService {
@@ -31,12 +33,15 @@ public final class NominatimPlacesService implements PlacesService {
             URI.create("https://overpass.private.coffee/api/interpreter"),
             URI.create("https://overpass.osm.jp/api/interpreter"));
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(15);
-    private static final Duration OVERPASS_TIMEOUT = Duration.ofSeconds(20);
+    private static final Duration OVERPASS_TIMEOUT = Duration.ofSeconds(40);
+    private static final long MAX_OVERALL_WAIT_MILLIS = 50_000L;
     private static final double SEARCH_RADIUS_METERS = 1500;
     private static final int MAX_RESULTS = 25;
     private static final int MAX_BUSY_RETRIES = 3;
     private static final long[] BUSY_RETRY_DELAY_MILLIS =
             {300L, 800L, 2000L};
+    private static final long DEFAULT_RATE_LIMIT_WAIT_MILLIS = 5_000L;
+    private static final long MAX_RETRY_AFTER_MILLIS = 15_000L;
 
     private final HttpClient client;
     private final ObjectMapper mapper;
@@ -200,16 +205,41 @@ public final class NominatimPlacesService implements PlacesService {
     }
 
     private JsonNode queryOverpass(String query) {
+        // The server budget inside the query is 30s, so a slow-but-fine response can take
+        // longer than the old 20s client timeout; allow it to. A hard overall deadline still
+        // bounds the worst case when the public servers are down or overloaded.
+        long deadline = System.nanoTime()
+                + TimeUnit.MILLISECONDS.toNanos(MAX_OVERALL_WAIT_MILLIS);
         int busyRetries = 0;
-        while (true) {
+        while (System.nanoTime() < deadline) {
             boolean sawBusy = false;
             for (URI endpoint : overpassCandidates()) {
+                if (System.nanoTime() >= deadline) {
+                    return mapper.createArrayNode();
+                }
                 try {
                     return queryEndpoint(endpoint, query);
                 } catch (OverpassBusyException busy) {
                     sawBusy = true;
                     System.err.println("[NominatimPlaces] Overpass " + endpoint.getHost()
-                            + " unavailable (server busy), will retry");
+                            + " unavailable (server busy, overloaded, or rate limited), will retry");
+                    if (busy.retryAfterMillis() >= 0) {
+                        // A rate limit means "wait this long", not "try again in 300ms".
+                        long wait = Math.min(busy.retryAfterMillis(),
+                                Math.max(0L, deadline - System.nanoTime()) / 1_000_000L);
+                        if (wait > 0) {
+                            try {
+                                Thread.sleep(wait);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                return mapper.createArrayNode();
+                            }
+                        }
+                    }
+                } catch (HttpTimeoutException timeout) {
+                    sawBusy = true;
+                    System.err.println("[NominatimPlaces] Overpass " + endpoint.getHost()
+                            + " timed out, will retry");
                 } catch (Exception e) {
                     System.err.println("[NominatimPlaces] Overpass " + endpoint.getHost()
                             + " failed: " + e.getMessage());
@@ -228,6 +258,7 @@ public final class NominatimPlacesService implements PlacesService {
                 return mapper.createArrayNode();
             }
         }
+        return mapper.createArrayNode();
     }
 
     private List<URI> overpassCandidates() {
@@ -255,15 +286,43 @@ public final class NominatimPlacesService implements PlacesService {
         HttpResponse<String> response = client.send(request,
                 HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            // 429 and 5xx mean the server is overloaded right now; that is worth retrying
+            // with backoff rather than treating as terminal like a 4xx would be. A 429 may
+            // carry Retry-After, and when it does the polite thing is to honor it.
+            if (response.statusCode() == 429 || response.statusCode() >= 500) {
+                throw new OverpassBusyException("Overpass HTTP " + response.statusCode(),
+                        retryAfterMillis(response));
+            }
             throw new IOException("Overpass HTTP " + response.statusCode());
         }
         String text = response.body();
         String trimmed = text == null ? "" : text.strip();
         if (!trimmed.isEmpty() && !trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-            throw new OverpassBusyException("Overpass returned a non-JSON (overloaded) page");
+            throw new OverpassBusyException("Overpass returned a non-JSON (overloaded) page", -1L);
         }
         JsonNode tree = mapper.readTree(trimmed);
         return tree.has("elements") ? tree.get("elements") : mapper.createArrayNode();
+    }
+
+    /**
+     * How long to wait after a rate-limit response: the server's Retry-After when present
+     * (capped), a default when the status was 429 but no header arrived, and -1 for generic
+     * overload so the caller falls back to its short backoff schedule.
+     */
+    private long retryAfterMillis(HttpResponse<?> response) {
+        if (response.statusCode() == 429) {
+            String retryAfter = response.headers().firstValue("Retry-After").orElse(null);
+            if (retryAfter != null) {
+                try {
+                    long seconds = Math.max(0L, Long.parseLong(retryAfter.trim()));
+                    return Math.min(TimeUnit.SECONDS.toMillis(seconds), MAX_RETRY_AFTER_MILLIS);
+                } catch (NumberFormatException ignored) {
+                    // fall through to the default
+                }
+            }
+            return DEFAULT_RATE_LIMIT_WAIT_MILLIS;
+        }
+        return -1L;
     }
 
     private List<Activity> parseElements(JsonNode elements, int limit) {
@@ -362,8 +421,16 @@ private static String encode(String value) {
     }
 
     private static final class OverpassBusyException extends IOException {
-        OverpassBusyException(String message) {
+        private final long retryAfterMillis;
+
+        OverpassBusyException(String message, long retryAfterMillis) {
             super(message);
+            this.retryAfterMillis = retryAfterMillis;
+        }
+
+        /** Suggested wait before retrying, or -1 to fall back to the short backoff schedule. */
+        long retryAfterMillis() {
+            return retryAfterMillis;
         }
     }
 

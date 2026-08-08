@@ -77,6 +77,12 @@ public final class DotEnv {
         return Collections.unmodifiableMap(new HashMap<String, String>(VALUES));
     }
 
+    /** True when both Supabase credentials resolve from a -D property, env var, or .env. */
+    public static boolean supabaseConfigured() {
+        return get("CLOSEAI_SUPABASE_URL", "closeai.supabase.url") != null
+                && get("CLOSEAI_SUPABASE_ANON_KEY", "closeai.supabase.anonKey") != null;
+    }
+
     private static String unquote(String value) {
         if (value.length() >= 2) {
             char first = value.charAt(0);
