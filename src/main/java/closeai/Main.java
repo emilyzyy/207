@@ -288,8 +288,7 @@ public final class Main {
                     JOptionPane.ERROR_MESSAGE);
             return false;
         }
-        String password = auth.currentSession().map(AuthSession::getPassword).orElse("");
-        ProfileDialog dialog = new ProfileDialog(owner, profile, password, request ->
+        ProfileDialog dialog = new ProfileDialog(owner, profile, request ->
                 app.account.updateProfile(
                         request.getUsername(),
                         request.getEmail(),

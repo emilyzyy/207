@@ -35,7 +35,6 @@ public final class ProfileDialog extends JDialog {
     public ProfileDialog(
             JFrame owner,
             User profile,
-            String currentPassword,
             Consumer<ProfileSaveRequest> onSave) {
         super(owner, "Profile", true);
         if (profile == null || onSave == null) {
@@ -46,7 +45,8 @@ public final class ProfileDialog extends JDialog {
         avatarImage = profile.getAvatarImage();
         usernameField.setText(profile.getUsername());
         emailField.setText(profile.getEmail());
-        passwordField.setText(currentPassword == null ? "" : currentPassword);
+        passwordField.setText("");
+        passwordField.setToolTipText("Leave blank to keep your current password");
         refreshAvatarPreview();
 
         JPanel root = new JPanel(new BorderLayout(0, 12));
@@ -101,12 +101,19 @@ public final class ProfileDialog extends JDialog {
         gc.gridy = 2;
         gc.fill = GridBagConstraints.NONE;
         gc.weightx = 0;
-        form.add(new JLabel("Password"), gc);
+        form.add(new JLabel("New password"), gc);
         gc.gridx = 1;
         gc.fill = GridBagConstraints.HORIZONTAL;
         gc.weightx = 1;
         form.add(passwordField, gc);
         center.add(form);
+
+        JLabel passwordHint = new JLabel("Leave password blank to keep your current one.");
+        passwordHint.setFont(SwingTheme.SMALL);
+        passwordHint.setForeground(SwingTheme.MUTED);
+        passwordHint.setAlignmentX(LEFT_ALIGNMENT);
+        center.add(Box.createVerticalStrut(4));
+        center.add(passwordHint);
         center.add(Box.createVerticalStrut(8));
 
         status.setFont(SwingTheme.SMALL);
@@ -129,10 +136,17 @@ public final class ProfileDialog extends JDialog {
         JButton save = SwingTheme.primaryButton("Save");
         save.addActionListener(event -> {
             try {
+                String newPassword = new String(passwordField.getPassword());
+                if (!newPassword.isEmpty()) {
+                    String passwordError = PasswordRules.validateNewPassword(newPassword);
+                    if (passwordError != null) {
+                        throw new IllegalArgumentException(passwordError);
+                    }
+                }
                 ProfileSaveRequest request = new ProfileSaveRequest(
                         usernameField.getText().trim(),
                         emailField.getText().trim(),
-                        new String(passwordField.getPassword()),
+                        newPassword,
                         avatarColor,
                         avatarImage);
                 onSave.accept(request);

@@ -57,6 +57,7 @@ public final class LoginDialog extends JDialog {
         gc.fill = GridBagConstraints.HORIZONTAL;
         gc.weightx = 1;
         form.add(passwordField, gc);
+        passwordField.setToolTipText("At least " + PasswordRules.MIN_LENGTH + " characters");
         gc.gridx = 0;
         gc.gridy = 2;
         gc.fill = GridBagConstraints.NONE;
@@ -83,12 +84,29 @@ public final class LoginDialog extends JDialog {
         });
         JButton create = SwingTheme.primaryButton("Create account");
         create.addActionListener(event -> {
+            if (getEmail().isEmpty()) {
+                showError("Please enter your email.");
+                return;
+            }
+            String passwordError = PasswordRules.validateNewPassword(getPassword());
+            if (passwordError != null) {
+                showError(passwordError);
+                return;
+            }
             signUp = true;
             confirmed = true;
             dispose();
         });
         JButton signIn = SwingTheme.primaryButton("Sign in");
         signIn.addActionListener(event -> {
+            if (getEmail().isEmpty()) {
+                showError("Please enter your email.");
+                return;
+            }
+            if (getPassword().isEmpty()) {
+                showError("Please enter your password.");
+                return;
+            }
             signUp = false;
             confirmed = true;
             dispose();

@@ -116,7 +116,13 @@ public final class SupabaseAccountClient implements AccountService {
                 throw new IllegalStateException("That username is already taken.");
             }
         }
-        auth.updateCredentials(email, password == null ? "" : password);
+        // Blank password means "keep current password" — do not re-submit it to Auth.
+        String nextPassword = password == null ? "" : password;
+        String currentEmail = session.getEmail() == null ? "" : session.getEmail();
+        boolean emailChanged = email != null && !email.trim().equalsIgnoreCase(currentEmail);
+        if (emailChanged || !nextPassword.isEmpty()) {
+            auth.updateCredentials(email, nextPassword);
+        }
 
         ObjectNode row = mapper.createObjectNode();
         row.put("id", session.getUserId());

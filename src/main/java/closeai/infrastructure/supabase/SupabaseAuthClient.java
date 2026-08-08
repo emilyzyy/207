@@ -74,11 +74,21 @@ public final class SupabaseAuthClient implements AuthService {
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("Please enter your email.");
         }
-        StringBuilder json = new StringBuilder("{\"email\":").append(quote(email.trim()));
+        String trimmedEmail = email.trim();
+        String nextPassword = password == null ? "" : password;
+        // Skip Auth round-trip when nothing credential-related changed.
+        boolean emailChanged = !trimmedEmail.equalsIgnoreCase(
+                current.getEmail() == null ? "" : current.getEmail());
+        boolean passwordChanged = !nextPassword.isEmpty()
+                && !nextPassword.equals(current.getPassword());
+        if (!emailChanged && !passwordChanged) {
+            return current;
+        }
+        StringBuilder json = new StringBuilder("{\"email\":").append(quote(trimmedEmail));
         String retainedPassword = current.getPassword();
-        if (password != null && !password.isEmpty()) {
-            json.append(",\"password\":").append(quote(password));
-            retainedPassword = password;
+        if (passwordChanged) {
+            json.append(",\"password\":").append(quote(nextPassword));
+            retainedPassword = nextPassword;
         }
         json.append("}");
         JsonNode body = putAuthJson(baseUrl + "/auth/v1/user", json.toString(), current.getAccessToken());
@@ -90,7 +100,7 @@ public final class SupabaseAuthClient implements AuthService {
             }
         }
         if (newEmail == null || newEmail.isEmpty()) {
-            newEmail = email.trim();
+            newEmail = trimmedEmail;
         }
         AuthSession updated = new AuthSession(
                 current.getUserId(), current.getAccessToken(), newEmail, retainedPassword);
