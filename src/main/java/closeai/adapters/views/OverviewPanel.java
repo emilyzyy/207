@@ -164,7 +164,9 @@ public final class OverviewPanel extends JPanel {
         mapPanel.setBounds(0, 0, width, height);
         if (forecastStrip != null) {
             int margin = 10;
-            int stripWidth = Math.min(560, Math.max(280, width - 2 * margin));
+            // Deliberately short: about five hours at a glance. The strip is borrowing
+            // map space, and a wider one starts to feel like the panel it replaced.
+            int stripWidth = Math.min(400, Math.max(260, width - 2 * margin));
             forecastStrip.setBounds(width - stripWidth - margin,
                     height - HourlyForecastStrip.STRIP_HEIGHT - margin,
                     stripWidth, HourlyForecastStrip.STRIP_HEIGHT);

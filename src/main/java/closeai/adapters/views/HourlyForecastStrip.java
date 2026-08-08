@@ -4,6 +4,7 @@ import closeai.adapters.viewmodels.DayPlanState;
 import closeai.adapters.viewmodels.DayPlanViewModel;
 import closeai.domain.entities.WeatherWarning;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -45,6 +46,11 @@ public final class HourlyForecastStrip extends JPanel {
     static final int STRIP_HEIGHT = 118;
 
     private static final int CARD_WIDTH = 66;
+
+    /** Well under a card, so a notch nudges rather than flings. */
+    private static final int WHEEL_STEP = 26;
+
+    private static final int SCROLLBAR_THICKNESS = 6;
     private static final DateTimeFormatter HOUR_FORMAT =
             DateTimeFormatter.ofPattern("h a", Locale.ENGLISH);
     private static final LocalTime FIRST_INTERESTING_HOUR = LocalTime.of(8, 0);
@@ -77,13 +83,17 @@ public final class HourlyForecastStrip extends JPanel {
         scroller.setBorder(BorderFactory.createEmptyBorder());
         scroller.setOpaque(false);
         scroller.getViewport().setOpaque(false);
-        scroller.getHorizontalScrollBar().setUnitIncrement(CARD_WIDTH);
-        // The strip has no vertical dimension, so the wheel means "sideways" here.
+        javax.swing.JScrollBar bar = scroller.getHorizontalScrollBar();
+        bar.setUnitIncrement(WHEEL_STEP);
+        bar.setPreferredSize(new Dimension(0, SCROLLBAR_THICKNESS));
+        bar.setUI(new QuietScrollBarUI());
+        bar.setOpaque(false);
+        // The strip has no vertical dimension, so the wheel means "sideways" here. A
+        // notch moves well under one card: this is a glance at a few hours, not a
+        // journey through the day, and a fast strip is hard to stop on the hour you want.
         scroller.setWheelScrollingEnabled(false);
-        scroller.addMouseWheelListener(event -> {
-            javax.swing.JScrollBar bar = scroller.getHorizontalScrollBar();
-            bar.setValue(bar.getValue() + event.getWheelRotation() * CARD_WIDTH);
-        });
+        scroller.addMouseWheelListener(event ->
+                bar.setValue(bar.getValue() + event.getWheelRotation() * WHEEL_STEP));
         add(scroller, BorderLayout.CENTER);
 
         dayPlanViewModel.addPropertyChangeListener(dayPlanListener);
@@ -153,7 +163,7 @@ public final class HourlyForecastStrip extends JPanel {
 
         JLabel glyph = centered(glyphFor(hour.getWeatherCondition()),
                 new Font("SansSerif", Font.PLAIN, 22));
-        glyph.setForeground(SwingTheme.NAVY);
+        glyph.setForeground(glyphColourFor(hour.getWeatherCondition()));
 
         JLabel temperature = centered(temperatureOf(hour), SwingTheme.BODY.deriveFont(Font.BOLD));
         temperature.setForeground(SwingTheme.NAVY);
@@ -193,6 +203,92 @@ public final class HourlyForecastStrip extends JPanel {
         message.setForeground(SwingTheme.MUTED);
         card.add(message, BorderLayout.CENTER);
         return card;
+    }
+
+    /**
+     * A muted colour per condition — sun amber, rain blue, snow ice, storm orange.
+     *
+     * <p>Softened rather than saturated: eight of these sit in a row over a map, and full
+     * strength would turn a quiet strip into bunting. Colour only ever repeats what the
+     * glyph and the numbers already say, so nothing is lost if it cannot be seen.</p>
+     */
+    static Color glyphColourFor(String condition) {
+        String lower = condition == null ? "" : condition.toLowerCase(Locale.ENGLISH);
+        if (lower.contains("thunder") || lower.contains("storm")) {
+            return new Color(214, 132, 42);
+        }
+        if (lower.contains("snow")) {
+            return new Color(126, 178, 209);
+        }
+        if (lower.contains("rain") || lower.contains("drizzle")) {
+            return new Color(74, 134, 196);
+        }
+        if (lower.contains("cloud") || lower.contains("overcast")) {
+            return new Color(146, 158, 171);
+        }
+        if (lower.contains("fog")) {
+            return new Color(165, 172, 180);
+        }
+        return new Color(233, 178, 47);
+    }
+
+    /**
+     * A scrollbar that stays out of the way: a thin muted track with no arrow buttons.
+     *
+     * <p>The default Swing bar is as tall as a card is wide and draws more attention than
+     * the forecast it scrolls. This one is a hairline that reads as an affordance without
+     * competing with the hours.</p>
+     */
+    private static final class QuietScrollBarUI
+            extends javax.swing.plaf.basic.BasicScrollBarUI {
+
+        private static final Color THUMB = new Color(198, 205, 212);
+
+        @Override
+        protected void configureScrollBarColors() {
+            trackColor = SwingTheme.PANEL;
+        }
+
+        @Override
+        protected javax.swing.JButton createDecreaseButton(int orientation) {
+            return zeroSizeButton();
+        }
+
+        @Override
+        protected javax.swing.JButton createIncreaseButton(int orientation) {
+            return zeroSizeButton();
+        }
+
+        private javax.swing.JButton zeroSizeButton() {
+            javax.swing.JButton button = new javax.swing.JButton();
+            button.setPreferredSize(new Dimension(0, 0));
+            button.setMinimumSize(new Dimension(0, 0));
+            button.setMaximumSize(new Dimension(0, 0));
+            return button;
+        }
+
+        @Override
+        protected void paintTrack(java.awt.Graphics g, javax.swing.JComponent c,
+                                  java.awt.Rectangle bounds) {
+            g.setColor(SwingTheme.PANEL);
+            g.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+        }
+
+        @Override
+        protected void paintThumb(java.awt.Graphics graphics, javax.swing.JComponent c,
+                                  java.awt.Rectangle bounds) {
+            if (bounds.isEmpty() || !scrollbar.isEnabled()) {
+                return;
+            }
+            java.awt.Graphics2D g = (java.awt.Graphics2D) graphics.create();
+            g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                    java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setColor(THUMB);
+            int height = Math.min(bounds.height, 4);
+            int y = bounds.y + (bounds.height - height) / 2;
+            g.fillRoundRect(bounds.x + 2, y, bounds.width - 4, height, height, height);
+            g.dispose();
+        }
     }
 
     /** Same condition-to-glyph mapping the old dialog used, so nothing changes meaning. */

@@ -84,6 +84,21 @@ final class HourlyForecastStripTest {
         assertEquals("☀", HourlyForecastStrip.glyphFor(null));
     }
 
+    /** Colour repeats the glyph, so it may be soft — but wet must never look like sun. */
+    @Test
+    void eachConditionGetsItsOwnMutedColour() {
+        java.awt.Color sun = HourlyForecastStrip.glyphColourFor("Sunny intervals");
+        java.awt.Color rain = HourlyForecastStrip.glyphColourFor("Heavy rain");
+        java.awt.Color snow = HourlyForecastStrip.glyphColourFor("Light snow");
+        java.awt.Color cloud = HourlyForecastStrip.glyphColourFor("Overcast");
+
+        assertTrue(sun.getRed() > sun.getBlue(), "sun leans warm");
+        assertTrue(rain.getBlue() > rain.getRed(), "rain leans cool");
+        assertTrue(snow.getBlue() > snow.getRed(), "snow leans cool");
+        assertFalse(sun.equals(rain) || rain.equals(snow) || snow.equals(cloud),
+                "conditions must not share a colour");
+    }
+
     @Test
     void overviewUsesAnEnabledButtonForHourlyForecastWhenWeatherStateIsAvailable() {
         DashboardViewModel dashboard = new DashboardViewModel(new DashboardState(
