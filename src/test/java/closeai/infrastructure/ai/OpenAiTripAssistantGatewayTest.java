@@ -41,7 +41,8 @@ final class OpenAiTripAssistantGatewayTest {
             byte[] response = ("{\"status\":\"completed\",\"output\":[{"
                     + "\"type\":\"message\",\"content\":[{\"type\":\"output_text\","
                     + "\"text\":\"{\\\"intent\\\":\\\"RAIN\\\","
-                    + "\\\"activity_ids\\\":[\\\"museum\\\"]}\"}]}]}")
+                    + "\\\"activity_ids\\\":[\\\"museum\\\"],"
+                    + "\\\"answer\\\":\\\"These options fit a rainy day.\\\"}\"}]}]}")
                     .getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(200, response.length);
             exchange.getResponseBody().write(response);
@@ -59,6 +60,7 @@ final class OpenAiTripAssistantGatewayTest {
 
             assertEquals(TripAssistantDecision.Intent.RAIN, decision.getIntent());
             assertEquals(Collections.singletonList("museum"), decision.getActivityIds());
+            assertEquals("These options fit a rainy day.", decision.getAnswer());
             assertEquals("Bearer fake-test-key", authorization.get());
             JsonNode root = mapper.readTree(requestBody.get());
             assertEquals("gpt-test", root.path("model").asText());
@@ -68,6 +70,8 @@ final class OpenAiTripAssistantGatewayTest {
             assertEquals("museum", root.path("text").path("format").path("schema")
                     .path("properties").path("activity_ids").path("items")
                     .path("enum").get(0).asText());
+            assertEquals(1200, root.path("text").path("format").path("schema")
+                    .path("properties").path("answer").path("maxLength").asInt());
             JsonNode context = mapper.readTree(root.path("input").asText());
             assertEquals("Toronto", context.path("destination").asText());
             assertEquals("TRANSIT", context.path("transportation_mode").asText());
@@ -88,7 +92,8 @@ final class OpenAiTripAssistantGatewayTest {
             byte[] response = ("{\"status\":\"completed\",\"output\":[{"
                     + "\"type\":\"message\",\"content\":[{\"type\":\"output_text\","
                     + "\"text\":\"{\\\"intent\\\":\\\"GENERAL\\\","
-                    + "\\\"activity_ids\\\":[\\\"museum\\\"]}\"}]}]}")
+                    + "\\\"activity_ids\\\":[],"
+                    + "\\\"answer\\\":\\\"I'm George.\\\"}\"}]}]}")
                     .getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(200, response.length);
             exchange.getResponseBody().write(response);
@@ -104,6 +109,7 @@ final class OpenAiTripAssistantGatewayTest {
             TripAssistantDecision decision = gateway.answer(request());
 
             assertEquals(TripAssistantDecision.Intent.GENERAL, decision.getIntent());
+            assertEquals("I'm George.", decision.getAnswer());
             assertNull(authorization.get());
         } finally {
             server.stop(0);

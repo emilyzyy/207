@@ -35,9 +35,14 @@ test("proxy fixes model, instructions, schema, storage, and output limit", async
   assert.equal(body.store, false);
   assert.equal(body.max_output_tokens, 300);
   assert.match(body.instructions, /only activity_id/);
+  assert.match(body.instructions, /ordinary questions/);
   assert.deepEqual(
     body.text.format.schema.properties.activity_ids.items.enum,
     ["museum"]);
+  assert.equal(body.text.format.schema.properties.answer.maxLength, 1200);
+  assert.deepEqual(
+    body.text.format.schema.required,
+    ["intent", "activity_ids", "answer"]);
 });
 
 test("proxy rejects malformed, oversized, and rate-limited requests", async () => {

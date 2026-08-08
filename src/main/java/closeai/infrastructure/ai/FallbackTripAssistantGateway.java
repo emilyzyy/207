@@ -48,6 +48,10 @@ public final class FallbackTripAssistantGateway implements TripAssistantGateway 
                 return false;
             }
         }
+        if (decision.getIntent() == TripAssistantDecision.Intent.GENERAL
+                && decision.getActivityIds().isEmpty()) {
+            return !decision.getAnswer().trim().isEmpty();
+        }
         return true;
     }
 }

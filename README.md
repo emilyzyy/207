@@ -68,6 +68,8 @@ and hourly weather. Useful questions include:
 - `Which activity fits into my afternoon?`
 - `Which of my bookmarked activities should I visit?`
 - `Why is this activity a good choice?`
+- `What is your name?`
+- `What is 3 + 3?`
 
 George uses the project's public Cloudflare Worker proxy by default. The OpenAI key stays in the
 Worker secret store and is never distributed with the desktop app or committed to Git. If the
@@ -114,10 +116,11 @@ OPENAI_MODEL=gpt-5.4-mini
 ```
 
 The live gateway calls the Responses API with `store: false` and a strict Structured Outputs
-schema. OpenAI can select only activity IDs supplied by the current trip.
-George's displayed names and recommendation details are then rendered from CloseAI entities, so
-the model cannot introduce an unrecognized place. A live API, authentication, timeout, or schema
-failure is shown in the answer and automatically falls back to the deterministic offline gateway.
+schema. OpenAI can answer ordinary questions directly or select only activity IDs supplied by the
+current trip. General replies are displayed as AI text; activity names and recommendation details
+are rendered from CloseAI entities, so the model cannot introduce an unrecognized recommended
+place. A live API, authentication, timeout, or schema failure is shown in the answer and
+automatically falls back to the deterministic offline gateway.
 All gateway and weather work runs through a background `SwingWorker`, never on Swing's event-
 dispatch thread. The default desktop client does not read or send an OpenAI API key.
 
@@ -148,8 +151,9 @@ Current limitations:
 
 - Fallback recommendations use a small deterministic ranking heuristic rather than natural-language
   reasoning.
-- Live AI selects grounded activity IDs and an intent; final wording is deliberately generated from
-  application data to enforce the no-invented-places guarantee.
+- Live AI answers general questions directly. For travel recommendations it selects grounded
+  activity IDs, while final place names and details are generated from application data to enforce
+  the no-invented-places guarantee.
 - George uses the existing activity setting value but does not classify or change indoor/outdoor
   data.
 - Transportation mode is included as context, but this MVP does not ask the routing service to

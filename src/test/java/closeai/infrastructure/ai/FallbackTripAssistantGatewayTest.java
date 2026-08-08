@@ -31,6 +31,21 @@ final class FallbackTripAssistantGatewayTest {
         assertTrue(decision.getNotice().contains("offline"));
     }
 
+    @Test
+    void groundedGeneralAnswerUsesLiveAi() {
+        FallbackTripAssistantGateway gateway = new FallbackTripAssistantGateway(
+                ignored -> new TripAssistantDecision(
+                        TripAssistantDecision.Intent.GENERAL, Collections.emptyList(),
+                        "I'm George, and 3 + 3 is 6.", ""),
+                new OfflineTripAssistantGateway());
+
+        TripAssistantDecision decision = gateway.answer(request());
+
+        assertEquals("I'm George, and 3 + 3 is 6.", decision.getAnswer());
+        assertTrue(decision.getActivityIds().isEmpty());
+        assertTrue(decision.getNotice().isEmpty());
+    }
+
     private TripAssistantRequest request() {
         Activity real = new Activity("real", "Real Activity", ActivityCategory.MUSEUM,
                 new Location(43.6, -79.3, "Address"), 4.8, 60,

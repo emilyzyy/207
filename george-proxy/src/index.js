@@ -4,12 +4,15 @@ const MAX_BODY_BYTES = 64 * 1024;
 const MAX_ACTIVITIES = 120;
 const MAX_HISTORY = 8;
 const MAX_OUTPUT_TOKENS = 300;
-const INSTRUCTIONS = "Role: You are George, the travel assistant inside CloseAI. "
-  + "Choose up to three suitable activities for the user's current trip. Use every supplied "
-  + "trip field as evidence. Select only activity_id values from available_activities; never "
-  + "create a place, name, or ID. Use bookmarks, Day Plan, weather, hours, duration, date, and "
-  + "transportation mode. For a why question, reuse the most recent grounded activity IDs in "
-  + "history when appropriate. Return only the requested structured data.";
+const INSTRUCTIONS = "Role: You are George, the friendly travel assistant inside CloseAI. "
+  + "Answer ordinary questions naturally and concisely. For greetings, identity questions, "
+  + "simple math, or other general questions, use intent GENERAL, return no activity IDs, and "
+  + "put the direct reply in answer. For trip advice, choose up to three suitable activities "
+  + "using every supplied trip field as evidence. Select only activity_id values from "
+  + "available_activities; never create a place, name, or ID. Do not name places in answer "
+  + "because CloseAI renders validated activity names locally. Use bookmarks, Day Plan, weather, "
+  + "hours, duration, date, and transportation mode. For a why question, reuse the most recent "
+  + "grounded activity IDs in history when appropriate. Return only the requested structured data.";
 
 export default {
   fetch(request, env) {
@@ -174,8 +177,13 @@ function responseFormat(activityIds) {
           items: { type: "string", enum: activityIds },
           maxItems: 3,
         },
+        answer: {
+          type: "string",
+          minLength: 1,
+          maxLength: 1200,
+        },
       },
-      required: ["intent", "activity_ids"],
+      required: ["intent", "activity_ids", "answer"],
       additionalProperties: false,
     },
   };

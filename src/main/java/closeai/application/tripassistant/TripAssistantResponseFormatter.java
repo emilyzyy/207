@@ -37,6 +37,11 @@ public final class TripAssistantResponseFormatter {
         if (!decision.getNotice().trim().isEmpty()) {
             answer.append(decision.getNotice().trim()).append("\n\n");
         }
+        if (decision.getIntent() == TripAssistantDecision.Intent.GENERAL
+                && groundedIds.isEmpty() && !decision.getAnswer().trim().isEmpty()) {
+            answer.append(decision.getAnswer().trim());
+            return new TripAssistantOutputData(answer.toString().trim(), groundedIds);
+        }
         appendOpening(answer, request, decision, selected);
         appendActivities(answer, request, decision, selected);
         return new TripAssistantOutputData(answer.toString().trim(), groundedIds);
