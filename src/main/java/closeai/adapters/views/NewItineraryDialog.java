@@ -1,18 +1,25 @@
 package closeai.adapters.views;
 
+import closeai.domain.entities.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Frame;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.RenderingHints;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Ellipse2D;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -23,8 +30,12 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -69,9 +80,16 @@ public final class NewItineraryDialog extends JDialog {
     private Suggestion selected;
     private boolean confirmed;
     private boolean programmaticUpdate;
+    private final Set<String> selectedFriendIds = new LinkedHashSet<>();
+    private final List<User> friends;
 
     public NewItineraryDialog(Frame owner) {
+        this(owner, Collections.emptyList());
+    }
+
+    public NewItineraryDialog(Frame owner, List<User> friends) {
         super(owner, "New Itinerary", true);
+        this.friends = friends == null ? Collections.emptyList() : new ArrayList<>(friends);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         debounce.setRepeats(false);
 
@@ -113,7 +131,26 @@ public final class NewItineraryDialog extends JDialog {
         gbc.insets = new Insets(0, 0, 12, 0);
         form.add(datePicker, gbc);
 
-        gbc.gridy = 5;
+        int nextRow = 5;
+        if (!this.friends.isEmpty()) {
+            gbc.gridy = nextRow++;
+            gbc.insets = new Insets(0, 0, 6, 0);
+            form.add(label("Add friends"), gbc);
+
+            gbc.gridy = nextRow++;
+            gbc.insets = new Insets(0, 0, 6, 0);
+            JLabel friendsHint = new JLabel(
+                    "Select friends to share this itinerary. They can view and edit it when signed in.");
+            friendsHint.setFont(SwingTheme.SMALL);
+            friendsHint.setForeground(SwingTheme.MUTED);
+            form.add(friendsHint, gbc);
+
+            gbc.gridy = nextRow++;
+            gbc.insets = new Insets(0, 0, 12, 0);
+            form.add(buildFriendsPicker(), gbc);
+        }
+
+        gbc.gridy = nextRow++;
         gbc.insets = new Insets(0, 0, 12, 0);
         statusLabel.setFont(SwingTheme.SMALL);
         statusLabel.setForeground(SwingTheme.MUTED);
@@ -139,7 +176,7 @@ public final class NewItineraryDialog extends JDialog {
 
         setContentPane(content);
         getRootPane().setDefaultButton(okButton);
-        setMinimumSize(new Dimension(560, 360));
+        setMinimumSize(new Dimension(560, this.friends.isEmpty() ? 360 : 520));
         pack();
         setLocationRelativeTo(owner);
 
@@ -198,6 +235,107 @@ public final class NewItineraryDialog extends JDialog {
 
     public LocalDate getDate() {
         return datePicker.getDate();
+    }
+
+    /** Friends selected to share/edit this itinerary. */
+    public List<User> getSelectedFriends() {
+        List<User> selectedFriends = new ArrayList<>();
+        for (User friend : friends) {
+            if (selectedFriendIds.contains(friend.getId())) {
+                selectedFriends.add(friend);
+            }
+        }
+        return selectedFriends;
+    }
+
+    private JScrollPane buildFriendsPicker() {
+        JPanel list = new JPanel();
+        list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
+        list.setBackground(SwingTheme.PANEL);
+        list.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+        for (User friend : friends) {
+            list.add(new FriendRow(friend));
+            list.add(Box.createVerticalStrut(6));
+        }
+        JScrollPane scroll = new JScrollPane(list);
+        scroll.setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
+        scroll.setPreferredSize(new Dimension(520, 140));
+        scroll.getVerticalScrollBar().setUnitIncrement(12);
+        return scroll;
+    }
+
+    private final class FriendRow extends JPanel {
+        private final User friend;
+        private boolean selectedFriend;
+
+        FriendRow(User friend) {
+            this.friend = friend;
+            setOpaque(true);
+            setBackground(SwingTheme.BACKGROUND);
+            setLayout(new FlowLayout(FlowLayout.LEFT, 10, 6));
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
+            add(new CircularCheck(this));
+            add(new JLabel(AvatarSupport.iconFor(friend, 28)));
+            JLabel name = new JLabel("@" + friend.getUsername());
+            name.setFont(SwingTheme.BODY);
+            name.setForeground(SwingTheme.NAVY);
+            add(name);
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    toggle();
+                }
+            });
+        }
+
+        void toggle() {
+            selectedFriend = !selectedFriend;
+            if (selectedFriend) {
+                selectedFriendIds.add(friend.getId());
+                setBackground(SwingTheme.BLUE_SOFT);
+            } else {
+                selectedFriendIds.remove(friend.getId());
+                setBackground(SwingTheme.BACKGROUND);
+            }
+            repaint();
+        }
+
+        boolean isSelectedFriend() {
+            return selectedFriend;
+        }
+    }
+
+    private static final class CircularCheck extends JPanel {
+        private final FriendRow row;
+
+        CircularCheck(FriendRow row) {
+            this.row = row;
+            setOpaque(false);
+            setPreferredSize(new Dimension(20, 20));
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int size = Math.min(getWidth(), getHeight()) - 2;
+            int x = (getWidth() - size) / 2;
+            int y = (getHeight() - size) / 2;
+            if (row.isSelectedFriend()) {
+                g2.setColor(SwingTheme.BLUE);
+                g2.fill(new Ellipse2D.Float(x, y, size, size));
+                g2.setColor(Color.WHITE);
+                g2.drawLine(x + 5, y + size / 2, x + size / 2 - 1, y + size - 5);
+                g2.drawLine(x + size / 2 - 1, y + size - 5, x + size - 5, y + 5);
+            } else {
+                g2.setColor(SwingTheme.PANEL);
+                g2.fill(new Ellipse2D.Float(x, y, size, size));
+                g2.setColor(SwingTheme.LINE);
+                g2.draw(new Ellipse2D.Float(x, y, size - 1, size - 1));
+            }
+            g2.dispose();
+        }
     }
 
     private void onCityTyped() {

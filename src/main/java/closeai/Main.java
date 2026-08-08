@@ -26,6 +26,7 @@ import java.awt.Dimension;
 import java.net.InetSocketAddress;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
@@ -156,16 +157,25 @@ public final class Main {
                 trips,
                 trip -> openTripFrame(builder, app, trip, galleryFrame, auth),
                 () -> {
-                    NewItineraryDialog dialog = new NewItineraryDialog(galleryFrame);
+                    List<User> friends = loadFriends(app);
+                    NewItineraryDialog dialog = new NewItineraryDialog(galleryFrame, friends);
                     dialog.setVisible(true);
                     if (!dialog.isConfirmed()) return;
                     String dest = dialog.getDestination();
                     LocalDate date = dialog.getDate();
+                    List<User> selectedFriends = dialog.getSelectedFriends();
                     galleryFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                     new Thread(() -> {
                         try {
                             Trip created = app.createTrip.execute(dest, date,
                                     LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING);
+                            if (app.account != null && !selectedFriends.isEmpty()) {
+                                List<String> memberIds = new ArrayList<>();
+                                for (User friend : selectedFriends) {
+                                    memberIds.add(friend.getId());
+                                }
+                                app.account.setTripMembers(created.getId(), memberIds);
+                            }
                             SwingUtilities.invokeLater(() -> {
                                 CloseAIFrame tripFrame =
                                         openTripFrame(builder, app, created, galleryFrame, auth);
@@ -223,6 +233,7 @@ public final class Main {
             wireTripFriends(app, tripFrame);
             tripFrame.setProfileUser(loadProfile(app));
             tripFrame.setIncomingFriendRequestCount(countIncomingFriendRequests(app));
+            startSharedTripSync(builder, app, tripFrame, trip.getId());
         }
         tripFrame.setVisible(true);
         return tripFrame;
@@ -339,6 +350,81 @@ public final class Main {
             System.err.println("[Main] Could not load friend requests: " + exception.getMessage());
             return 0;
         }
+    }
+
+    private static List<User> loadFriends(AppContainer app) {
+        if (app.account == null) {
+            return java.util.Collections.emptyList();
+        }
+        try {
+            return app.account.listFriends();
+        } catch (RuntimeException exception) {
+            System.err.println("[Main] Could not load friends: " + exception.getMessage());
+            return java.util.Collections.emptyList();
+        }
+    }
+
+    /**
+     * Periodically reloads a shared trip from the cloud so collaborator edits appear live.
+     */
+    private static void startSharedTripSync(
+            AppBuilder builder, AppContainer app, CloseAIFrame tripFrame, String tripId) {
+        final String[] fingerprint = {""};
+        app.trips.findById(tripId).ifPresent(loaded -> fingerprint[0] = tripFingerprint(loaded));
+
+        javax.swing.Timer syncTimer = new javax.swing.Timer(8000, event -> {
+            if (!tripFrame.isDisplayable()) {
+                ((javax.swing.Timer) event.getSource()).stop();
+                return;
+            }
+            new Thread(() -> {
+                try {
+                    java.util.Optional<Trip> fresh = app.trips.findById(tripId);
+                    if (!fresh.isPresent()) {
+                        return;
+                    }
+                    String next = tripFingerprint(fresh.get());
+                    if (!next.equals(fingerprint[0])) {
+                        fingerprint[0] = next;
+                        SwingUtilities.invokeLater(() ->
+                                builder.refreshFrameForTrip(fresh.get(), tripFrame));
+                    }
+                } catch (RuntimeException exception) {
+                    System.err.println("[Main] Shared trip sync failed: " + exception.getMessage());
+                }
+            }, "Shared-Trip-Sync").start();
+        });
+        syncTimer.setInitialDelay(8000);
+        syncTimer.start();
+        tripFrame.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                syncTimer.stop();
+            }
+        });
+    }
+
+    private static String tripFingerprint(Trip trip) {
+        if (trip == null) {
+            return "";
+        }
+        StringBuilder fingerprint = new StringBuilder();
+        fingerprint.append(trip.getDestination()).append('|')
+                .append(trip.getDate()).append('|')
+                .append(trip.getStartTime()).append('|')
+                .append(trip.getEndTime()).append('|')
+                .append(trip.getTransportationMode()).append('|')
+                .append(trip.getBookmarkedActivities().size()).append('|')
+                .append(trip.getScheduledEvents().size());
+        for (Activity activity : trip.getBookmarkedActivities()) {
+            fingerprint.append('#').append(activity.getId());
+        }
+        for (closeai.domain.entities.ScheduledEvent event : trip.getScheduledEvents()) {
+            fingerprint.append('#').append(event.getId())
+                    .append('@').append(event.getStartTime())
+                    .append('-').append(event.getEndTime());
+        }
+        return fingerprint.toString();
     }
 
     private static void signOut(AppContainer app, AuthService auth) {

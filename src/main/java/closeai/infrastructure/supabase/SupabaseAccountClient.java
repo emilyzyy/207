@@ -7,6 +7,7 @@ import closeai.domain.entities.Friendship;
 import closeai.domain.entities.User;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.net.URI;
@@ -266,6 +267,31 @@ public final class SupabaseAccountClient implements AccountService {
             friends.add(friendship.getOtherUser());
         }
         return friends;
+    }
+
+    @Override
+    public void setTripMembers(String tripId, List<String> memberUserIds) {
+        if (tripId == null || tripId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Trip id is required");
+        }
+        requireSession();
+        request("DELETE", "/rest/v1/trip_members?trip_id=eq." + enc(tripId.trim()), null, null);
+        if (memberUserIds == null || memberUserIds.isEmpty()) {
+            return;
+        }
+        ArrayNode rows = mapper.createArrayNode();
+        for (String memberId : memberUserIds) {
+            if (memberId == null || memberId.trim().isEmpty()) {
+                continue;
+            }
+            ObjectNode row = mapper.createObjectNode();
+            row.put("trip_id", tripId.trim());
+            row.put("user_id", memberId.trim());
+            rows.add(row);
+        }
+        if (rows.size() > 0) {
+            request("POST", "/rest/v1/trip_members", rows.toString(), "return=minimal");
+        }
     }
 
     private boolean alreadyConnected(String userId, String otherId) {

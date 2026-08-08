@@ -33,4 +33,7 @@ public interface AccountService {
     List<Friendship> listOutgoingRequests();
 
     List<User> listFriends();
+
+    /** Replaces the shared editors on a trip (friends who can view and edit). Owner is unchanged. */
+    void setTripMembers(String tripId, List<String> memberUserIds);
 }

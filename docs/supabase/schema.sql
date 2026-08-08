@@ -45,63 +45,116 @@ alter table public.trips enable row level security;
 alter table public.trip_bookmarks enable row level security;
 alter table public.scheduled_events enable row level security;
 
+-- Shared itinerary members (friends who can view/edit the trip).
+create table if not exists public.trip_members (
+  trip_id uuid not null references public.trips (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (trip_id, user_id)
+);
+
+create index if not exists trip_members_user_id_idx on public.trip_members (user_id);
+
+alter table public.trip_members enable row level security;
+
+create or replace function public.can_access_trip(p_trip_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.trips t
+    where t.id = p_trip_id and t.user_id = auth.uid()
+  ) or exists (
+    select 1 from public.trip_members m
+    where m.trip_id = p_trip_id and m.user_id = auth.uid()
+  );
+$$;
+
+revoke all on function public.can_access_trip(uuid) from public;
+grant execute on function public.can_access_trip(uuid) to authenticated;
+
 drop policy if exists trips_select_own on public.trips;
 drop policy if exists trips_insert_own on public.trips;
 drop policy if exists trips_update_own on public.trips;
 drop policy if exists trips_delete_own on public.trips;
+drop policy if exists trips_select_member on public.trips;
+drop policy if exists trips_update_member on public.trips;
 
-create policy trips_select_own on public.trips
-  for select using (auth.uid() = user_id);
+create policy trips_select_member on public.trips
+  for select to authenticated using (public.can_access_trip(id));
 create policy trips_insert_own on public.trips
-  for insert with check (auth.uid() = user_id);
-create policy trips_update_own on public.trips
-  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  for insert to authenticated with check (auth.uid() = user_id);
+create policy trips_update_member on public.trips
+  for update to authenticated
+  using (auth.uid() = user_id or public.can_access_trip(id))
+  with check (auth.uid() = user_id or public.can_access_trip(id));
 create policy trips_delete_own on public.trips
-  for delete using (auth.uid() = user_id);
+  for delete to authenticated using (auth.uid() = user_id);
+
+grant select, insert, update, delete on table public.trips to authenticated;
+grant select, insert, update, delete on table public.trip_bookmarks to authenticated;
+grant select, insert, update, delete on table public.scheduled_events to authenticated;
 
 drop policy if exists bookmarks_select_own on public.trip_bookmarks;
 drop policy if exists bookmarks_insert_own on public.trip_bookmarks;
 drop policy if exists bookmarks_update_own on public.trip_bookmarks;
 drop policy if exists bookmarks_delete_own on public.trip_bookmarks;
+drop policy if exists bookmarks_select_member on public.trip_bookmarks;
+drop policy if exists bookmarks_insert_member on public.trip_bookmarks;
+drop policy if exists bookmarks_update_member on public.trip_bookmarks;
+drop policy if exists bookmarks_delete_member on public.trip_bookmarks;
 
-create policy bookmarks_select_own on public.trip_bookmarks
-  for select using (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-  );
-create policy bookmarks_insert_own on public.trip_bookmarks
-  for insert with check (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-  );
-create policy bookmarks_update_own on public.trip_bookmarks
-  for update using (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-  );
-create policy bookmarks_delete_own on public.trip_bookmarks
-  for delete using (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-  );
+create policy bookmarks_select_member on public.trip_bookmarks
+  for select to authenticated using (public.can_access_trip(trip_id));
+create policy bookmarks_insert_member on public.trip_bookmarks
+  for insert to authenticated with check (public.can_access_trip(trip_id));
+create policy bookmarks_update_member on public.trip_bookmarks
+  for update to authenticated
+  using (public.can_access_trip(trip_id))
+  with check (public.can_access_trip(trip_id));
+create policy bookmarks_delete_member on public.trip_bookmarks
+  for delete to authenticated using (public.can_access_trip(trip_id));
 
 drop policy if exists events_select_own on public.scheduled_events;
 drop policy if exists events_insert_own on public.scheduled_events;
 drop policy if exists events_update_own on public.scheduled_events;
 drop policy if exists events_delete_own on public.scheduled_events;
+drop policy if exists events_select_member on public.scheduled_events;
+drop policy if exists events_insert_member on public.scheduled_events;
+drop policy if exists events_update_member on public.scheduled_events;
+drop policy if exists events_delete_member on public.scheduled_events;
 
-create policy events_select_own on public.scheduled_events
-  for select using (
+create policy events_select_member on public.scheduled_events
+  for select to authenticated using (public.can_access_trip(trip_id));
+create policy events_insert_member on public.scheduled_events
+  for insert to authenticated with check (public.can_access_trip(trip_id));
+create policy events_update_member on public.scheduled_events
+  for update to authenticated
+  using (public.can_access_trip(trip_id))
+  with check (public.can_access_trip(trip_id));
+create policy events_delete_member on public.scheduled_events
+  for delete to authenticated using (public.can_access_trip(trip_id));
+
+drop policy if exists trip_members_select on public.trip_members;
+drop policy if exists trip_members_insert on public.trip_members;
+drop policy if exists trip_members_delete on public.trip_members;
+
+create policy trip_members_select on public.trip_members
+  for select to authenticated using (public.can_access_trip(trip_id));
+create policy trip_members_insert on public.trip_members
+  for insert to authenticated with check (
     exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
   );
-create policy events_insert_own on public.scheduled_events
-  for insert with check (
+create policy trip_members_delete on public.trip_members
+  for delete to authenticated using (
     exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
+    or user_id = auth.uid()
   );
-create policy events_update_own on public.scheduled_events
-  for update using (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-  );
-create policy events_delete_own on public.scheduled_events
-  for delete using (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-  );
+
+grant select, insert, delete on table public.trip_members to authenticated;
 
 -- Profiles (username + avatar) and friendships.
 
@@ -172,5 +225,5 @@ create policy friendships_delete_own on public.friendships
 grant select, insert, update on table public.profiles to authenticated;
 grant select, insert, update, delete on table public.friendships to authenticated;
 
--- Reload PostgREST so /rest/v1/profiles is visible immediately.
+-- Reload PostgREST so new tables/policies are visible immediately.
 notify pgrst, 'reload schema';
