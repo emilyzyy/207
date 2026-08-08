@@ -145,14 +145,9 @@ drop policy if exists trip_members_delete on public.trip_members;
 create policy trip_members_select on public.trip_members
   for select to authenticated using (public.can_access_trip(trip_id));
 create policy trip_members_insert on public.trip_members
-  for insert to authenticated with check (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-  );
+  for insert to authenticated with check (public.can_access_trip(trip_id));
 create policy trip_members_delete on public.trip_members
-  for delete to authenticated using (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-    or user_id = auth.uid()
-  );
+  for delete to authenticated using (public.can_access_trip(trip_id));
 
 grant select, insert, delete on table public.trip_members to authenticated;
 

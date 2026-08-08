@@ -42,4 +42,7 @@ public interface AccountService {
      * Empty when the trip is not shared.
      */
     List<String> listTripCompanionUsernames(String tripId);
+
+    /** Friends currently on the trip as editable members (full profiles). */
+    List<User> listTripMembers(String tripId);
 }

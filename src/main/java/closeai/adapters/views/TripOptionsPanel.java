@@ -3,40 +3,74 @@ package closeai.adapters.views;
 import closeai.adapters.controllers.TripSetupController;
 import closeai.adapters.viewmodels.TripOptionsState;
 import closeai.adapters.viewmodels.TripOptionsViewModel;
+import closeai.application.ports.AccountService;
+import closeai.domain.entities.User;
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.geom.Ellipse2D;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 
-/** Editable Create Trip and Trip Options view. */
+/** Editable Create Trip and Trip Options view, including shared-friend access. */
 public final class TripOptionsPanel extends JPanel {
     private final TripOptionsViewModel viewModel;
     private final TripSetupController controller;
+    private final AccountService account;
     private final JTextField destination = new JTextField();
     private final JTextField date = new JTextField();
     private final JTextField startTime = new JTextField();
     private final JTextField endTime = new JTextField();
     private final JLabel status = new JLabel();
     private final JButton submit = SwingTheme.primaryButton("Create Trip");
+    private final JPanel sharingSection = new JPanel(new BorderLayout(0, 8));
+    private final JPanel friendRows = new JPanel();
+    private final JLabel sharingStatus = new JLabel(" ");
+    private final JButton saveSharing = SwingTheme.secondaryButton("Save sharing");
+    private final Set<String> selectedFriendIds = new LinkedHashSet<>();
+    private List<User> friendChoices = new ArrayList<>();
 
     public TripOptionsPanel(TripOptionsViewModel viewModel) {
-        this(viewModel, null);
+        this(viewModel, null, null);
     }
 
     public TripOptionsPanel(
             TripOptionsViewModel viewModel, TripSetupController controller) {
+        this(viewModel, controller, null);
+    }
+
+    public TripOptionsPanel(
+            TripOptionsViewModel viewModel,
+            TripSetupController controller,
+            AccountService account) {
         if (viewModel == null) {
             throw new IllegalArgumentException("Trip Options ViewModel is required");
         }
         this.viewModel = viewModel;
         this.controller = controller;
+        this.account = account;
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -44,25 +78,41 @@ public final class TripOptionsPanel extends JPanel {
         JPanel heading = new JPanel();
         heading.setOpaque(false);
         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
-        JLabel title = new JLabel("Trip Setup");
+        JLabel title = new JLabel("Trip Options");
         title.setFont(SwingTheme.HEADING);
         title.setForeground(SwingTheme.NAVY);
         heading.add(title);
         heading.add(Box.createVerticalStrut(4));
         JLabel notice = new JLabel(
-                "Create a trip first; the same form edits the active trip later.");
+                "Edit destination and hours, and manage who can view and edit this trip.");
         notice.setFont(SwingTheme.SMALL);
         notice.setForeground(SwingTheme.MUTED);
         heading.add(notice);
         add(heading, BorderLayout.NORTH);
 
+        JPanel center = new JPanel();
+        center.setOpaque(false);
+        center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
+
         JPanel fields = new JPanel(new GridBagLayout());
         fields.setOpaque(false);
+        fields.setAlignmentX(LEFT_ALIGNMENT);
         addField(fields, 0, "Destination", destination);
         addField(fields, 1, "Date (YYYY-MM-DD)", date);
         addField(fields, 2, "Day starts (HH:MM)", startTime);
         addField(fields, 3, "Day ends (HH:MM)", endTime);
-        add(fields, BorderLayout.CENTER);
+        center.add(fields);
+        center.add(Box.createVerticalStrut(14));
+
+        buildSharingSection();
+        sharingSection.setAlignmentX(LEFT_ALIGNMENT);
+        sharingSection.setVisible(false);
+        center.add(sharingSection);
+
+        JScrollPane centerScroll = new JScrollPane(center);
+        centerScroll.setBorder(BorderFactory.createEmptyBorder());
+        centerScroll.getVerticalScrollBar().setUnitIncrement(12);
+        add(centerScroll, BorderLayout.CENTER);
 
         JPanel footer = new JPanel();
         footer.setOpaque(false);
@@ -89,6 +139,32 @@ public final class TripOptionsPanel extends JPanel {
         return submit;
     }
 
+    private void buildSharingSection() {
+        sharingSection.setOpaque(false);
+        JLabel shareTitle = new JLabel("Shared with");
+        shareTitle.setFont(SwingTheme.BODY.deriveFont(java.awt.Font.BOLD));
+        shareTitle.setForeground(SwingTheme.NAVY);
+        sharingSection.add(shareTitle, BorderLayout.NORTH);
+
+        friendRows.setLayout(new BoxLayout(friendRows, BoxLayout.Y_AXIS));
+        friendRows.setOpaque(false);
+        friendRows.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        JScrollPane scroll = new JScrollPane(friendRows);
+        scroll.setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
+        scroll.setPreferredSize(new Dimension(280, 150));
+        scroll.getVerticalScrollBar().setUnitIncrement(12);
+        sharingSection.add(scroll, BorderLayout.CENTER);
+
+        JPanel shareFooter = new JPanel(new BorderLayout(8, 0));
+        shareFooter.setOpaque(false);
+        sharingStatus.setFont(SwingTheme.SMALL);
+        sharingStatus.setForeground(SwingTheme.MUTED);
+        shareFooter.add(sharingStatus, BorderLayout.CENTER);
+        saveSharing.addActionListener(event -> saveSharing());
+        shareFooter.add(saveSharing, BorderLayout.EAST);
+        sharingSection.add(shareFooter, BorderLayout.SOUTH);
+    }
+
     private void submit() {
         if (controller != null) {
             controller.execute(
@@ -97,6 +173,35 @@ public final class TripOptionsPanel extends JPanel {
                     startTime.getText(),
                     endTime.getText());
         }
+    }
+
+    private void saveSharing() {
+        TripOptionsState state = viewModel.getState();
+        if (account == null || !state.hasActiveTrip()) {
+            return;
+        }
+        saveSharing.setEnabled(false);
+        sharingStatus.setForeground(SwingTheme.MUTED);
+        sharingStatus.setText("Saving…");
+        List<String> memberIds = new ArrayList<>(selectedFriendIds);
+        String tripId = state.getTripId();
+        new Thread(() -> {
+            try {
+                account.setTripMembers(tripId, memberIds);
+                SwingUtilities.invokeLater(() -> {
+                    sharingStatus.setForeground(SwingTheme.SUCCESS);
+                    sharingStatus.setText("Sharing updated.");
+                    saveSharing.setEnabled(true);
+                });
+            } catch (RuntimeException exception) {
+                SwingUtilities.invokeLater(() -> {
+                    sharingStatus.setForeground(SwingTheme.ERROR);
+                    sharingStatus.setText(exception.getMessage() == null
+                            ? "Could not update sharing." : exception.getMessage());
+                    saveSharing.setEnabled(true);
+                });
+            }
+        }, "Save-Trip-Sharing").start();
     }
 
     private void renderState(TripOptionsState state) {
@@ -108,6 +213,67 @@ public final class TripOptionsPanel extends JPanel {
                 state.getEndTime() == null ? "" : state.getEndTime().toString());
         submit.setText(state.hasActiveTrip() ? "Save Trip Options" : "Create Trip");
         renderFeedback(state);
+        refreshSharing(state);
+    }
+
+    private void refreshSharing(TripOptionsState state) {
+        boolean show = account != null && state.hasActiveTrip();
+        sharingSection.setVisible(show);
+        if (!show) {
+            return;
+        }
+        sharingStatus.setForeground(SwingTheme.MUTED);
+        sharingStatus.setText("Loading friends…");
+        String tripId = state.getTripId();
+        new Thread(() -> {
+            try {
+                List<User> friends = account.listFriends();
+                List<User> members = account.listTripMembers(tripId);
+                Set<String> memberIds = new HashSet<>();
+                for (User member : members) {
+                    memberIds.add(member.getId());
+                }
+                SwingUtilities.invokeLater(() -> {
+                    if (!tripId.equals(viewModel.getState().getTripId())) {
+                        return;
+                    }
+                    friendChoices = friends;
+                    selectedFriendIds.clear();
+                    selectedFriendIds.addAll(memberIds);
+                    rebuildFriendRows();
+                    if (friends.isEmpty()) {
+                        sharingStatus.setText("Add friends from the Friends button to share trips.");
+                    } else {
+                        sharingStatus.setText(
+                                "Select friends who can view and edit this itinerary.");
+                    }
+                });
+            } catch (RuntimeException exception) {
+                SwingUtilities.invokeLater(() -> {
+                    sharingStatus.setForeground(SwingTheme.ERROR);
+                    sharingStatus.setText(exception.getMessage() == null
+                            ? "Could not load sharing." : exception.getMessage());
+                });
+            }
+        }, "Load-Trip-Sharing").start();
+    }
+
+    private void rebuildFriendRows() {
+        friendRows.removeAll();
+        if (friendChoices.isEmpty()) {
+            JLabel empty = new JLabel("No friends yet.");
+            empty.setFont(SwingTheme.SMALL);
+            empty.setForeground(SwingTheme.MUTED);
+            empty.setAlignmentX(LEFT_ALIGNMENT);
+            friendRows.add(empty);
+        } else {
+            for (User friend : friendChoices) {
+                friendRows.add(new FriendAccessRow(friend));
+                friendRows.add(Box.createVerticalStrut(4));
+            }
+        }
+        friendRows.revalidate();
+        friendRows.repaint();
     }
 
     private void renderFeedback(TripOptionsState state) {
@@ -135,5 +301,73 @@ public final class TripOptionsPanel extends JPanel {
         valueConstraints.fill = GridBagConstraints.HORIZONTAL;
         valueConstraints.insets = new Insets(6, 0, 6, 0);
         fields.add(component, valueConstraints);
+    }
+
+    private final class FriendAccessRow extends JPanel {
+        private final User friend;
+        private boolean selected;
+
+        FriendAccessRow(User friend) {
+            this.friend = friend;
+            this.selected = selectedFriendIds.contains(friend.getId());
+            setOpaque(true);
+            setBackground(selected ? SwingTheme.BLUE_SOFT : SwingTheme.BACKGROUND);
+            setLayout(new FlowLayout(FlowLayout.LEFT, 10, 6));
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+            add(new CircularCheck());
+            add(new JLabel(AvatarSupport.iconFor(friend, 26)));
+            JLabel name = new JLabel("@" + friend.getUsername());
+            name.setFont(SwingTheme.BODY);
+            name.setForeground(SwingTheme.NAVY);
+            add(name);
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    toggle();
+                }
+            });
+        }
+
+        void toggle() {
+            selected = !selected;
+            if (selected) {
+                selectedFriendIds.add(friend.getId());
+                setBackground(SwingTheme.BLUE_SOFT);
+            } else {
+                selectedFriendIds.remove(friend.getId());
+                setBackground(SwingTheme.BACKGROUND);
+            }
+            repaint();
+        }
+
+        private final class CircularCheck extends JPanel {
+            CircularCheck() {
+                setOpaque(false);
+                setPreferredSize(new Dimension(18, 18));
+            }
+
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int size = Math.min(getWidth(), getHeight()) - 2;
+                int x = (getWidth() - size) / 2;
+                int y = (getHeight() - size) / 2;
+                if (selected) {
+                    g2.setColor(SwingTheme.BLUE);
+                    g2.fill(new Ellipse2D.Float(x, y, size, size));
+                    g2.setColor(Color.WHITE);
+                    g2.drawLine(x + 4, y + size / 2, x + size / 2 - 1, y + size - 5);
+                    g2.drawLine(x + size / 2 - 1, y + size - 5, x + size - 4, y + 4);
+                } else {
+                    g2.setColor(SwingTheme.PANEL);
+                    g2.fill(new Ellipse2D.Float(x, y, size, size));
+                    g2.setColor(SwingTheme.LINE);
+                    g2.draw(new Ellipse2D.Float(x, y, size - 1, size - 1));
+                }
+                g2.dispose();
+            }
+        }
     }
 }

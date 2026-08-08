@@ -151,14 +151,31 @@ public final class AppBuilder {
                         false));
         TripOptionsViewModel tripOptionsViewModel = new TripOptionsViewModel(
                 new TripOptionsState(
+                        trip.getId(),
                         trip.getDestination(),
                         trip.getDate(),
                         trip.getStartTime(),
-                        trip.getEndTime()));
+                        trip.getEndTime(),
+                        "",
+                        false));
         CalendarViewModel calendarViewModel = new CalendarViewModel(
                 dashboardViewModel, dayPlanViewModel);
         ShareViewModel shareViewModel = new ShareViewModel(
                 new ShareState("", "", false));
+
+        TripSetupPresenter tripSetupPresenter = new TripSetupPresenter(
+                dashboardViewModel,
+                searchViewModel,
+                bookmarksViewModel,
+                dayPlanViewModel,
+                tripOptionsViewModel,
+                app.weatherWarning,
+                app.searchActivities);
+        TripSetupController tripSetupController = new TripSetupController(
+                app.createTrip,
+                app.editItinerary,
+                () -> tripOptionsViewModel.getState().getTripId(),
+                tripSetupPresenter);
 
         AutoScheduleController autoScheduleController =
                 buildAutoSchedule(app, dayPlanViewModel);
@@ -201,7 +218,7 @@ public final class AppBuilder {
         dayPlanPanel.setTripDefaults(trip.getStartTime(), trip.getEndTime(),
                 trip.getTransportationMode());
         TripOptionsPanel tripOptionsPanel =
-                new TripOptionsPanel(tripOptionsViewModel);
+                new TripOptionsPanel(tripOptionsViewModel, tripSetupController, app.account);
         TripAssistantPanel tripAssistantPanel = buildTripAssistant(
                 app, dayPlanViewModel,
                 "Hi, I'm George. Ask me what to visit, what works in rain, or what fits your day.");
@@ -309,7 +326,7 @@ public final class AppBuilder {
                 new DayPlanPanel(dayPlanViewModel, autoScheduleController,
                         manualPlanController, activitySelectionViewModel);
         TripOptionsPanel tripOptionsPanel =
-                new TripOptionsPanel(tripOptionsViewModel, tripSetupController);
+                new TripOptionsPanel(tripOptionsViewModel, tripSetupController, app.account);
         TripAssistantPanel tripAssistantPanel = buildTripAssistant(
                 app, dayPlanViewModel,
                 "Hi, I'm George. Create a trip, then ask me for activity recommendations.");
