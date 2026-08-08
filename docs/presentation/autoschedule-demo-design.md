@@ -443,3 +443,127 @@ availability 11:00–21:00.
 Use **N1** instead: identical in every other respect, adds ☀ *"Moved into daylight"*, and costs
 believability only to the extent that the audience must know Italian lunch service ends at 15:00.
 It is a genuine second choice, not a fallback.
+
+---
+
+# N1 redesigned — the irrational-pin problem, resolved
+
+## The flaw
+
+The earlier N1 put the business call at **15:00–16:00** and the mistaken pin at **15:30**.
+Even though the validator reports the opening-hours conflict first, the *story* had Bob
+knowingly booking lunch during his own call. The audience notices that before they notice the
+constraint firing.
+
+**The rule that fixes it:** only the **pin** must be consistent with the call. An *unpinned*
+activity overlapping the call is natural — Bob added activities before he knew about the call,
+and resolving that clash is exactly what Autoschedule is for. It is also what produces the
+"moved clear of your unavailable time" evidence, so it is worth keeping.
+
+Constraint: the call must overlap neither the invalid pin (15:30–17:00) nor the corrected pin
+(13:15–14:45). That leaves mornings, or anything from 17:00.
+
+## Variants tested (all through the real production path)
+
+| Var | Call | Travel | Waiting | Cards | Unavailable-row | Notes |
+|---|---|---|---|---|---|---|
+| V1 | 17:00–18:00 | 61→55 | 209→0 | 6 | ❌ **none** | Engine front-loads the day, so an evening call is never in the way. Respected but invisible |
+| V2 | 10:00–11:00 | 61→61 **none** | 209→14 | 6 | ❌ | Adds an odd "original order was kept" card |
+| V3 | 18:00–19:00 | 61→55 | 209→0 | 6 | ❌ | Same blind spot as V1 |
+| V4/W4 | 09:30–10:30 | 61→59 | 209→31 | 6 | ✅ Accademia | Works, but "2 min less travel" is a weak card |
+| W1 | 09:30–10:30 | 67→59 | 203→31 | 5 | ✅ Accademia | 8 min travel, but only one weather card |
+| **X1** | **09:30–10:30** | **73→59** | **197→31** | **6** | ✅ **Accademia** | **SELECTED** |
+
+The decisive finding: **only a morning call yields the "moved clear" row.** The search packs the
+day forwards, so an evening block is satisfied without anything having to move — the constraint
+is honoured but never *shown*. X1 then recovers a strong travel number by making the initial
+ordering genuinely bad (north-east → south-west → centre → south-east → centre) rather than by
+moving the call.
+
+## X1 — selected replacement for N1
+
+**Availability 09:00–21:00** · **call 09:30–10:30** ("catch head office before the day starts")
+· Wed 12 Aug 2026 · walking · weather LOW until 17:00, MEDIUM 17:00, **HIGH from 18:00**.
+
+| Time | Activity | Position |
+|---|---|---|
+| 10:00–10:45 | Libreria Acqua Alta | north-east |
+| 11:15–12:45 | Gallerie dell'Accademia | **far south-west — the long hop** |
+| **15:30–17:00** | **Bistrot de Venise — PINNED, lunch service ended at 15:00** | centre |
+| 17:15–18:15 | Giardini della Biennale | far south-east, rain |
+| 19:15–20:15 | Piazza San Marco | centre, dark and raining |
+
+Corrected pin: **13:15–14:45**.
+
+Bob is now fully consistent: his call is at half nine, and the lunch he books — mistakenly at
+half three, correctly at quarter past one — never touches it.
+
+### Beat 1 — the mistake
+
+> **Bistrot de Venise is locked to a time when it is closed. Your Day Plan was not changed.**
+
+*"He booked a late lunch for half past three. In Venice the kitchen stops serving at three."*
+
+### Beat 2 — the corrected preview
+
+**Travel 73 → 59 · Waiting 197 → 31 · 4 of 5 moved**
+
+| Time | Row | Badge / reason |
+|---|---|---|
+| **10:30–12:00** | Gallerie dell'Accademia | moved — **"moved clear of your unavailable time"** |
+| 12:00–12:19 | ↳ Travel to Libreria Acqua Alta | |
+| 12:19–13:04 | Libreria Acqua Alta | moved |
+| 13:04–13:14 | ↳ Travel to Bistrot de Venise | |
+| **13:15–14:45** | **Bistrot de Venise** | **🔒 Locked — "you locked this time"** |
+| 14:45–14:55 | ↳ Travel to Piazza San Marco | |
+| 14:55–15:55 | Piazza San Marco | moved |
+| 15:55–16:15 | ↳ Travel to Giardini della Biennale | |
+| 16:15–17:15 | Giardini della Biennale | moved |
+
+Cards, in Presenter order:
+
+1. ⏳ **166 min of waiting removed** — Less dead time between activities
+2. → **14 min less travel** — Shorter journeys than your current order
+3. ⚿ **Pinned activity kept at its time** — Bistrot de Venise
+4. ☂ **Moved to better weather** — Piazza San Marco
+5. ☀ **Moved into daylight** — Piazza San Marco
+6. ☂ **Moved to better weather** — Giardini della Biennale
+
+### Everything the brief asked to retain
+
+| Requirement | X1 |
+|---|---|
+| Believable late-lunch pin rejected because service ended | ✅ 15:30, kitchen closed at 15:00 |
+| One simple correction | ✅ 15:30 → 13:15 |
+| Corrected pin preserved exactly | ✅ 13:15–14:45 |
+| Five activities, unchanged durations | ✅ 45/90/90/60/60 |
+| Business call visibly avoided by another activity | ✅ Accademia's own row says so |
+| Genuine travel reduction | ✅ **14 min** |
+| Genuine waiting reduction | ✅ **166 min** |
+| Two weather improvements | ✅ San Marco and Giardini |
+| Daylight improvement card | ✅ San Marco |
+| Clear pinned-activity card | ✅ |
+| No irrational user behaviour | ✅ the call cannot clash with either pin |
+
+**X1 replaces both the original selection and N2 as the recommended scenario.** It is the only
+variant that satisfies every item on the list at once.
+
+---
+
+# Route line on the map — implemented
+
+`MapPanel` now joins the Day Plan's stops in order with a dashed, muted polyline drawn beneath
+the numbered pins (commit `39d1923`). The map and Day Plan sit side by side in a `JSplitPane`,
+so this is visible during the whole demo without switching tabs.
+
+**Why it matters for the Before View beat.** "The day backtracks" was previously a claim the
+audience had to take on trust; the numbered pins carried the order but nobody reads five scattered
+pins as a shape. As a line, the zig-zag is a picture — and after Apply the same line comes out as
+a west-to-east sweep, which is a genuine before/after with no extra narration.
+
+Tested by `MapRouteLineTest`: the line follows Day Plan order rather than load order, a single
+stop draws nothing, and a scheduled stop whose place is not currently on the map is skipped
+rather than drawn to nowhere.
+
+**Suggested Before View narration (≈4 s):** *"One, two — that's right across the city — three,
+four back east again."* Point at the line, not the list.
