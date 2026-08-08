@@ -1,6 +1,7 @@
 package closeai.application;
 
 import closeai.application.ports.ActivityRepository;
+import closeai.application.ports.AccountService;
 import closeai.application.ports.DistanceService;
 import closeai.application.ports.ItineraryDataAccessInterface;
 import closeai.application.ports.PlacesService;
@@ -17,6 +18,8 @@ public final class AppContainer {
     public final ActivityRepository activities;
     public final WeatherService weather;
     public final DistanceService distances;
+    /** Present when Supabase account features (profile / friends) are enabled; otherwise null. */
+    public final AccountService account;
     public final CreateTripUseCase createTrip;
     public final DiscoverTripPlacesUseCase discoverTripPlaces;
     public final SearchActivitiesUseCase searchActivities;
@@ -37,7 +40,7 @@ public final class AppContainer {
                         DistanceService distances, WeatherService weather,
                         ActivityScoringPolicy scoringPolicy) {
         this(trips, places, activities, distances, weather, scoringPolicy,
-                itineraryAccessFor(trips));
+                itineraryAccessFor(trips), placesWriterFor(activities), null);
     }
 
     public AppContainer(TripRepository trips, PlacesService places, ActivityRepository activities,
@@ -45,7 +48,7 @@ public final class AppContainer {
                         ActivityScoringPolicy scoringPolicy,
                         ItineraryDataAccessInterface itineraries) {
         this(trips, places, activities, distances, weather, scoringPolicy, itineraries,
-                placesWriterFor(activities));
+                placesWriterFor(activities), null);
     }
 
     public AppContainer(TripRepository trips, PlacesService places, ActivityRepository activities,
@@ -53,6 +56,16 @@ public final class AppContainer {
                         ActivityScoringPolicy scoringPolicy,
                         ItineraryDataAccessInterface itineraries,
                         PlacesWriter placesWriter) {
+        this(trips, places, activities, distances, weather, scoringPolicy, itineraries,
+                placesWriter, null);
+    }
+
+    public AppContainer(TripRepository trips, PlacesService places, ActivityRepository activities,
+                        DistanceService distances, WeatherService weather,
+                        ActivityScoringPolicy scoringPolicy,
+                        ItineraryDataAccessInterface itineraries,
+                        PlacesWriter placesWriter,
+                        AccountService account) {
         if (trips == null || places == null || activities == null || distances == null
                 || weather == null || scoringPolicy == null || itineraries == null
                 || placesWriter == null) {
@@ -63,6 +76,7 @@ public final class AppContainer {
         this.activities = activities;
         this.weather = weather;
         this.distances = distances;
+        this.account = account;
         createTrip = new CreateTripUseCase(trips);
         discoverTripPlaces = new DiscoverTripPlacesUseCase(trips, places, placesWriter);
         searchActivities = new SearchActivitiesUseCase(places);

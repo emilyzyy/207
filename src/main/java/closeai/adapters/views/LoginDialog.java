@@ -18,6 +18,8 @@ import javax.swing.JTextField;
 public final class LoginDialog extends JDialog {
     private final JTextField emailField = new JTextField(24);
     private final JPasswordField passwordField = new JPasswordField(24);
+    private final JTextField usernameField = new JTextField(24);
+    private final JLabel usernameLabel = new JLabel("Username (optional)");
     private final JLabel status = new JLabel(" ");
     private boolean confirmed;
     private boolean signUp;
@@ -55,6 +57,15 @@ public final class LoginDialog extends JDialog {
         gc.fill = GridBagConstraints.HORIZONTAL;
         gc.weightx = 1;
         form.add(passwordField, gc);
+        gc.gridx = 0;
+        gc.gridy = 2;
+        gc.fill = GridBagConstraints.NONE;
+        gc.weightx = 0;
+        form.add(usernameLabel, gc);
+        gc.gridx = 1;
+        gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.weightx = 1;
+        form.add(usernameField, gc);
         root.add(form, BorderLayout.CENTER);
 
         status.setForeground(SwingTheme.ERROR);
@@ -107,6 +118,11 @@ public final class LoginDialog extends JDialog {
 
     public String getPassword() {
         return new String(passwordField.getPassword());
+    }
+
+    /** Optional username used only when creating an account. */
+    public String getUsername() {
+        return usernameField.getText().trim();
     }
 
     public void showError(String message) {

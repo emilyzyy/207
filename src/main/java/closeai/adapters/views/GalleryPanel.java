@@ -1,7 +1,7 @@
 package closeai.adapters.views;
 
 import closeai.domain.entities.Trip;
-import closeai.domain.valueobjects.TransportationMode;
+import closeai.domain.entities.User;
 import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -16,8 +16,6 @@ import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,18 +32,19 @@ import javax.swing.SwingUtilities;
 public final class GalleryPanel extends JPanel {
     private static final int CARD_ARC = 16;
     private static final Color OVERLAY = new Color(13, 35, 64, 180);
-    private static final Color OVERLAY_TOP = new Color(13, 35, 64, 100);
     private static final int MAP_ZOOM = 11;
+    private static final int AVATAR_SIZE = 34;
 
     private final transient Consumer<Trip> onOpenTrip;
     private final transient Runnable onCreateTrip;
     private final transient Runnable onAuthAction;
+    private final transient Runnable onProfileAction;
+    private final transient Runnable onFriendsAction;
     private final JPanel cardGrid;
     private final Map<String, BufferedImage> tileCache = new HashMap<>();
-    private JButton authButton;
 
     public GalleryPanel(List<Trip> trips, Consumer<Trip> onOpenTrip, Runnable onCreateTrip) {
-        this(trips, onOpenTrip, onCreateTrip, null, false);
+        this(trips, onOpenTrip, onCreateTrip, null, null, null, null, false);
     }
 
     public GalleryPanel(
@@ -53,10 +52,15 @@ public final class GalleryPanel extends JPanel {
             Consumer<Trip> onOpenTrip,
             Runnable onCreateTrip,
             Runnable onAuthAction,
+            Runnable onProfileAction,
+            Runnable onFriendsAction,
+            User profile,
             boolean signedIn) {
         this.onOpenTrip = onOpenTrip;
         this.onCreateTrip = onCreateTrip;
         this.onAuthAction = onAuthAction;
+        this.onProfileAction = onProfileAction;
+        this.onFriendsAction = onFriendsAction;
         setLayout(new BorderLayout());
         setBackground(SwingTheme.BACKGROUND);
 
@@ -74,11 +78,21 @@ public final class GalleryPanel extends JPanel {
         newTrip.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         newTrip.addActionListener(e -> onCreateTrip.run());
         actions.add(newTrip);
-        if (onAuthAction != null) {
-            authButton = new JButton(signedIn ? "Sign out" : "Sign in");
+        if (onAuthAction != null && !signedIn) {
+            JButton authButton = new JButton("Sign in");
             authButton.setFont(SwingTheme.BODY);
             authButton.addActionListener(e -> onAuthAction.run());
             actions.add(authButton);
+        }
+        if (signedIn && onFriendsAction != null) {
+            JButton friendsButton = SwingTheme.secondaryButton("Friends");
+            friendsButton.addActionListener(e -> onFriendsAction.run());
+            actions.add(friendsButton);
+        }
+        if (signedIn && onProfileAction != null) {
+            JButton avatarButton = AvatarSupport.avatarButton(profile, AVATAR_SIZE);
+            avatarButton.addActionListener(e -> onProfileAction.run());
+            actions.add(avatarButton);
         }
         header.add(actions, BorderLayout.EAST);
 

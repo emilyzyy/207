@@ -102,3 +102,75 @@ create policy events_delete_own on public.scheduled_events
   for delete using (
     exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
   );
+
+-- Profiles (username + avatar) and friendships.
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users (id) on delete cascade,
+  username text not null,
+  email text not null default '',
+  avatar_color text not null default '#FFFFFF',
+  avatar_image text,
+  updated_at timestamptz not null default now(),
+  constraint profiles_username_format check (
+    char_length(username) between 3 and 24
+    and username ~ '^[a-zA-Z0-9_]+$'
+  )
+);
+
+create unique index if not exists profiles_username_lower_idx
+  on public.profiles (lower(username));
+
+create table if not exists public.friendships (
+  id uuid primary key default gen_random_uuid(),
+  requester_id uuid not null references public.profiles (id) on delete cascade,
+  addressee_id uuid not null references public.profiles (id) on delete cascade,
+  status text not null check (status in ('pending', 'accepted')),
+  created_at timestamptz not null default now(),
+  constraint friendships_not_self check (requester_id <> addressee_id),
+  constraint friendships_pair_unique unique (requester_id, addressee_id)
+);
+
+create index if not exists friendships_requester_idx on public.friendships (requester_id);
+create index if not exists friendships_addressee_idx on public.friendships (addressee_id);
+
+alter table public.profiles enable row level security;
+alter table public.friendships enable row level security;
+
+drop policy if exists profiles_select_authenticated on public.profiles;
+drop policy if exists profiles_insert_own on public.profiles;
+drop policy if exists profiles_update_own on public.profiles;
+
+create policy profiles_select_authenticated on public.profiles
+  for select to authenticated using (true);
+create policy profiles_insert_own on public.profiles
+  for insert to authenticated with check (auth.uid() = id);
+create policy profiles_update_own on public.profiles
+  for update to authenticated using (auth.uid() = id) with check (auth.uid() = id);
+
+drop policy if exists friendships_select_own on public.friendships;
+drop policy if exists friendships_insert_own on public.friendships;
+drop policy if exists friendships_update_addressee on public.friendships;
+drop policy if exists friendships_delete_own on public.friendships;
+
+create policy friendships_select_own on public.friendships
+  for select to authenticated using (
+    auth.uid() = requester_id or auth.uid() = addressee_id
+  );
+create policy friendships_insert_own on public.friendships
+  for insert to authenticated with check (
+    auth.uid() = requester_id and status = 'pending'
+  );
+create policy friendships_update_addressee on public.friendships
+  for update to authenticated using (auth.uid() = addressee_id)
+  with check (auth.uid() = addressee_id);
+create policy friendships_delete_own on public.friendships
+  for delete to authenticated using (
+    auth.uid() = requester_id or auth.uid() = addressee_id
+  );
+
+grant select, insert, update on table public.profiles to authenticated;
+grant select, insert, update, delete on table public.friendships to authenticated;
+
+-- Reload PostgREST so /rest/v1/profiles is visible immediately.
+notify pgrst, 'reload schema';

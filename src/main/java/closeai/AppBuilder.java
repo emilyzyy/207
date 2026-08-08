@@ -50,6 +50,7 @@ import closeai.application.autoschedule.policy.MealWindowPolicy;
 import closeai.application.autoschedule.policy.SoftPolicy;
 import closeai.application.autoschedule.policy.WeatherSuitabilityPolicy;
 import closeai.application.ports.AuthService;
+import closeai.application.ports.AccountService;
 import closeai.application.ports.PlacesService;
 import closeai.application.ports.TripRepository;
 import closeai.application.ports.TripAssistantGateway;
@@ -79,6 +80,7 @@ import closeai.infrastructure.persistence.CachedPlacesRepository;
 import closeai.infrastructure.persistence.DualModeItineraryDataAccess;
 import closeai.infrastructure.persistence.InMemoryItineraryDataAccessObject;
 import closeai.infrastructure.routing.OsrmDistanceService;
+import closeai.infrastructure.supabase.SupabaseAccountClient;
 import closeai.infrastructure.supabase.SupabaseItineraryDataAccess;
 import closeai.infrastructure.weather.OpenMeteoWeatherService;
 import java.time.Duration;
@@ -504,6 +506,7 @@ public final class AppBuilder {
 
         String persistence = System.getProperty("closeai.persistence.mode", "memory");
         TripRepository trips;
+        AccountService account = null;
         if ("supabase".equalsIgnoreCase(persistence)) {
             AuthService auth = authSession;
             if (auth == null) {
@@ -521,6 +524,7 @@ public final class AppBuilder {
             SupabaseItineraryDataAccess remote =
                     new SupabaseItineraryDataAccess(url, anonKey, auth, hydrator);
             trips = new DualModeItineraryDataAccess(local, remote, auth);
+            account = new SupabaseAccountClient(url, anonKey, auth);
         } else {
             trips = new InMemoryItineraryDataAccessObject();
         }
@@ -532,6 +536,8 @@ public final class AppBuilder {
                 new OsrmDistanceService(),
                 weather,
                 new DefaultActivityScoringPolicy(),
-                (closeai.application.ports.ItineraryDataAccessInterface) trips);
+                (closeai.application.ports.ItineraryDataAccessInterface) trips,
+                cachedPlaces,
+                account);
     }
 }

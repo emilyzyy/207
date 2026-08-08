@@ -2,15 +2,19 @@ package closeai;
 
 import closeai.adapters.controllers.ApiController;
 import closeai.adapters.views.CloseAIFrame;
+import closeai.adapters.views.FriendsDialog;
 import closeai.adapters.views.GalleryPanel;
 import closeai.adapters.views.LoginDialog;
 import closeai.adapters.views.NewItineraryDialog;
+import closeai.adapters.views.ProfileDialog;
 import closeai.application.AppContainer;
+import closeai.application.ports.AccountService;
 import closeai.application.ports.AuthService;
 import closeai.application.ports.AuthSession;
 import closeai.application.usecases.CreateTripInputData;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.Trip;
+import closeai.domain.entities.User;
 import closeai.domain.valueobjects.TransportationMode;
 import closeai.infrastructure.config.DotEnv;
 import closeai.infrastructure.persistence.DualModeItineraryDataAccess;
@@ -83,7 +87,7 @@ public final class Main {
         return new SupabaseAuthClient(url, anonKey);
     }
 
-    private static boolean promptSignIn(AuthService auth, JFrame owner) {
+    private static boolean promptSignIn(AuthService auth, AccountService account, JFrame owner) {
         while (true) {
             LoginDialog dialog = new LoginDialog(owner);
             dialog.setVisible(true);
@@ -94,7 +98,14 @@ public final class Main {
                 AuthSession session = dialog.isSignUp()
                         ? auth.signUp(dialog.getEmail(), dialog.getPassword())
                         : auth.signIn(dialog.getEmail(), dialog.getPassword());
-                System.out.println("Signed in as " + session.getEmail());
+                if (account != null) {
+                    String preferred = dialog.isSignUp() ? dialog.getUsername() : null;
+                    User profile = account.ensureProfile(preferred);
+                    System.out.println("Signed in as @" + profile.getUsername()
+                            + " (" + session.getEmail() + ")");
+                } else {
+                    System.out.println("Signed in as " + session.getEmail());
+                }
                 return true;
             } catch (RuntimeException exception) {
                 JOptionPane.showMessageDialog(owner,
@@ -108,6 +119,7 @@ public final class Main {
     private static void showGallery(AppBuilder builder, AppContainer app, AuthService auth) {
         List<Trip> trips = app.listTrips.execute();
         boolean signedIn = auth != null && auth.currentSession().isPresent();
+        User profile = signedIn ? loadProfile(app) : null;
 
         JFrame galleryFrame = new JFrame("CloseAI - My Trips");
         galleryFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -115,15 +127,19 @@ public final class Main {
         galleryFrame.setPreferredSize(new Dimension(960, 700));
 
         Runnable onAuth = auth == null ? null : () -> {
-            if (auth.currentSession().isPresent()) {
-                signOut(app, auth);
-                galleryFrame.dispose();
-                showGallery(builder, app, auth);
-            } else if (promptSignIn(auth, galleryFrame)) {
+            if (promptSignIn(auth, app.account, galleryFrame)) {
                 galleryFrame.dispose();
                 showGallery(builder, app, auth);
             }
         };
+        Runnable onProfile = !signedIn ? null : () -> {
+            if (openProfile(app, auth, galleryFrame)) {
+                galleryFrame.dispose();
+                showGallery(builder, app, auth);
+            }
+        };
+        Runnable onFriends = !signedIn || app.account == null ? null : () ->
+                new FriendsDialog(galleryFrame, app.account).setVisible(true);
 
         galleryFrame.add(new GalleryPanel(
                 trips,
@@ -156,6 +172,9 @@ public final class Main {
                     }, "Create-Itinerary").start();
                 },
                 onAuth,
+                onProfile,
+                onFriends,
+                profile,
                 signedIn));
         galleryFrame.pack();
         galleryFrame.setLocationRelativeTo(null);
@@ -174,8 +193,23 @@ public final class Main {
             showGallery(builder, app, auth);
         });
         if (auth != null) {
+            boolean signedIn = auth.currentSession().isPresent();
             tripFrame.setAuthAction(() -> handleTripAuth(builder, app, auth, tripFrame, trip.getId()),
-                    auth.currentSession().isPresent());
+                    signedIn);
+            tripFrame.setProfileAction(() -> {
+                if (openProfile(app, auth, tripFrame)) {
+                    tripFrame.dispose();
+                    showGallery(builder, app, auth);
+                } else {
+                    tripFrame.setProfileUser(loadProfile(app));
+                }
+            });
+            tripFrame.setFriendsAction(() -> {
+                if (app.account != null) {
+                    new FriendsDialog(tripFrame, app.account).setVisible(true);
+                }
+            });
+            tripFrame.setProfileUser(loadProfile(app));
         }
         tripFrame.setVisible(true);
         return tripFrame;
@@ -185,12 +219,9 @@ public final class Main {
             AppBuilder builder, AppContainer app, AuthService auth,
             CloseAIFrame tripFrame, String tripId) {
         if (auth.currentSession().isPresent()) {
-            signOut(app, auth);
-            tripFrame.dispose();
-            showGallery(builder, app, auth);
             return;
         }
-        if (!promptSignIn(auth, tripFrame)) {
+        if (!promptSignIn(auth, app.account, tripFrame)) {
             return;
         }
         try {
@@ -202,6 +233,20 @@ public final class Main {
             }
             tripFrame.setAuthAction(
                     () -> handleTripAuth(builder, app, auth, tripFrame, tripId), true);
+            tripFrame.setProfileAction(() -> {
+                if (openProfile(app, auth, tripFrame)) {
+                    tripFrame.dispose();
+                    showGallery(builder, app, auth);
+                } else {
+                    tripFrame.setProfileUser(loadProfile(app));
+                }
+            });
+            tripFrame.setFriendsAction(() -> {
+                if (app.account != null) {
+                    new FriendsDialog(tripFrame, app.account).setVisible(true);
+                }
+            });
+            tripFrame.setProfileUser(loadProfile(app));
             JOptionPane.showMessageDialog(tripFrame,
                     "Signed in. This itinerary was saved to your account.",
                     "Signed in",
@@ -211,6 +256,51 @@ public final class Main {
                     "Signed in, but saving failed: " + exception.getMessage(),
                     "Save failed",
                     JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    /**
+     * Opens the profile editor. Returns true when the user signed out (caller should refresh).
+     */
+    private static boolean openProfile(AppContainer app, AuthService auth, JFrame owner) {
+        if (app.account == null || auth == null) {
+            return false;
+        }
+        User profile;
+        try {
+            profile = app.account.ensureProfile(null);
+        } catch (RuntimeException exception) {
+            JOptionPane.showMessageDialog(owner,
+                    exception.getMessage(),
+                    "Profile",
+                    JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+        String password = auth.currentSession().map(AuthSession::getPassword).orElse("");
+        ProfileDialog dialog = new ProfileDialog(owner, profile, password, request ->
+                app.account.updateProfile(
+                        request.getUsername(),
+                        request.getEmail(),
+                        request.getPassword(),
+                        request.getAvatarColor(),
+                        request.getAvatarImage()));
+        dialog.setVisible(true);
+        if (dialog.isSignOutRequested()) {
+            signOut(app, auth);
+            return true;
+        }
+        return false;
+    }
+
+    private static User loadProfile(AppContainer app) {
+        if (app.account == null) {
+            return null;
+        }
+        try {
+            return app.account.currentProfile().orElseGet(() -> app.account.ensureProfile(null));
+        } catch (RuntimeException exception) {
+            System.err.println("[Main] Could not load profile: " + exception.getMessage());
+            return null;
         }
     }
 

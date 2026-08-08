@@ -4,6 +4,7 @@ import closeai.adapters.controllers.ShareTripController;
 import closeai.adapters.viewmodels.DashboardState;
 import closeai.adapters.viewmodels.DashboardViewModel;
 import closeai.adapters.viewmodels.DayPlanViewModel;
+import closeai.domain.entities.User;
 import java.awt.BorderLayout;
 import java.awt.Cursor;
 import java.awt.FlowLayout;
@@ -20,16 +21,21 @@ import javax.swing.JPanel;
 /** Persistent application header for identity and active-trip context. */
 public final class HeaderPanel extends JPanel {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("MMMM d");
+    private static final int AVATAR_SIZE = 34;
 
     private final DashboardViewModel viewModel;
     private final DayPlanViewModel dayPlanViewModel;
     private final JLabel tripLabel = new JLabel();
     private final JLabel dateLabel = new JLabel();
     private final JButton shareButton = SwingTheme.primaryButton("Share");
+    private final JButton friendsButton = SwingTheme.secondaryButton("Friends");
     private final JButton authButton = new JButton("Sign in");
+    private final JButton avatarButton = AvatarSupport.avatarButton(null, AVATAR_SIZE);
     private Runnable openShareAction = () -> { };
     private Runnable onHomeAction = () -> { };
     private Runnable onAuthAction = () -> { };
+    private Runnable onProfileAction = () -> { };
+    private Runnable onFriendsAction = () -> { };
 
     public HeaderPanel(
             DashboardViewModel viewModel,
@@ -89,6 +95,12 @@ public final class HeaderPanel extends JPanel {
             openShareAction.run();
         });
         actions.add(shareButton);
+        friendsButton.setVisible(false);
+        friendsButton.addActionListener(event -> onFriendsAction.run());
+        actions.add(friendsButton);
+        avatarButton.setVisible(false);
+        avatarButton.addActionListener(event -> onProfileAction.run());
+        actions.add(avatarButton);
         authButton.setFont(SwingTheme.BODY);
         authButton.setVisible(false);
         authButton.addActionListener(event -> onAuthAction.run());
@@ -111,8 +123,23 @@ public final class HeaderPanel extends JPanel {
 
     public void setAuthAction(Runnable action, boolean signedIn) {
         this.onAuthAction = action == null ? () -> { } : action;
-        authButton.setVisible(action != null);
-        authButton.setText(signedIn ? "Sign out" : "Sign in");
+        authButton.setVisible(action != null && !signedIn);
+        authButton.setText("Sign in");
+        friendsButton.setVisible(action != null && signedIn);
+        avatarButton.setVisible(action != null && signedIn);
+    }
+
+    public void setProfileAction(Runnable action) {
+        this.onProfileAction = action == null ? () -> { } : action;
+    }
+
+    public void setFriendsAction(Runnable action) {
+        this.onFriendsAction = action == null ? () -> { } : action;
+    }
+
+    public void setProfileUser(User user) {
+        avatarButton.setIcon(AvatarSupport.iconFor(user, AVATAR_SIZE));
+        avatarButton.setToolTipText(user == null ? "Profile" : "@" + user.getUsername());
     }
 
     private void refresh(DashboardState state) {

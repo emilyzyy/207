@@ -44,7 +44,7 @@ public final class SupabaseAuthClient implements AuthService {
         JsonNode body = postJson(baseUrl + "/auth/v1/signup",
                 "{\"email\":" + quote(email.trim()) + ",\"password\":" + quote(password) + "}",
                 true);
-        AuthSession created = sessionFrom(body, email.trim());
+        AuthSession created = sessionFrom(body, email.trim(), password);
         this.session = created;
         return created;
     }
@@ -55,7 +55,7 @@ public final class SupabaseAuthClient implements AuthService {
         JsonNode body = postJson(baseUrl + "/auth/v1/token?grant_type=password",
                 "{\"email\":" + quote(email.trim()) + ",\"password\":" + quote(password) + "}",
                 false);
-        AuthSession created = sessionFrom(body, email.trim());
+        AuthSession created = sessionFrom(body, email.trim(), password);
         this.session = created;
         return created;
     }
@@ -66,11 +66,44 @@ public final class SupabaseAuthClient implements AuthService {
     }
 
     @Override
+    public AuthSession updateCredentials(String email, String password) {
+        AuthSession current = session;
+        if (current == null) {
+            throw new IllegalStateException("Sign in before updating your account.");
+        }
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Please enter your email.");
+        }
+        StringBuilder json = new StringBuilder("{\"email\":").append(quote(email.trim()));
+        String retainedPassword = current.getPassword();
+        if (password != null && !password.isEmpty()) {
+            json.append(",\"password\":").append(quote(password));
+            retainedPassword = password;
+        }
+        json.append("}");
+        JsonNode body = putAuthJson(baseUrl + "/auth/v1/user", json.toString(), current.getAccessToken());
+        String newEmail = text(body, "email");
+        if (newEmail == null || newEmail.isEmpty()) {
+            JsonNode user = body.get("user");
+            if (user != null && !user.isNull()) {
+                newEmail = text(user, "email");
+            }
+        }
+        if (newEmail == null || newEmail.isEmpty()) {
+            newEmail = email.trim();
+        }
+        AuthSession updated = new AuthSession(
+                current.getUserId(), current.getAccessToken(), newEmail, retainedPassword);
+        this.session = updated;
+        return updated;
+    }
+
+    @Override
     public Optional<AuthSession> currentSession() {
         return Optional.ofNullable(session);
     }
 
-    private AuthSession sessionFrom(JsonNode body, String fallbackEmail) {
+    private AuthSession sessionFrom(JsonNode body, String fallbackEmail, String password) {
         String accessToken = text(body, "access_token");
         JsonNode user = body.get("user");
         if (accessToken == null || accessToken.isEmpty()) {
@@ -86,7 +119,30 @@ public final class SupabaseAuthClient implements AuthService {
         if (email == null || email.isEmpty()) {
             email = fallbackEmail;
         }
-        return new AuthSession(userId, accessToken, email);
+        return new AuthSession(userId, accessToken, email, password);
+    }
+
+    private JsonNode putAuthJson(String url, String jsonBody, String accessToken) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+                    .timeout(Duration.ofSeconds(15))
+                    .header("apikey", anonKey)
+                    .header("Authorization", "Bearer " + accessToken)
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString(jsonBody))
+                    .build();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new IllegalStateException(friendlyAuthError(response.body(), false));
+            }
+            return mapper.readTree(response.body());
+        } catch (IOException | InterruptedException exception) {
+            if (exception instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            throw new IllegalStateException("Could not update account credentials. Check your connection.",
+                    exception);
+        }
     }
 
     private JsonNode postJson(String url, String jsonBody, boolean signUp) {

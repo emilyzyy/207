@@ -5,8 +5,13 @@ public final class AuthSession {
     private final String userId;
     private final String accessToken;
     private final String email;
+    private final String password;
 
     public AuthSession(String userId, String accessToken, String email) {
+        this(userId, accessToken, email, "");
+    }
+
+    public AuthSession(String userId, String accessToken, String email, String password) {
         if (userId == null || userId.trim().isEmpty()) {
             throw new IllegalArgumentException("User id is required");
         }
@@ -16,6 +21,7 @@ public final class AuthSession {
         this.userId = userId.trim();
         this.accessToken = accessToken.trim();
         this.email = email == null ? "" : email.trim();
+        this.password = password == null ? "" : password;
     }
 
     public String getUserId() {
@@ -28,5 +34,9 @@ public final class AuthSession {
 
     public String getEmail() {
         return email;
+    }
+
+    public String getPassword() {
+        return password;
     }
 }

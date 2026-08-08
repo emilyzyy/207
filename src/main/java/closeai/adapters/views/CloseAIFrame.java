@@ -86,6 +86,18 @@ public final class CloseAIFrame extends JFrame {
         headerPanel.setAuthAction(action, signedIn);
     }
 
+    public void setProfileAction(Runnable action) {
+        headerPanel.setProfileAction(action);
+    }
+
+    public void setFriendsAction(Runnable action) {
+        headerPanel.setFriendsAction(action);
+    }
+
+    public void setProfileUser(closeai.domain.entities.User user) {
+        headerPanel.setProfileUser(user);
+    }
+
     public DayPlanPanel getDayPlanPanel() {
         return dayPlanPanel;
     }
