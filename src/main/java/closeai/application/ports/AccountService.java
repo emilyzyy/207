@@ -1,8 +1,13 @@
 package closeai.application.ports;
 
 import closeai.domain.entities.Friendship;
+import closeai.domain.entities.TripParticipant;
 import closeai.domain.entities.User;
+import closeai.domain.valueobjects.TripAccessLevel;
+import closeai.domain.valueobjects.TripAccessRole;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /** Profiles and friendships for signed-in Supabase accounts. */
@@ -34,8 +39,25 @@ public interface AccountService {
 
     List<User> listFriends();
 
-    /** Replaces the shared editors on a trip (friends who can view and edit). Owner is unchanged. */
-    void setTripMembers(String tripId, List<String> memberUserIds);
+    /**
+     * Replaces shared members on a trip. Owner is never stored as a member and cannot be removed.
+     * Keys are friend user ids; values are View / Edit / Admin.
+     */
+    void setTripMembers(String tripId, Map<String, TripAccessRole> memberRoles);
+
+    /** Convenience: share with friends at Edit access. */
+    default void setTripMembers(String tripId, List<String> memberUserIds) {
+        Map<String, TripAccessRole> roles = new LinkedHashMap<>();
+        if (memberUserIds != null) {
+            for (String memberId : memberUserIds) {
+                if (memberId == null || memberId.trim().isEmpty()) {
+                    continue;
+                }
+                roles.put(memberId.trim(), TripAccessRole.EDIT);
+            }
+        }
+        setTripMembers(tripId, roles);
+    }
 
     /**
      * Usernames of people shared on the trip, excluding the current user.
@@ -43,6 +65,22 @@ public interface AccountService {
      */
     List<String> listTripCompanionUsernames(String tripId);
 
-    /** Friends currently on the trip as editable members (full profiles). */
-    List<User> listTripMembers(String tripId);
+    /** Owner first (tagged), then shared members with roles. */
+    List<TripParticipant> listTripParticipants(String tripId);
+
+    /** Friends currently on the trip (profiles only). */
+    default List<User> listTripMembers(String tripId) {
+        List<User> members = new java.util.ArrayList<>();
+        for (TripParticipant participant : listTripParticipants(tripId)) {
+            if (!participant.isOwner()) {
+                members.add(participant.getUser());
+            }
+        }
+        return members;
+    }
+
+    /** What the signed-in user can do on this trip. */
+    TripAccessLevel getMyTripAccess(String tripId);
+
+    Optional<User> getTripOwner(String tripId);
 }

@@ -4,7 +4,10 @@ import closeai.application.ports.AccountService;
 import closeai.application.ports.AuthService;
 import closeai.application.ports.AuthSession;
 import closeai.domain.entities.Friendship;
+import closeai.domain.entities.TripParticipant;
 import closeai.domain.entities.User;
+import closeai.domain.valueobjects.TripAccessLevel;
+import closeai.domain.valueobjects.TripAccessRole;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -20,6 +23,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -270,23 +274,31 @@ public final class SupabaseAccountClient implements AccountService {
     }
 
     @Override
-    public void setTripMembers(String tripId, List<String> memberUserIds) {
+    public void setTripMembers(String tripId, Map<String, TripAccessRole> memberRoles) {
         if (tripId == null || tripId.trim().isEmpty()) {
             throw new IllegalArgumentException("Trip id is required");
         }
         requireSession();
+        String ownerId = getTripOwnerId(tripId.trim()).orElse(null);
         request("DELETE", "/rest/v1/trip_members?trip_id=eq." + enc(tripId.trim()), null, null);
-        if (memberUserIds == null || memberUserIds.isEmpty()) {
+        if (memberRoles == null || memberRoles.isEmpty()) {
             return;
         }
         ArrayNode rows = mapper.createArrayNode();
-        for (String memberId : memberUserIds) {
+        for (Map.Entry<String, TripAccessRole> entry : memberRoles.entrySet()) {
+            String memberId = entry.getKey();
             if (memberId == null || memberId.trim().isEmpty()) {
                 continue;
             }
+            String trimmed = memberId.trim();
+            if (ownerId != null && trimmed.equals(ownerId)) {
+                continue;
+            }
+            TripAccessRole role = entry.getValue() == null ? TripAccessRole.EDIT : entry.getValue();
             ObjectNode row = mapper.createObjectNode();
             row.put("trip_id", tripId.trim());
-            row.put("user_id", memberId.trim());
+            row.put("user_id", trimmed);
+            row.put("role", role.toDb());
             rows.add(row);
         }
         if (rows.size() > 0) {
@@ -301,7 +313,7 @@ public final class SupabaseAccountClient implements AccountService {
         }
         AuthSession session = requireSession();
         String body = request("GET",
-                "/rest/v1/trip_members?trip_id=eq." + enc(tripId.trim()) + "&select=user_id",
+                "/rest/v1/trip_members?trip_id=eq." + enc(tripId.trim()) + "&select=user_id,role",
                 null, null);
         JsonNode array = readArray(body);
         List<String> usernames = new ArrayList<>();
@@ -320,28 +332,91 @@ public final class SupabaseAccountClient implements AccountService {
     }
 
     @Override
-    public List<User> listTripMembers(String tripId) {
+    public List<TripParticipant> listTripParticipants(String tripId) {
+        List<TripParticipant> participants = new ArrayList<>();
         if (tripId == null || tripId.trim().isEmpty()) {
-            return new ArrayList<>();
+            return participants;
         }
         requireSession();
+        getTripOwner(tripId).ifPresent(owner -> participants.add(TripParticipant.owner(owner)));
         String body = request("GET",
-                "/rest/v1/trip_members?trip_id=eq." + enc(tripId.trim()) + "&select=user_id",
+                "/rest/v1/trip_members?trip_id=eq." + enc(tripId.trim()) + "&select=user_id,role",
                 null, null);
         JsonNode array = readArray(body);
-        List<User> members = new ArrayList<>();
         if (!array.isArray()) {
-            return members;
+            return participants;
         }
+        List<TripParticipant> members = new ArrayList<>();
         for (JsonNode node : array) {
             String memberId = text(node, "user_id");
             if (memberId == null || memberId.isEmpty()) {
                 continue;
             }
-            findById(memberId).ifPresent(members::add);
+            TripAccessRole role = TripAccessRole.fromDb(text(node, "role"));
+            findById(memberId).ifPresent(user ->
+                    members.add(TripParticipant.member(user, role)));
         }
-        members.sort((left, right) -> left.getUsername().compareToIgnoreCase(right.getUsername()));
-        return members;
+        members.sort((left, right) -> left.getUser().getUsername()
+                .compareToIgnoreCase(right.getUser().getUsername()));
+        participants.addAll(members);
+        return participants;
+    }
+
+    @Override
+    public TripAccessLevel getMyTripAccess(String tripId) {
+        if (tripId == null || tripId.trim().isEmpty()) {
+            return TripAccessLevel.NONE;
+        }
+        AuthSession session = requireSession();
+        Optional<String> ownerId = getTripOwnerId(tripId.trim());
+        if (!ownerId.isPresent()) {
+            return TripAccessLevel.NONE;
+        }
+        if (ownerId.get().equals(session.getUserId())) {
+            return TripAccessLevel.OWNER;
+        }
+        String body = request("GET",
+                "/rest/v1/trip_members?trip_id=eq." + enc(tripId.trim())
+                        + "&user_id=eq." + enc(session.getUserId())
+                        + "&select=role&limit=1",
+                null, null);
+        JsonNode array = readArray(body);
+        if (!array.isArray() || array.size() == 0) {
+            return TripAccessLevel.NONE;
+        }
+        TripAccessRole role = TripAccessRole.fromDb(text(array.get(0), "role"));
+        switch (role) {
+            case ADMIN:
+                return TripAccessLevel.ADMIN;
+            case EDIT:
+                return TripAccessLevel.EDIT;
+            case VIEW:
+            default:
+                return TripAccessLevel.VIEW;
+        }
+    }
+
+    @Override
+    public Optional<User> getTripOwner(String tripId) {
+        return getTripOwnerId(tripId).flatMap(this::findById);
+    }
+
+    private Optional<String> getTripOwnerId(String tripId) {
+        if (tripId == null || tripId.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        String body = request("GET",
+                "/rest/v1/trips?id=eq." + enc(tripId.trim()) + "&select=user_id&limit=1",
+                null, null);
+        JsonNode array = readArray(body);
+        if (!array.isArray() || array.size() == 0) {
+            return Optional.empty();
+        }
+        String ownerId = text(array.get(0), "user_id");
+        if (ownerId == null || ownerId.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(ownerId);
     }
 
     private boolean alreadyConnected(String userId, String otherId) {

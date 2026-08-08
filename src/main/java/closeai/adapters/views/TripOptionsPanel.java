@@ -4,7 +4,10 @@ import closeai.adapters.controllers.TripSetupController;
 import closeai.adapters.viewmodels.TripOptionsState;
 import closeai.adapters.viewmodels.TripOptionsViewModel;
 import closeai.application.ports.AccountService;
+import closeai.domain.entities.TripParticipant;
 import closeai.domain.entities.User;
+import closeai.domain.valueobjects.TripAccessLevel;
+import closeai.domain.valueobjects.TripAccessRole;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -20,14 +23,15 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Ellipse2D;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -46,11 +50,15 @@ public final class TripOptionsPanel extends JPanel {
     private final JLabel status = new JLabel();
     private final JButton submit = SwingTheme.primaryButton("Create Trip");
     private final JPanel sharingSection = new JPanel(new BorderLayout(0, 8));
-    private final JPanel friendRows = new JPanel();
+    private final JPanel accessRows = new JPanel();
     private final JLabel sharingStatus = new JLabel(" ");
     private final JButton saveSharing = SwingTheme.secondaryButton("Save sharing");
-    private final Set<String> selectedFriendIds = new LinkedHashSet<>();
+    private final Map<String, TripAccessRole> memberRoles = new LinkedHashMap<>();
+    private final Map<String, User> memberUsers = new LinkedHashMap<>();
     private List<User> friendChoices = new ArrayList<>();
+    private User ownerUser;
+    private boolean canManagePeople;
+    private boolean canEditItinerary = true;
 
     public TripOptionsPanel(TripOptionsViewModel viewModel) {
         this(viewModel, null, null);
@@ -84,7 +92,7 @@ public final class TripOptionsPanel extends JPanel {
         heading.add(title);
         heading.add(Box.createVerticalStrut(4));
         JLabel notice = new JLabel(
-                "Edit destination and hours, and manage who can view and edit this trip.");
+                "Edit destination and hours, and manage who can access this trip.");
         notice.setFont(SwingTheme.SMALL);
         notice.setForeground(SwingTheme.MUTED);
         heading.add(notice);
@@ -141,17 +149,17 @@ public final class TripOptionsPanel extends JPanel {
 
     private void buildSharingSection() {
         sharingSection.setOpaque(false);
-        JLabel shareTitle = new JLabel("Shared with");
+        JLabel shareTitle = new JLabel("Who has access");
         shareTitle.setFont(SwingTheme.BODY.deriveFont(java.awt.Font.BOLD));
         shareTitle.setForeground(SwingTheme.NAVY);
         sharingSection.add(shareTitle, BorderLayout.NORTH);
 
-        friendRows.setLayout(new BoxLayout(friendRows, BoxLayout.Y_AXIS));
-        friendRows.setOpaque(false);
-        friendRows.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
-        JScrollPane scroll = new JScrollPane(friendRows);
+        accessRows.setLayout(new BoxLayout(accessRows, BoxLayout.Y_AXIS));
+        accessRows.setOpaque(false);
+        accessRows.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        JScrollPane scroll = new JScrollPane(accessRows);
         scroll.setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
-        scroll.setPreferredSize(new Dimension(280, 150));
+        scroll.setPreferredSize(new Dimension(320, 180));
         scroll.getVerticalScrollBar().setUnitIncrement(12);
         sharingSection.add(scroll, BorderLayout.CENTER);
 
@@ -166,7 +174,7 @@ public final class TripOptionsPanel extends JPanel {
     }
 
     private void submit() {
-        if (controller != null) {
+        if (controller != null && canEditItinerary) {
             controller.execute(
                     destination.getText(),
                     date.getText(),
@@ -177,17 +185,17 @@ public final class TripOptionsPanel extends JPanel {
 
     private void saveSharing() {
         TripOptionsState state = viewModel.getState();
-        if (account == null || !state.hasActiveTrip()) {
+        if (account == null || !state.hasActiveTrip() || !canManagePeople) {
             return;
         }
         saveSharing.setEnabled(false);
         sharingStatus.setForeground(SwingTheme.MUTED);
         sharingStatus.setText("Saving…");
-        List<String> memberIds = new ArrayList<>(selectedFriendIds);
+        Map<String, TripAccessRole> roles = new HashMap<>(memberRoles);
         String tripId = state.getTripId();
         new Thread(() -> {
             try {
-                account.setTripMembers(tripId, memberIds);
+                account.setTripMembers(tripId, roles);
                 SwingUtilities.invokeLater(() -> {
                     sharingStatus.setForeground(SwingTheme.SUCCESS);
                     sharingStatus.setText("Sharing updated.");
@@ -216,36 +224,69 @@ public final class TripOptionsPanel extends JPanel {
         refreshSharing(state);
     }
 
+    private void applyEditability() {
+        destination.setEditable(canEditItinerary);
+        date.setEditable(canEditItinerary);
+        startTime.setEditable(canEditItinerary);
+        endTime.setEditable(canEditItinerary);
+        submit.setEnabled(controller != null && canEditItinerary);
+        saveSharing.setVisible(canManagePeople);
+        saveSharing.setEnabled(canManagePeople);
+    }
+
     private void refreshSharing(TripOptionsState state) {
         boolean show = account != null && state.hasActiveTrip();
         sharingSection.setVisible(show);
         if (!show) {
+            canEditItinerary = true;
+            canManagePeople = false;
+            applyEditability();
             return;
         }
         sharingStatus.setForeground(SwingTheme.MUTED);
-        sharingStatus.setText("Loading friends…");
+        sharingStatus.setText("Loading access…");
         String tripId = state.getTripId();
         new Thread(() -> {
             try {
+                TripAccessLevel access = account.getMyTripAccess(tripId);
+                List<TripParticipant> participants = account.listTripParticipants(tripId);
                 List<User> friends = account.listFriends();
-                List<User> members = account.listTripMembers(tripId);
-                Set<String> memberIds = new HashSet<>();
-                for (User member : members) {
-                    memberIds.add(member.getId());
+                User owner = null;
+                Map<String, TripAccessRole> roles = new LinkedHashMap<>();
+                Map<String, User> users = new LinkedHashMap<>();
+                for (TripParticipant participant : participants) {
+                    if (participant.isOwner()) {
+                        owner = participant.getUser();
+                    } else {
+                        roles.put(participant.getUser().getId(), participant.getRole());
+                        users.put(participant.getUser().getId(), participant.getUser());
+                    }
                 }
+                User resolvedOwner = owner;
                 SwingUtilities.invokeLater(() -> {
                     if (!tripId.equals(viewModel.getState().getTripId())) {
                         return;
                     }
+                    canEditItinerary = access.canEditItinerary();
+                    canManagePeople = access.canManagePeople();
+                    ownerUser = resolvedOwner;
                     friendChoices = friends;
-                    selectedFriendIds.clear();
-                    selectedFriendIds.addAll(memberIds);
-                    rebuildFriendRows();
-                    if (friends.isEmpty()) {
+                    memberRoles.clear();
+                    memberRoles.putAll(roles);
+                    memberUsers.clear();
+                    memberUsers.putAll(users);
+                    applyEditability();
+                    rebuildAccessRows();
+                    if (!canEditItinerary) {
+                        sharingStatus.setText("View only — you can see this trip but not edit it.");
+                    } else if (!canManagePeople) {
+                        sharingStatus.setText(
+                                "You can edit the itinerary, but only admins manage access.");
+                    } else if (friends.isEmpty() && memberRoles.isEmpty()) {
                         sharingStatus.setText("Add friends from the Friends button to share trips.");
                     } else {
                         sharingStatus.setText(
-                                "Select friends who can view and edit this itinerary.");
+                                "Owner cannot be removed. Set View, Edit, or Admin for each person.");
                     }
                 });
             } catch (RuntimeException exception) {
@@ -258,22 +299,53 @@ public final class TripOptionsPanel extends JPanel {
         }, "Load-Trip-Sharing").start();
     }
 
-    private void rebuildFriendRows() {
-        friendRows.removeAll();
-        if (friendChoices.isEmpty()) {
-            JLabel empty = new JLabel("No friends yet.");
-            empty.setFont(SwingTheme.SMALL);
-            empty.setForeground(SwingTheme.MUTED);
-            empty.setAlignmentX(LEFT_ALIGNMENT);
-            friendRows.add(empty);
-        } else {
+    private void rebuildAccessRows() {
+        accessRows.removeAll();
+        if (ownerUser != null) {
+            accessRows.add(new OwnerRow(ownerUser));
+            accessRows.add(Box.createVerticalStrut(6));
+        }
+
+        if (canManagePeople) {
+            Map<String, User> shown = new LinkedHashMap<>();
             for (User friend : friendChoices) {
-                friendRows.add(new FriendAccessRow(friend));
-                friendRows.add(Box.createVerticalStrut(4));
+                if (ownerUser != null && friend.getId().equals(ownerUser.getId())) {
+                    continue;
+                }
+                shown.put(friend.getId(), friend);
+            }
+            for (Map.Entry<String, User> entry : memberUsers.entrySet()) {
+                shown.putIfAbsent(entry.getKey(), entry.getValue());
+            }
+            if (shown.isEmpty()) {
+                JLabel empty = new JLabel("No friends yet.");
+                empty.setFont(SwingTheme.SMALL);
+                empty.setForeground(SwingTheme.MUTED);
+                empty.setAlignmentX(LEFT_ALIGNMENT);
+                accessRows.add(empty);
+            } else {
+                for (User user : shown.values()) {
+                    accessRows.add(new MemberAccessRow(user, true));
+                    accessRows.add(Box.createVerticalStrut(4));
+                }
+            }
+        } else {
+            if (memberUsers.isEmpty()) {
+                JLabel empty = new JLabel("Only the owner has access so far.");
+                empty.setFont(SwingTheme.SMALL);
+                empty.setForeground(SwingTheme.MUTED);
+                empty.setAlignmentX(LEFT_ALIGNMENT);
+                accessRows.add(empty);
+            } else {
+                for (User user : memberUsers.values()) {
+                    accessRows.add(new MemberAccessRow(user, false));
+                    accessRows.add(Box.createVerticalStrut(4));
+                }
             }
         }
-        friendRows.revalidate();
-        friendRows.repaint();
+
+        accessRows.revalidate();
+        accessRows.repaint();
     }
 
     private void renderFeedback(TripOptionsState state) {
@@ -303,42 +375,103 @@ public final class TripOptionsPanel extends JPanel {
         fields.add(component, valueConstraints);
     }
 
-    private final class FriendAccessRow extends JPanel {
+    private final class OwnerRow extends JPanel {
+        OwnerRow(User owner) {
+            setOpaque(true);
+            setBackground(SwingTheme.BACKGROUND);
+            setLayout(new FlowLayout(FlowLayout.LEFT, 10, 6));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+            add(new JLabel(AvatarSupport.iconFor(owner, 26)));
+            JLabel name = new JLabel("@" + owner.getUsername() + " (Owner)");
+            name.setFont(SwingTheme.BODY.deriveFont(java.awt.Font.BOLD));
+            name.setForeground(SwingTheme.NAVY);
+            add(name);
+        }
+    }
+
+    private final class MemberAccessRow extends JPanel {
         private final User friend;
         private boolean selected;
+        private final JComboBox<String> roleBox;
 
-        FriendAccessRow(User friend) {
+        MemberAccessRow(User friend, boolean editable) {
             this.friend = friend;
-            this.selected = selectedFriendIds.contains(friend.getId());
+            this.selected = memberRoles.containsKey(friend.getId());
+            TripAccessRole role = memberRoles.getOrDefault(friend.getId(), TripAccessRole.EDIT);
             setOpaque(true);
-            setBackground(selected ? SwingTheme.BLUE_SOFT : SwingTheme.BACKGROUND);
-            setLayout(new FlowLayout(FlowLayout.LEFT, 10, 6));
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
-            add(new CircularCheck());
-            add(new JLabel(AvatarSupport.iconFor(friend, 26)));
+            setBackground(selected || !editable ? SwingTheme.BLUE_SOFT : SwingTheme.BACKGROUND);
+            setLayout(new BorderLayout(8, 0));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
+            setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
+
+            JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+            left.setOpaque(false);
+            if (editable) {
+                left.add(new CircularCheck());
+                left.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                left.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+                        toggle();
+                    }
+                });
+            }
+            left.add(new JLabel(AvatarSupport.iconFor(friend, 26)));
             JLabel name = new JLabel("@" + friend.getUsername());
             name.setFont(SwingTheme.BODY);
             name.setForeground(SwingTheme.NAVY);
-            add(name);
-            addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    toggle();
-                }
+            left.add(name);
+            add(left, BorderLayout.CENTER);
+
+            roleBox = new JComboBox<>(new String[] {
+                    TripAccessRole.VIEW.displayName(),
+                    TripAccessRole.EDIT.displayName(),
+                    TripAccessRole.ADMIN.displayName()
             });
+            roleBox.setSelectedItem(role.displayName());
+            roleBox.setFont(SwingTheme.SMALL);
+            if (editable) {
+                roleBox.setVisible(selected);
+                roleBox.setEnabled(selected);
+                roleBox.addActionListener(event -> {
+                    if (!selected) {
+                        return;
+                    }
+                    memberRoles.put(friend.getId(), roleFromDisplay((String) roleBox.getSelectedItem()));
+                });
+            } else {
+                roleBox.setEnabled(false);
+                roleBox.setVisible(true);
+            }
+            add(roleBox, BorderLayout.EAST);
         }
 
         void toggle() {
             selected = !selected;
             if (selected) {
-                selectedFriendIds.add(friend.getId());
+                TripAccessRole role = roleFromDisplay((String) roleBox.getSelectedItem());
+                memberRoles.put(friend.getId(), role);
+                memberUsers.put(friend.getId(), friend);
                 setBackground(SwingTheme.BLUE_SOFT);
+                roleBox.setVisible(true);
+                roleBox.setEnabled(true);
             } else {
-                selectedFriendIds.remove(friend.getId());
+                memberRoles.remove(friend.getId());
                 setBackground(SwingTheme.BACKGROUND);
+                roleBox.setEnabled(false);
+                roleBox.setVisible(false);
             }
             repaint();
+        }
+
+        private TripAccessRole roleFromDisplay(String display) {
+            if (TripAccessRole.VIEW.displayName().equals(display)) {
+                return TripAccessRole.VIEW;
+            }
+            if (TripAccessRole.ADMIN.displayName().equals(display)) {
+                return TripAccessRole.ADMIN;
+            }
+            return TripAccessRole.EDIT;
         }
 
         private final class CircularCheck extends JPanel {
