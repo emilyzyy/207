@@ -51,9 +51,8 @@ public final class AutoScheduleSettingsDialog extends JDialog {
     private final JTextField availableUntil = new JTextField(9);
     private final JComboBox<TransportationMode> mode =
             new JComboBox<>(TransportationMode.values());
-    private final ToggleSwitch keepOrder =
-            new ToggleSwitch("Keep my current order where possible");
-    private final ToggleSwitch considerWeather = new ToggleSwitch("Consider weather");
+    private final ToggleSwitch keepOrder = new ToggleSwitch("Preserve plan order");
+    private final ToggleSwitch considerWeather = new ToggleSwitch("Avoid bad weather");
     private final JLabel weatherNote = new JLabel(CHECKING_WEATHER);
     private final JPanel unavailableRows = new JPanel();
     private final List<TimeRangeRow> rows = new ArrayList<>();
@@ -135,39 +134,49 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         form.add(Box.createVerticalStrut(18));
         form.add(group("PREFERENCES"));
 
-        keepOrder.setSelected(true);
-        keepOrder.setToolTipText("Prefer the order you already arranged when the days are "
-                + "otherwise about as good.");
-        form.add(switchRow(keepOrder, "Keep my current order where possible"));
+        // The four factors that are always on are shown as switches too, fixed in the on
+        // position. They are not choices, and pretending otherwise would be worse -- but
+        // leaving them off the screen made the schedule look like it weighed two things
+        // when it weighs six.
+        form.add(alwaysOnRow("Minimize travel time",
+                "Total time spent getting between places. This is what Autoschedule is for."));
+        form.add(Box.createVerticalStrut(6));
+        form.add(alwaysOnRow("Minimize gaps",
+                "Waiting that is not caused by opening hours or a time you marked "
+                        + "unavailable."));
+        form.add(Box.createVerticalStrut(6));
+        form.add(alwaysOnRow("Preserve mealtimes",
+                "Prefer a customary lunch or dinner window for places to eat."));
+        form.add(Box.createVerticalStrut(6));
+        form.add(alwaysOnRow("Prefer daylight outdoors",
+                "Prefer daylight hours for outdoor activities."));
 
-        form.add(Box.createVerticalStrut(8));
+        form.add(Box.createVerticalStrut(10));
 
         considerWeather.setEnabled(false);
         considerWeather.setToolTipText("Prefer to keep outdoor activities out of the worst "
-                + "weather, when the forecast is detailed enough to tell the hours apart.");
+                + "weather, when the forecast can tell the hours apart. Indoor activities "
+                + "are never affected.");
         considerWeather.getAccessibleContext().setAccessibleDescription(CHECKING_WEATHER);
-        form.add(switchRow(considerWeather, "Consider weather"));
+        form.add(switchRow(considerWeather, "Avoid bad weather"));
 
-        // A visible sentence, not a greyed-out box the user has to interpret: whenever the
-        // option cannot be offered, the reason is readable text sitting next to it. Colour
-        // is never the signal, and screen readers get the same words through the
-        // checkbox's accessible description, since a disabled control may be skipped.
+        // A visible sentence, not a greyed-out switch the user has to interpret: whenever
+        // the option cannot be offered, the reason is readable text sitting next to it.
+        // Colour is never the signal, and screen readers get the same words through the
+        // switch's accessible description, since a disabled control may be skipped.
         weatherNote.setFont(SwingTheme.SMALL);
         weatherNote.setForeground(SwingTheme.MUTED);
         weatherNote.setAlignmentX(Component.LEFT_ALIGNMENT);
         weatherNote.setBorder(BorderFactory.createEmptyBorder(2, 52, 0, 0));
         form.add(weatherNote);
 
-        // The two switches above are the only negotiable factors. The rest of what the
-        // schedule optimises is always on -- that is what the feature is for -- and saying
-        // so here means the user sees every factor, not just the ones they can veto.
-        JLabel alwaysOn = new JLabel(
-                "Always considered: less travel · fewer gaps · mealtimes · daylight");
-        alwaysOn.setFont(SwingTheme.SMALL);
-        alwaysOn.setForeground(SwingTheme.MUTED);
-        alwaysOn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        alwaysOn.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
-        form.add(alwaysOn);
+        form.add(Box.createVerticalStrut(6));
+
+        keepOrder.setSelected(true);
+        keepOrder.setToolTipText("Prefer the order you already arranged when the days are "
+                + "otherwise about as good.");
+        form.add(switchRow(keepOrder, "Preserve plan order"));
+
         // Absorbs leftover height so the groups stay together at the top instead of being
         // spread down the dialog by the BoxLayout.
         form.add(Box.createVerticalGlue());
@@ -255,6 +264,24 @@ public final class AutoScheduleSettingsDialog extends JDialog {
      * <p>The label mirrors the switch's clicks to it, so the whole row is a target the way
      * a checkbox's text is -- a 40-pixel switch alone would be a mean thing to aim for.</p>
      */
+    /**
+     * A factor the schedule always weighs, drawn as a switch that cannot be moved.
+     *
+     * <p>Disabled rather than absent: the user asked what is being considered, and four of
+     * the six answers used to be invisible. Disabled rather than live-but-ignored, because
+     * a switch that does nothing when flicked is worse than one that plainly cannot be.</p>
+     */
+    private JPanel alwaysOnRow(String text, String explanation) {
+        ToggleSwitch fixed = new ToggleSwitch(text);
+        fixed.setSelected(true);
+        fixed.setEnabled(false);
+        fixed.setToolTipText(explanation + " Always on.");
+        fixed.getAccessibleContext().setAccessibleDescription(explanation + " Always on.");
+        JPanel row = switchRow(fixed, text);
+        row.setToolTipText(fixed.getToolTipText());
+        return row;
+    }
+
     private JPanel switchRow(ToggleSwitch control, String text) {
         JPanel row = new JPanel();
         row.setLayout(new javax.swing.BoxLayout(row, javax.swing.BoxLayout.X_AXIS));
@@ -262,6 +289,9 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
         JLabel label = new JLabel(text);
         label.setFont(SwingTheme.BODY);
+        if (!control.isEnabled()) {
+            label.setForeground(SwingTheme.MUTED);
+        }
         label.setLabelFor(control);
         label.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override

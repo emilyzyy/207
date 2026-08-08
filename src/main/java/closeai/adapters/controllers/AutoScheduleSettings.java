@@ -57,7 +57,7 @@ public final class AutoScheduleSettings {
     }
 
     /**
-     * Whether the traveller ticked "Consider weather". False whenever the checkbox was
+     * Whether the traveller turned on "Avoid bad weather". False whenever the switch was
      * disabled, since a disabled box is never ticked.
      */
     public boolean isConsiderWeather() {

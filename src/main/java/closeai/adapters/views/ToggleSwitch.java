@@ -27,9 +27,18 @@ public final class ToggleSwitch extends JToggleButton {
 
     private static final Color ON = SwingTheme.BLUE;
     private static final Color OFF = new Color(189, 197, 205);
-    private static final Color DISABLED = new Color(222, 226, 230);
+
+    /**
+     * A washed-out blue, not grey.
+     *
+     * <p>A switch that is fixed in the on position still has to look on. Painting it in the
+     * plain disabled grey said "off, and you cannot change it" -- the exact opposite of
+     * "this is always considered", which is what these rows exist to say.</p>
+     */
+    private static final Color ON_FIXED = new Color(158, 194, 236);
+
+    private static final Color OFF_DISABLED = new Color(222, 226, 230);
     private static final Color KNOB = Color.WHITE;
-    private static final Color KNOB_DISABLED = new Color(245, 246, 248);
 
     public ToggleSwitch(String accessibleName) {
         setOpaque(false);
@@ -53,7 +62,12 @@ public final class ToggleSwitch extends JToggleButton {
         int x = (getWidth() - width) / 2;
         int y = (getHeight() - height) / 2;
 
-        Color track = !isEnabled() ? DISABLED : isSelected() ? ON : OFF;
+        final Color track;
+        if (isSelected()) {
+            track = isEnabled() ? ON : ON_FIXED;
+        } else {
+            track = isEnabled() ? OFF : OFF_DISABLED;
+        }
         g.setColor(track);
         g.fillRoundRect(x, y, width, height, height, height);
 
@@ -61,7 +75,7 @@ public final class ToggleSwitch extends JToggleButton {
         int knobX = isSelected()
                 ? x + width - KNOB_MARGIN - knobSize
                 : x + KNOB_MARGIN;
-        g.setColor(isEnabled() ? KNOB : KNOB_DISABLED);
+        g.setColor(KNOB);
         g.fillOval(knobX, y + KNOB_MARGIN, knobSize, knobSize);
 
         if (isFocusOwner()) {
