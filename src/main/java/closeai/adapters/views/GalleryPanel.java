@@ -43,6 +43,7 @@ public final class GalleryPanel extends JPanel {
     private final JPanel cardGrid;
     private final Map<String, BufferedImage> tileCache = new HashMap<>();
     private BadgedButton friendsButton;
+    private JButton avatarButton;
 
     public GalleryPanel(List<Trip> trips, Consumer<Trip> onOpenTrip, Runnable onCreateTrip) {
         this(trips, onOpenTrip, onCreateTrip, null, null, null, null, false, 0);
@@ -107,7 +108,7 @@ public final class GalleryPanel extends JPanel {
             actions.add(friendsButton);
         }
         if (signedIn && onProfileAction != null) {
-            JButton avatarButton = AvatarSupport.avatarButton(profile, AVATAR_SIZE);
+            avatarButton = AvatarSupport.avatarButton(profile, AVATAR_SIZE);
             avatarButton.addActionListener(e -> onProfileAction.run());
             actions.add(avatarButton);
         }
@@ -137,6 +138,16 @@ public final class GalleryPanel extends JPanel {
         }
         friendsButton.setBadgeCount(count);
         friendsButton.setToolTipText(tooltipForIncoming(count));
+    }
+
+    public void setProfileUser(User user) {
+        if (avatarButton == null) {
+            return;
+        }
+        avatarButton.setIcon(AvatarSupport.iconFor(user, AVATAR_SIZE));
+        avatarButton.setToolTipText(user == null ? "Profile" : "@" + user.getUsername());
+        avatarButton.revalidate();
+        avatarButton.repaint();
     }
 
     private static String tooltipForIncoming(int count) {

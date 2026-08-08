@@ -139,8 +139,17 @@ public final class SupabaseAccountClient implements AccountService {
         row.put("updated_at", java.time.Instant.now().toString());
         request("POST", "/rest/v1/profiles?on_conflict=id", row.toString(),
                 "resolution=merge-duplicates,return=minimal");
-        return findById(session.getUserId()).orElseThrow(() ->
-                new IllegalStateException("Could not save your profile."));
+        String savedColor = avatarColor == null || avatarColor.trim().isEmpty()
+                ? User.DEFAULT_AVATAR_COLOR : avatarColor.trim();
+        String savedImage = avatarImage == null || avatarImage.trim().isEmpty()
+                ? null : avatarImage.trim();
+        // Return the values just written so the corner avatar updates immediately.
+        return new User(
+                session.getUserId(),
+                cleanedUsername,
+                email == null ? "" : email.trim(),
+                savedColor,
+                savedImage);
     }
 
     @Override

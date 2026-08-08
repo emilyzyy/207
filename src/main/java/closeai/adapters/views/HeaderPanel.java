@@ -147,6 +147,8 @@ public final class HeaderPanel extends JPanel {
     public void setProfileUser(User user) {
         avatarButton.setIcon(AvatarSupport.iconFor(user, AVATAR_SIZE));
         avatarButton.setToolTipText(user == null ? "Profile" : "@" + user.getUsername());
+        avatarButton.revalidate();
+        avatarButton.repaint();
     }
 
     private void refresh(DashboardState state) {

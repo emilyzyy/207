@@ -1,10 +1,13 @@
 package closeai.adapters.views;
 
 import java.awt.BorderLayout;
+import java.awt.Cursor;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -14,27 +17,34 @@ import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 
-/** Modal email/password login and signup for Supabase-backed persistence. */
+/** Modal email/password login and signup as two switchable pages. */
 public final class LoginDialog extends JDialog {
     private final JTextField emailField = new JTextField(24);
     private final JPasswordField passwordField = new JPasswordField(24);
+    private final JPasswordField confirmPasswordField = new JPasswordField(24);
     private final JTextField usernameField = new JTextField(24);
+    private final JLabel titleLabel = new JLabel();
+    private final JLabel confirmLabel = new JLabel("Confirm password");
     private final JLabel usernameLabel = new JLabel("Username (optional)");
     private final JLabel status = new JLabel(" ");
+    private final JButton primaryButton = SwingTheme.primaryButton("Sign in");
+    private final JPanel switchRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 0));
+    private final JLabel switchPrompt = new JLabel();
+    private final JLabel switchLink = new JLabel();
     private boolean confirmed;
-    private boolean signUp;
+    private boolean signUpMode;
 
     public LoginDialog(JFrame owner) {
         super(owner, "CloseAI account", true);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+
         JPanel root = new JPanel(new BorderLayout(0, 12));
         root.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
         root.setBackground(SwingTheme.PANEL);
 
-        JLabel title = new JLabel("Sign in to save and reopen itineraries");
-        title.setFont(SwingTheme.HEADING);
-        title.setForeground(SwingTheme.NAVY);
-        root.add(title, BorderLayout.NORTH);
+        titleLabel.setFont(SwingTheme.HEADING);
+        titleLabel.setForeground(SwingTheme.NAVY);
+        root.add(titleLabel, BorderLayout.NORTH);
 
         JPanel form = new JPanel(new GridBagLayout());
         form.setOpaque(false);
@@ -48,6 +58,7 @@ public final class LoginDialog extends JDialog {
         gc.fill = GridBagConstraints.HORIZONTAL;
         gc.weightx = 1;
         form.add(emailField, gc);
+
         gc.gridx = 0;
         gc.gridy = 1;
         gc.fill = GridBagConstraints.NONE;
@@ -58,8 +69,19 @@ public final class LoginDialog extends JDialog {
         gc.weightx = 1;
         form.add(passwordField, gc);
         passwordField.setToolTipText("At least " + PasswordRules.MIN_LENGTH + " characters");
+
         gc.gridx = 0;
         gc.gridy = 2;
+        gc.fill = GridBagConstraints.NONE;
+        gc.weightx = 0;
+        form.add(confirmLabel, gc);
+        gc.gridx = 1;
+        gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.weightx = 1;
+        form.add(confirmPasswordField, gc);
+
+        gc.gridx = 0;
+        gc.gridy = 3;
         gc.fill = GridBagConstraints.NONE;
         gc.weightx = 0;
         form.add(usernameLabel, gc);
@@ -72,53 +94,51 @@ public final class LoginDialog extends JDialog {
         status.setForeground(SwingTheme.ERROR);
         status.setFont(SwingTheme.SMALL);
 
-        JPanel footer = new JPanel(new BorderLayout());
+        JPanel footer = new JPanel(new BorderLayout(0, 10));
         footer.setOpaque(false);
         footer.add(status, BorderLayout.NORTH);
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        buttons.setOpaque(false);
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        actions.setOpaque(false);
         JButton cancel = new JButton("Cancel");
         cancel.addActionListener(event -> {
             confirmed = false;
             dispose();
         });
-        JButton create = SwingTheme.primaryButton("Create account");
-        create.addActionListener(event -> {
-            if (getEmail().isEmpty()) {
-                showError("Please enter your email.");
-                return;
+        primaryButton.addActionListener(event -> submit());
+        actions.add(cancel);
+        actions.add(primaryButton);
+        footer.add(actions, BorderLayout.CENTER);
+
+        switchRow.setOpaque(false);
+        switchPrompt.setFont(SwingTheme.SMALL);
+        switchPrompt.setForeground(SwingTheme.MUTED);
+        switchLink.setFont(SwingTheme.SMALL.deriveFont(java.awt.Font.BOLD));
+        switchLink.setForeground(SwingTheme.BLUE);
+        switchLink.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        switchLink.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                showMode(!signUpMode);
             }
-            String passwordError = PasswordRules.validateNewPassword(getPassword());
-            if (passwordError != null) {
-                showError(passwordError);
-                return;
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                switchLink.setForeground(SwingTheme.NAVY);
             }
-            signUp = true;
-            confirmed = true;
-            dispose();
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                switchLink.setForeground(SwingTheme.BLUE);
+            }
         });
-        JButton signIn = SwingTheme.primaryButton("Sign in");
-        signIn.addActionListener(event -> {
-            if (getEmail().isEmpty()) {
-                showError("Please enter your email.");
-                return;
-            }
-            if (getPassword().isEmpty()) {
-                showError("Please enter your password.");
-                return;
-            }
-            signUp = false;
-            confirmed = true;
-            dispose();
-        });
-        buttons.add(cancel);
-        buttons.add(create);
-        buttons.add(signIn);
-        footer.add(buttons, BorderLayout.SOUTH);
+        switchRow.add(switchPrompt);
+        switchRow.add(switchLink);
+        footer.add(switchRow, BorderLayout.SOUTH);
         root.add(footer, BorderLayout.SOUTH);
 
         setContentPane(root);
-        pack();
+        showMode(false);
         setLocationRelativeTo(owner);
     }
 
@@ -127,7 +147,7 @@ public final class LoginDialog extends JDialog {
     }
 
     public boolean isSignUp() {
-        return signUp;
+        return signUpMode;
     }
 
     public String getEmail() {
@@ -138,6 +158,10 @@ public final class LoginDialog extends JDialog {
         return new String(passwordField.getPassword());
     }
 
+    public String getConfirmPassword() {
+        return new String(confirmPasswordField.getPassword());
+    }
+
     /** Optional username used only when creating an account. */
     public String getUsername() {
         return usernameField.getText().trim();
@@ -146,5 +170,53 @@ public final class LoginDialog extends JDialog {
     public void showError(String message) {
         status.setText(message == null ? "Unable to authenticate" : message);
         status.setForeground(SwingTheme.ERROR);
+    }
+
+    private void submit() {
+        if (getEmail().isEmpty()) {
+            showError("Please enter your email.");
+            return;
+        }
+        if (signUpMode) {
+            String passwordError = PasswordRules.validateNewPasswordPair(
+                    getPassword(), getConfirmPassword());
+            if (passwordError != null) {
+                showError(passwordError);
+                return;
+            }
+        } else if (getPassword().isEmpty()) {
+            showError("Please enter your password.");
+            return;
+        }
+        confirmed = true;
+        dispose();
+    }
+
+    private void showMode(boolean signUp) {
+        this.signUpMode = signUp;
+        status.setText(" ");
+        if (signUp) {
+            setTitle("Create account");
+            titleLabel.setText("Create your CloseAI account");
+            primaryButton.setText("Create account");
+            confirmLabel.setVisible(true);
+            confirmPasswordField.setVisible(true);
+            usernameLabel.setVisible(true);
+            usernameField.setVisible(true);
+            switchPrompt.setText("Already have an account?");
+            switchLink.setText("Sign in");
+        } else {
+            setTitle("Sign in");
+            titleLabel.setText("Sign in to save and reopen itineraries");
+            primaryButton.setText("Sign in");
+            confirmLabel.setVisible(false);
+            confirmPasswordField.setVisible(false);
+            confirmPasswordField.setText("");
+            usernameLabel.setVisible(false);
+            usernameField.setVisible(false);
+            switchPrompt.setText("Don't have an account?");
+            switchLink.setText("Create an account");
+        }
+        pack();
     }
 }

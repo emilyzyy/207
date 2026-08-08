@@ -127,6 +127,7 @@ public final class Main {
         galleryFrame.setMinimumSize(new Dimension(800, 600));
         galleryFrame.setPreferredSize(new Dimension(960, 700));
 
+        GalleryPanel[] galleryHolder = new GalleryPanel[1];
         Runnable onAuth = auth == null ? null : () -> {
             if (promptSignIn(auth, app.account, galleryFrame)) {
                 galleryFrame.dispose();
@@ -134,12 +135,16 @@ public final class Main {
             }
         };
         Runnable onProfile = !signedIn ? null : () -> {
-            if (openProfile(app, auth, galleryFrame)) {
+            User updated = openProfile(app, auth, galleryFrame);
+            if (auth.currentSession().isEmpty()) {
                 galleryFrame.dispose();
                 showGallery(builder, app, auth);
+            } else if (updated != null && galleryHolder[0] != null) {
+                galleryHolder[0].setProfileUser(updated);
+            } else if (galleryHolder[0] != null) {
+                galleryHolder[0].setProfileUser(loadProfile(app));
             }
         };
-        GalleryPanel[] galleryHolder = new GalleryPanel[1];
         Runnable onFriends = !signedIn || app.account == null ? null : () -> {
             new FriendsDialog(galleryFrame, app.account).setVisible(true);
             if (galleryHolder[0] != null) {
@@ -205,9 +210,12 @@ public final class Main {
             tripFrame.setAuthAction(() -> handleTripAuth(builder, app, auth, tripFrame, trip.getId()),
                     signedIn);
             tripFrame.setProfileAction(() -> {
-                if (openProfile(app, auth, tripFrame)) {
+                User updated = openProfile(app, auth, tripFrame);
+                if (auth.currentSession().isEmpty()) {
                     tripFrame.dispose();
                     showGallery(builder, app, auth);
+                } else if (updated != null) {
+                    tripFrame.setProfileUser(updated);
                 } else {
                     tripFrame.setProfileUser(loadProfile(app));
                 }
@@ -239,9 +247,12 @@ public final class Main {
             tripFrame.setAuthAction(
                     () -> handleTripAuth(builder, app, auth, tripFrame, tripId), true);
             tripFrame.setProfileAction(() -> {
-                if (openProfile(app, auth, tripFrame)) {
+                User updated = openProfile(app, auth, tripFrame);
+                if (auth.currentSession().isEmpty()) {
                     tripFrame.dispose();
                     showGallery(builder, app, auth);
+                } else if (updated != null) {
+                    tripFrame.setProfileUser(updated);
                 } else {
                     tripFrame.setProfileUser(loadProfile(app));
                 }
@@ -272,11 +283,12 @@ public final class Main {
     }
 
     /**
-     * Opens the profile editor. Returns true when the user signed out (caller should refresh).
+     * Opens the profile editor.
+     * @return the saved profile when Save succeeds; {@code null} if cancelled or signed out
      */
-    private static boolean openProfile(AppContainer app, AuthService auth, JFrame owner) {
+    private static User openProfile(AppContainer app, AuthService auth, JFrame owner) {
         if (app.account == null || auth == null) {
-            return false;
+            return null;
         }
         User profile;
         try {
@@ -286,9 +298,11 @@ public final class Main {
                     exception.getMessage(),
                     "Profile",
                     JOptionPane.ERROR_MESSAGE);
-            return false;
+            return null;
         }
-        ProfileDialog dialog = new ProfileDialog(owner, profile, request ->
+        ProfileDialog dialog = new ProfileDialog(owner, profile,
+                auth.currentSession().map(AuthSession::getPassword).orElse(""),
+                request ->
                 app.account.updateProfile(
                         request.getUsername(),
                         request.getEmail(),
@@ -298,9 +312,9 @@ public final class Main {
         dialog.setVisible(true);
         if (dialog.isSignOutRequested()) {
             signOut(app, auth);
-            return true;
+            return null;
         }
-        return false;
+        return dialog.isSaved() ? dialog.getSavedProfile() : null;
     }
 
     private static User loadProfile(AppContainer app) {
