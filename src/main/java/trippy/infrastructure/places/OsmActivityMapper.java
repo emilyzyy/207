@@ -81,10 +81,14 @@ public final class OsmActivityMapper {
         IndoorOutdoorType setting = setting(category, tags);
         String hoursText = text(tags, "opening_hours");
         LocalTime[] hours = hours(hoursText);
+        // The parsed per-weekday reading, not just the raw text. Without it every place
+        // discovered through this mapper reports unknown hours, which makes them all
+        // permissively schedulable and quietly disables the opening-hours constraint.
         return new Activity(id, name.trim(), category,
                 new Location(latitude, longitude, address),
                 0.0, duration(category), hours[0], hours[1], setting,
-                setting == IndoorOutdoorType.INDOOR ? "Low" : "Medium", hoursText);
+                setting == IndoorOutdoorType.INDOOR ? "Low" : "Medium", hoursText,
+                OpeningHoursParser.parse(hoursText));
     }
 
     static ActivityCategory category(JsonNode tags) {
