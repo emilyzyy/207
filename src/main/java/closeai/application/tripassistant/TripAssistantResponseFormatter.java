@@ -12,10 +12,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /** Builds conversational text exclusively from validated application entities. */
 public final class TripAssistantResponseFormatter {
-    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("h:mm a");
+    private static final DateTimeFormatter TIME =
+            DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH);
+    private static final Pattern CONTEXTUAL_REFERENCE = Pattern.compile(
+            "\\b(it|its|they|them|their|this|that|these|those)\\b");
 
     public TripAssistantOutputData format(
             TripAssistantRequest request, TripAssistantDecision decision) {
@@ -37,9 +41,215 @@ public final class TripAssistantResponseFormatter {
         if (!decision.getNotice().trim().isEmpty()) {
             answer.append(decision.getNotice().trim()).append("\n\n");
         }
+        if (decision.getIntent() == TripAssistantDecision.Intent.GENERAL
+                && groundedIds.isEmpty() && !decision.getAnswer().trim().isEmpty()) {
+            answer.append(decision.getAnswer().trim());
+            return new TripAssistantOutputData(answer.toString().trim(), groundedIds);
+        }
+        if (decision.getIntent() == TripAssistantDecision.Intent.ACTIVITY_DETAILS) {
+            return formatActivityDetails(
+                    answer, request, decision, allowed, selected, groundedIds);
+        }
+        if (decision.getIntent() == TripAssistantDecision.Intent.EXPLAIN) {
+            return formatExplanation(answer, request, allowed, selected, groundedIds);
+        }
         appendOpening(answer, request, decision, selected);
         appendActivities(answer, request, decision, selected);
         return new TripAssistantOutputData(answer.toString().trim(), groundedIds);
+    }
+
+    private TripAssistantOutputData formatActivityDetails(
+            StringBuilder answer, TripAssistantRequest request,
+            TripAssistantDecision decision, Map<String, Activity> allowed,
+            List<Activity> selected, List<String> groundedIds) {
+        FollowUpSelection selection = resolveFollowUp(
+                request, allowed, selected, groundedIds);
+        if (selection.needsClarification()) {
+            answer.append(clarification(selection.getActivities()));
+            return new TripAssistantOutputData(
+                    answer.toString().trim(), selection.getActivityIds());
+        }
+        Activity activity = selection.getActivities().get(0);
+        answer.append(activityFact(request, activity, decision.getRequestedFact()));
+        return new TripAssistantOutputData(
+                answer.toString().trim(), selection.getActivityIds());
+    }
+
+    private TripAssistantOutputData formatExplanation(
+            StringBuilder answer, TripAssistantRequest request,
+            Map<String, Activity> allowed, List<Activity> selected,
+            List<String> groundedIds) {
+        FollowUpSelection selection = resolveFollowUp(
+                request, allowed, selected, groundedIds);
+        if (selection.needsClarification()) {
+            answer.append(clarification(selection.getActivities()));
+            return new TripAssistantOutputData(
+                    answer.toString().trim(), selection.getActivityIds());
+        }
+        for (int index = 0; index < selection.getActivities().size(); index++) {
+            if (index > 0) {
+                answer.append('\n');
+            }
+            answer.append(recommendationReason(
+                    request, selection.getActivities().get(index)));
+        }
+        return new TripAssistantOutputData(
+                answer.toString().trim(), selection.getActivityIds());
+    }
+
+    private FollowUpSelection resolveFollowUp(
+            TripAssistantRequest request, Map<String, Activity> allowed,
+            List<Activity> selected, List<String> groundedIds) {
+        List<Activity> activities = new ArrayList<Activity>(selected);
+        List<String> ids = new ArrayList<String>(groundedIds);
+        List<Activity> recent = recentGroundedActivities(request, allowed);
+        boolean contextual = CONTEXTUAL_REFERENCE.matcher(
+                request.getQuestion().toLowerCase(Locale.ROOT)).find();
+        if (contextual) {
+            activities = recent;
+            ids = activityIds(recent);
+            return new FollowUpSelection(activities, ids, activities.size() != 1);
+        }
+        if (activities.isEmpty() && recent.size() == 1) {
+            activities = recent;
+            ids = activityIds(recent);
+        }
+        return new FollowUpSelection(activities, ids, activities.size() != 1);
+    }
+
+    private List<Activity> recentGroundedActivities(
+            TripAssistantRequest request, Map<String, Activity> allowed) {
+        for (int index = request.getHistory().size() - 1; index >= 0; index--) {
+            TripAssistantMessage message = request.getHistory().get(index);
+            if (message.getRole() != TripAssistantMessage.Role.ASSISTANT
+                    || message.getActivityIds().isEmpty()) {
+                continue;
+            }
+            List<Activity> result = new ArrayList<Activity>();
+            for (String id : message.getActivityIds()) {
+                Activity activity = allowed.get(id);
+                if (activity != null && !result.contains(activity) && result.size() < 3) {
+                    result.add(activity);
+                }
+            }
+            return result;
+        }
+        return new ArrayList<Activity>();
+    }
+
+    private List<String> activityIds(List<Activity> activities) {
+        List<String> result = new ArrayList<String>();
+        for (Activity activity : activities) {
+            result.add(activity.getId());
+        }
+        return result;
+    }
+
+    private String clarification(List<Activity> activities) {
+        if (activities.isEmpty()) {
+            return "Which activity do you mean? Mention one from this trip and I'll check "
+                    + "the details CloseAI has for it.";
+        }
+        List<String> names = new ArrayList<String>();
+        for (Activity activity : activities) {
+            names.add(activity.getName());
+        }
+        return "Which activity do you mean—" + String.join(", ", names)
+                + "? I don't want to guess.";
+    }
+
+    private String activityFact(
+            TripAssistantRequest request, Activity activity,
+            TripAssistantDecision.RequestedFact requestedFact) {
+        switch (requestedFact) {
+            case SPECIALTY:
+                return "CloseAI records " + activity.getName() + " as "
+                        + articleAndCategory(activity) + ", but it doesn't include its menu or "
+                        + "signature specialty, so I don't want to make one up.";
+            case CATEGORY:
+                return "CloseAI records " + activity.getName() + " as "
+                        + articleAndCategory(activity) + ".";
+            case RATING:
+                return String.format(Locale.ROOT, "%s has a %.1f rating in CloseAI.",
+                        activity.getName(), activity.getRating());
+            case HOURS:
+                return activity.getName() + " is recorded as open from "
+                        + TIME.format(activity.getOpeningTime()) + " to "
+                        + TIME.format(activity.getClosingTime()) + ".";
+            case DURATION:
+                return "CloseAI estimates " + activity.getEstimatedDurationMinutes()
+                        + " minutes for " + activity.getName() + ".";
+            case LOCATION:
+                String address = activity.getLocation().getAddress();
+                if (address == null || address.trim().isEmpty()) {
+                    return "CloseAI doesn't include an address for " + activity.getName()
+                            + ", so I don't want to guess.";
+                }
+                return "CloseAI lists " + activity.getName() + " at " + address + ".";
+            case SETTING:
+                return activity.getName() + " is recorded as "
+                        + setting(activity.getIndoorOutdoorType()) + ".";
+            case BOOKMARK_STATUS:
+                return activity.getName() + (request.getBookmarkedActivityIds()
+                        .contains(activity.getId())
+                        ? " is in your bookmarks." : " isn't in your bookmarks.");
+            case PLAN_STATUS:
+                return activity.getName() + (plannedIds(request.getScheduledEvents())
+                        .contains(activity.getId())
+                        ? " is already in your Day Plan." : " isn't in your Day Plan yet.");
+            case RECOMMENDATION_REASON:
+                return recommendationReason(request, activity);
+            default:
+                return "CloseAI doesn't include that detail for " + activity.getName()
+                        + ", so I don't want to make it up. I can check its category, rating, "
+                        + "hours, duration, address, setting, bookmark status, or Day Plan status.";
+        }
+    }
+
+    private String recommendationReason(
+            TripAssistantRequest request, Activity activity) {
+        List<String> evidence = new ArrayList<String>();
+        evidence.add(String.format(Locale.ROOT, "it has a %.1f rating", activity.getRating()));
+        evidence.add("the visit is estimated at "
+                + activity.getEstimatedDurationMinutes() + " minutes");
+        evidence.add("its recorded hours are " + TIME.format(activity.getOpeningTime())
+                + "–" + TIME.format(activity.getClosingTime()));
+        if (request.getBookmarkedActivityIds().contains(activity.getId())) {
+            evidence.add("you bookmarked it");
+        }
+        if (plannedIds(request.getScheduledEvents()).contains(activity.getId())) {
+            evidence.add("it is already in your Day Plan");
+        }
+        return "I recommended " + activity.getName() + " because "
+                + String.join(", ", evidence) + ".";
+    }
+
+    private String articleAndCategory(Activity activity) {
+        String category;
+        switch (activity.getCategory()) {
+            case COFFEE:
+                category = "café";
+                break;
+            case FOOD:
+                category = "food activity";
+                break;
+            default:
+                category = activity.getCategory().name().toLowerCase(Locale.ROOT);
+                break;
+        }
+        String article = category.matches("^[aeiou].*") ? "an " : "a ";
+        return article + category;
+    }
+
+    private String setting(IndoorOutdoorType type) {
+        switch (type) {
+            case INDOOR:
+                return "indoors";
+            case OUTDOOR:
+                return "outdoors";
+            default:
+                return "a mix of indoor and outdoor space";
+        }
     }
 
     private void appendOpening(StringBuilder answer, TripAssistantRequest request,
@@ -135,5 +345,25 @@ public final class TripAssistantResponseFormatter {
             }
         }
         return result;
+    }
+
+    private static final class FollowUpSelection {
+        private final List<Activity> activities;
+        private final List<String> activityIds;
+        private final boolean clarification;
+
+        private FollowUpSelection(
+                List<Activity> activities, List<String> activityIds,
+                boolean clarification) {
+            this.activities = activities;
+            this.activityIds = activityIds;
+            this.clarification = clarification;
+        }
+
+        private List<Activity> getActivities() { return activities; }
+
+        private List<String> getActivityIds() { return activityIds; }
+
+        private boolean needsClarification() { return clarification; }
     }
 }

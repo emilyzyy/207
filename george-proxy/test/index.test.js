@@ -35,9 +35,16 @@ test("proxy fixes model, instructions, schema, storage, and output limit", async
   assert.equal(body.store, false);
   assert.equal(body.max_output_tokens, 300);
   assert.match(body.instructions, /only activity_id/);
+  assert.match(body.instructions, /ordinary questions/);
   assert.deepEqual(
     body.text.format.schema.properties.activity_ids.items.enum,
     ["museum"]);
+  assert.equal(body.text.format.schema.properties.answer.maxLength, 1200);
+  assert.ok(body.text.format.schema.properties.requested_fact.enum.includes("SPECIALTY"));
+  assert.ok(body.text.format.schema.properties.intent.enum.includes("ACTIVITY_DETAILS"));
+  assert.deepEqual(
+    body.text.format.schema.required,
+    ["intent", "activity_ids", "answer", "requested_fact"]);
 });
 
 test("proxy rejects malformed, oversized, and rate-limited requests", async () => {
@@ -74,7 +81,25 @@ test("proxy does not expose upstream account errors", async () => {
   assert.deepEqual(await response.json(), { error: "George is temporarily unavailable" });
 });
 
-function request(overrides = {}) {
+test("general conversation works when the trip has no available activities", async () => {
+  let capturedBody;
+  const response = await handleRequest(request({}, {
+    available_activities: [],
+    question: "What is your name?",
+  }), { OPENAI_API_KEY: "test" }, async (url, options) => {
+    capturedBody = JSON.parse(options.body);
+    return new Response(JSON.stringify({ status: "completed", output: [] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(capturedBody.text.format.schema.properties.activity_ids.maxItems, 0);
+  assert.equal("enum" in capturedBody.text.format.schema.properties.activity_ids.items, false);
+});
+
+function request(overrides = {}, contextOverrides = {}) {
   const context = {
     destination: "Toronto",
     trip_date: "2026-08-20",
@@ -97,6 +122,7 @@ function request(overrides = {}) {
     weather: [],
     history: [],
     question: "What should I do if it rains?",
+    ...contextOverrides,
   };
   return new Request(endpoint, {
     method: "POST",

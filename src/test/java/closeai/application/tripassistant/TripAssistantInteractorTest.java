@@ -81,6 +81,30 @@ final class TripAssistantInteractorTest {
         assertEquals(null, gateway.request);
     }
 
+    @Test
+    void displaysLiveGeneralAnswerWithoutInventingAnActivity() {
+        Activity museum = activity("museum", "Actual Museum", IndoorOutdoorType.INDOOR, 4.8);
+        Trip trip = trip();
+        trip.setDiscoveredPlaces(Collections.singletonList(museum));
+        InMemoryTripRepository trips = new InMemoryTripRepository();
+        trips.save(trip);
+        CachedPlacesRepository activities = new CachedPlacesRepository();
+        activities.addAll(Collections.singletonList(museum));
+        RecordingPresenter presenter = new RecordingPresenter();
+        TripAssistantGateway gateway = ignored -> new TripAssistantDecision(
+                TripAssistantDecision.Intent.GENERAL, Collections.emptyList(),
+                "I'm George, and 3 + 3 is 6.", "");
+        TripAssistantInteractor interactor = new TripAssistantInteractor(
+                trips, activities, ignored -> Collections.emptyList(), gateway, presenter);
+
+        interactor.execute(new TripAssistantInputData(
+                trip.getId(), "What is your name, and what is 3 + 3?",
+                Collections.emptyList()));
+
+        assertEquals("I'm George, and 3 + 3 is 6.", presenter.output.getAnswer());
+        assertTrue(presenter.output.getActivityIds().isEmpty());
+    }
+
     private Trip trip() {
         return new Trip("trip-1", "Toronto", LocalDate.of(2026, 8, 20),
                 LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.TRANSIT);
@@ -101,7 +125,8 @@ final class TripAssistantInteractorTest {
             request = value;
             return new TripAssistantDecision(
                     TripAssistantDecision.Intent.RAIN,
-                    Arrays.asList("museum", "invented-place"));
+                    Arrays.asList("museum", "invented-place"),
+                    "Visit invented-place because it is perfect.", "");
         }
     }
 

@@ -24,16 +24,26 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** Live OpenAI Responses API implementation with schema-constrained activity IDs. */
+/** Live OpenAI Responses API implementation with schema-constrained chat output. */
 public final class OpenAiTripAssistantGateway implements TripAssistantGateway {
     private static final URI DEFAULT_ENDPOINT = URI.create("https://api.openai.com/v1/responses");
-    private static final String INSTRUCTIONS = "Role: You are George, the travel assistant "
-            + "inside CloseAI. Goal: choose up to three suitable activities for the user's "
-            + "current trip. Use every supplied trip field as evidence. Constraints: select "
-            + "only activity_id values from available_activities; never create a place, name, "
-            + "or ID; use current bookmarks, Day Plan, weather, hours, duration, date, and "
-            + "transportation mode. For a why question, reuse the most recent grounded activity "
-            + "IDs in history when appropriate. Return only the requested structured data.";
+    private static final String INSTRUCTIONS = "Role: You are George, the friendly travel "
+            + "companion inside CloseAI. Be cheerful, natural, and concise. Answer ordinary "
+            + "questions naturally and directly. "
+            + "For greetings, identity questions, simple math, or other general questions, use "
+            + "intent GENERAL, return no activity IDs, and put the direct reply in answer. "
+            + "For trip advice, choose up to three suitable activities using every supplied trip "
+            + "field as evidence. Select only activity_id values from available_activities; never "
+            + "create a place, name, or ID. Do not name places in answer because CloseAI renders "
+            + "validated activity names locally. Use bookmarks, Day Plan, weather, hours, "
+            + "duration, date, and transportation mode. For a follow-up asking about an activity, "
+            + "use ACTIVITY_DETAILS and identify the requested_fact. Reuse the single most recent "
+            + "grounded activity ID for pronouns such as it, its, their, or that place. If recent "
+            + "history grounds more than one possible activity, return no ID so CloseAI can ask "
+            + "for clarification. Use EXPLAIN for why a recommendation was made. Never put place "
+            + "facts, menu details, specialties, prices, or history in answer; Java renders all "
+            + "activity facts from CloseAI entities and will honestly report missing data. Return "
+            + "only the requested structured data.";
 
     private final HttpClient client;
     private final ObjectMapper mapper;
@@ -79,10 +89,6 @@ public final class OpenAiTripAssistantGateway implements TripAssistantGateway {
 
     @Override
     public TripAssistantDecision answer(TripAssistantRequest request) {
-        if (request.getActivities().isEmpty()) {
-            return new TripAssistantDecision(
-                    TripAssistantDecision.Intent.GENERAL, Collections.<String>emptyList());
-        }
         try {
             HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(endpoint)
                     .timeout(timeout)
@@ -191,23 +197,39 @@ public final class OpenAiTripAssistantGateway implements TripAssistantGateway {
         }
         Map<String, Object> idItems = new LinkedHashMap<String, Object>();
         idItems.put("type", "string");
-        idItems.put("enum", ids);
+        if (!ids.isEmpty()) {
+            idItems.put("enum", ids);
+        }
         Map<String, Object> idArray = new LinkedHashMap<String, Object>();
         idArray.put("type", "array");
         idArray.put("items", idItems);
-        idArray.put("maxItems", 3);
+        idArray.put("maxItems", ids.isEmpty() ? 0 : 3);
 
         Map<String, Object> intent = new LinkedHashMap<String, Object>();
         intent.put("type", "string");
         intent.put("enum", Arrays.asList(
-                "RECOMMEND", "RAIN", "AFTERNOON", "BOOKMARKS", "EXPLAIN", "GENERAL"));
+                "RECOMMEND", "RAIN", "AFTERNOON", "BOOKMARKS", "EXPLAIN",
+                "ACTIVITY_DETAILS", "GENERAL"));
         Map<String, Object> properties = new LinkedHashMap<String, Object>();
         properties.put("intent", intent);
         properties.put("activity_ids", idArray);
+        Map<String, Object> answer = new LinkedHashMap<String, Object>();
+        answer.put("type", "string");
+        answer.put("minLength", 1);
+        answer.put("maxLength", 1200);
+        properties.put("answer", answer);
+        Map<String, Object> requestedFact = new LinkedHashMap<String, Object>();
+        requestedFact.put("type", "string");
+        requestedFact.put("enum", Arrays.asList(
+                "SPECIALTY", "CATEGORY", "RATING", "HOURS", "DURATION", "LOCATION",
+                "SETTING", "BOOKMARK_STATUS", "PLAN_STATUS", "RECOMMENDATION_REASON",
+                "UNKNOWN"));
+        properties.put("requested_fact", requestedFact);
         Map<String, Object> schema = new LinkedHashMap<String, Object>();
         schema.put("type", "object");
         schema.put("properties", properties);
-        schema.put("required", Arrays.asList("intent", "activity_ids"));
+        schema.put("required", Arrays.asList(
+                "intent", "activity_ids", "answer", "requested_fact"));
         schema.put("additionalProperties", false);
 
         Map<String, Object> format = new LinkedHashMap<String, Object>();
@@ -247,7 +269,11 @@ public final class OpenAiTripAssistantGateway implements TripAssistantGateway {
         for (JsonNode id : selection.path("activity_ids")) {
             ids.add(id.asText());
         }
-        return new TripAssistantDecision(intent, ids);
+        String answer = selection.path("answer").asText("").trim();
+        TripAssistantDecision.RequestedFact requestedFact =
+                TripAssistantDecision.RequestedFact.valueOf(
+                        selection.path("requested_fact").asText("UNKNOWN"));
+        return new TripAssistantDecision(intent, ids, answer, "", requestedFact);
     }
 
     private static boolean isBlank(String value) {
