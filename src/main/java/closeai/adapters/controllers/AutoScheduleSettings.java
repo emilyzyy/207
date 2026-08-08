@@ -1,5 +1,6 @@
 package closeai.adapters.controllers;
 
+import closeai.domain.valueobjects.TransportationMode;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -21,6 +22,7 @@ public final class AutoScheduleSettings {
     private final List<Window> unavailableWindows;
     private final boolean keepCurrentOrder;
     private final boolean considerWeather;
+    private final TransportationMode transportationMode;
     private final boolean minimizeTravel;
     private final boolean minimizeGaps;
     private final boolean preserveMealtimes;
@@ -30,15 +32,17 @@ public final class AutoScheduleSettings {
     public AutoScheduleSettings(LocalTime availableStart, LocalTime availableEnd,
                                 List<Window> unavailableWindows, boolean keepCurrentOrder,
                                 boolean considerWeather) {
-        this(availableStart, availableEnd, unavailableWindows,
+        this(availableStart, availableEnd, TransportationMode.FASTEST, unavailableWindows,
                 keepCurrentOrder, considerWeather, true, true, true, true);
     }
 
     public AutoScheduleSettings(LocalTime availableStart, LocalTime availableEnd,
+                                TransportationMode transportationMode,
                                 List<Window> unavailableWindows, boolean keepCurrentOrder,
                                 boolean considerWeather, boolean minimizeTravel,
                                 boolean minimizeGaps, boolean preserveMealtimes,
                                 boolean preferDaylight) {
+        this.transportationMode = transportationMode;
         this.minimizeTravel = minimizeTravel;
         this.minimizeGaps = minimizeGaps;
         this.preserveMealtimes = preserveMealtimes;
@@ -61,6 +65,11 @@ public final class AutoScheduleSettings {
 
     public List<Window> getUnavailableWindows() {
         return unavailableWindows;
+    }
+
+    /** How the traveller is getting around, possibly {@link TransportationMode#FASTEST}. */
+    public TransportationMode getTransportationMode() {
+        return transportationMode;
     }
 
     public boolean isMinimizeTravel() {
