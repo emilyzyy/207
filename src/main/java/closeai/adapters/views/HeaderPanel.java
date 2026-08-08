@@ -19,7 +19,7 @@ import javax.swing.JPanel;
 
 /** Persistent application header for identity and active-trip context. */
 public final class HeaderPanel extends JPanel {
-    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("MMMM d");
+    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("EEEE, MMMM d");
 
     private final DashboardViewModel viewModel;
     private final DayPlanViewModel dayPlanViewModel;
@@ -72,10 +72,12 @@ public final class HeaderPanel extends JPanel {
         JPanel tripSummary = new JPanel();
         tripSummary.setOpaque(false);
         tripSummary.setLayout(new BoxLayout(tripSummary, BoxLayout.Y_AXIS));
-        tripLabel.setFont(SwingTheme.BODY.deriveFont(java.awt.Font.BOLD));
+        tripLabel.setFont(SwingTheme.HEADING);
         tripLabel.setForeground(SwingTheme.NAVY);
-        dateLabel.setFont(SwingTheme.SMALL);
-        dateLabel.setForeground(SwingTheme.MUTED);
+        // The day being planned is the single most orienting fact on the screen, and it
+        // was set in the same small muted type as a caption.
+        dateLabel.setFont(SwingTheme.BODY.deriveFont(java.awt.Font.BOLD));
+        dateLabel.setForeground(SwingTheme.BLUE);
         tripSummary.add(tripLabel);
         tripSummary.add(Box.createVerticalStrut(3));
         tripSummary.add(dateLabel);

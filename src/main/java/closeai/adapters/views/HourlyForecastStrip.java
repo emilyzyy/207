@@ -43,7 +43,10 @@ import javax.swing.SwingUtilities;
 public final class HourlyForecastStrip extends JPanel {
 
     /** Short on purpose: the strip borrows map space and must give most of it back. */
-    static final int STRIP_HEIGHT = 118;
+    static final int STRIP_HEIGHT = 104;
+
+    /** What a card actually needs; anything more becomes a gap above the scrollbar. */
+    private static final int CARD_HEIGHT = 78;
 
     private static final int CARD_WIDTH = 66;
 
@@ -71,7 +74,7 @@ public final class HourlyForecastStrip extends JPanel {
         setBackground(SwingTheme.PANEL);
         setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 1, 1, 1, SwingTheme.LINE),
-                BorderFactory.createEmptyBorder(6, 8, 2, 8)));
+                BorderFactory.createEmptyBorder(6, 8, 0, 8)));
         getAccessibleContext().setAccessibleName("Hourly forecast");
 
         cards.setLayout(new BoxLayout(cards, BoxLayout.X_AXIS));
@@ -153,7 +156,7 @@ public final class HourlyForecastStrip extends JPanel {
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setOpaque(false);
         card.setAlignmentY(Component.TOP_ALIGNMENT);
-        Dimension size = new Dimension(CARD_WIDTH, STRIP_HEIGHT - 30);
+        Dimension size = new Dimension(CARD_WIDTH, CARD_HEIGHT);
         card.setPreferredSize(size);
         card.setMaximumSize(size);
         card.setMinimumSize(size);
