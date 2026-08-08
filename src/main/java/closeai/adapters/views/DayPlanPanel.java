@@ -58,6 +58,7 @@ public final class DayPlanPanel extends JPanel {
     private final JPanel previewArea = new JPanel();
     private final JPanel sidebarSlot = new JPanel(new BorderLayout());
     private final JLabel status = new JLabel();
+    private final Spinner spinner = new Spinner();
     private final JLabel objective = new JLabel();
     private final JButton autoscheduleButton = SwingTheme.primaryButton("Autoschedule");
     private final JButton applyButton = SwingTheme.primaryButton("Apply");
@@ -221,9 +222,16 @@ public final class DayPlanPanel extends JPanel {
                 BorderFactory.createMatteBorder(1, 0, 0, 0, SwingTheme.LINE),
                 BorderFactory.createEmptyBorder(10, 0, 0, 0)));
 
-        status.setFont(SwingTheme.SMALL);
-        status.setAlignmentX(Component.LEFT_ALIGNMENT);
-        wrapper.add(status);
+        // The spinner rides beside the status line rather than replacing it: the words
+        // say what is happening, the motion says it is still happening.
+        JPanel statusRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        statusRow.setOpaque(false);
+        statusRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        spinner.setVisible(false);
+        statusRow.add(spinner);
+        status.setFont(SwingTheme.BODY);
+        statusRow.add(status);
+        wrapper.add(statusRow);
         objective.setFont(SwingTheme.SMALL);
         objective.setForeground(SwingTheme.MUTED);
         objective.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -287,6 +295,13 @@ public final class DayPlanPanel extends JPanel {
 
         boolean previewing = state.getStatus() == AutoScheduleStatus.PREVIEW;
         boolean busy = state.getStatus() == AutoScheduleStatus.LOADING;
+        spinner.setVisible(busy);
+        if (busy) {
+            status.setFont(SwingTheme.HEADING.deriveFont(15f));
+            status.setForeground(SwingTheme.NAVY);
+        } else {
+            status.setFont(SwingTheme.BODY);
+        }
         // Exactly one primary is visible in any state: Autoschedule while idle, Apply while
         // a proposal is on screen. Hiding rather than only disabling Autoschedule is what
         // stops a dead blue button sitting beside the live one during a Preview.

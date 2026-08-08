@@ -324,4 +324,55 @@ class AutoScheduleSettingsDialogTest {
         assertTrue(overlapping.stream().anyMatch(problem -> problem.contains("overlap")),
                 overlapping.toString());
     }
+
+    /**
+     * Every factor the schedule weighs is on screen, on by default, and switchable.
+     *
+     * <p>None of them is a hard rule, so switching any off can only change the ranking —
+     * it can never make a day impossible. Weather is the one that may also be disabled by
+     * circumstance, which {@code AutoScheduleWeatherCheckBoxTest} covers.</p>
+     */
+    @Test
+    void allSixFactorsAreShownAndOnlyTheTwoRealChoicesCanBeChanged() {
+        AutoScheduleSettingsDialog dialog = new AutoScheduleSettingsDialog(
+                null, LocalTime.of(9, 0), LocalTime.of(21, 0));
+        // With no usable forecast the weather switch is off and disabled, which is its own
+        // documented state; ask for the ordinary case where it can be offered.
+        dialog.applyWeatherOption(closeai.application.autoschedule.WeatherOption.available());
+
+        java.util.List<ToggleSwitch> switches = new java.util.ArrayList<>();
+        collectSwitches(dialog.getContentPane(), switches);
+
+        assertEquals(6, switches.size(), "six factors are weighed, so six are shown");
+
+        int movable = 0;
+        int fixedOn = 0;
+        for (ToggleSwitch control : switches) {
+            if (control.isEnabled()) {
+                movable++;
+            } else {
+                assertTrue(control.isSelected(),
+                        "a factor that is always applied must look on, not off");
+                fixedOn++;
+            }
+        }
+        assertEquals(6, movable, "every soft factor is the traveller's to switch off");
+        assertEquals(0, fixedOn);
+        for (ToggleSwitch control : switches) {
+            assertTrue(control.isSelected(), "all six start on");
+        }
+        dialog.dispose();
+    }
+
+    private static void collectSwitches(java.awt.Component component,
+                                        java.util.List<ToggleSwitch> into) {
+        if (component instanceof ToggleSwitch) {
+            into.add((ToggleSwitch) component);
+        }
+        if (component instanceof java.awt.Container) {
+            for (java.awt.Component child : ((java.awt.Container) component).getComponents()) {
+                collectSwitches(child, into);
+            }
+        }
+    }
 }

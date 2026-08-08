@@ -38,13 +38,27 @@ public final class SchedulingPreferences {
     private final List<SoftPolicy> policies;
     private final boolean keepCurrentOrder;
     private final PolicyContext context;
+    private final boolean countTravel;
+    private final boolean countIdle;
 
     public SchedulingPreferences(List<SoftPolicy> policies, boolean keepCurrentOrder,
                                  PolicyContext context) {
+        this(policies, keepCurrentOrder, context, true, true);
+    }
+
+    /**
+     * @param countTravel whether travel minutes are part of the cost being minimised
+     * @param countIdle   whether avoidable waiting is part of that cost
+     */
+    public SchedulingPreferences(List<SoftPolicy> policies, boolean keepCurrentOrder,
+                                 PolicyContext context, boolean countTravel,
+                                 boolean countIdle) {
         this.policies = Collections.unmodifiableList(new ArrayList<>(
                 policies == null ? Collections.<SoftPolicy>emptyList() : policies));
         this.keepCurrentOrder = keepCurrentOrder;
         this.context = context == null ? PolicyContext.empty() : context;
+        this.countTravel = countTravel;
+        this.countIdle = countIdle;
     }
 
     /** Travel and idle only: used by engine tests that isolate the search itself. */
@@ -61,6 +75,30 @@ public final class SchedulingPreferences {
                                                 boolean keepCurrentOrder,
                                                 PolicyContext context) {
         return new SchedulingPreferences(builtInPolicies, keepCurrentOrder, context);
+    }
+
+    public static SchedulingPreferences builtIn(List<SoftPolicy> builtInPolicies,
+                                                boolean keepCurrentOrder,
+                                                PolicyContext context,
+                                                boolean countTravel, boolean countIdle) {
+        return new SchedulingPreferences(builtInPolicies, keepCurrentOrder, context,
+                countTravel, countIdle);
+    }
+
+    /**
+     * Whether travel minutes count toward the cost being minimised.
+     *
+     * <p>Feasibility is unaffected either way: the traveller still has to physically reach
+     * each place, and the placer still refuses a leg that cannot be made. This only decides
+     * whether a shorter journey makes one schedule better than another.</p>
+     */
+    public boolean countsTravel() {
+        return countTravel;
+    }
+
+    /** Whether avoidable waiting counts toward the cost being minimised. */
+    public boolean countsIdle() {
+        return countIdle;
     }
 
     public List<SoftPolicy> getPolicies() {
@@ -100,7 +138,9 @@ public final class SchedulingPreferences {
             }
             ids.add(policy.id());
         }
-        ids.add(PolicyId.REDUCE_IDLE);
+        if (countIdle) {
+            ids.add(PolicyId.REDUCE_IDLE);
+        }
         if (keepCurrentOrder) {
             ids.add(PolicyId.PRESERVE_ORDER);
         }

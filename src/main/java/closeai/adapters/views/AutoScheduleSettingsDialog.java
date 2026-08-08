@@ -18,7 +18,6 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -49,8 +48,12 @@ public final class AutoScheduleSettingsDialog extends JDialog {
 
     private final JTextField availableFrom = new JTextField(9);
     private final JTextField availableUntil = new JTextField(9);
-    private final JCheckBox keepOrder = new JCheckBox("Keep my current order where possible", true);
-    private final JCheckBox considerWeather = new JCheckBox("Consider weather", false);
+    private final ToggleSwitch minimizeTravel = new ToggleSwitch("Minimize travel time");
+    private final ToggleSwitch minimizeGaps = new ToggleSwitch("Minimize gaps");
+    private final ToggleSwitch preserveMealtimes = new ToggleSwitch("Preserve mealtimes");
+    private final ToggleSwitch preferDaylight = new ToggleSwitch("Prefer daylight outdoors");
+    private final ToggleSwitch keepOrder = new ToggleSwitch("Preserve plan order");
+    private final ToggleSwitch considerWeather = new ToggleSwitch("Avoid bad weather");
     private final JLabel weatherNote = new JLabel(CHECKING_WEATHER);
     private final JPanel unavailableRows = new JPanel();
     private final List<TimeRangeRow> rows = new ArrayList<>();
@@ -127,32 +130,51 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         form.add(Box.createVerticalStrut(18));
         form.add(group("PREFERENCES"));
 
-        keepOrder.setFont(SwingTheme.BODY);
-        keepOrder.setOpaque(false);
-        keepOrder.setAlignmentX(Component.LEFT_ALIGNMENT);
-        keepOrder.setToolTipText("Prefer the order you already arranged when the days are "
-                + "otherwise about as good.");
-        form.add(keepOrder);
+        // All six factors, all switchable. Turning one off removes it from the ranking
+        // only -- none of them is a hard rule, so none can make a day infeasible, and the
+        // traveller can see and steer every consideration rather than two of six.
+        form.add(softRow(minimizeTravel, "Minimize travel time",
+                "Total time spent getting between places. You still have to reach "
+                        + "everywhere either way; this decides whether a shorter journey "
+                        + "makes one plan better than another."));
+        form.add(Box.createVerticalStrut(6));
+        form.add(softRow(minimizeGaps, "Minimize gaps",
+                "Waiting that is not caused by opening hours or a time you marked "
+                        + "unavailable."));
+        form.add(Box.createVerticalStrut(6));
+        form.add(softRow(preserveMealtimes, "Preserve mealtimes",
+                "Prefer a customary lunch or dinner window for places to eat."));
+        form.add(Box.createVerticalStrut(6));
+        form.add(softRow(preferDaylight, "Prefer daylight outdoors",
+                "Prefer daylight hours for outdoor activities. Indoor places are never "
+                        + "affected."));
 
-        considerWeather.setFont(SwingTheme.BODY);
-        considerWeather.setOpaque(false);
-        considerWeather.setAlignmentX(Component.LEFT_ALIGNMENT);
+        form.add(Box.createVerticalStrut(10));
+
         considerWeather.setEnabled(false);
         considerWeather.setToolTipText("Prefer to keep outdoor activities out of the worst "
-                + "weather, when the forecast is detailed enough to tell the hours apart.");
-        considerWeather.getAccessibleContext().setAccessibleName("Consider weather");
+                + "weather, when the forecast can tell the hours apart. Indoor activities "
+                + "are never affected.");
         considerWeather.getAccessibleContext().setAccessibleDescription(CHECKING_WEATHER);
-        form.add(considerWeather);
+        form.add(switchRow(considerWeather, "Avoid bad weather"));
 
-        // A visible sentence, not a greyed-out box the user has to interpret: whenever the
-        // option cannot be offered, the reason is readable text sitting next to it. Colour
-        // is never the signal, and screen readers get the same words through the
-        // checkbox's accessible description, since a disabled control may be skipped.
+        // A visible sentence, not a greyed-out switch the user has to interpret: whenever
+        // the option cannot be offered, the reason is readable text sitting next to it.
+        // Colour is never the signal, and screen readers get the same words through the
+        // switch's accessible description, since a disabled control may be skipped.
         weatherNote.setFont(SwingTheme.SMALL);
         weatherNote.setForeground(SwingTheme.MUTED);
         weatherNote.setAlignmentX(Component.LEFT_ALIGNMENT);
-        weatherNote.setBorder(BorderFactory.createEmptyBorder(2, 22, 0, 0));
+        weatherNote.setBorder(BorderFactory.createEmptyBorder(2, 52, 0, 0));
         form.add(weatherNote);
+
+        form.add(Box.createVerticalStrut(6));
+
+        keepOrder.setSelected(true);
+        keepOrder.setToolTipText("Prefer the order you already arranged when the days are "
+                + "otherwise about as good.");
+        form.add(switchRow(keepOrder, "Preserve plan order"));
+
         // Absorbs leftover height so the groups stay together at the top instead of being
         // spread down the dialog by the BoxLayout.
         form.add(Box.createVerticalGlue());
@@ -229,9 +251,59 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         return weatherNote.isVisible() ? weatherNote.getText() : "";
     }
 
-    /** Exposed so tests can assert the checkbox's enabled and ticked state. */
-    JCheckBox weatherCheckBox() {
+    /** Exposed so tests can assert the switch's enabled and on/off state. */
+    ToggleSwitch weatherCheckBox() {
         return considerWeather;
+    }
+
+    /**
+     * A switch with its label beside it, laid on one line.
+     *
+     * <p>The label mirrors the switch's clicks to it, so the whole row is a target the way
+     * a checkbox's text is -- a 40-pixel switch alone would be a mean thing to aim for.</p>
+     */
+    /**
+     * A soft factor: on by default, and the traveller's to switch off.
+     *
+     * <p>Every one of these only affects how candidate days are ranked, so switching one
+     * off can never make a day impossible — it just stops that consideration breaking
+     * ties. Weather is the exception, and it is built separately because it can also be
+     * genuinely unavailable.</p>
+     */
+    private JPanel softRow(ToggleSwitch control, String text, String explanation) {
+        control.setSelected(true);
+        control.setToolTipText(explanation);
+        control.getAccessibleContext().setAccessibleDescription(explanation);
+        JPanel row = switchRow(control, text);
+        row.setToolTipText(explanation);
+        return row;
+    }
+
+    private JPanel switchRow(ToggleSwitch control, String text) {
+        JPanel row = new JPanel();
+        row.setLayout(new javax.swing.BoxLayout(row, javax.swing.BoxLayout.X_AXIS));
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // Not greyed to match a disabled switch: only weather can be disabled, that
+        // happens after this row is built, and a label dimmed at construction stayed dim
+        // once the forecast arrived. The sentence under the switch already explains it.
+        JLabel label = new JLabel(text);
+        label.setFont(SwingTheme.BODY);
+        label.setLabelFor(control);
+        label.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent event) {
+                if (control.isEnabled()) {
+                    control.doClick();
+                }
+            }
+        });
+        row.add(control);
+        row.add(Box.createHorizontalStrut(12));
+        row.add(label);
+        row.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE,
+                control.getPreferredSize().height + 4));
+        return row;
     }
 
     private JLabel labelFor(String text, Component field) {
@@ -321,7 +393,9 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         // A disabled checkbox is never ticked, so an unusable forecast can only ever read
         // as "do not consider weather".
         boolean weather = considerWeather.isEnabled() && considerWeather.isSelected();
-        return new AutoScheduleSettings(from, until, windows, keepOrder.isSelected(), weather);
+        return new AutoScheduleSettings(from, until, windows, keepOrder.isSelected(),
+                weather, minimizeTravel.isSelected(), minimizeGaps.isSelected(),
+                preserveMealtimes.isSelected(), preferDaylight.isSelected());
     }
 
     /**

@@ -12,6 +12,7 @@ import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.Trip;
 import closeai.domain.valueobjects.EventType;
 import closeai.domain.valueobjects.TransportationMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -106,7 +107,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         if (availability == null) {
             return;
         }
-        List<ScheduleTask> tasks = buildTasks(activityEvents, inputData);
+        List<ScheduleTask> tasks = buildTasks(activityEvents, inputData, trip.getDate());
         if (tasks == null) {
             return;
         }
@@ -132,10 +133,13 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         }
 
         List<String> warnings = new ArrayList<>();
+        addOpeningHoursWarnings(tasks, warnings);
         WeatherContext weather = weatherFor(trip, inputData.isConsiderWeather(), warnings);
 
-        SchedulingPreferences preferences = SchedulingPreferences.builtIn(registeredPolicies,
-                inputData.isKeepCurrentOrder(), new PolicyContext(weather));
+        SchedulingPreferences preferences = SchedulingPreferences.builtIn(
+                chosenPolicies(inputData), inputData.isKeepCurrentOrder(),
+                new PolicyContext(weather),
+                inputData.isMinimizeTravel(), inputData.isMinimizeGaps());
 
         RefinementOutcome outcome = searchWithExactTravel(availability, tasks,
                 inputData.getUnavailableWindows(), matrix, preferences, mode, trip.getDate());
@@ -378,9 +382,75 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         return new TimeWindow(start, end);
     }
 
-    /** Turns the Day Plan's events into scheduling tasks, applying the user's locks. */
+    /**
+     * Warns only about venues that are on record as shut for the whole trip date.
+     *
+     * <p>Nothing is said about venues with no published hours, which is most of them. The
+     * scheduler treats those as unconstrained beyond their general daily window, and that is
+     * the ordinary case rather than a problem — warning about it put a caution on almost
+     * every schedule and made the real warnings worth less.</p>
+     */
+    private static void addOpeningHoursWarnings(List<ScheduleTask> tasks,
+                                                List<String> warnings) {
+        List<String> closed = new ArrayList<>();
+        for (ScheduleTask task : tasks) {
+            if (task.isClosedAllDay()) {
+                closed.add(task.getActivity().getName());
+            }
+        }
+        if (!closed.isEmpty()) {
+            warnings.add(namesOf(closed) + (closed.size() == 1 ? " is" : " are")
+                    + " closed on this date, so " + (closed.size() == 1 ? "it" : "they")
+                    + " could not be scheduled.");
+        }
+    }
+
+    /** "A", "A and B", "A, B and C", then "A, B and 3 more" so a long day stays readable. */
+    private static String namesOf(List<String> names) {
+        if (names.size() == 1) {
+            return names.get(0);
+        }
+        if (names.size() == 2) {
+            return names.get(0) + " and " + names.get(1);
+        }
+        if (names.size() == 3) {
+            return names.get(0) + ", " + names.get(1) + " and " + names.get(2);
+        }
+        return names.get(0) + ", " + names.get(1) + " and " + (names.size() - 2) + " more";
+    }
+
+    /**
+     * The soft policies the traveller left switched on.
+     *
+     * <p>Weather is not filtered here even when it is declined: it is switched off by
+     * giving it a context that cannot distinguish times, which makes it score zero and
+     * keeps one reason for its absence instead of two.</p>
+     */
+    private List<SoftPolicy> chosenPolicies(AutoScheduleInputData inputData) {
+        List<SoftPolicy> chosen = new ArrayList<>();
+        for (SoftPolicy policy : registeredPolicies) {
+            if (policy.id() == PolicyId.MEAL_TIME && !inputData.isPreserveMealtimes()) {
+                continue;
+            }
+            if (policy.id() == PolicyId.DAYLIGHT && !inputData.isPreferDaylight()) {
+                continue;
+            }
+            chosen.add(policy);
+        }
+        return chosen;
+    }
+
+    /**
+     * Turns the Day Plan's events into scheduling tasks, applying the user's locks.
+     *
+     * <p>The trip date is what turns a venue's week of opening hours into the windows for
+     * <em>this</em> day. Resolving the weekday here rather than in the engine keeps the
+     * search working on one day's plain time windows, and means nothing below this point
+     * needs a calendar.</p>
+     */
     private List<ScheduleTask> buildTasks(List<ScheduledEvent> activityEvents,
-                                          AutoScheduleInputData inputData) {
+                                          AutoScheduleInputData inputData,
+                                          LocalDate tripDate) {
         List<String> knownIds = new ArrayList<>();
         for (ScheduledEvent event : activityEvents) {
             knownIds.add(event.getId());
@@ -405,7 +475,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
             TimeWindow lockedAt = inputData.getLockedEventIds().contains(event.getId())
                     ? new TimeWindow(event.getStartTime(), event.getEndTime()) : null;
             tasks.add(new ScheduleTask(event.getId(), event.getActivity(), duration, index,
-                    lockedAt));
+                    lockedAt, tripDate));
         }
         return tasks;
     }

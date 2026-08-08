@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 /**
  * The settings dialog's half of the weather contract.
  *
- * <p>"Consider weather" is offered only when the forecast can distinguish one hour from
+ * <p>"Avoid bad weather" is offered only when the forecast can distinguish one hour from
  * another. When it cannot, the box is disabled, unticked, and accompanied by a sentence
  * saying why — a sentence, because a greyed-out control with no explanation leaves the
  * traveller to guess, and because the state must be readable without relying on seeing
@@ -123,7 +123,7 @@ class AutoScheduleWeatherCheckBoxTest {
         // the checkbox itself as well as in the visible label beside it.
         assertEquals(WeatherOption.NO_HOURLY_FORECAST,
                 dialog.weatherCheckBox().getAccessibleContext().getAccessibleDescription());
-        assertEquals("Consider weather",
+        assertEquals("Avoid bad weather",
                 dialog.weatherCheckBox().getAccessibleContext().getAccessibleName());
     }
 

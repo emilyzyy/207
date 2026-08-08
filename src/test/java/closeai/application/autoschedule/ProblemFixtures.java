@@ -4,6 +4,7 @@ import closeai.domain.entities.Activity;
 import closeai.domain.valueobjects.ActivityCategory;
 import closeai.domain.valueobjects.IndoorOutdoorType;
 import closeai.domain.valueobjects.Location;
+import closeai.domain.valueobjects.OpeningHours;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,6 +37,51 @@ public final class ProblemFixtures {
                                     LocalTime opening, LocalTime closing) {
         return new Activity(id, id, category, new Location(43.65, -79.38, id), 4.5, 60,
                 opening, closing, indoorOutdoor, "none");
+    }
+
+    /**
+     * Real per-weekday hours, written the way a test wants to read them.
+     *
+     * <p>Built here rather than through the OSM parser on purpose: this is the application
+     * layer, and it must be provable that the scheduler obeys normalised hours regardless of
+     * which provider produced them.</p>
+     *
+     * @param spans {@code "09:00-12:00", "13:00-17:00"} and so on, all on the given weekday
+     */
+    public static OpeningHours hoursOn(java.time.DayOfWeek day, String... spans) {
+        List<OpeningHours.TimeInterval> intervals = new ArrayList<>();
+        for (String span : spans) {
+            String[] halves = span.split("-");
+            intervals.add(new OpeningHours.TimeInterval(
+                    LocalTime.parse(halves[0]), LocalTime.parse(halves[1])));
+        }
+        java.util.Map<java.time.DayOfWeek, List<OpeningHours.TimeInterval>> week =
+                new java.util.EnumMap<>(java.time.DayOfWeek.class);
+        week.put(day, intervals);
+        return OpeningHours.of(week);
+    }
+
+    /** An activity carrying real hours, with a deliberately wide fallback window behind them. */
+    public static Activity activityWithHours(String id, OpeningHours hours) {
+        return new Activity(id, id, ActivityCategory.MUSEUM,
+                new Location(43.65, -79.38, id), 4.5, 60,
+                LocalTime.of(0, 0), LocalTime.of(23, 59),
+                IndoorOutdoorType.INDOOR, "none", null, hours);
+    }
+
+    /** A movable task whose hours are the real ones for {@link #TRIP_DATE}. */
+    public static ScheduleTask taskWithHours(String id, int durationMinutes, int originalIndex,
+                                             OpeningHours hours) {
+        return new ScheduleTask(id, activityWithHours(id, hours), durationMinutes,
+                originalIndex, null, TRIP_DATE);
+    }
+
+    /** A pinned task whose hours are the real ones for {@link #TRIP_DATE}. */
+    public static ScheduleTask lockedTaskWithHours(String id, int durationMinutes,
+                                                   int originalIndex, OpeningHours hours,
+                                                   LocalTime lockStart) {
+        return new ScheduleTask(id, activityWithHours(id, hours), durationMinutes, originalIndex,
+                new TimeWindow(lockStart, lockStart.plusMinutes(durationMinutes)), TRIP_DATE);
     }
 
     public static ScheduleTask task(String id, int durationMinutes, int originalIndex,

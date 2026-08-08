@@ -21,10 +21,28 @@ public final class AutoScheduleSettings {
     private final List<Window> unavailableWindows;
     private final boolean keepCurrentOrder;
     private final boolean considerWeather;
+    private final boolean minimizeTravel;
+    private final boolean minimizeGaps;
+    private final boolean preserveMealtimes;
+    private final boolean preferDaylight;
 
+    /** Everything the schedule normally weighs, with only the two usual choices given. */
     public AutoScheduleSettings(LocalTime availableStart, LocalTime availableEnd,
                                 List<Window> unavailableWindows, boolean keepCurrentOrder,
                                 boolean considerWeather) {
+        this(availableStart, availableEnd, unavailableWindows,
+                keepCurrentOrder, considerWeather, true, true, true, true);
+    }
+
+    public AutoScheduleSettings(LocalTime availableStart, LocalTime availableEnd,
+                                List<Window> unavailableWindows, boolean keepCurrentOrder,
+                                boolean considerWeather, boolean minimizeTravel,
+                                boolean minimizeGaps, boolean preserveMealtimes,
+                                boolean preferDaylight) {
+        this.minimizeTravel = minimizeTravel;
+        this.minimizeGaps = minimizeGaps;
+        this.preserveMealtimes = preserveMealtimes;
+        this.preferDaylight = preferDaylight;
         this.availableStart = availableStart;
         this.availableEnd = availableEnd;
         this.unavailableWindows = Collections.unmodifiableList(new ArrayList<>(
@@ -45,12 +63,28 @@ public final class AutoScheduleSettings {
         return unavailableWindows;
     }
 
+    public boolean isMinimizeTravel() {
+        return minimizeTravel;
+    }
+
+    public boolean isMinimizeGaps() {
+        return minimizeGaps;
+    }
+
+    public boolean isPreserveMealtimes() {
+        return preserveMealtimes;
+    }
+
+    public boolean isPreferDaylight() {
+        return preferDaylight;
+    }
+
     public boolean isKeepCurrentOrder() {
         return keepCurrentOrder;
     }
 
     /**
-     * Whether the traveller ticked "Consider weather". False whenever the checkbox was
+     * Whether the traveller turned on "Avoid bad weather". False whenever the switch was
      * disabled, since a disabled box is never ticked.
      */
     public boolean isConsiderWeather() {

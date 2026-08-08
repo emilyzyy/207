@@ -6,8 +6,6 @@ import closeai.adapters.viewmodels.SearchState;
 import closeai.adapters.viewmodels.SearchViewModel;
 import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.Trip;
-import closeai.domain.entities.WeatherWarning;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import javax.swing.SwingUtilities;
@@ -27,9 +25,10 @@ public final class ManualPlanPresenter {
 
     public void presentSuccess(Trip trip, String message) {
         runOnEventThread(() -> {
+            final DayPlanState currentPlan = dayPlan.getState();
             dayPlan.setState(new DayPlanState(
                     trip.getId(), trip.getScheduledEvents(), message, false,
-                    Collections.<WeatherWarning>emptyList(),
+                    currentPlan.getHourlyWeather(),
                     trip.getTripDates(), trip.getActiveDayIndex()));
             Set<String> scheduledIds = new HashSet<>();
             for (ScheduledEvent event : trip.getScheduledEvents()) {
@@ -37,11 +36,12 @@ public final class ManualPlanPresenter {
                     scheduledIds.add(event.getActivity().getId());
                 }
             }
-            SearchState current = search.getState();
+            final SearchState currentSearch = search.getState();
             search.setState(new SearchState(
-                    current.getActivities(), current.getQuery(), current.getBookmarkedIds(),
-                    scheduledIds, current.getCategory(), current.getMinimumRating(),
-                    current.getType(), current.getFeedback()));
+                    currentSearch.getActivities(), currentSearch.getQuery(),
+                    currentSearch.getBookmarkedIds(), scheduledIds,
+                    currentSearch.getCategory(), currentSearch.getMinimumRating(),
+                    currentSearch.getType(), currentSearch.getFeedback()));
         });
     }
 

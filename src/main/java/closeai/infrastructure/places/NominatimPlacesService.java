@@ -5,6 +5,7 @@ import closeai.domain.entities.Activity;
 import closeai.domain.valueobjects.ActivityCategory;
 import closeai.domain.valueobjects.IndoorOutdoorType;
 import closeai.domain.valueobjects.Location;
+import closeai.domain.valueobjects.OpeningHours;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -42,6 +43,7 @@ public final class NominatimPlacesService implements PlacesService {
             {300L, 800L, 2000L};
     private static final long DEFAULT_RATE_LIMIT_WAIT_MILLIS = 5_000L;
     private static final long MAX_RETRY_AFTER_MILLIS = 15_000L;
+
 
     private final HttpClient client;
     private final ObjectMapper mapper;
@@ -347,12 +349,19 @@ public final class NominatimPlacesService implements PlacesService {
             int duration = estimateDuration(category);
             String hoursText = tags.has("opening_hours") ? tags.get("opening_hours").asText() : null;
             LocalTime[] openClose = deriveOpenClose(hoursText);
+            // The same text, read a second way. deriveOpenClose above deliberately flattens
+            // the week into one window so that every caller always has something valid;
+            // OpeningHoursParser keeps the weekdays and the gaps, which is what the
+            // scheduler needs and what the flattened window cannot express. Anything the
+            // parser cannot fully understand comes back unknown, and the flattened window
+            // stays in charge -- so this never makes a place less schedulable than before.
+            OpeningHours hours = OpeningHoursParser.parse(hoursText);
             activities.add(new Activity(
                     id, name.trim(), category,
                     new Location(lat, lon, address),
                     4.0, duration,
                     openClose[0], openClose[1],
-                    ioType, riskLevel(ioType), hoursText));
+                    ioType, riskLevel(ioType), hoursText, hours));
             idx++;
         }
         return activities;
