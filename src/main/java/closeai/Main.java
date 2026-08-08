@@ -44,9 +44,9 @@ public final class Main {
                 System.setProperty("closeai.weather.mode",
                         System.getProperty("closeai.weather.mode", "open-meteo"));
                 AppBuilder builder = new AppBuilder();
-                boolean supabase = "supabase".equalsIgnoreCase(
-                        System.getProperty("closeai.persistence.mode", "memory"));
+                boolean supabase = isSupabaseMode();
                 if (supabase) {
+                    System.setProperty("closeai.persistence.mode", "supabase");
                     AuthService auth = createSupabaseAuth();
                     AppContainer app = builder.build(auth);
                     showGallery(builder, app, auth);
@@ -71,6 +71,18 @@ public final class Main {
                         JOptionPane.ERROR_MESSAGE);
             }
         });
+    }
+
+    /**
+     * Supabase mode when {@code closeai.persistence.mode} is set to "supabase"; otherwise
+     * auto-enabled when the Supabase credentials are present, so adding them to .env is enough.
+     */
+    private static boolean isSupabaseMode() {
+        String mode = System.getProperty("closeai.persistence.mode", "");
+        if (!mode.isEmpty()) {
+            return "supabase".equalsIgnoreCase(mode);
+        }
+        return DotEnv.supabaseConfigured();
     }
 
     private static AuthService createSupabaseAuth() {
