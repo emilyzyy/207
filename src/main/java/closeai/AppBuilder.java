@@ -26,6 +26,7 @@ import closeai.adapters.viewmodels.SearchState;
 import closeai.adapters.viewmodels.SearchViewModel;
 import closeai.adapters.viewmodels.ShareState;
 import closeai.adapters.viewmodels.ShareViewModel;
+import closeai.adapters.viewmodels.TripAccessViewModel;
 import closeai.adapters.viewmodels.TripOptionsState;
 import closeai.adapters.viewmodels.TripOptionsViewModel;
 import closeai.adapters.viewmodels.TripAssistantState;
@@ -67,6 +68,7 @@ import closeai.domain.entities.Trip;
 import closeai.domain.entities.WeatherWarning;
 import closeai.domain.valueobjects.Location;
 import closeai.domain.valueobjects.TransportationMode;
+import closeai.domain.valueobjects.TripAccessLevel;
 import closeai.domain.valueobjects.WeatherSeverity;
 import closeai.infrastructure.config.DotEnv;
 import closeai.infrastructure.ai.FallbackTripAssistantGateway;
@@ -158,6 +160,7 @@ public final class AppBuilder {
                         trip.getEndTime(),
                         "",
                         false));
+        TripAccessViewModel tripAccessViewModel = new TripAccessViewModel();
         CalendarViewModel calendarViewModel = new CalendarViewModel(
                 dashboardViewModel, dayPlanViewModel);
         ShareViewModel shareViewModel = new ShareViewModel(
@@ -208,17 +211,18 @@ public final class AppBuilder {
                         app.places.searchInBounds(south, west, north, east, maxResults));
         SearchPanel searchPanel = new SearchPanel(
                 searchViewModel, discoveryController, bookmarkController,
-                manualPlanController, activitySelectionViewModel);
+                manualPlanController, activitySelectionViewModel, tripAccessViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(
                 bookmarksViewModel, bookmarkController,
-                manualPlanController, activitySelectionViewModel);
+                manualPlanController, activitySelectionViewModel, tripAccessViewModel);
         DayPlanPanel dayPlanPanel =
                 new DayPlanPanel(dayPlanViewModel, autoScheduleController,
-                        manualPlanController, activitySelectionViewModel);
+                        manualPlanController, activitySelectionViewModel, tripAccessViewModel);
         dayPlanPanel.setTripDefaults(trip.getStartTime(), trip.getEndTime(),
                 trip.getTransportationMode());
         TripOptionsPanel tripOptionsPanel =
-                new TripOptionsPanel(tripOptionsViewModel, tripSetupController, app.account);
+                new TripOptionsPanel(tripOptionsViewModel, tripSetupController, app.account,
+                        tripAccessViewModel);
         TripAssistantPanel tripAssistantPanel = buildTripAssistant(
                 app, dayPlanViewModel,
                 "Hi, I'm George. Ask me what to visit, what works in rain, or what fits your day.");
@@ -236,6 +240,7 @@ public final class AppBuilder {
                 searchViewModel,
                 bookmarksViewModel);
         refreshWeatherAsync(app, trip, dashboardViewModel, dayPlanViewModel);
+        loadTripAccessAsync(app, trip.getId(), tripAccessViewModel);
         return frame;
     }
 
@@ -272,6 +277,7 @@ public final class AppBuilder {
                         LocalDate.now().plusDays(1),
                         LocalTime.of(9, 0),
                         LocalTime.of(18, 0)));
+        TripAccessViewModel tripAccessViewModel = new TripAccessViewModel();
 
         TripSetupPresenter tripSetupPresenter = new TripSetupPresenter(
                 dashboardViewModel,
@@ -318,15 +324,16 @@ public final class AppBuilder {
                         app.places.searchInBounds(south, west, north, east, maxResults));
         SearchPanel searchPanel = new SearchPanel(
                 searchViewModel, discoveryController, bookmarkController,
-                manualPlanController, activitySelectionViewModel);
+                manualPlanController, activitySelectionViewModel, tripAccessViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(
                 bookmarksViewModel, bookmarkController,
-                manualPlanController, activitySelectionViewModel);
+                manualPlanController, activitySelectionViewModel, tripAccessViewModel);
         DayPlanPanel dayPlanPanel =
                 new DayPlanPanel(dayPlanViewModel, autoScheduleController,
-                        manualPlanController, activitySelectionViewModel);
+                        manualPlanController, activitySelectionViewModel, tripAccessViewModel);
         TripOptionsPanel tripOptionsPanel =
-                new TripOptionsPanel(tripOptionsViewModel, tripSetupController, app.account);
+                new TripOptionsPanel(tripOptionsViewModel, tripSetupController, app.account,
+                        tripAccessViewModel);
         TripAssistantPanel tripAssistantPanel = buildTripAssistant(
                 app, dayPlanViewModel,
                 "Hi, I'm George. Create a trip, then ask me for activity recommendations.");
@@ -453,6 +460,26 @@ public final class AppBuilder {
                 "Loading weather\u2026",
                 WeatherSeverity.LOW,
                 "Fetching the forecast for " + trip.getDestination() + "\u2026");
+    }
+
+    private void loadTripAccessAsync(AppContainer app, String tripId,
+                                     TripAccessViewModel tripAccessViewModel) {
+        if (app == null || app.account == null || tripId == null || tripId.trim().isEmpty()
+                || tripAccessViewModel == null) {
+            return;
+        }
+        Thread worker = new Thread(() -> {
+            try {
+                TripAccessLevel access = app.account.getMyTripAccess(tripId);
+                SwingUtilities.invokeLater(() ->
+                        tripAccessViewModel.setAccess(
+                                access.canEditItinerary(), access.canManagePeople()));
+            } catch (RuntimeException exception) {
+                // Keep default editable until Trip Options loads access, or user retries.
+            }
+        }, "Trip-Access-" + tripId);
+        worker.setDaemon(true);
+        worker.start();
     }
 
     private void refreshWeatherAsync(AppContainer app, Trip trip,

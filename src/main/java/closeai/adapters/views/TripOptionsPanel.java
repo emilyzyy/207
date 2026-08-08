@@ -1,6 +1,7 @@
 package closeai.adapters.views;
 
 import closeai.adapters.controllers.TripSetupController;
+import closeai.adapters.viewmodels.TripAccessViewModel;
 import closeai.adapters.viewmodels.TripOptionsState;
 import closeai.adapters.viewmodels.TripOptionsViewModel;
 import closeai.application.ports.AccountService;
@@ -43,6 +44,7 @@ public final class TripOptionsPanel extends JPanel {
     private final TripOptionsViewModel viewModel;
     private final TripSetupController controller;
     private final AccountService account;
+    private final TripAccessViewModel tripAccess;
     private final JTextField destination = new JTextField();
     private final JTextField date = new JTextField();
     private final JTextField startTime = new JTextField();
@@ -57,28 +59,38 @@ public final class TripOptionsPanel extends JPanel {
     private final Map<String, User> memberUsers = new LinkedHashMap<>();
     private List<User> friendChoices = new ArrayList<>();
     private User ownerUser;
+    private String currentUserId;
     private boolean canManagePeople;
     private boolean canEditItinerary = true;
 
     public TripOptionsPanel(TripOptionsViewModel viewModel) {
-        this(viewModel, null, null);
+        this(viewModel, null, null, null);
     }
 
     public TripOptionsPanel(
             TripOptionsViewModel viewModel, TripSetupController controller) {
-        this(viewModel, controller, null);
+        this(viewModel, controller, null, null);
     }
 
     public TripOptionsPanel(
             TripOptionsViewModel viewModel,
             TripSetupController controller,
             AccountService account) {
+        this(viewModel, controller, account, null);
+    }
+
+    public TripOptionsPanel(
+            TripOptionsViewModel viewModel,
+            TripSetupController controller,
+            AccountService account,
+            TripAccessViewModel tripAccess) {
         if (viewModel == null) {
             throw new IllegalArgumentException("Trip Options ViewModel is required");
         }
         this.viewModel = viewModel;
         this.controller = controller;
         this.account = account;
+        this.tripAccess = tripAccess;
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -141,6 +153,9 @@ public final class TripOptionsPanel extends JPanel {
                 renderState(viewModel.getState());
             }
         });
+        if (tripAccess != null) {
+            tripAccess.addPropertyChangeListener(event -> applyEditability());
+        }
     }
 
     public JButton getSubmitButton() {
@@ -192,6 +207,13 @@ public final class TripOptionsPanel extends JPanel {
         sharingStatus.setForeground(SwingTheme.MUTED);
         sharingStatus.setText("Saving…");
         Map<String, TripAccessRole> roles = new HashMap<>(memberRoles);
+        // Non-owner admins cannot drop themselves when saving.
+        if (currentUserId != null && ownerUser != null
+                && !currentUserId.equals(ownerUser.getId())
+                && memberUsers.containsKey(currentUserId)) {
+            roles.putIfAbsent(currentUserId,
+                    memberRoles.getOrDefault(currentUserId, TripAccessRole.ADMIN));
+        }
         String tripId = state.getTripId();
         new Thread(() -> {
             try {
@@ -225,6 +247,15 @@ public final class TripOptionsPanel extends JPanel {
     }
 
     private void applyEditability() {
+        if (tripAccess != null) {
+            canEditItinerary = tripAccess.canEditItinerary();
+            canManagePeople = tripAccess.canManagePeople();
+        }
+        // Disabled fields cannot be focused or selected — stronger than setEditable(false).
+        destination.setEnabled(canEditItinerary);
+        date.setEnabled(canEditItinerary);
+        startTime.setEnabled(canEditItinerary);
+        endTime.setEnabled(canEditItinerary);
         destination.setEditable(canEditItinerary);
         date.setEditable(canEditItinerary);
         startTime.setEditable(canEditItinerary);
@@ -251,6 +282,7 @@ public final class TripOptionsPanel extends JPanel {
                 TripAccessLevel access = account.getMyTripAccess(tripId);
                 List<TripParticipant> participants = account.listTripParticipants(tripId);
                 List<User> friends = account.listFriends();
+                String selfId = account.currentProfile().map(User::getId).orElse(null);
                 User owner = null;
                 Map<String, TripAccessRole> roles = new LinkedHashMap<>();
                 Map<String, User> users = new LinkedHashMap<>();
@@ -269,7 +301,11 @@ public final class TripOptionsPanel extends JPanel {
                     }
                     canEditItinerary = access.canEditItinerary();
                     canManagePeople = access.canManagePeople();
+                    if (tripAccess != null) {
+                        tripAccess.setAccess(canEditItinerary, canManagePeople);
+                    }
                     ownerUser = resolvedOwner;
+                    currentUserId = selfId;
                     friendChoices = friends;
                     memberRoles.clear();
                     memberRoles.putAll(roles);
@@ -325,7 +361,8 @@ public final class TripOptionsPanel extends JPanel {
                 accessRows.add(empty);
             } else {
                 for (User user : shown.values()) {
-                    accessRows.add(new MemberAccessRow(user, true));
+                    boolean selfLocked = isSelfLockedMember(user.getId());
+                    accessRows.add(new MemberAccessRow(user, !selfLocked, selfLocked));
                     accessRows.add(Box.createVerticalStrut(4));
                 }
             }
@@ -338,7 +375,7 @@ public final class TripOptionsPanel extends JPanel {
                 accessRows.add(empty);
             } else {
                 for (User user : memberUsers.values()) {
-                    accessRows.add(new MemberAccessRow(user, false));
+                    accessRows.add(new MemberAccessRow(user, false, false));
                     accessRows.add(Box.createVerticalStrut(4));
                 }
             }
@@ -346,6 +383,14 @@ public final class TripOptionsPanel extends JPanel {
 
         accessRows.revalidate();
         accessRows.repaint();
+    }
+
+    /** Admins (non-owners) cannot remove themselves or change their own role. */
+    private boolean isSelfLockedMember(String userId) {
+        return canManagePeople
+                && currentUserId != null
+                && currentUserId.equals(userId)
+                && (ownerUser == null || !currentUserId.equals(ownerUser.getId()));
     }
 
     private void renderFeedback(TripOptionsState state) {
@@ -394,12 +439,13 @@ public final class TripOptionsPanel extends JPanel {
         private boolean selected;
         private final JComboBox<String> roleBox;
 
-        MemberAccessRow(User friend, boolean editable) {
+        MemberAccessRow(User friend, boolean editable, boolean selfLocked) {
             this.friend = friend;
             this.selected = memberRoles.containsKey(friend.getId());
             TripAccessRole role = memberRoles.getOrDefault(friend.getId(), TripAccessRole.EDIT);
             setOpaque(true);
-            setBackground(selected || !editable ? SwingTheme.BLUE_SOFT : SwingTheme.BACKGROUND);
+            setBackground(selected || !editable || selfLocked
+                    ? SwingTheme.BLUE_SOFT : SwingTheme.BACKGROUND);
             setLayout(new BorderLayout(8, 0));
             setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
             setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
@@ -417,7 +463,8 @@ public final class TripOptionsPanel extends JPanel {
                 });
             }
             left.add(new JLabel(AvatarSupport.iconFor(friend, 26)));
-            JLabel name = new JLabel("@" + friend.getUsername());
+            JLabel name = new JLabel("@" + friend.getUsername()
+                    + (selfLocked ? " (You)" : ""));
             name.setFont(SwingTheme.BODY);
             name.setForeground(SwingTheme.NAVY);
             left.add(name);
@@ -430,20 +477,29 @@ public final class TripOptionsPanel extends JPanel {
             });
             roleBox.setSelectedItem(role.displayName());
             roleBox.setFont(SwingTheme.SMALL);
-            if (editable) {
+            if (selfLocked) {
+                // No checkbox / role dropdown — admins cannot change their own access.
+                roleBox.setVisible(false);
+                JLabel roleLabel = new JLabel(role.displayName());
+                roleLabel.setFont(SwingTheme.SMALL);
+                roleLabel.setForeground(SwingTheme.MUTED);
+                add(roleLabel, BorderLayout.EAST);
+            } else if (editable) {
                 roleBox.setVisible(selected);
                 roleBox.setEnabled(selected);
                 roleBox.addActionListener(event -> {
                     if (!selected) {
                         return;
                     }
-                    memberRoles.put(friend.getId(), roleFromDisplay((String) roleBox.getSelectedItem()));
+                    memberRoles.put(friend.getId(),
+                            roleFromDisplay((String) roleBox.getSelectedItem()));
                 });
+                add(roleBox, BorderLayout.EAST);
             } else {
                 roleBox.setEnabled(false);
                 roleBox.setVisible(true);
+                add(roleBox, BorderLayout.EAST);
             }
-            add(roleBox, BorderLayout.EAST);
         }
 
         void toggle() {

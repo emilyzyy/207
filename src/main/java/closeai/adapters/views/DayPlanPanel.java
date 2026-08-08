@@ -10,6 +10,7 @@ import closeai.adapters.viewmodels.DayPlanViewModel;
 import closeai.adapters.viewmodels.PreviewMetricsView;
 import closeai.adapters.viewmodels.PreviewRowView;
 import closeai.adapters.viewmodels.TimeDisplay;
+import closeai.adapters.viewmodels.TripAccessViewModel;
 import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.WeatherWarning;
 import closeai.domain.valueobjects.EventType;
@@ -54,6 +55,7 @@ public final class DayPlanPanel extends JPanel {
     private final AutoScheduleController autoScheduleController;
     private final ManualPlanController manualPlanController;
     private final ActivitySelectionViewModel selection;
+    private TripAccessViewModel tripAccess;
     private final JPanel eventList = new JPanel();
     private final JPanel previewArea = new JPanel();
     private final JPanel sidebarSlot = new JPanel(new BorderLayout());
@@ -91,10 +93,18 @@ public final class DayPlanPanel extends JPanel {
     public DayPlanPanel(DayPlanViewModel viewModel, AutoScheduleController autoScheduleController,
                         ManualPlanController manualPlanController,
                         ActivitySelectionViewModel selection) {
+        this(viewModel, autoScheduleController, manualPlanController, selection, null);
+    }
+
+    public DayPlanPanel(DayPlanViewModel viewModel, AutoScheduleController autoScheduleController,
+                        ManualPlanController manualPlanController,
+                        ActivitySelectionViewModel selection,
+                        TripAccessViewModel tripAccess) {
         this.viewModel = viewModel;
         this.autoScheduleController = autoScheduleController;
         this.manualPlanController = manualPlanController;
         this.selection = selection;
+        this.tripAccess = tripAccess;
 
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
@@ -151,6 +161,14 @@ public final class DayPlanPanel extends JPanel {
             selection.addPropertyChangeListener(event ->
                     onEventThread(() -> render(viewModel.getState())));
         }
+        if (tripAccess != null) {
+            tripAccess.addPropertyChangeListener(event ->
+                    onEventThread(() -> render(viewModel.getState())));
+        }
+    }
+
+    private boolean canEditItinerary() {
+        return tripAccess == null || tripAccess.canEditItinerary();
     }
 
     /**
@@ -257,6 +275,9 @@ public final class DayPlanPanel extends JPanel {
     }
 
     private void openSettings() {
+        if (!canEditItinerary()) {
+            return;
+        }
         AutoScheduleSettingsDialog dialog =
                 new AutoScheduleSettingsDialog(this, tripStart, tripEnd, tripMode);
         // Asking whether weather is usable means asking a forecast service, so it happens
@@ -283,14 +304,20 @@ public final class DayPlanPanel extends JPanel {
 
         boolean previewing = state.getStatus() == AutoScheduleStatus.PREVIEW;
         boolean busy = state.getStatus() == AutoScheduleStatus.LOADING;
+        boolean editable = canEditItinerary();
         // Exactly one primary is visible in any state: Autoschedule while idle, Apply while
         // a proposal is on screen. Hiding rather than only disabling Autoschedule is what
         // stops a dead blue button sitting beside the live one during a Preview.
-        autoscheduleButton.setEnabled(!state.getTripId().isEmpty() && !busy);
+        autoscheduleButton.setEnabled(!state.getTripId().isEmpty() && !busy && editable);
         autoscheduleButton.setVisible(!previewing);
-        applyButton.setEnabled(previewing && !busy);
+        if (!editable) {
+            autoscheduleButton.setToolTipText("View only — you cannot change this itinerary");
+        } else {
+            autoscheduleButton.setToolTipText("Suggest a better order and times for this day");
+        }
+        applyButton.setEnabled(previewing && !busy && editable);
         applyButton.setVisible(previewing);
-        cancelButton.setEnabled(previewing && !busy);
+        cancelButton.setEnabled(previewing && !busy && editable);
         cancelButton.setVisible(previewing);
 
         revalidate();
@@ -634,12 +661,20 @@ public final class DayPlanPanel extends JPanel {
             // wired, so the layout does not shift between the two cases.
             JButton edit = SwingTheme.secondaryButton("Edit");
             JButton remove = SwingTheme.secondaryButton("Remove");
-            edit.setEnabled(manualPlanController != null);
-            remove.setEnabled(manualPlanController != null);
+            edit.setEnabled(manualPlanController != null && canEditItinerary());
+            remove.setEnabled(manualPlanController != null && canEditItinerary());
             edit.getAccessibleContext().setAccessibleName("Edit " + name);
             remove.getAccessibleContext().setAccessibleName("Remove " + name);
-            edit.addActionListener(action -> editEvent(event));
-            remove.addActionListener(action -> manualPlanController.remove(event.getId()));
+            edit.addActionListener(action -> {
+                if (canEditItinerary()) {
+                    editEvent(event);
+                }
+            });
+            remove.addActionListener(action -> {
+                if (canEditItinerary()) {
+                    manualPlanController.remove(event.getId());
+                }
+            });
             actions.add(edit);
             actions.add(remove);
 
@@ -677,7 +712,12 @@ public final class DayPlanPanel extends JPanel {
         toggle.getAccessibleContext().setAccessibleDescription(locked
                 ? name + " is pinned to " + at
                 : name + " is not pinned and may be moved");
-        toggle.addActionListener(action2 -> autoScheduleController.toggleLock(event.getId()));
+        toggle.setEnabled(canEditItinerary());
+        toggle.addActionListener(action2 -> {
+            if (canEditItinerary()) {
+                autoScheduleController.toggleLock(event.getId());
+            }
+        });
         return toggle;
     }
 

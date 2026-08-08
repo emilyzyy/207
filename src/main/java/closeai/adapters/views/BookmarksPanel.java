@@ -5,6 +5,7 @@ import closeai.adapters.controllers.ManualPlanController;
 import closeai.adapters.viewmodels.ActivitySelectionViewModel;
 import closeai.adapters.viewmodels.BookmarksState;
 import closeai.adapters.viewmodels.BookmarksViewModel;
+import closeai.adapters.viewmodels.TripAccessViewModel;
 import closeai.domain.entities.Activity;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
@@ -27,6 +28,7 @@ public final class BookmarksPanel extends JPanel {
     private final BookmarkController controller;
     private final ManualPlanController manualPlan;
     private final ActivitySelectionViewModel selection;
+    private TripAccessViewModel tripAccess;
     private final JPanel list = new JPanel();
 
     public BookmarksPanel(BookmarksViewModel viewModel) {
@@ -45,10 +47,18 @@ public final class BookmarksPanel extends JPanel {
     public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller,
                           ManualPlanController manualPlan,
                           ActivitySelectionViewModel selection) {
+        this(viewModel, controller, manualPlan, selection, null);
+    }
+
+    public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller,
+                          ManualPlanController manualPlan,
+                          ActivitySelectionViewModel selection,
+                          TripAccessViewModel tripAccess) {
         this.viewModel = viewModel;
         this.controller = controller;
         this.manualPlan = manualPlan;
         this.selection = selection;
+        this.tripAccess = tripAccess;
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -76,6 +86,13 @@ public final class BookmarksPanel extends JPanel {
         if (selection != null) {
             selection.addPropertyChangeListener(event -> render(viewModel.getState()));
         }
+        if (tripAccess != null) {
+            tripAccess.addPropertyChangeListener(event -> render(viewModel.getState()));
+        }
+    }
+
+    private boolean canEditItinerary() {
+        return tripAccess == null || tripAccess.canEditItinerary();
     }
 
     private void render(BookmarksState state) {
@@ -102,12 +119,22 @@ public final class BookmarksPanel extends JPanel {
             JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
             actions.setOpaque(false);
             JButton remove = SwingTheme.secondaryButton("Remove bookmark");
-            remove.setEnabled(controller != null);
-            remove.addActionListener(event -> controller.remove(activity.getId()));
+            remove.setEnabled(controller != null && canEditItinerary());
+            remove.addActionListener(event -> {
+                if (canEditItinerary()) {
+                    controller.remove(activity.getId());
+                }
+            });
             actions.add(remove);
             JButton add = SwingTheme.primaryButton("Add to plan");
-            add.setEnabled(manualPlan != null);
+            add.setEnabled(manualPlan != null && canEditItinerary());
+            if (!canEditItinerary()) {
+                add.setToolTipText("View only — you cannot change this itinerary");
+            }
             add.addActionListener(event -> {
+                if (!canEditItinerary()) {
+                    return;
+                }
                 String start = JOptionPane.showInputDialog(
                         this, "Preferred start time for " + activity.getName()
                                 + " (HH:MM). Leave blank for the next available time.",

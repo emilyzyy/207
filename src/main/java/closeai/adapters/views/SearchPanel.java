@@ -6,6 +6,7 @@ import closeai.adapters.controllers.ManualPlanController;
 import closeai.adapters.viewmodels.ActivitySelectionViewModel;
 import closeai.adapters.viewmodels.SearchState;
 import closeai.adapters.viewmodels.SearchViewModel;
+import closeai.adapters.viewmodels.TripAccessViewModel;
 import closeai.domain.entities.Activity;
 import closeai.domain.valueobjects.ActivityCategory;
 import closeai.domain.valueobjects.IndoorOutdoorType;
@@ -38,6 +39,7 @@ public final class SearchPanel extends JPanel {
     private final BookmarkController bookmarks;
     private final ManualPlanController manualPlan;
     private final ActivitySelectionViewModel selection;
+    private TripAccessViewModel tripAccess;
     private final JPanel results = new JPanel();
     private final JScrollPane scroll;
     private final JTextField search = new JTextField();
@@ -70,11 +72,18 @@ public final class SearchPanel extends JPanel {
     public SearchPanel(SearchViewModel viewModel, ActivityDiscoveryController discovery,
                        BookmarkController bookmarks, ManualPlanController manualPlan,
                        ActivitySelectionViewModel selection) {
+        this(viewModel, discovery, bookmarks, manualPlan, selection, null);
+    }
+
+    public SearchPanel(SearchViewModel viewModel, ActivityDiscoveryController discovery,
+                       BookmarkController bookmarks, ManualPlanController manualPlan,
+                       ActivitySelectionViewModel selection, TripAccessViewModel tripAccess) {
         this.viewModel = viewModel;
         this.discovery = discovery;
         this.bookmarks = bookmarks;
         this.manualPlan = manualPlan;
         this.selection = selection;
+        this.tripAccess = tripAccess;
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -92,6 +101,13 @@ public final class SearchPanel extends JPanel {
         if (selection != null) {
             selection.addPropertyChangeListener(event -> render(viewModel.getState()));
         }
+        if (tripAccess != null) {
+            tripAccess.addPropertyChangeListener(event -> render(viewModel.getState()));
+        }
+    }
+
+    private boolean canEditItinerary() {
+        return tripAccess == null || tripAccess.canEditItinerary();
     }
 
     private JPanel searchControls() {
@@ -255,8 +271,12 @@ public final class SearchPanel extends JPanel {
         JButton bookmarkButton = saved
                 ? SwingTheme.secondaryButton("Remove bookmark")
                 : SwingTheme.primaryButton("Bookmark");
-        bookmarkButton.setEnabled(bookmarks != null);
-        bookmarkButton.addActionListener(event -> bookmarks.toggle(activity.getId()));
+        bookmarkButton.setEnabled(bookmarks != null && canEditItinerary());
+        bookmarkButton.addActionListener(event -> {
+            if (canEditItinerary()) {
+                bookmarks.toggle(activity.getId());
+            }
+        });
         actions.add(bookmarkButton);
         boolean planned = state.getScheduledIds().contains(activity.getId());
         if (planned) {
@@ -266,8 +286,15 @@ public final class SearchPanel extends JPanel {
             actions.add(plannedLabel);
         } else {
             JButton add = SwingTheme.primaryButton("Add to plan");
-            add.setEnabled(manualPlan != null);
-            add.addActionListener(event -> addToPlan(activity));
+            add.setEnabled(manualPlan != null && canEditItinerary());
+            if (!canEditItinerary()) {
+                add.setToolTipText("View only — you cannot change this itinerary");
+            }
+            add.addActionListener(event -> {
+                if (canEditItinerary()) {
+                    addToPlan(activity);
+                }
+            });
             actions.add(add);
         }
         card.add(actions, BorderLayout.SOUTH);
