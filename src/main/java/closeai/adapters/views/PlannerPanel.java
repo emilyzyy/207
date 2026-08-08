@@ -12,33 +12,13 @@ public final class PlannerPanel extends JPanel {
             BookmarksPanel bookmarksPanel,
             DayPlanPanel dayPlanPanel,
             TripOptionsPanel tripOptionsPanel) {
-        this(searchPanel, bookmarksPanel, dayPlanPanel, null, tripOptionsPanel, null);
+        this(searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel, null);
     }
 
     public PlannerPanel(
             SearchPanel searchPanel,
             BookmarksPanel bookmarksPanel,
             DayPlanPanel dayPlanPanel,
-            TripOptionsPanel tripOptionsPanel,
-            DaySwitcherPanel daySwitcherPanel) {
-        this(searchPanel, bookmarksPanel, dayPlanPanel, null, tripOptionsPanel, daySwitcherPanel);
-    }
-
-    public PlannerPanel(
-            SearchPanel searchPanel,
-            BookmarksPanel bookmarksPanel,
-            DayPlanPanel dayPlanPanel,
-            TripAssistantPanel tripAssistantPanel,
-            TripOptionsPanel tripOptionsPanel) {
-        this(searchPanel, bookmarksPanel, dayPlanPanel, tripAssistantPanel, tripOptionsPanel, null);
-    }
-
-    /** The day switcher sits above the tabs so it stays visible from any tab. */
-    public PlannerPanel(
-            SearchPanel searchPanel,
-            BookmarksPanel bookmarksPanel,
-            DayPlanPanel dayPlanPanel,
-            TripAssistantPanel tripAssistantPanel,
             TripOptionsPanel tripOptionsPanel,
             DaySwitcherPanel daySwitcherPanel) {
         setLayout(new BorderLayout());
@@ -49,9 +29,6 @@ public final class PlannerPanel extends JPanel {
         tabs.addTab("Search", searchPanel);
         tabs.addTab("Bookmarks", bookmarksPanel);
         tabs.addTab("Day Plan", dayPlanPanel);
-        if (tripAssistantPanel != null) {
-            tabs.addTab("Trip Assistant", tripAssistantPanel);
-        }
         tabs.addTab("Trip Options", tripOptionsPanel);
         add(tabs, BorderLayout.CENTER);
 

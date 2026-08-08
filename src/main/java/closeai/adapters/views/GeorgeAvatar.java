@@ -3,14 +3,10 @@ package closeai.adapters.views;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
-import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 
@@ -21,34 +17,41 @@ final class GeorgeAvatar {
 
     static ImageIcon icon(int width, int height) {
         BufferedImage source = load();
-        Image scaled = source.getScaledInstance(width, height, Image.SCALE_SMOOTH);
-        return new ImageIcon(scaled);
+        double scale = Math.min(
+                (double) width / source.getWidth(),
+                (double) height / source.getHeight());
+        int scaledWidth = Math.max(1, (int) Math.round(source.getWidth() * scale));
+        int scaledHeight = Math.max(1, (int) Math.round(source.getHeight() * scale));
+        BufferedImage canvas = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = canvas.createGraphics();
+        graphics.setRenderingHint(
+                RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        graphics.setRenderingHint(
+                RenderingHints.KEY_RENDERING,
+                RenderingHints.VALUE_RENDER_QUALITY);
+        graphics.drawImage(
+                source,
+                (width - scaledWidth) / 2,
+                (height - scaledHeight) / 2,
+                scaledWidth,
+                scaledHeight,
+                null);
+        graphics.dispose();
+        return new ImageIcon(canvas);
     }
 
     private static BufferedImage load() {
         try (InputStream stream = GeorgeAvatar.class.getResourceAsStream(
-                "/closeai/george-avatar.png.b64")) {
+                "/closeai/george-avatar.png")) {
             if (stream == null) {
                 return fallback();
             }
-            String encoded = new String(readAll(stream), StandardCharsets.US_ASCII)
-                    .replaceAll("\\s", "");
-            BufferedImage image = ImageIO.read(new java.io.ByteArrayInputStream(
-                    Base64.getDecoder().decode(encoded)));
+            BufferedImage image = ImageIO.read(stream);
             return image == null ? fallback() : image;
-        } catch (IOException | IllegalArgumentException exception) {
+        } catch (IOException exception) {
             return fallback();
         }
-    }
-
-    private static byte[] readAll(InputStream stream) throws IOException {
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        byte[] buffer = new byte[4096];
-        int count;
-        while ((count = stream.read(buffer)) >= 0) {
-            output.write(buffer, 0, count);
-        }
-        return output.toByteArray();
     }
 
     private static BufferedImage fallback() {

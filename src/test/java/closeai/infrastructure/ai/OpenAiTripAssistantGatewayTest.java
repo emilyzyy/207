@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class OpenAiTripAssistantGatewayTest {
@@ -73,6 +74,37 @@ final class OpenAiTripAssistantGatewayTest {
             assertTrue(context.has("bookmarked_activity_ids"));
             assertTrue(context.has("day_plan"));
             assertTrue(context.has("weather"));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void proxyRequestDoesNotContainAnOpenAiAuthorizationHeader() throws Exception {
+        AtomicReference<String> authorization = new AtomicReference<String>();
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/responses", exchange -> {
+            authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            byte[] response = ("{\"status\":\"completed\",\"output\":[{"
+                    + "\"type\":\"message\",\"content\":[{\"type\":\"output_text\","
+                    + "\"text\":\"{\\\"intent\\\":\\\"GENERAL\\\","
+                    + "\\\"activity_ids\\\":[\\\"museum\\\"]}\"}]}]}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+        try {
+            URI endpoint = URI.create("http://127.0.0.1:"
+                    + server.getAddress().getPort() + "/v1/responses");
+            OpenAiTripAssistantGateway gateway =
+                    OpenAiTripAssistantGateway.viaProxy(endpoint, "gpt-5.4-mini");
+
+            TripAssistantDecision decision = gateway.answer(request());
+
+            assertEquals(TripAssistantDecision.Intent.GENERAL, decision.getIntent());
+            assertNull(authorization.get());
         } finally {
             server.stop(0);
         }

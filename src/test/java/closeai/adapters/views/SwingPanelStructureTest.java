@@ -9,8 +9,6 @@ import closeai.adapters.viewmodels.SearchState;
 import closeai.adapters.viewmodels.SearchViewModel;
 import closeai.adapters.viewmodels.TripOptionsState;
 import closeai.adapters.viewmodels.TripOptionsViewModel;
-import closeai.adapters.viewmodels.TripAssistantState;
-import closeai.adapters.viewmodels.TripAssistantViewModel;
 import closeai.domain.entities.Activity;
 import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.WeatherWarning;
@@ -31,6 +29,7 @@ import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -57,27 +56,16 @@ final class SwingPanelStructureTest {
         TripOptionsPanel options = new TripOptionsPanel(new TripOptionsViewModel(
                 new TripOptionsState("Toronto", LocalDate.of(2026, 7, 23),
                         LocalTime.of(9, 0), LocalTime.of(18, 0))));
-        TripAssistantViewModel assistantViewModel = new TripAssistantViewModel(
-                new TripAssistantState(Collections.emptyList(), false, ""));
-        closeai.adapters.presenters.TripAssistantPresenter assistantPresenter =
-                new closeai.adapters.presenters.TripAssistantPresenter(assistantViewModel);
-        TripAssistantPanel assistant = new TripAssistantPanel(
-                assistantViewModel,
-                new closeai.adapters.controllers.TripAssistantController(
-                        input -> { }, () -> "trip-1", assistantPresenter, assistantViewModel,
-                        closeai.adapters.controllers.TaskRunner.immediate()));
         PlannerPanel planner = new PlannerPanel(
-                search, bookmarks, dayPlan, assistant, options);
+                search, bookmarks, dayPlan, options);
 
         JTabbedPane tabs = (JTabbedPane) planner.getComponent(0);
-        assertEquals(5, tabs.getTabCount());
+        assertEquals(4, tabs.getTabCount());
         assertEquals("Search", tabs.getTitleAt(0));
         assertEquals("Bookmarks", tabs.getTitleAt(1));
         assertEquals("Day Plan", tabs.getTitleAt(2));
-        assertEquals("Trip Assistant", tabs.getTitleAt(3));
-        assertEquals("Trip Options", tabs.getTitleAt(4));
-        assertTrue(allText(planner).contains("George"));
-        assertNotNull(findButton(assistant, "Send"));
+        assertEquals("Trip Options", tabs.getTitleAt(3));
+        assertFalse(allText(planner).contains("Trip Assistant"));
         assertTrue(allText(planner).contains("Discover activities"));
         assertTrue(allText(planner).contains("Saved for later"));
         assertNotNull(findButton(search, "Add to plan"));
