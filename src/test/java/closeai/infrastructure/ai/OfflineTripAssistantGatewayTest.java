@@ -59,6 +59,37 @@ final class OfflineTripAssistantGatewayTest {
     }
 
     @Test
+    void generalIdentityAndArithmeticQuestionsGetDirectFriendlyAnswers() {
+        TripAssistantDecision identity = gateway.answer(request(
+                "What is your name?", Collections.emptyList()));
+        TripAssistantDecision arithmetic = gateway.answer(request(
+                "3 + 3 = ?", Collections.emptyList()));
+
+        assertEquals(TripAssistantDecision.Intent.GENERAL, identity.getIntent());
+        assertTrue(identity.getAnswer().contains("George"));
+        assertTrue(identity.getActivityIds().isEmpty());
+        assertEquals(TripAssistantDecision.Intent.GENERAL, arithmetic.getIntent());
+        assertEquals("3 + 3 = 6.", arithmetic.getAnswer());
+        assertTrue(arithmetic.getActivityIds().isEmpty());
+    }
+
+    @Test
+    void activityFollowUpUsesRecentGroundedIdsAndRequestedFact() {
+        List<TripAssistantMessage> history = Collections.singletonList(
+                new TripAssistantMessage(TripAssistantMessage.Role.ASSISTANT,
+                        "Try the museum", Collections.singletonList("museum")));
+
+        TripAssistantDecision decision = gateway.answer(request(
+                "What is their specialty?", history));
+
+        assertEquals(TripAssistantDecision.Intent.ACTIVITY_DETAILS, decision.getIntent());
+        assertEquals(Collections.singletonList("museum"), decision.getActivityIds());
+        assertEquals(TripAssistantDecision.RequestedFact.SPECIALTY,
+                decision.getRequestedFact());
+        assertTrue(decision.getAnswer().isEmpty());
+    }
+
+    @Test
     void afternoonRecommendationFitsTheActualFreeGapInTheDayPlan() {
         Activity longVisit = activity(
                 "long", IndoorOutdoorType.INDOOR, 5.0, 120);

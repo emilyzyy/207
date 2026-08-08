@@ -4,15 +4,21 @@ const MAX_BODY_BYTES = 64 * 1024;
 const MAX_ACTIVITIES = 120;
 const MAX_HISTORY = 8;
 const MAX_OUTPUT_TOKENS = 300;
-const INSTRUCTIONS = "Role: You are George, the friendly travel assistant inside CloseAI. "
-  + "Answer ordinary questions naturally and concisely. For greetings, identity questions, "
+const INSTRUCTIONS = "Role: You are George, the friendly travel companion inside CloseAI. "
+  + "Be cheerful, natural, and concise. Answer ordinary questions naturally and directly. "
+  + "For greetings, identity questions, "
   + "simple math, or other general questions, use intent GENERAL, return no activity IDs, and "
   + "put the direct reply in answer. For trip advice, choose up to three suitable activities "
   + "using every supplied trip field as evidence. Select only activity_id values from "
   + "available_activities; never create a place, name, or ID. Do not name places in answer "
   + "because CloseAI renders validated activity names locally. Use bookmarks, Day Plan, weather, "
-  + "hours, duration, date, and transportation mode. For a why question, reuse the most recent "
-  + "grounded activity IDs in history when appropriate. Return only the requested structured data.";
+  + "hours, duration, date, and transportation mode. For a follow-up asking about an activity, "
+  + "use ACTIVITY_DETAILS and identify the requested_fact. Reuse the single most recent grounded "
+  + "activity ID for pronouns such as it, its, their, or that place. If recent history grounds "
+  + "more than one possible activity, return no ID so CloseAI can ask for clarification. Use "
+  + "EXPLAIN for why a recommendation was made. Never put place facts, menu details, specialties, "
+  + "prices, or history in answer; Java renders all activity facts from CloseAI entities and will "
+  + "honestly report missing data. Return only the requested structured data.";
 
 export default {
   fetch(request, env) {
@@ -113,9 +119,8 @@ function validateContext(context) {
     return "A valid question is required";
   }
   if (!Array.isArray(context.available_activities)
-      || context.available_activities.length === 0
       || context.available_activities.length > MAX_ACTIVITIES) {
-    return "Available activities are required";
+    return "Available activities must be an array";
   }
   const ids = new Set();
   for (const activity of context.available_activities) {
@@ -161,6 +166,10 @@ function sanitizeContext(context) {
 }
 
 function responseFormat(activityIds) {
+  const idItems = { type: "string" };
+  if (activityIds.length > 0) {
+    idItems.enum = activityIds;
+  }
   return {
     type: "json_schema",
     name: "trip_activity_selection",
@@ -170,20 +179,26 @@ function responseFormat(activityIds) {
       properties: {
         intent: {
           type: "string",
-          enum: ["RECOMMEND", "RAIN", "AFTERNOON", "BOOKMARKS", "EXPLAIN", "GENERAL"],
+          enum: ["RECOMMEND", "RAIN", "AFTERNOON", "BOOKMARKS", "EXPLAIN",
+            "ACTIVITY_DETAILS", "GENERAL"],
         },
         activity_ids: {
           type: "array",
-          items: { type: "string", enum: activityIds },
-          maxItems: 3,
+          items: idItems,
+          maxItems: activityIds.length === 0 ? 0 : 3,
         },
         answer: {
           type: "string",
           minLength: 1,
           maxLength: 1200,
         },
+        requested_fact: {
+          type: "string",
+          enum: ["SPECIALTY", "CATEGORY", "RATING", "HOURS", "DURATION", "LOCATION",
+            "SETTING", "BOOKMARK_STATUS", "PLAN_STATUS", "RECOMMENDATION_REASON", "UNKNOWN"],
+        },
       },
-      required: ["intent", "activity_ids", "answer"],
+      required: ["intent", "activity_ids", "answer", "requested_fact"],
       additionalProperties: false,
     },
   };

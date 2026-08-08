@@ -397,7 +397,9 @@ public final class AppBuilder {
                 TripAssistantDecision decision = offline.answer(request);
                 return new TripAssistantDecision(
                         decision.getIntent(), decision.getActivityIds(),
-                        "OPENAI_API_KEY is not configured, so George used offline recommendations.");
+                        decision.getAnswer(),
+                        "OPENAI_API_KEY is not configured, so George used offline mode.",
+                        decision.getRequestedFact());
             };
         }
         return new FallbackTripAssistantGateway(
@@ -415,8 +417,9 @@ public final class AppBuilder {
                 TripAssistantDecision decision = offline.answer(request);
                 return new TripAssistantDecision(
                         decision.getIntent(), decision.getActivityIds(),
-                        "George's live service is not configured, so offline recommendations "
-                                + "were used.");
+                        decision.getAnswer(),
+                        "George's live service is not configured, so offline mode was used.",
+                        decision.getRequestedFact());
             };
         }
         try {

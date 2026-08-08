@@ -65,6 +65,7 @@ final class OpenAiTripAssistantGatewayTest {
             JsonNode root = mapper.readTree(requestBody.get());
             assertEquals("gpt-test", root.path("model").asText());
             assertFalse(root.path("store").asBoolean(true));
+            assertEquals(300, root.path("max_output_tokens").asInt());
             assertEquals("json_schema",
                     root.path("text").path("format").path("type").asText());
             assertEquals("museum", root.path("text").path("format").path("schema")
@@ -72,6 +73,8 @@ final class OpenAiTripAssistantGatewayTest {
                     .path("enum").get(0).asText());
             assertEquals(1200, root.path("text").path("format").path("schema")
                     .path("properties").path("answer").path("maxLength").asInt());
+            assertTrue(root.path("text").path("format").path("schema")
+                    .path("properties").has("requested_fact"));
             JsonNode context = mapper.readTree(root.path("input").asText());
             assertEquals("Toronto", context.path("destination").asText());
             assertEquals("TRANSIT", context.path("transportation_mode").asText());
