@@ -75,7 +75,8 @@ final class AutoScheduleTripUseCaseTest {
         minutes.put(TransportationMode.TRANSIT, 20);
         minutes.put(TransportationMode.DRIVING, 10);
 
-        for (TransportationMode mode : TransportationMode.values()) {
+        // Only the real modes: FASTEST is a request the router resolves, not a rate.
+        for (TransportationMode mode : TransportationMode.specificModes()) {
             Trip trip = trip("mode-" + mode, mode);
             trip.bookmark(activity("stop", 4.5, 30, time(9, 0), time(18, 0),
                     IndoorOutdoorType.INDOOR));

@@ -86,8 +86,10 @@ class AutoScheduleControllerTest {
         assertEquals("trip-1", input.getTripId());
         assertEquals(LocalTime.of(10, 0), input.getAvailableStart());
         assertEquals(LocalTime.of(18, 0), input.getAvailableEnd());
-        assertNull(input.getTransportationMode(),
-                "the mode is the trip's own now, so the controller must not pass one");
+        assertEquals(closeai.domain.valueobjects.TransportationMode.FASTEST,
+                input.getTransportationMode(),
+                "the traveller's choice reaches the use case; FASTEST is the default when "
+                        + "they decline to pick one");
         assertTrue(input.isKeepCurrentOrder());
         assertEquals(1, input.getUnavailableWindows().size());
         assertEquals(LocalTime.of(12, 0), input.getUnavailableWindows().get(0).getStart());

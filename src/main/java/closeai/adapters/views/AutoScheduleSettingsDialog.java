@@ -1,6 +1,7 @@
 package closeai.adapters.views;
 
 import closeai.adapters.controllers.AutoScheduleSettings;
+import closeai.domain.valueobjects.TransportationMode;
 import closeai.adapters.controllers.AutoScheduleSettingsValidator;
 import closeai.application.autoschedule.WeatherOption;
 import closeai.adapters.viewmodels.TimeDisplay;
@@ -18,6 +19,7 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -48,6 +50,8 @@ public final class AutoScheduleSettingsDialog extends JDialog {
 
     private final JTextField availableFrom = new JTextField(9);
     private final JTextField availableUntil = new JTextField(9);
+    private final JComboBox<TransportationMode> mode =
+            new JComboBox<>(TransportationMode.values());
     private final ToggleSwitch minimizeTravel = new ToggleSwitch("Minimize travel time");
     private final ToggleSwitch minimizeGaps = new ToggleSwitch("Minimize gaps");
     private final ToggleSwitch preserveMealtimes = new ToggleSwitch("Preserve mealtimes");
@@ -103,6 +107,23 @@ public final class AutoScheduleSettingsDialog extends JDialog {
                 "For example 9:00 AM");
         addField(hours, 1, "Available until", availableUntil,
                 "For example 9:00 PM");
+        // Defaults to Fastest available, which asks the router for whichever real mode is
+        // quickest on each leg. The three specific modes are still offered, because
+        // "fastest" can quietly assume a car the traveller does not have.
+        mode.setSelectedItem(TransportationMode.FASTEST);
+        mode.setRenderer(new javax.swing.DefaultListCellRenderer() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(javax.swing.JList<?> list,
+                    Object value, int index, boolean selected, boolean focused) {
+                super.getListCellRendererComponent(list, value, index, selected, focused);
+                if (value instanceof TransportationMode) {
+                    setText(((TransportationMode) value).getLabel());
+                }
+                return this;
+            }
+        });
+        mode.getAccessibleContext().setAccessibleName("Getting around by");
+        addField(hours, 2, "Getting around by", mode, "");
         hours.setMaximumSize(new Dimension(Integer.MAX_VALUE,
                 hours.getPreferredSize().height));
         form.add(hours);
@@ -393,7 +414,8 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         // A disabled checkbox is never ticked, so an unusable forecast can only ever read
         // as "do not consider weather".
         boolean weather = considerWeather.isEnabled() && considerWeather.isSelected();
-        return new AutoScheduleSettings(from, until, windows, keepOrder.isSelected(),
+        return new AutoScheduleSettings(from, until,
+                (TransportationMode) mode.getSelectedItem(), windows, keepOrder.isSelected(),
                 weather, minimizeTravel.isSelected(), minimizeGaps.isSelected(),
                 preserveMealtimes.isSelected(), preferDaylight.isSelected());
     }

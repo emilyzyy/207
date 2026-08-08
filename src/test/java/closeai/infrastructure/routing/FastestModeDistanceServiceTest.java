@@ -16,7 +16,7 @@ final class FastestModeDistanceServiceTest {
     private static final Location HERE = new Location(43.65, -79.38, "Toronto");
 
     @Test
-    void returnsFastestAcrossAllSupportedModes() {
+    void returnsFastestAcrossAllSupportedModesWhenAskedForFastest() {
         RecordingDistanceService delegate = new RecordingDistanceService();
         delegate.put(TransportationMode.WALKING, 60);
         delegate.put(TransportationMode.DRIVING, 20);
@@ -24,7 +24,7 @@ final class FastestModeDistanceServiceTest {
         FastestModeDistanceService service = new FastestModeDistanceService(delegate);
 
         int minutes = service.estimateTravelMinutes(HERE, HERE,
-                TransportationMode.WALKING, LocalDateTime.now());
+                TransportationMode.FASTEST, LocalDateTime.now());
 
         assertEquals(20, minutes);
         assertEquals(List.of(
@@ -33,8 +33,13 @@ final class FastestModeDistanceServiceTest {
                 TransportationMode.TRANSIT), delegate.modes);
     }
 
+    /**
+     * The behaviour this class used to have was to ignore the requested mode entirely.
+     * That made "fastest" an override rather than an option, and it could quietly plan a
+     * day around a car the traveller does not have. A specific mode is now honoured.
+     */
     @Test
-    void ignoresRequestedModeWhenChoosingFastest() {
+    void aSpecificModeIsPassedStraightThroughAndCostsOneCall() {
         RecordingDistanceService delegate = new RecordingDistanceService();
         delegate.put(TransportationMode.WALKING, 80);
         delegate.put(TransportationMode.DRIVING, 35);
@@ -42,9 +47,22 @@ final class FastestModeDistanceServiceTest {
         FastestModeDistanceService service = new FastestModeDistanceService(delegate);
 
         int minutes = service.estimateTravelMinutes(HERE, HERE,
-                TransportationMode.DRIVING, LocalDateTime.now());
+                TransportationMode.WALKING, LocalDateTime.now());
 
-        assertEquals(35, minutes);
+        assertEquals(80, minutes, "asking to walk must cost what walking costs");
+        assertEquals(List.of(TransportationMode.WALKING), delegate.modes,
+                "one leg, one route request -- not three");
+    }
+
+    @Test
+    void aNullModeIsTreatedAsFastestForCallersWithNoOpinion() {
+        RecordingDistanceService delegate = new RecordingDistanceService();
+        delegate.put(TransportationMode.WALKING, 80);
+        delegate.put(TransportationMode.DRIVING, 35);
+        delegate.put(TransportationMode.TRANSIT, 40);
+
+        assertEquals(35, new FastestModeDistanceService(delegate)
+                .estimateTravelMinutes(HERE, HERE, null, LocalDateTime.now()));
     }
 
     private static final class RecordingDistanceService implements DistanceService {

@@ -54,7 +54,7 @@ public final class AutoScheduleController {
 
         AutoScheduleInputData input = new AutoScheduleInputData(state.getTripId(),
                 settings.getAvailableStart(), settings.getAvailableEnd(),
-                null, state.getLockedEventIds(), unavailable,
+                settings.getTransportationMode(), state.getLockedEventIds(), unavailable,
                 settings.isKeepCurrentOrder(), settings.isConsiderWeather(),
                 settings.isMinimizeTravel(), settings.isMinimizeGaps(),
                 settings.isPreserveMealtimes(), settings.isPreferDaylight());
