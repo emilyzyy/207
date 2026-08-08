@@ -120,6 +120,7 @@ public final class Main {
         List<Trip> trips = app.listTrips.execute();
         boolean signedIn = auth != null && auth.currentSession().isPresent();
         User profile = signedIn ? loadProfile(app) : null;
+        int incomingRequests = signedIn ? countIncomingFriendRequests(app) : 0;
 
         JFrame galleryFrame = new JFrame("CloseAI - My Trips");
         galleryFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -138,10 +139,15 @@ public final class Main {
                 showGallery(builder, app, auth);
             }
         };
-        Runnable onFriends = !signedIn || app.account == null ? null : () ->
-                new FriendsDialog(galleryFrame, app.account).setVisible(true);
+        GalleryPanel[] galleryHolder = new GalleryPanel[1];
+        Runnable onFriends = !signedIn || app.account == null ? null : () -> {
+            new FriendsDialog(galleryFrame, app.account).setVisible(true);
+            if (galleryHolder[0] != null) {
+                galleryHolder[0].setIncomingFriendRequestCount(countIncomingFriendRequests(app));
+            }
+        };
 
-        galleryFrame.add(new GalleryPanel(
+        galleryHolder[0] = new GalleryPanel(
                 trips,
                 trip -> openTripFrame(builder, app, trip, galleryFrame, auth),
                 () -> {
@@ -175,7 +181,9 @@ public final class Main {
                 onProfile,
                 onFriends,
                 profile,
-                signedIn));
+                signedIn,
+                incomingRequests);
+        galleryFrame.add(galleryHolder[0]);
         galleryFrame.pack();
         galleryFrame.setLocationRelativeTo(null);
         galleryFrame.setVisible(true);
@@ -204,12 +212,9 @@ public final class Main {
                     tripFrame.setProfileUser(loadProfile(app));
                 }
             });
-            tripFrame.setFriendsAction(() -> {
-                if (app.account != null) {
-                    new FriendsDialog(tripFrame, app.account).setVisible(true);
-                }
-            });
+            wireTripFriends(app, tripFrame);
             tripFrame.setProfileUser(loadProfile(app));
+            tripFrame.setIncomingFriendRequestCount(countIncomingFriendRequests(app));
         }
         tripFrame.setVisible(true);
         return tripFrame;
@@ -241,12 +246,9 @@ public final class Main {
                     tripFrame.setProfileUser(loadProfile(app));
                 }
             });
-            tripFrame.setFriendsAction(() -> {
-                if (app.account != null) {
-                    new FriendsDialog(tripFrame, app.account).setVisible(true);
-                }
-            });
+            wireTripFriends(app, tripFrame);
             tripFrame.setProfileUser(loadProfile(app));
+            tripFrame.setIncomingFriendRequestCount(countIncomingFriendRequests(app));
             JOptionPane.showMessageDialog(tripFrame,
                     "Signed in. This itinerary was saved to your account.",
                     "Signed in",
@@ -257,6 +259,16 @@ public final class Main {
                     "Save failed",
                     JOptionPane.WARNING_MESSAGE);
         }
+    }
+
+    private static void wireTripFriends(AppContainer app, CloseAIFrame tripFrame) {
+        tripFrame.setFriendsAction(() -> {
+            if (app.account == null) {
+                return;
+            }
+            new FriendsDialog(tripFrame, app.account).setVisible(true);
+            tripFrame.setIncomingFriendRequestCount(countIncomingFriendRequests(app));
+        });
     }
 
     /**
@@ -301,6 +313,18 @@ public final class Main {
         } catch (RuntimeException exception) {
             System.err.println("[Main] Could not load profile: " + exception.getMessage());
             return null;
+        }
+    }
+
+    private static int countIncomingFriendRequests(AppContainer app) {
+        if (app.account == null) {
+            return 0;
+        }
+        try {
+            return app.account.listIncomingRequests().size();
+        } catch (RuntimeException exception) {
+            System.err.println("[Main] Could not load friend requests: " + exception.getMessage());
+            return 0;
         }
     }
 

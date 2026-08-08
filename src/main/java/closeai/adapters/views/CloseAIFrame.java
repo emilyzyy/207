@@ -94,6 +94,10 @@ public final class CloseAIFrame extends JFrame {
         headerPanel.setFriendsAction(action);
     }
 
+    public void setIncomingFriendRequestCount(int count) {
+        headerPanel.setIncomingFriendRequestCount(count);
+    }
+
     public void setProfileUser(closeai.domain.entities.User user) {
         headerPanel.setProfileUser(user);
     }

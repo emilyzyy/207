@@ -28,7 +28,7 @@ public final class HeaderPanel extends JPanel {
     private final JLabel tripLabel = new JLabel();
     private final JLabel dateLabel = new JLabel();
     private final JButton shareButton = SwingTheme.primaryButton("Share");
-    private final JButton friendsButton = SwingTheme.secondaryButton("Friends");
+    private final BadgedButton friendsButton = new BadgedButton("Friends");
     private final JButton authButton = new JButton("Sign in");
     private final JButton avatarButton = AvatarSupport.avatarButton(null, AVATAR_SIZE);
     private Runnable openShareAction = () -> { };
@@ -135,6 +135,13 @@ public final class HeaderPanel extends JPanel {
 
     public void setFriendsAction(Runnable action) {
         this.onFriendsAction = action == null ? () -> { } : action;
+    }
+
+    public void setIncomingFriendRequestCount(int count) {
+        friendsButton.setBadgeCount(count);
+        friendsButton.setToolTipText(count <= 0
+                ? "Friends"
+                : count + " incoming friend request" + (count == 1 ? "" : "s"));
     }
 
     public void setProfileUser(User user) {

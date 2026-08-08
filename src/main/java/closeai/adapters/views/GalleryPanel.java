@@ -42,9 +42,10 @@ public final class GalleryPanel extends JPanel {
     private final transient Runnable onFriendsAction;
     private final JPanel cardGrid;
     private final Map<String, BufferedImage> tileCache = new HashMap<>();
+    private BadgedButton friendsButton;
 
     public GalleryPanel(List<Trip> trips, Consumer<Trip> onOpenTrip, Runnable onCreateTrip) {
-        this(trips, onOpenTrip, onCreateTrip, null, null, null, null, false);
+        this(trips, onOpenTrip, onCreateTrip, null, null, null, null, false, 0);
     }
 
     public GalleryPanel(
@@ -56,6 +57,20 @@ public final class GalleryPanel extends JPanel {
             Runnable onFriendsAction,
             User profile,
             boolean signedIn) {
+        this(trips, onOpenTrip, onCreateTrip, onAuthAction, onProfileAction, onFriendsAction,
+                profile, signedIn, 0);
+    }
+
+    public GalleryPanel(
+            List<Trip> trips,
+            Consumer<Trip> onOpenTrip,
+            Runnable onCreateTrip,
+            Runnable onAuthAction,
+            Runnable onProfileAction,
+            Runnable onFriendsAction,
+            User profile,
+            boolean signedIn,
+            int incomingFriendRequests) {
         this.onOpenTrip = onOpenTrip;
         this.onCreateTrip = onCreateTrip;
         this.onAuthAction = onAuthAction;
@@ -85,7 +100,9 @@ public final class GalleryPanel extends JPanel {
             actions.add(authButton);
         }
         if (signedIn && onFriendsAction != null) {
-            JButton friendsButton = SwingTheme.secondaryButton("Friends");
+            friendsButton = new BadgedButton("Friends");
+            friendsButton.setBadgeCount(incomingFriendRequests);
+            friendsButton.setToolTipText(tooltipForIncoming(incomingFriendRequests));
             friendsButton.addActionListener(e -> onFriendsAction.run());
             actions.add(friendsButton);
         }
@@ -112,6 +129,21 @@ public final class GalleryPanel extends JPanel {
         add(scroll, BorderLayout.CENTER);
 
         startTileLoading(trips);
+    }
+
+    public void setIncomingFriendRequestCount(int count) {
+        if (friendsButton == null) {
+            return;
+        }
+        friendsButton.setBadgeCount(count);
+        friendsButton.setToolTipText(tooltipForIncoming(count));
+    }
+
+    private static String tooltipForIncoming(int count) {
+        if (count <= 0) {
+            return "Friends";
+        }
+        return count + " incoming friend request" + (count == 1 ? "" : "s");
     }
 
     private JPanel createCard(Trip trip) {
