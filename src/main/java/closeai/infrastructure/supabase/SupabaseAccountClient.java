@@ -294,6 +294,31 @@ public final class SupabaseAccountClient implements AccountService {
         }
     }
 
+    @Override
+    public List<String> listTripCompanionUsernames(String tripId) {
+        if (tripId == null || tripId.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        AuthSession session = requireSession();
+        String body = request("GET",
+                "/rest/v1/trip_members?trip_id=eq." + enc(tripId.trim()) + "&select=user_id",
+                null, null);
+        JsonNode array = readArray(body);
+        List<String> usernames = new ArrayList<>();
+        if (!array.isArray()) {
+            return usernames;
+        }
+        for (JsonNode node : array) {
+            String memberId = text(node, "user_id");
+            if (memberId == null || memberId.equals(session.getUserId())) {
+                continue;
+            }
+            findById(memberId).ifPresent(user -> usernames.add(user.getUsername()));
+        }
+        usernames.sort(String.CASE_INSENSITIVE_ORDER);
+        return usernames;
+    }
+
     private boolean alreadyConnected(String userId, String otherId) {
         String body = request("GET",
                 "/rest/v1/friendships?or=("

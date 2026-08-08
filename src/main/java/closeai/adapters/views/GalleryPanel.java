@@ -34,19 +34,21 @@ public final class GalleryPanel extends JPanel {
     private static final Color OVERLAY = new Color(13, 35, 64, 180);
     private static final int MAP_ZOOM = 11;
     private static final int AVATAR_SIZE = 34;
+    private static final int WITH_LINE_MAX_CHARS = 36;
 
     private final transient Consumer<Trip> onOpenTrip;
     private final transient Runnable onCreateTrip;
     private final transient Runnable onAuthAction;
     private final transient Runnable onProfileAction;
     private final transient Runnable onFriendsAction;
+    private final Map<String, List<String>> companionsByTripId;
     private final JPanel cardGrid;
     private final Map<String, BufferedImage> tileCache = new HashMap<>();
     private BadgedButton friendsButton;
     private JButton avatarButton;
 
     public GalleryPanel(List<Trip> trips, Consumer<Trip> onOpenTrip, Runnable onCreateTrip) {
-        this(trips, onOpenTrip, onCreateTrip, null, null, null, null, false, 0);
+        this(trips, onOpenTrip, onCreateTrip, null, null, null, null, false, 0, null);
     }
 
     public GalleryPanel(
@@ -59,7 +61,7 @@ public final class GalleryPanel extends JPanel {
             User profile,
             boolean signedIn) {
         this(trips, onOpenTrip, onCreateTrip, onAuthAction, onProfileAction, onFriendsAction,
-                profile, signedIn, 0);
+                profile, signedIn, 0, null);
     }
 
     public GalleryPanel(
@@ -72,11 +74,28 @@ public final class GalleryPanel extends JPanel {
             User profile,
             boolean signedIn,
             int incomingFriendRequests) {
+        this(trips, onOpenTrip, onCreateTrip, onAuthAction, onProfileAction, onFriendsAction,
+                profile, signedIn, incomingFriendRequests, null);
+    }
+
+    public GalleryPanel(
+            List<Trip> trips,
+            Consumer<Trip> onOpenTrip,
+            Runnable onCreateTrip,
+            Runnable onAuthAction,
+            Runnable onProfileAction,
+            Runnable onFriendsAction,
+            User profile,
+            boolean signedIn,
+            int incomingFriendRequests,
+            Map<String, List<String>> companionsByTripId) {
         this.onOpenTrip = onOpenTrip;
         this.onCreateTrip = onCreateTrip;
         this.onAuthAction = onAuthAction;
         this.onProfileAction = onProfileAction;
         this.onFriendsAction = onFriendsAction;
+        this.companionsByTripId = companionsByTripId == null
+                ? new HashMap<>() : new HashMap<>(companionsByTripId);
         setLayout(new BorderLayout());
         setBackground(SwingTheme.BACKGROUND);
 
@@ -155,6 +174,24 @@ public final class GalleryPanel extends JPanel {
             return "Friends";
         }
         return count + " incoming friend request" + (count == 1 ? "" : "s");
+    }
+
+    private static String formatWithLine(List<String> usernames) {
+        if (usernames == null || usernames.isEmpty()) {
+            return null;
+        }
+        StringBuilder line = new StringBuilder("With ");
+        for (int i = 0; i < usernames.size(); i++) {
+            String piece = (i == 0 ? "" : ", ") + "@" + usernames.get(i);
+            if (line.length() + piece.length() > WITH_LINE_MAX_CHARS) {
+                if (!line.toString().endsWith("...")) {
+                    line.append("...");
+                }
+                break;
+            }
+            line.append(piece);
+        }
+        return line.toString();
     }
 
     private JPanel createCard(Trip trip) {
@@ -237,6 +274,27 @@ public final class GalleryPanel extends JPanel {
             meta.setFont(SwingTheme.SMALL);
             meta.setAlignmentX(Component.CENTER_ALIGNMENT);
             content.add(meta);
+
+            String withLine = formatWithLine(companionsByTripId.get(trip.getId()));
+            if (withLine != null) {
+                content.add(Box.createVerticalStrut(4));
+                JLabel withLabel = new JLabel(withLine);
+                withLabel.setForeground(new Color(180, 200, 220));
+                withLabel.setFont(SwingTheme.SMALL);
+                withLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+                List<String> names = companionsByTripId.get(trip.getId());
+                if (names != null && !names.isEmpty()) {
+                    StringBuilder tip = new StringBuilder("With ");
+                    for (int i = 0; i < names.size(); i++) {
+                        if (i > 0) {
+                            tip.append(", ");
+                        }
+                        tip.append('@').append(names.get(i));
+                    }
+                    withLabel.setToolTipText(tip.toString());
+                }
+                content.add(withLabel);
+            }
 
             content.add(Box.createVerticalStrut(4));
 

@@ -36,4 +36,10 @@ public interface AccountService {
 
     /** Replaces the shared editors on a trip (friends who can view and edit). Owner is unchanged. */
     void setTripMembers(String tripId, List<String> memberUserIds);
+
+    /**
+     * Usernames of people shared on the trip, excluding the current user.
+     * Empty when the trip is not shared.
+     */
+    List<String> listTripCompanionUsernames(String tripId);
 }

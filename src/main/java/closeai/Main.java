@@ -27,7 +27,9 @@ import java.net.InetSocketAddress;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
@@ -122,6 +124,7 @@ public final class Main {
         boolean signedIn = auth != null && auth.currentSession().isPresent();
         User profile = signedIn ? loadProfile(app) : null;
         int incomingRequests = signedIn ? countIncomingFriendRequests(app) : 0;
+        Map<String, List<String>> companions = loadTripCompanions(app, trips);
 
         JFrame galleryFrame = new JFrame("CloseAI - My Trips");
         galleryFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -197,7 +200,8 @@ public final class Main {
                 onFriends,
                 profile,
                 signedIn,
-                incomingRequests);
+                incomingRequests,
+                companions);
         galleryFrame.add(galleryHolder[0]);
         galleryFrame.pack();
         galleryFrame.setLocationRelativeTo(null);
@@ -362,6 +366,25 @@ public final class Main {
             System.err.println("[Main] Could not load friends: " + exception.getMessage());
             return java.util.Collections.emptyList();
         }
+    }
+
+    private static Map<String, List<String>> loadTripCompanions(AppContainer app, List<Trip> trips) {
+        Map<String, List<String>> companions = new HashMap<>();
+        if (app.account == null || trips == null) {
+            return companions;
+        }
+        for (Trip trip : trips) {
+            try {
+                List<String> names = app.account.listTripCompanionUsernames(trip.getId());
+                if (!names.isEmpty()) {
+                    companions.put(trip.getId(), names);
+                }
+            } catch (RuntimeException exception) {
+                System.err.println("[Main] Could not load companions for trip "
+                        + trip.getId() + ": " + exception.getMessage());
+            }
+        }
+        return companions;
     }
 
     /**
