@@ -129,7 +129,7 @@ class OpeningHoursProductionWiringTest {
                 new ScheduleEngine());
         new AutoScheduleController(interactor, viewModel, TaskRunner.immediate())
                 .preview(new AutoScheduleSettings(LocalTime.of(9, 0), LocalTime.of(21, 0),
-                        TransportationMode.WALKING, Collections.emptyList(), true, false));
+                        Collections.emptyList(), true, false));
         return viewModel.getState();
     }
 

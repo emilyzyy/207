@@ -47,9 +47,6 @@ public final class AutoScheduleSettingsValidator {
                     + TimeDisplay.format(tripStart) + " to " + TimeDisplay.format(tripEnd)
                     + "). To extend your day, edit the trip settings.");
         }
-        if (settings.getTransportationMode() == null) {
-            problems.add("Choose how you are getting around.");
-        }
 
         List<AutoScheduleSettings.Window> windows = settings.getUnavailableWindows();
         for (int i = 0; i < windows.size(); i++) {

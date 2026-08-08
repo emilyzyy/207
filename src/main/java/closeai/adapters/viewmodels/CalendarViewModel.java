@@ -3,6 +3,8 @@ package closeai.adapters.viewmodels;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -39,7 +41,8 @@ public final class CalendarViewModel {
         state = new CalendarState(
                 CalendarViewMode.MONTH,
                 initialFocus,
-                tripDate,
+                tripDates(),
+                activeDayIndex(),
                 dashboard.getState().getDestination(),
                 dayPlan.getState().getEvents());
         dashboard.addPropertyChangeListener(event -> synchronizeTrip());
@@ -53,14 +56,15 @@ public final class CalendarViewModel {
     public void setViewMode(CalendarViewMode viewMode) {
         update(new CalendarState(
                 Objects.requireNonNull(viewMode, "Calendar view is required"),
-                state.getFocusDate(), state.getTripDate(),
+                state.getFocusDate(), state.getTripDates(), state.getActiveDayIndex(),
                 state.getDestination(), state.getEvents()));
     }
 
     public void selectDate(LocalDate date) {
         update(new CalendarState(
                 state.getViewMode(), Objects.requireNonNull(date, "Date is required"),
-                state.getTripDate(), state.getDestination(), state.getEvents()));
+                state.getTripDates(), state.getActiveDayIndex(),
+                state.getDestination(), state.getEvents()));
     }
 
     public void previousPeriod() {
@@ -89,6 +93,24 @@ public final class CalendarViewModel {
         changes.removePropertyChangeListener(listener);
     }
 
+    private List<LocalDate> tripDates() {
+        List<LocalDate> dayPlanDates = dayPlan.getState().getTripDates();
+        if (!dayPlanDates.isEmpty()) {
+            return dayPlanDates;
+        }
+        LocalDate dashboardDate = dashboard.getState().getDate();
+        return dashboardDate == null
+                ? Collections.emptyList()
+                : Collections.singletonList(dashboardDate);
+    }
+
+    private int activeDayIndex() {
+        if (!dayPlan.getState().getTripDates().isEmpty()) {
+            return dayPlan.getState().getActiveDayIndex();
+        }
+        return 0;
+    }
+
     private LocalDate shift(LocalDate date, int amount) {
         switch (state.getViewMode()) {
             case DAY:
@@ -105,19 +127,22 @@ public final class CalendarViewModel {
     private void synchronizeTrip() {
         DashboardState dashboardState = dashboard.getState();
         LocalDate nextTripDate = dashboardState.getDate();
+        List<LocalDate> nextTripDates = tripDates();
+        LocalDate nextActiveDate = nextTripDates.isEmpty() ? null : nextTripDates.get(0);
         LocalDate focus = state.getFocusDate();
-        if (!Objects.equals(state.getTripDate(), nextTripDate) && nextTripDate != null) {
-            focus = nextTripDate;
+        if (!Objects.equals(state.getTripDate(), nextActiveDate) && nextActiveDate != null) {
+            focus = nextActiveDate;
         }
         update(new CalendarState(
-                state.getViewMode(), focus, nextTripDate,
+                state.getViewMode(), focus, nextTripDates, activeDayIndex(),
                 dashboardState.getDestination(), dayPlan.getState().getEvents()));
     }
 
     private void synchronizeSchedule() {
         update(new CalendarState(
-                state.getViewMode(), state.getFocusDate(), state.getTripDate(),
-                state.getDestination(), dayPlan.getState().getEvents()));
+                state.getViewMode(), state.getFocusDate(), state.getTripDates(),
+                state.getActiveDayIndex(), state.getDestination(),
+                dayPlan.getState().getEvents()));
     }
 
     private void update(CalendarState updatedState) {

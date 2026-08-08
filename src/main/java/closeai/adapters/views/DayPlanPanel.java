@@ -3,6 +3,7 @@ package closeai.adapters.views;
 import closeai.adapters.controllers.AutoScheduleController;
 import closeai.adapters.controllers.AutoScheduleSettings;
 import closeai.adapters.controllers.ManualPlanController;
+import closeai.adapters.controllers.TripDayController;
 import closeai.adapters.viewmodels.ActivitySelectionViewModel;
 import closeai.adapters.viewmodels.AutoScheduleStatus;
 import closeai.adapters.viewmodels.DayPlanState;
@@ -13,7 +14,6 @@ import closeai.adapters.viewmodels.TimeDisplay;
 import closeai.domain.entities.ScheduledEvent;
 import closeai.domain.entities.WeatherWarning;
 import closeai.domain.valueobjects.EventType;
-import closeai.domain.valueobjects.TransportationMode;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.FlowLayout;
@@ -67,11 +67,10 @@ public final class DayPlanPanel extends JPanel {
 
     private LocalTime tripStart = LocalTime.of(9, 0);
     private LocalTime tripEnd = LocalTime.of(21, 0);
-    private TransportationMode tripMode = TransportationMode.WALKING;
     private Runnable openCalendarAction = () -> { };
 
     public DayPlanPanel(DayPlanViewModel viewModel, AutoScheduleController autoScheduleController) {
-        this(viewModel, autoScheduleController, null, null);
+        this(viewModel, autoScheduleController, null, null, null);
     }
 
     /**
@@ -81,7 +80,7 @@ public final class DayPlanPanel extends JPanel {
      */
     public DayPlanPanel(DayPlanViewModel viewModel, AutoScheduleController autoScheduleController,
                         ManualPlanController manualPlanController) {
-        this(viewModel, autoScheduleController, manualPlanController, null);
+        this(viewModel, autoScheduleController, manualPlanController, null, null);
     }
 
     /**
@@ -92,6 +91,14 @@ public final class DayPlanPanel extends JPanel {
     public DayPlanPanel(DayPlanViewModel viewModel, AutoScheduleController autoScheduleController,
                         ManualPlanController manualPlanController,
                         ActivitySelectionViewModel selection) {
+        this(viewModel, autoScheduleController, manualPlanController, selection, null);
+    }
+
+    /** Kept for API compatibility; the day switcher lives in {@link DaySwitcherPanel} now. */
+    public DayPlanPanel(DayPlanViewModel viewModel, AutoScheduleController autoScheduleController,
+                        ManualPlanController manualPlanController,
+                        ActivitySelectionViewModel selection,
+                        TripDayController tripDayController) {
         this.viewModel = viewModel;
         this.autoScheduleController = autoScheduleController;
         this.manualPlanController = manualPlanController;
@@ -171,16 +178,13 @@ public final class DayPlanPanel extends JPanel {
         openCalendarAction = action == null ? () -> { } : action;
     }
 
-    /** Tells the panel the trip's own hours and mode, used to prefill the dialog. */
-    public void setTripDefaults(LocalTime start, LocalTime end, TransportationMode mode) {
+    /** Tells the panel the trip's own hours, used to prefill the dialog. */
+    public void setTripDefaults(LocalTime start, LocalTime end) {
         if (start != null) {
             tripStart = start;
         }
         if (end != null) {
             tripEnd = end;
-        }
-        if (mode != null) {
-            tripMode = mode;
         }
     }
 
@@ -266,7 +270,7 @@ public final class DayPlanPanel extends JPanel {
 
     private void openSettings() {
         AutoScheduleSettingsDialog dialog =
-                new AutoScheduleSettingsDialog(this, tripStart, tripEnd, tripMode);
+                new AutoScheduleSettingsDialog(this, tripStart, tripEnd);
         // Asking whether weather is usable means asking a forecast service, so it happens
         // off the event thread while the dialog is already on screen. The answer comes
         // back on a background thread and is applied here, on the EDT, because knowing

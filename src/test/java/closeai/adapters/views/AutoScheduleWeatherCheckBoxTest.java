@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import closeai.adapters.controllers.AutoScheduleSettings;
 import closeai.application.autoschedule.WeatherOption;
-import closeai.domain.valueobjects.TransportationMode;
 import java.awt.GraphicsEnvironment;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,7 +52,7 @@ class AutoScheduleWeatherCheckBoxTest {
         assumeFalse(GraphicsEnvironment.isHeadless(), "a dialog needs a display");
         AtomicReference<AutoScheduleSettingsDialog> built = new AtomicReference<>();
         SwingUtilities.invokeAndWait(() -> built.set(new AutoScheduleSettingsDialog(
-                null, LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING)));
+                null, LocalTime.of(9, 0), LocalTime.of(21, 0))));
         opened.add(built.get());
         return built.get();
     }
@@ -159,7 +158,6 @@ class AutoScheduleWeatherCheckBoxTest {
         AutoScheduleSettings settings = dialog.read();
         assertEquals(LocalTime.of(9, 0), settings.getAvailableStart());
         assertEquals(LocalTime.of(21, 0), settings.getAvailableEnd());
-        assertEquals(TransportationMode.WALKING, settings.getTransportationMode());
         assertTrue(settings.isKeepCurrentOrder(), "preserve-order still defaults on");
     }
 }

@@ -1,6 +1,5 @@
 package closeai.adapters.controllers;
 
-import closeai.domain.valueobjects.TransportationMode;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -10,15 +9,15 @@ import java.util.List;
  * What the settings dialog collected, as plain values.
  *
  * <p>Short by design. Sensible travel, mealtimes and daylight are what the feature is for
- * and are always applied. Two preferences are left to the traveller: whether to keep the
- * order they already arranged, and whether to consider weather — the latter only offered
- * when the forecast can distinguish one time of day from another.</p>
+ * and are always applied, and travel is always estimated by the fastest of the available
+ * modes, so there is no mode to ask about. Two preferences are left to the traveller:
+ * whether to keep the order they already arranged, and whether to consider weather — the
+ * latter only offered when the forecast can distinguish one time of day from another.</p>
  */
 public final class AutoScheduleSettings {
 
     private final LocalTime availableStart;
     private final LocalTime availableEnd;
-    private final TransportationMode transportationMode;
     private final List<Window> unavailableWindows;
     private final boolean keepCurrentOrder;
     private final boolean considerWeather;
@@ -29,15 +28,13 @@ public final class AutoScheduleSettings {
 
     /** Everything the schedule normally weighs, with only the two usual choices given. */
     public AutoScheduleSettings(LocalTime availableStart, LocalTime availableEnd,
-                                TransportationMode transportationMode,
                                 List<Window> unavailableWindows, boolean keepCurrentOrder,
                                 boolean considerWeather) {
-        this(availableStart, availableEnd, transportationMode, unavailableWindows,
+        this(availableStart, availableEnd, unavailableWindows,
                 keepCurrentOrder, considerWeather, true, true, true, true);
     }
 
     public AutoScheduleSettings(LocalTime availableStart, LocalTime availableEnd,
-                                TransportationMode transportationMode,
                                 List<Window> unavailableWindows, boolean keepCurrentOrder,
                                 boolean considerWeather, boolean minimizeTravel,
                                 boolean minimizeGaps, boolean preserveMealtimes,
@@ -48,7 +45,6 @@ public final class AutoScheduleSettings {
         this.preferDaylight = preferDaylight;
         this.availableStart = availableStart;
         this.availableEnd = availableEnd;
-        this.transportationMode = transportationMode;
         this.unavailableWindows = Collections.unmodifiableList(new ArrayList<>(
                 unavailableWindows == null ? Collections.<Window>emptyList() : unavailableWindows));
         this.keepCurrentOrder = keepCurrentOrder;
@@ -61,10 +57,6 @@ public final class AutoScheduleSettings {
 
     public LocalTime getAvailableEnd() {
         return availableEnd;
-    }
-
-    public TransportationMode getTransportationMode() {
-        return transportationMode;
     }
 
     public List<Window> getUnavailableWindows() {

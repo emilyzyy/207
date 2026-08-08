@@ -28,7 +28,8 @@ public final class ManualPlanPresenter {
             final DayPlanState currentPlan = dayPlan.getState();
             dayPlan.setState(new DayPlanState(
                     trip.getId(), trip.getScheduledEvents(), message, false,
-                    currentPlan.getHourlyWeather()));
+                    currentPlan.getHourlyWeather(),
+                    trip.getTripDates(), trip.getActiveDayIndex()));
             Set<String> scheduledIds = new HashSet<>();
             for (ScheduledEvent event : trip.getScheduledEvents()) {
                 if (event.getActivity() != null) {
@@ -50,7 +51,8 @@ public final class ManualPlanPresenter {
             dayPlan.setState(new DayPlanState(
                     current.getTripId(), current.getEvents(),
                     message == null ? "Unable to update the Day Plan" : message, true,
-                    current.getHourlyWeather()));
+                    current.getHourlyWeather(), current.getTripDates(),
+                    current.getActiveDayIndex()));
         });
     }
 

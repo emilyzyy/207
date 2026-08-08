@@ -71,7 +71,9 @@ public final class TripSetupPresenter implements TripSetupOutputBoundary {
         search.setState(searchStateFor(trip, search.getState().getActivities()));
         dayPlan.setState(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(),
-                action + ". Add activities before optimizing.", false));
+                action + ". Add activities before optimizing.", false,
+                Collections.<WeatherWarning>emptyList(),
+                trip.getTripDates(), trip.getActiveDayIndex()));
         options.setState(TripOptionsState.fromTrip(trip, action + " successfully.", false));
         refreshDestinationData(trip);
     }
@@ -136,7 +138,8 @@ public final class TripSetupPresenter implements TripSetupOutputBoundary {
                     dayPlan.setState(new DayPlanState(
                             currentPlan.getTripId(), currentPlan.getEvents(),
                             currentPlan.getMessage(), currentPlan.isError(),
-                            data.hourlyWeather));
+                            data.hourlyWeather, currentPlan.getTripDates(),
+                            currentPlan.getActiveDayIndex()));
                     search.setState(searchStateFor(trip, data.activities));
                 } catch (Exception exception) {
                     dashboard.setState(new DashboardState(

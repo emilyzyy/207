@@ -3,7 +3,6 @@ package closeai.adapters.views;
 import closeai.adapters.controllers.AutoScheduleSettings;
 import closeai.adapters.controllers.AutoScheduleSettingsValidator;
 import closeai.application.autoschedule.WeatherOption;
-import closeai.domain.valueobjects.TransportationMode;
 import closeai.adapters.viewmodels.TimeDisplay;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -19,7 +18,6 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -30,9 +28,10 @@ import javax.swing.KeyStroke;
 /**
  * Asks for the few things Autoschedule cannot work out for itself.
  *
- * <p>Deliberately small: when the traveller is free, how they are getting around, any
- * time they are not available, and whether to keep the order they arranged. Everything
- * else the schedule optimises for is built in, so there is nothing else to ask.</p>
+ * <p>Deliberately small: when the traveller is free, any time they are not available, and
+ * whether to keep the order they arranged. Everything else the schedule optimises for is
+ * built in, and travel is always estimated by the fastest mode, so there is nothing else
+ * to ask.</p>
  *
  * <p>Times are typed as text rather than chosen from spinners so the field can be read
  * by a screen reader and filled from the keyboard alone. Escape cancels, and the dialog
@@ -49,8 +48,6 @@ public final class AutoScheduleSettingsDialog extends JDialog {
 
     private final JTextField availableFrom = new JTextField(9);
     private final JTextField availableUntil = new JTextField(9);
-    private final JComboBox<TransportationMode> mode =
-            new JComboBox<>(TransportationMode.values());
     private final ToggleSwitch minimizeTravel = new ToggleSwitch("Minimize travel time");
     private final ToggleSwitch minimizeGaps = new ToggleSwitch("Minimize gaps");
     private final ToggleSwitch preserveMealtimes = new ToggleSwitch("Preserve mealtimes");
@@ -66,8 +63,7 @@ public final class AutoScheduleSettingsDialog extends JDialog {
 
     private AutoScheduleSettings result;
 
-    public AutoScheduleSettingsDialog(Component parent, LocalTime tripStart, LocalTime tripEnd,
-                                      TransportationMode tripMode) {
+    public AutoScheduleSettingsDialog(Component parent, LocalTime tripStart, LocalTime tripEnd) {
         super(parent == null ? null : javax.swing.SwingUtilities.getWindowAncestor(parent),
                 "Autoschedule", ModalityType.APPLICATION_MODAL);
         this.tripStart = tripStart;
@@ -77,9 +73,6 @@ public final class AutoScheduleSettingsDialog extends JDialog {
                 tripStart == null ? LocalTime.of(9, 0) : tripStart));
         availableUntil.setText(TimeDisplay.format(
                 tripEnd == null ? LocalTime.of(21, 0) : tripEnd));
-        if (tripMode != null) {
-            mode.setSelectedItem(tripMode);
-        }
 
         setLayout(new BorderLayout(0, 12));
         getContentPane().setBackground(SwingTheme.PANEL);
@@ -110,7 +103,6 @@ public final class AutoScheduleSettingsDialog extends JDialog {
                 "For example 9:00 AM");
         addField(hours, 1, "Available until", availableUntil,
                 "For example 9:00 PM");
-        addField(hours, 2, "Getting around by", mode, "");
         hours.setMaximumSize(new Dimension(Integer.MAX_VALUE,
                 hours.getPreferredSize().height));
         form.add(hours);
@@ -401,8 +393,7 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         // A disabled checkbox is never ticked, so an unusable forecast can only ever read
         // as "do not consider weather".
         boolean weather = considerWeather.isEnabled() && considerWeather.isSelected();
-        return new AutoScheduleSettings(from, until,
-                (TransportationMode) mode.getSelectedItem(), windows, keepOrder.isSelected(),
+        return new AutoScheduleSettings(from, until, windows, keepOrder.isSelected(),
                 weather, minimizeTravel.isSelected(), minimizeGaps.isSelected(),
                 preserveMealtimes.isSelected(), preferDaylight.isSelected());
     }

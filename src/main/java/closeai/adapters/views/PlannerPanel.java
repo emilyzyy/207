@@ -4,7 +4,7 @@ import java.awt.BorderLayout;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 
-/** Focused planner workspace containing the four major feature areas. */
+/** Focused planner workspace containing the major feature areas. */
 public final class PlannerPanel extends JPanel {
 
     public PlannerPanel(
@@ -12,6 +12,15 @@ public final class PlannerPanel extends JPanel {
             BookmarksPanel bookmarksPanel,
             DayPlanPanel dayPlanPanel,
             TripOptionsPanel tripOptionsPanel) {
+        this(searchPanel, bookmarksPanel, dayPlanPanel, tripOptionsPanel, null);
+    }
+
+    public PlannerPanel(
+            SearchPanel searchPanel,
+            BookmarksPanel bookmarksPanel,
+            DayPlanPanel dayPlanPanel,
+            TripOptionsPanel tripOptionsPanel,
+            DaySwitcherPanel daySwitcherPanel) {
         setLayout(new BorderLayout());
         setBackground(SwingTheme.PANEL);
 
@@ -22,5 +31,9 @@ public final class PlannerPanel extends JPanel {
         tabs.addTab("Day Plan", dayPlanPanel);
         tabs.addTab("Trip Options", tripOptionsPanel);
         add(tabs, BorderLayout.CENTER);
+
+        if (daySwitcherPanel != null) {
+            add(daySwitcherPanel, BorderLayout.NORTH);
+        }
     }
 }

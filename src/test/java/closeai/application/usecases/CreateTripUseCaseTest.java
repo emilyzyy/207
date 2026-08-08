@@ -84,6 +84,40 @@ final class CreateTripUseCaseTest {
                         TransportationMode.DRIVING)));
     }
 
+    @Test
+    void createsMultiDayTripWithConsecutiveDates() {
+        RecordingTripRepository repository = new RecordingTripRepository();
+        CreateTripUseCase interactor = new CreateTripUseCase(repository);
+
+        Trip result = interactor.execute(new CreateTripInputData(
+                "Toronto",
+                LocalDate.of(2026, 8, 2),
+                LocalTime.of(9, 0),
+                LocalTime.of(18, 0),
+                TransportationMode.WALKING,
+                3));
+
+        assertEquals(3, result.getDayCount());
+        assertEquals(LocalDate.of(2026, 8, 2), result.getDay(0).getDate());
+        assertEquals(LocalDate.of(2026, 8, 3), result.getDay(1).getDate());
+        assertEquals(LocalDate.of(2026, 8, 4), result.getDay(2).getDate());
+    }
+
+    @Test
+    void rejectsZeroDayTrip() {
+        CreateTripUseCase interactor =
+                new CreateTripUseCase(new RecordingTripRepository());
+
+        assertThrows(IllegalArgumentException.class, () -> interactor.execute(
+                new CreateTripInputData(
+                        "Toronto",
+                        LocalDate.of(2026, 8, 2),
+                        LocalTime.of(9, 0),
+                        LocalTime.of(18, 0),
+                        TransportationMode.WALKING,
+                        0)));
+    }
+
     private static final class RecordingTripRepository implements TripRepository {
         private Trip saved;
 

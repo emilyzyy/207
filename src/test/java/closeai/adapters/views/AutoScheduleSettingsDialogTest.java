@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import closeai.adapters.controllers.AutoScheduleSettings;
 import closeai.adapters.controllers.AutoScheduleSettingsValidator;
-import closeai.domain.valueobjects.TransportationMode;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.GraphicsEnvironment;
@@ -50,7 +49,7 @@ class AutoScheduleSettingsDialogTest {
         assumeFalse(GraphicsEnvironment.isHeadless(), "a dialog needs a display");
         final AutoScheduleSettingsDialog[] built = new AutoScheduleSettingsDialog[1];
         SwingUtilities.invokeAndWait(() -> built[0] = new AutoScheduleSettingsDialog(
-                null, start, end, TransportationMode.WALKING));
+                null, start, end));
         opened.add(built[0]);
         return built[0];
     }
@@ -122,7 +121,6 @@ class AutoScheduleSettingsDialogTest {
         assertNotNull(settings, "the prefilled 12-hour text must parse");
         assertEquals(LocalTime.of(9, 0), settings.getAvailableStart());
         assertEquals(LocalTime.of(21, 0), settings.getAvailableEnd());
-        assertEquals(TransportationMode.WALKING, settings.getTransportationMode());
         assertTrue(settings.isKeepCurrentOrder(), "preserve-order still defaults on");
     }
 
@@ -160,7 +158,7 @@ class AutoScheduleSettingsDialogTest {
     void validationMessagesQuoteTheTripHoursOnATwelveHourClock() {
         List<String> problems = new AutoScheduleSettingsValidator().validate(
                 new AutoScheduleSettings(LocalTime.of(6, 0), LocalTime.of(23, 0),
-                        TransportationMode.WALKING, Collections.emptyList(), true, false),
+                        Collections.emptyList(), true, false),
                 LocalTime.of(9, 0), LocalTime.of(21, 0));
 
         assertEquals(1, problems.size());
@@ -309,7 +307,6 @@ class AutoScheduleSettingsDialogTest {
 
         List<String> inverted = validator.validate(
                 new AutoScheduleSettings(LocalTime.of(9, 0), LocalTime.of(21, 0),
-                        TransportationMode.WALKING,
                         Collections.singletonList(new AutoScheduleSettings.Window(
                                 LocalTime.of(14, 0), LocalTime.of(13, 0))), true, false),
                 LocalTime.of(9, 0), LocalTime.of(21, 0));
@@ -317,7 +314,6 @@ class AutoScheduleSettingsDialogTest {
 
         List<String> overlapping = validator.validate(
                 new AutoScheduleSettings(LocalTime.of(9, 0), LocalTime.of(21, 0),
-                        TransportationMode.WALKING,
                         Arrays.asList(
                                 new AutoScheduleSettings.Window(
                                         LocalTime.of(12, 0), LocalTime.of(14, 0)),
@@ -339,7 +335,7 @@ class AutoScheduleSettingsDialogTest {
     @Test
     void allSixFactorsAreShownAndOnlyTheTwoRealChoicesCanBeChanged() {
         AutoScheduleSettingsDialog dialog = new AutoScheduleSettingsDialog(
-                null, LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING);
+                null, LocalTime.of(9, 0), LocalTime.of(21, 0));
         // With no usable forecast the weather switch is off and disabled, which is its own
         // documented state; ask for the ordinary case where it can be offered.
         dialog.applyWeatherOption(closeai.application.autoschedule.WeatherOption.available());

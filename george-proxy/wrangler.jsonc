@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "closeai-george-proxy",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-08",
+  "compatibility_flags": ["global_fetch_strictly_public"],
+  "workers_dev": true,
+  "secrets": {
+    "required": ["OPENAI_API_KEY"]
+  },
+  "vars": {
+    "OPENAI_MODEL": "gpt-5.4-mini"
+  },
+  "ratelimits": [
+    {
+      "name": "GEORGE_RATE_LIMITER",
+      "namespace_id": "207001",
+      "simple": {
+        "limit": 20,
+        "period": 60
+      }
+    }
+  ]
+}

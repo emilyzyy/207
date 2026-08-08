@@ -32,8 +32,10 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
@@ -61,6 +63,8 @@ public final class NewItineraryDialog extends JDialog {
     private final JList<String> suggestionList = new JList<>(suggestionModel);
     private final JScrollPane suggestionScroll;
     private final DatePickerPanel datePicker = new DatePickerPanel();
+    private final JSpinner durationSpinner = new JSpinner(
+            new SpinnerNumberModel(1, 1, 14, 1));
     private final JLabel statusLabel = new JLabel("Start typing a city name...");
     private final JButton okButton = SwingTheme.primaryButton("Create Itinerary");
     private final Timer debounce = new Timer(400, e -> loadSuggestions(cityField.getText().trim()));
@@ -114,6 +118,15 @@ public final class NewItineraryDialog extends JDialog {
         form.add(datePicker, gbc);
 
         gbc.gridy = 5;
+        gbc.insets = new Insets(0, 0, 6, 0);
+        form.add(label("Duration (days)"), gbc);
+
+        gbc.gridy = 6;
+        gbc.insets = new Insets(0, 0, 12, 0);
+        durationSpinner.setFont(SwingTheme.BODY);
+        form.add(durationSpinner, gbc);
+
+        gbc.gridy = 7;
         gbc.insets = new Insets(0, 0, 12, 0);
         statusLabel.setFont(SwingTheme.SMALL);
         statusLabel.setForeground(SwingTheme.MUTED);
@@ -198,6 +211,10 @@ public final class NewItineraryDialog extends JDialog {
 
     public LocalDate getDate() {
         return datePicker.getDate();
+    }
+
+    public int getDayCount() {
+        return (Integer) durationSpinner.getValue();
     }
 
     private void onCityTyped() {
