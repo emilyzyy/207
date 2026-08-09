@@ -6,38 +6,73 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
-/** Reusable 24-hour, quarter-hour time selector. */
+/**
+ * An hour, a minute and an AM/PM selector.
+ *
+ * <p>Shown in twelve-hour time because every other time in the application is: the Day Plan
+ * says "9:00 AM – 10:00 AM", so an availability control reading "09" and "18" asked the
+ * traveller to translate between two clocks inside one screen.</p>
+ *
+ * <p>The internal representation is untouched — {@link #getTime()} still hands back a
+ * {@link LocalTime} on a 24-hour clock, and nothing downstream knows this changed.</p>
+ */
 public final class TimeSelectorPanel extends JPanel {
+
+    private static final String[] MERIDIEMS = {"AM", "PM"};
+    private static final int NOON = 12;
+
     private final JComboBox<String> hour = new JComboBox<>();
     private final JComboBox<String> minute = new JComboBox<>(
             new String[] {"00", "15", "30", "45"});
+    private final JComboBox<String> meridiem = new JComboBox<>(MERIDIEMS);
 
     public TimeSelectorPanel(LocalTime initial) {
         super(new FlowLayout(FlowLayout.LEFT, 4, 0));
         SwingTheme.styleComboBox(hour);
         SwingTheme.styleComboBox(minute);
+        SwingTheme.styleComboBox(meridiem);
         setOpaque(false);
-        for (int value = 0; value < 24; value++) {
-            hour.addItem(String.format("%02d", value));
+        // 12 first, so the list reads the way a clock face does: 12, 1, 2 ... 11.
+        hour.addItem("12");
+        for (int value = 1; value < NOON; value++) {
+            hour.addItem(String.valueOf(value));
         }
         add(hour);
         add(new JLabel(":"));
         add(minute);
+        add(meridiem);
+        hour.getAccessibleContext().setAccessibleName("Hour");
+        minute.getAccessibleContext().setAccessibleName("Minute");
+        meridiem.getAccessibleContext().setAccessibleName("AM or PM");
         setTime(initial == null ? LocalTime.MIDNIGHT : initial);
     }
 
+    /** The selected time on a 24-hour clock. */
     public LocalTime getTime() {
-        return LocalTime.of(hour.getSelectedIndex(), minute.getSelectedIndex() * 15);
+        int twelve = hour.getSelectedIndex() == 0 ? NOON : hour.getSelectedIndex();
+        boolean afternoon = meridiem.getSelectedIndex() == 1;
+        // 12 AM is midnight and 12 PM is noon; every other hour simply shifts by twelve.
+        int twentyFour;
+        if (twelve == NOON) {
+            twentyFour = afternoon ? NOON : 0;
+        } else {
+            twentyFour = afternoon ? twelve + NOON : twelve;
+        }
+        return LocalTime.of(twentyFour, minute.getSelectedIndex() * 15);
     }
 
     public void setTime(LocalTime time) {
         LocalTime value = time == null ? LocalTime.MIDNIGHT : time;
-        hour.setSelectedIndex(value.getHour());
+        int twentyFour = value.getHour();
+        meridiem.setSelectedIndex(twentyFour >= NOON ? 1 : 0);
+        int twelve = twentyFour % NOON;
+        hour.setSelectedIndex(twelve);
         minute.setSelectedIndex(Math.min(3, value.getMinute() / 15));
     }
 
     public void addChangeListener(Runnable listener) {
         hour.addActionListener(event -> listener.run());
         minute.addActionListener(event -> listener.run());
+        meridiem.addActionListener(event -> listener.run());
     }
 }

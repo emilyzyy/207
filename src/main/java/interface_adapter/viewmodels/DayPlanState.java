@@ -252,6 +252,27 @@ public final class DayPlanState {
                 lockedEventIds, improvements, tripDates, activeDayIndex);
     }
 
+    /**
+     * The same day with a blocking notice dismissed.
+     *
+     * <p>Dismissing is only about the message. The saved day, the pins and the forecast are
+     * untouched, and Autoschedule stays available — the whole point of the OK button is that
+     * the traveller can now change something and try again.</p>
+     */
+    public DayPlanState withoutNotice() {
+        return new DayPlanState(tripId, events, "", false, hourlyWeather,
+                AutoScheduleStatus.IDLE, Collections.<PreviewRowView>emptyList(), null,
+                Collections.<String>emptyList(), "", keptCurrentOrder, true, "", "",
+                lockedEventIds, Collections.<ImprovementView>emptyList(),
+                tripDates, activeDayIndex);
+    }
+
+    /** Whether a blocking notice is on screen: a conflict or a failure, never a Preview. */
+    public boolean hasBlockingNotice() {
+        return error && !message.isEmpty()
+                && (status == AutoScheduleStatus.CONFLICT || status == AutoScheduleStatus.FAILURE);
+    }
+
     /** Same state with a different set of pinned activities. */
     public DayPlanState withLocks(Set<String> updatedLockIds) {
         return new DayPlanState(tripId, events, message, error, hourlyWeather, status, previewRows, metrics,

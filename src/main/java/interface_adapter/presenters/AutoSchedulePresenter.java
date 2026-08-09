@@ -292,10 +292,19 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
     String describe(AutoScheduleConflictOutputData conflict) {
         String subject = conflict.getSubject().isEmpty() ? "An activity" : conflict.getSubject();
         String unchanged = " Your Day Plan was not changed.";
+        // Closed all day is its own sentence. Reported as "only 0 minutes fit" it read as a
+        // window that was merely too narrow, so the traveller kept moving the activity around
+        // a date it could never sit on and got the same answer every time.
+        if (conflict.getKind() == ScheduleConflict.Kind.ACTIVITY_CLOSED_ON_DATE) {
+            String day = conflict.getDetail().isEmpty() ? "this day" : "on " + conflict.getDetail();
+            return subject + " is closed " + day + ", so it cannot be scheduled on this date "
+                    + "at any time. Remove it from the day, or choose a date it is open."
+                    + unchanged;
+        }
         if (conflict.getKind() == ScheduleConflict.Kind.ACTIVITY_CANNOT_FIT) {
             return subject + " needs " + conflict.getRequiredMinutes()
-                    + " minutes, but only " + conflict.getAvailableMinutes()
-                    + " fit between its opening hours and the time you are available."
+                    + " minutes, but its opening hours and the hours you are available "
+                    + "overlap by only " + conflict.getAvailableMinutes() + "."
                     + unchanged;
         }
         if (conflict.getKind() == ScheduleConflict.Kind.LOCK_OUTSIDE_AVAILABILITY) {

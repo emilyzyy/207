@@ -127,10 +127,11 @@ class OpeningHoursWarningTest {
                 "a venue that is shut cannot quietly be scheduled anyway");
         AutoScheduleConflictOutputData conflict = presenter.getConflict();
         assertNotNull(conflict);
-        assertEquals(ScheduleConflict.Kind.ACTIVITY_CANNOT_FIT, conflict.getKind());
+        // Shut all day is its own kind. Reported as "cannot fit" it read as a window that
+        // was merely too narrow, and the traveller was invited to keep moving the activity
+        // around a date it could never sit on.
+        assertEquals(ScheduleConflict.Kind.ACTIVITY_CLOSED_ON_DATE, conflict.getKind());
         assertEquals("Saturday Market", conflict.getSubject());
-        assertEquals(0, conflict.getAvailableMinutes(),
-                "shut all day is nought minutes, not a short day");
     }
 
     private static void assertNull(Object value, String message) {

@@ -16,6 +16,16 @@ public final class ScheduleConflict {
     public enum Kind {
         /** One activity cannot fit its own opening hours and the availability window. */
         ACTIVITY_CANNOT_FIT,
+        /**
+         * The venue is shut for the whole of the date being scheduled.
+         *
+         * <p>Separate from {@link #ACTIVITY_CANNOT_FIT} because the two ask the traveller for
+         * completely different things. A window that is merely too short is worth widening
+         * availability for; a venue closed on a Sunday cannot be scheduled on that Sunday at
+         * any time, and telling someone "only 0 minutes fit" invites them to keep moving it
+         * around a day it can never sit in.</p>
+         */
+        ACTIVITY_CLOSED_ON_DATE,
         /** No ordering of the day satisfies every constraint once travel is included. */
         NO_FEASIBLE_ORDER,
         /** A locked activity sits outside the availability window. */
@@ -37,9 +47,17 @@ public final class ScheduleConflict {
     private final String subject;
     private final int requiredMinutes;
     private final int availableMinutes;
+    /** Extra wording a kind needs, such as the weekday a venue is shut. Never null. */
+    private final String detail;
 
     private ScheduleConflict(Kind kind, String blockingEventId, String subject,
                              int requiredMinutes, int availableMinutes) {
+        this(kind, blockingEventId, subject, requiredMinutes, availableMinutes, "");
+    }
+
+    private ScheduleConflict(Kind kind, String blockingEventId, String subject,
+                             int requiredMinutes, int availableMinutes, String detail) {
+        this.detail = detail == null ? "" : detail;
         this.kind = kind;
         this.blockingEventId = blockingEventId == null ? "" : blockingEventId;
         this.subject = subject == null ? "" : subject;
@@ -51,6 +69,18 @@ public final class ScheduleConflict {
                                                      int requiredMinutes, int availableMinutes) {
         return new ScheduleConflict(Kind.ACTIVITY_CANNOT_FIT, eventId, activityName,
                 requiredMinutes, availableMinutes);
+    }
+
+    /** The venue is shut all day on the date being scheduled. */
+    public static ScheduleConflict activityClosedOnDate(String eventId, String activityName,
+                                                       String dayName) {
+        return new ScheduleConflict(Kind.ACTIVITY_CLOSED_ON_DATE, eventId, activityName,
+                0, 0, dayName);
+    }
+
+    /** Extra wording for kinds that need it, such as the weekday a venue is shut. */
+    public String getDetail() {
+        return detail;
     }
 
     public static ScheduleConflict noFeasibleOrder() {

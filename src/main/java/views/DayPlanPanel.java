@@ -78,6 +78,15 @@ public final class DayPlanPanel extends JPanel {
      */
     private final JPanel narrowSlot = new JPanel(new BorderLayout());
     private final JPanel sidebarSlot = new JPanel(new BorderLayout());
+    /**
+     * A blocking conflict, directly under the heading and above the schedule.
+     *
+     * <p>It used to be a line of small red text in the status row at the very bottom, where it
+     * was both easy to miss and easy to mistake for the previous attempt's message — which is
+     * exactly what happened: an edit was made, the same sentence was still on screen, and the
+     * feature looked stuck when it had simply given the same true answer twice.</p>
+     */
+    private final JPanel noticeSlot = new JPanel(new BorderLayout());
     private final JLabel status = new JLabel();
     private final Spinner spinner = new Spinner();
     private final JLabel objective = new JLabel();
@@ -130,7 +139,18 @@ public final class DayPlanPanel extends JPanel {
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
-        add(header(), BorderLayout.NORTH);
+        JPanel top = new JPanel();
+        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
+        top.setOpaque(false);
+        JPanel headerRow = header();
+        headerRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        top.add(headerRow);
+        noticeSlot.setOpaque(false);
+        noticeSlot.setVisible(false);
+        noticeSlot.setAlignmentX(Component.LEFT_ALIGNMENT);
+        noticeSlot.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+        top.add(noticeSlot);
+        add(top, BorderLayout.NORTH);
 
         eventList.setLayout(new BorderLayout(0, 8));
         eventList.setBackground(SwingTheme.BACKGROUND);
@@ -239,6 +259,90 @@ public final class DayPlanPanel extends JPanel {
 
     public DayPlanViewModel getViewModel() {
         return viewModel;
+    }
+
+    /**
+     * The one blocking notice, or nothing.
+     *
+     * <p>Rebuilt from the current state every render, so a retry replaces the message rather
+     * than stacking a second bar, and a successful Preview removes it without anyone having
+     * to remember to.</p>
+     */
+    private void renderNotice(DayPlanState state) {
+        noticeSlot.removeAll();
+        noticeSlot.setVisible(state.hasBlockingNotice());
+        if (!state.hasBlockingNotice()) {
+            return;
+        }
+        noticeSlot.add(conflictBar(state.getMessage()), BorderLayout.CENTER);
+        // A conflict that appears while the traveller is scrolled halfway down the day is a
+        // conflict they never see.
+        SwingUtilities.invokeLater(() -> {
+            JScrollPane scroll = enclosingScrollPane();
+            if (scroll != null) {
+                scroll.getVerticalScrollBar().setValue(0);
+            }
+        });
+    }
+
+    private JScrollPane enclosingScrollPane() {
+        for (Component child : getComponents()) {
+            if (child instanceof Container) {
+                for (Component grandchild : ((Container) child).getComponents()) {
+                    if (grandchild instanceof JScrollPane) {
+                        return (JScrollPane) grandchild;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A shallow inline bar: warning rule, heading, the full sentence, and one OK.
+     *
+     * <p>Deliberately not a dialog and not a tall card. The traveller has to be able to read
+     * it and keep working in the same breath — the next thing they do is edit an activity and
+     * press Autoschedule again.</p>
+     */
+    private JPanel conflictBar(String message) {
+        JPanel bar = new JPanel(new BorderLayout(12, 0));
+        bar.setBackground(SwingTheme.WARNING_SOFT);
+        bar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 3, 1, 1, SwingTheme.ERROR),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)));
+        bar.getAccessibleContext().setAccessibleName("Autoschedule could not run: " + message);
+
+        JPanel text = new JPanel();
+        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
+        text.setOpaque(false);
+
+        JLabel heading = new JLabel("\u26a0  Couldn't generate a schedule");
+        heading.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
+        heading.setForeground(SwingTheme.ERROR);
+        heading.setAlignmentX(Component.LEFT_ALIGNMENT);
+        text.add(heading);
+
+        // Wrapped rather than truncated: the sentence names which activity and why, and half
+        // of it is no use at all.
+        JLabel detail = new JLabel("<html><div style='width:640px'>" + escape(message)
+                + "</div></html>");
+        detail.setFont(SwingTheme.SMALL);
+        detail.setForeground(SwingTheme.NAVY);
+        detail.setAlignmentX(Component.LEFT_ALIGNMENT);
+        text.add(detail);
+        bar.add(text, BorderLayout.CENTER);
+
+        JButton dismiss = SwingTheme.secondaryButton("OK");
+        dismiss.setToolTipText("Dismiss this message; your Day Plan is unchanged");
+        dismiss.getAccessibleContext().setAccessibleName("Dismiss the Autoschedule message");
+        dismiss.addActionListener(event -> viewModel.setState(
+                viewModel.getState().withoutNotice()));
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        right.setOpaque(false);
+        right.add(dismiss);
+        bar.add(right, BorderLayout.EAST);
+        return bar;
     }
 
     private JPanel header() {
@@ -351,6 +455,11 @@ public final class DayPlanPanel extends JPanel {
         renderItinerary(state);
         renderPreview(state);
 
+        renderNotice(state);
+        // A blocking conflict has its own bar at the top and says everything there, including
+        // that the day is unchanged. Leaving the status line to repeat it put the same
+        // sentence on screen twice, once in green.
+        status.setVisible(!state.hasBlockingNotice());
         status.setText(state.getMessage().isEmpty()
                 ? "Add activities, then choose Autoschedule." : state.getMessage());
         status.setForeground(state.isError() ? SwingTheme.ERROR : SwingTheme.SUCCESS);

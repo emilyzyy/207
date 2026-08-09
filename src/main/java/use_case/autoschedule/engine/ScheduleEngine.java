@@ -275,6 +275,16 @@ public final class ScheduleEngine {
      */
     private ScheduleConflict diagnose(ScheduleProblem problem) {
         TimeWindow availability = problem.getAvailability();
+        // Closed all day is checked first and reported as itself. It used to fall through to
+        // the "only 0 minutes fit" message below, which is arithmetically true and useless:
+        // it reads as though a wider availability window would help, so the traveller moves
+        // the activity around a date it can never sit on and gets the same answer every time.
+        for (ScheduleTask task : problem.allTasks()) {
+            if (task.isClosedAllDay()) {
+                return ScheduleConflict.activityClosedOnDate(task.getEventId(),
+                        task.getActivity().getName(), dayName(task));
+            }
+        }
         for (ScheduleTask task : problem.allTasks()) {
             int usable = 0;
             for (TimeWindow open : task.getOpeningWindows()) {
@@ -293,6 +303,16 @@ public final class ScheduleEngine {
             }
         }
         return ScheduleConflict.noFeasibleOrder();
+    }
+
+    /** "Sundays", or an empty string when the task was built without a date. */
+    private static String dayName(ScheduleTask task) {
+        if (task.getTripDate() == null) {
+            return "";
+        }
+        String day = task.getTripDate().getDayOfWeek()
+                .getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH);
+        return day + "s";
     }
 
     private static List<ScheduleTask> sortedByLockStart(List<ScheduleTask> tasks) {
