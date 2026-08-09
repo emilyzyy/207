@@ -69,6 +69,30 @@ final class ActivityDiscoveryControllerTest {
         assertTrue(search.getState().getFeedback().contains("Create a trip"));
     }
 
+    @Test
+    void presentsCachedMatchesWhenRemoteSearchIsRateLimited() {
+        Activity cachedMuseum = activity("cached-museum", ActivityCategory.MUSEUM,
+                0.0, IndoorOutdoorType.INDOOR);
+        SearchViewModel search = new SearchViewModel(
+                new SearchState(Collections.emptyList(), ""));
+        ActivityDiscoveryController controller = new ActivityDiscoveryController(
+                new SearchActivitiesUseCase(request -> new ActivitySearchResult(
+                        Collections.singletonList(cachedMuseum),
+                        SearchSource.LOCAL, true, SearchFailure.RATE_LIMITED)),
+                new FilterActivitiesUseCase(), () -> "Toronto",
+                new ActivityDiscoveryPresenter(search, new BookmarksViewModel(
+                        new BookmarksState(Collections.emptyList()))));
+
+        controller.execute("museum", ActivityCategory.MUSEUM, 0.0,
+                IndoorOutdoorType.INDOOR);
+
+        assertEquals(Collections.singletonList(cachedMuseum),
+                search.getState().getActivities());
+        assertEquals("museum", search.getState().getQuery());
+        assertTrue(search.getState().getFeedback().contains("Showing saved results"));
+        assertTrue(search.getState().getFeedback().contains("busy"));
+    }
+
     private Activity activity(String id, ActivityCategory category, double rating,
                               IndoorOutdoorType type) {
         return new Activity(id, id, category, new Location(43, -79, id), rating, 60,
