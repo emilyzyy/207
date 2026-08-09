@@ -9,3 +9,7 @@ target/
 node_modules/
 .wrangler/
 george-proxy/.dev.vars*
+
+# IntelliJ IDEA project files
+.idea/
+*.iml
