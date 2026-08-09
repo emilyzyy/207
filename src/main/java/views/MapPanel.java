@@ -2,6 +2,7 @@ package views;
 
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
@@ -11,6 +12,7 @@ import java.awt.Graphics2D;
 import java.awt.Polygon;
 import java.awt.Point;
 import java.awt.RenderingHints;
+import java.awt.Stroke;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
@@ -61,6 +63,9 @@ public final class MapPanel extends JPanel {
     private Point pressStart;
     private Point dragStart;
     private boolean isDragging;
+
+    /** Muted so the numbered pins stay the thing you read first. */
+    private static final Color ROUTE_COLOR = new Color(74, 134, 196, 150);
 
     private List<Activity> activities = new ArrayList<>();
     private String city = "the area";
@@ -643,8 +648,74 @@ public final class MapPanel extends JPanel {
                 + (tileLoadingEnabled ? " · OpenStreetMap" : " · offline map");
         g2.drawString(title, 12, 24);
 
+        // Under the pins, so the numbers stay readable where the route doubles back.
+        drawRoute(g2, w, h, centerPixelX, centerPixelY);
         drawMarkers(g2, w, h, centerPixelX, centerPixelY);
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA);
+    }
+
+    /**
+     * Joins the Day Plan's stops in order, so the shape of the day is visible.
+     *
+     * <p>The numbered pins already say what order the day runs in, but a reader has to hop
+     * between them to see it. Drawn as a line, a day that crosses the city three times looks
+     * like a day that crosses the city three times — and after Autoschedule the same line
+     * comes out as a sweep. That contrast is the clearest evidence the feature produces, and
+     * it costs one polyline.</p>
+     *
+     * <p>Dashed and muted on purpose: this is context for the markers, not a route the user
+     * should read as turn-by-turn directions. It is a straight line between stops, which is
+     * not the path anyone walks — least of all in Venice.</p>
+     */
+    private void drawRoute(Graphics2D g2, int w, int h,
+                           double centerPixelX, double centerPixelY) {
+        List<int[]> points = routePoints(w, h, centerPixelX, centerPixelY);
+        if (points.size() < 2) {
+            return;
+        }
+        Stroke oldStroke = g2.getStroke();
+        g2.setColor(ROUTE_COLOR);
+        g2.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
+                1f, new float[] {6f, 6f}, 0f));
+        for (int i = 1; i < points.size(); i++) {
+            int[] from = points.get(i - 1);
+            int[] to = points.get(i);
+            g2.drawLine(from[0], from[1], to[0], to[1]);
+        }
+        g2.setStroke(oldStroke);
+    }
+
+    /** Screen positions of the scheduled stops, in Day Plan order. */
+    private List<int[]> routePoints(int w, int h, double centerPixelX, double centerPixelY) {
+        List<int[]> points = new ArrayList<>();
+        for (String id : scheduledActivityIds) {
+            for (Activity activity : activities) {
+                if (!activity.getId().equals(id) || activity.getLocation() == null) {
+                    continue;
+                }
+                double px = latLngToPixelX(activity.getLocation().getLongitude());
+                double py = latLngToPixelY(activity.getLocation().getLatitude());
+                points.add(new int[] {
+                        (int) (w / 2.0 + (px - centerPixelX)),
+                        (int) (h / 2.0 + (py - centerPixelY))});
+                break;
+            }
+        }
+        return points;
+    }
+
+    /** The stops the route line would join, in order; empty when fewer than two are known. */
+    List<String> routeOrder() {
+        List<String> ordered = new ArrayList<>();
+        for (String id : scheduledActivityIds) {
+            for (Activity activity : activities) {
+                if (activity.getId().equals(id)) {
+                    ordered.add(id);
+                    break;
+                }
+            }
+        }
+        return ordered.size() < 2 ? new ArrayList<>() : ordered;
     }
 
     private void drawMarkers(Graphics2D g2, int w, int h,

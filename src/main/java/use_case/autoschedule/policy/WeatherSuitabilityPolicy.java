@@ -66,8 +66,17 @@ public final class WeatherSuitabilityPolicy implements SoftPolicy {
             return null;
         }
         WeatherSeverity severity = context.getWeather().severityAt(placement.getStart());
+        // A non-zero penalty is not the same as bad weather. Every outdoor activity is
+        // charged LOW_PENALTY_PER_HOUR even in sunshine, which is deliberate and harmless
+        // to the ranking -- it is a constant across candidate times. It is not a reason to
+        // show anyone. Saying "poorer weather expected" over a clear forecast was worse
+        // than saying nothing, and could appear on the very row that had just earned
+        // "Moved to better weather".
+        if (severity != WeatherSeverity.MEDIUM && severity != WeatherSeverity.HIGH) {
+            return null;
+        }
         return new Reason(placement.getTask().getEventId(), ReasonCode.WEATHER_EXPOSURE,
-                severity == null ? "" : severity.name());
+                severity.name());
     }
 
     /** How exposed the activity is: fully outdoors, partly, or not at all. */

@@ -14,6 +14,7 @@ public final class AutoScheduleConflictOutputData {
     private final String subject;
     private final int requiredMinutes;
     private final int availableMinutes;
+    private final String detail;
 
     public AutoScheduleConflictOutputData(ScheduleConflict conflict) {
         this.kind = conflict.getKind();
@@ -21,6 +22,7 @@ public final class AutoScheduleConflictOutputData {
         this.subject = conflict.getSubject();
         this.requiredMinutes = conflict.getRequiredMinutes();
         this.availableMinutes = conflict.getAvailableMinutes();
+        this.detail = conflict.getDetail();
     }
 
     public ScheduleConflict.Kind getKind() {
@@ -33,6 +35,11 @@ public final class AutoScheduleConflictOutputData {
 
     public String getSubject() {
         return subject;
+    }
+
+    /** Extra wording the message needs, such as the weekday a venue is shut. */
+    public String getDetail() {
+        return detail;
     }
 
     public int getRequiredMinutes() {

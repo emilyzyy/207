@@ -17,23 +17,27 @@ class TimeDisplayTest {
 
     @Test
     void formatsEveryTimeOnATwentyFourHourClock() {
-        assertEquals("09:00", TimeDisplay.format(LocalTime.of(9, 0)));
-        assertEquals("13:15", TimeDisplay.format(LocalTime.of(13, 15)));
-        assertEquals("15:30", TimeDisplay.format(LocalTime.of(15, 30)));
-        assertEquals("21:00", TimeDisplay.format(LocalTime.of(21, 0)));
+        assertEquals("9:00 AM", TimeDisplay.format(LocalTime.of(9, 0)));
+        assertEquals("1:15 PM", TimeDisplay.format(LocalTime.of(13, 15)));
+        assertEquals("3:30 PM", TimeDisplay.format(LocalTime.of(15, 30)));
+        assertEquals("9:00 PM", TimeDisplay.format(LocalTime.of(21, 0)));
     }
 
+    /** The two a twelve-hour clock can get backwards, and the half hours either side. */
     @Test
-    void midnightAndNoonUseUnambiguousMilitaryTime() {
-        assertEquals("00:00", TimeDisplay.format(LocalTime.of(0, 0)));
-        assertEquals("00:30", TimeDisplay.format(LocalTime.of(0, 30)));
-        assertEquals("12:00", TimeDisplay.format(LocalTime.of(12, 0)));
-        assertEquals("12:45", TimeDisplay.format(LocalTime.of(12, 45)));
+    void midnightAndNoonAreTheOnesThatMatter() {
+        assertEquals("12:00 AM", TimeDisplay.format(LocalTime.of(0, 0)));
+        assertEquals("12:30 AM", TimeDisplay.format(LocalTime.of(0, 30)));
+        assertEquals("12:00 PM", TimeDisplay.format(LocalTime.of(12, 0)));
+        assertEquals("12:45 PM", TimeDisplay.format(LocalTime.of(12, 45)));
+        assertEquals("1:00 AM", TimeDisplay.format(LocalTime.of(1, 0)));
+        assertEquals("1:00 PM", TimeDisplay.format(LocalTime.of(13, 0)));
+        assertEquals("11:45 PM", TimeDisplay.format(LocalTime.of(23, 45)));
     }
 
     @Test
     void minutesKeepTheirLeadingZero() {
-        assertEquals("09:05", TimeDisplay.format(LocalTime.of(9, 5)));
+        assertEquals("9:05 AM", TimeDisplay.format(LocalTime.of(9, 5)));
     }
 
     @Test
@@ -43,7 +47,7 @@ class TimeDisplayTest {
 
     @Test
     void rangesUseAnEnDashBetweenTwoFormattedTimes() {
-        assertEquals("09:00 – 10:30",
+        assertEquals("9:00 AM – 10:30 AM",
                 TimeDisplay.range(LocalTime.of(9, 0), LocalTime.of(10, 30)));
     }
 

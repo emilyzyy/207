@@ -523,13 +523,17 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         ScheduleMetrics before = ScheduleMetrics.ofExistingSchedule(trip.getScheduledEvents(),
                 travelEstimator, mode, trip.getDate());
 
+        // Reported waiting is all of it, not just the part a different order could have
+        // reclaimed. "Before" has always counted every gap, so measuring "after" as
+        // avoidable-only compared two different quantities and let the Preview claim an
+        // empty day while drawing a visible hole in it.
         List<ScheduleImprovement> improvements = improvementFinder.find(originalEvents, plan,
                 preferences, before, plan.totalTravelMinutes(),
-                plan.totalAvoidableIdleMinutes());
+                plan.totalIdleMinutes());
 
         return new AutoSchedulePreviewOutputData(rows, before.getTravelMinutes(),
                 plan.totalTravelMinutes(), before.getIdleMinutes(),
-                plan.totalAvoidableIdleMinutes(), movedCount, originalEvents.size(),
+                plan.totalIdleMinutes(), movedCount, originalEvents.size(),
                 reasons, warnings, preferences.activeIds(),
                 ScheduleFingerprint.of(trip.getScheduledEvents()).getValue(),
                 outcome.searchCompletedWithinLimit,

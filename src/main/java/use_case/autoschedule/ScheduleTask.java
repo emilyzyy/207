@@ -16,6 +16,7 @@ import java.util.List;
  * activity's estimate, so a manual duration edit survives Autoschedule.</p>
  */
 public final class ScheduleTask {
+    private final LocalDate tripDate;
     private final String eventId;
     private final Activity activity;
     private final int durationMinutes;
@@ -64,6 +65,7 @@ public final class ScheduleTask {
             throw new IllegalArgumentException(
                     "Locked window must match the activity duration for " + eventId);
         }
+        this.tripDate = tripDate;
         this.eventId = eventId;
         this.activity = activity;
         this.durationMinutes = durationMinutes;
@@ -121,6 +123,11 @@ public final class ScheduleTask {
      */
     public List<TimeWindow> getOpeningWindows() {
         return openingWindows;
+    }
+
+    /** The date being scheduled, or null when none was supplied. */
+    public LocalDate getTripDate() {
+        return tripDate;
     }
 
     /** False when no provider told us the hours, in which case they constrain nothing. */

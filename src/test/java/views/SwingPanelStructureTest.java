@@ -107,7 +107,7 @@ final class SwingPanelStructureTest {
         // Shiyuan's per-hour forecast lines render on the activity card, now on a 12-hour
         // clock. Asserting the AM is what proves the conversion reached the weather line
         // rather than only the activity times.
-        assertTrue(allText(dayPlan).contains("10:00 · Rain"));
+        assertTrue(allText(dayPlan).contains("10:00 AM · Rain"));
         assertTrue(allText(dayPlan).contains("65% precipitation"));
         // Alex's per-event controls render alongside the Lock checkbox. This panel is built
         // without a manual controller, so they are present but disabled.

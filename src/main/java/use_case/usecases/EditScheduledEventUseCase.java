@@ -15,8 +15,11 @@ public final class EditScheduledEventUseCase {
         Trip trip = trips.findById(tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
         ScheduledEvent event = trip.findEvent(eventId);
         if (event == null) throw new IllegalArgumentException("Event not found");
+        // Retiming an activity invalidates the journeys either side of it, so the derived
+        // travel goes rather than being left pointing at the old times.
         List<ScheduledEvent> updated = new ArrayList<>();
-        for (ScheduledEvent existing : trip.getScheduledEvents()) {
+        for (ScheduledEvent existing : ScheduleEdits.withoutDerivedTravel(
+                trip.getScheduledEvents())) {
             updated.add(existing.getId().equals(eventId)
                     ? new ScheduledEvent(existing.getId(), existing.getActivity(), start, end,
                             existing.getEventType(), notes)

@@ -20,15 +20,27 @@ public final class TimeDisplay {
     private TimeDisplay() {
     }
 
-    /** Formats using the app-wide 24-hour clock, for example {@code "09:00"}. */
+    /**
+     * Formats for a reader, for example {@code "9:00 AM"}.
+     *
+     * <p>Twelve-hour by team decision. This is the single place the visible clock is chosen,
+     * so anything that reaches a label through here is consistent by construction — Day Plan
+     * rows, travel rows, Preview rows, conflict sentences, Calendar View and weather
+     * timestamps all call it.</p>
+     */
     public static String format(LocalTime time) {
         if (time == null) {
             return "";
         }
-        return String.format(Locale.ROOT, "%02d:%02d", time.getHour(), time.getMinute());
+        int hour = time.getHour() % 12;
+        if (hour == 0) {
+            hour = 12;
+        }
+        String meridiem = time.getHour() < 12 ? "AM" : "PM";
+        return String.format(Locale.ROOT, "%d:%02d %s", hour, time.getMinute(), meridiem);
     }
 
-    /** A start-to-end range, as {@code "09:00 – 10:00"}. */
+    /** A start-to-end range, as {@code "9:00 AM – 10:00 AM"}. */
     public static String range(LocalTime start, LocalTime end) {
         return format(start) + " – " + format(end);
     }

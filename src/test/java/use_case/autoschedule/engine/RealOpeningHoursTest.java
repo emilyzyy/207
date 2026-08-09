@@ -194,10 +194,10 @@ class RealOpeningHoursTest {
 
         assertFalse(result.isFound(), "a venue on record as shut must not be scheduled");
         ScheduleConflict conflict = result.getConflict();
-        assertEquals(ScheduleConflict.Kind.ACTIVITY_CANNOT_FIT, conflict.getKind());
+        assertEquals(ScheduleConflict.Kind.ACTIVITY_CLOSED_ON_DATE, conflict.getKind(),
+                "shut all day is not the same problem as a window that is too short");
         assertEquals("saturdaysOnly", conflict.getBlockingEventId(),
                 "and the traveller must be told which venue it is");
-        assertEquals(0, conflict.getAvailableMinutes());
     }
 
     @Test

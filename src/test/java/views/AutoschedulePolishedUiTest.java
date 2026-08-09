@@ -157,8 +157,9 @@ class AutoschedulePolishedUiTest {
 
         String text = allText(panelFor(viewModel));
 
-        assertTrue(text.contains("09:00 – 10:00"), "morning row: " + text);
-        assertTrue(text.contains("15:00 – 16:00"), "afternoon row: " + text);
+        assertTrue(text.contains("9:00 AM – 10:00 AM"), "morning row: " + text);
+        assertTrue(text.contains("3:00 PM – 4:00 PM"), "afternoon row: " + text);
+        assertFalse(text.contains("15:00"), "no 24-hour time should survive: " + text);
     }
 
     @Test
@@ -171,7 +172,7 @@ class AutoschedulePolishedUiTest {
 
         String text = allText(panelFor(viewModel));
 
-        assertTrue(text.contains("13:00 · Rain"), "weather line: " + text);
+        assertTrue(text.contains("1:00 PM · Rain"), "weather line: " + text);
     }
 
     // --- 2. the lock control is visible, distinguishable and reachable ----------------
@@ -208,7 +209,7 @@ class AutoschedulePolishedUiTest {
         assertEquals("Unlock museum",
                 toggles.get(0).getAccessibleContext().getAccessibleName(),
                 "an already-pinned activity offers to unlock");
-        assertEquals("Lock market at 15:00",
+        assertEquals("Lock market at 3:00 PM",
                 toggles.get(1).getAccessibleContext().getAccessibleName(),
                 "an unpinned one offers to lock, and says at what time");
         assertNotNull(toggles.get(0).getToolTipText());
@@ -293,62 +294,245 @@ class AutoschedulePolishedUiTest {
                         PreviewRowView.Kind.ACTIVITY, LocalTime.of(12, 37), LocalTime.of(13, 37),
                         false, true, "a usual mealtime",
                         Arrays.asList("a usual mealtime", "less travel than before")));
-        return new DayPlanState("trip-1", Collections.singletonList(event("museum", 9)),
+        return new DayPlanState("trip-1", Arrays.asList(event("museum", 9), event("market", 14)),
                 "Proposed schedule", false, Collections.emptyList(),
                 AutoScheduleStatus.PREVIEW, rows,
                 new PreviewMetricsView(0, 132, 270, 60, 2, 3, 200),
                 Collections.singletonList("Travel times may include estimates."),
                 "Arranged for less travel", true, false, "", "fingerprint",
-                Collections.emptySet());
+                // The presenter carries the traveller's locks through unchanged, so a row
+                // flagged locked is always in this set too.
+                Collections.singleton("museum"));
     }
 
     /**
-     * The arrow cards are gone; the complete figures moved under the disclosure, where a
-     * reader who wants numbers can find all of them together rather than having to decide
-     * whether each arrow was good news.
+     * Every figure is on screen the moment the Preview opens.
+     *
+     * <p>They used to sit behind a disclosure, which meant the one thing that answers "is this
+     * actually better?" was a click away and unlabelled arrows stood in for it.</p>
      */
     @Test
-    void completeBeforeAndAfterFiguresLiveUnderTheDisclosure() throws Exception {
+    void completeBeforeAndAfterFiguresAreVisibleWithoutOpeningAnything() throws Exception {
         DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
         DayPlanPanel panel = panelFor(viewModel);
 
-        assertFalse(allText(panel).contains("0 → 132"),
-                "the ambiguous arrow cards should be gone from the main view");
-
-        SwingUtilities.invokeAndWait(
-                () -> buttonNamed(panel, "▸ Why this schedule?").doClick());
-        String expanded = allText(panel);
-
-        assertTrue(expanded.contains("Travel: 0 min before, 132 min after"), expanded);
-        assertTrue(expanded.contains("Waiting: 270 min before, 60 min after"), expanded);
-        assertTrue(expanded.contains("Activities moved: 2 of 3"), expanded);
+        String text = allText(panel);
+        assertFalse(text.contains("0 → 132"),
+                "the ambiguous arrow cards should be gone");
+        assertTrue(text.contains("Before 0 min") && text.contains("Proposed 132 min"), text);
+        assertTrue(text.contains("Before 270 min") && text.contains("Proposed 60 min"), text);
+        assertTrue(text.contains("2 of 3"), text);
     }
 
-    /** A trade-off is stated plainly rather than left out of a positive-only summary. */
+    /**
+     * A trade-off is stated plainly rather than left out of a positive-only summary. It is
+     * part of the figures themselves now, so it cannot be missed by not opening a panel.
+     */
     @Test
     void aWorseFigureIsReportedAsATradeOffRatherThanOmitted() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
-        DayPlanPanel panel = panelFor(viewModel);
-
-        SwingUtilities.invokeAndWait(
-                () -> buttonNamed(panel, "▸ Why this schedule?").doClick());
-
-        String expanded = allText(panel);
-        assertTrue(expanded.contains("Trade-offs"), expanded);
-        assertTrue(expanded.contains("Travel increased by 132 min"),
-                "travel got worse in this fixture and the screen must say so: " + expanded);
-    }
-
-    @Test
-    void movedAndLockedAreBadgesRatherThanBracketedText() throws Exception {
         DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
 
         String text = allText(panelFor(viewModel));
 
-        assertTrue(text.contains("Locked"), text);
-        assertTrue(text.contains("Moved"), text);
+        assertTrue(text.contains("132 min more"),
+                "travel got worse in this fixture and the screen must say so: " + text);
+    }
+
+    /**
+     * On a narrow window the two columns collapse into one, and the order matters: the
+     * reasoning goes above the schedule. Below it, a full day of timeline stood between the
+     * proposal and the only thing explaining it.
+     */
+    @Test
+    void theReasoningSitsAboveTheTimelineOnANarrowWindow() throws Exception {
+        DayPlanViewModel viewModel = new DayPlanViewModel(previewWithImprovements(
+                Collections.singletonList(new ImprovementView("\u23f3",
+                        "63 min of waiting removed", "Less dead time"))));
+        DayPlanPanel panel = panelFor(viewModel);
+        final javax.swing.JFrame host = new javax.swing.JFrame();
+        SwingUtilities.invokeAndWait(() -> {
+            host.setUndecorated(true);
+            host.getContentPane().add(panel);
+            host.setSize(DayPlanPanel.WIDE_LAYOUT_MINIMUM - 90, 900);
+            host.addNotify();
+            host.validate();
+        });
+        resizeTo(panel, DayPlanPanel.WIDE_LAYOUT_MINIMUM - 90);
+        SwingUtilities.invokeAndWait(host::validate);
+
+        final int[] positions = new int[2];
+        SwingUtilities.invokeAndWait(() -> {
+            ScheduleImprovementsPanel reasoning = stackIn(panel);
+            assertNotNull(reasoning, "the Preview must show its reasoning: " + allText(panel));
+            positions[0] = yWithin(panel, reasoning);
+            Container timeline = timelineIn(panel);
+            assertNotNull(timeline, "the schedule is drawn into a timeline");
+            positions[1] = yWithin(panel, timeline);
+        });
+
+        assertTrue(positions[0] < positions[1],
+                "the reasoning belongs above the schedule when there is only one column "
+                        + "(reasoning=" + positions[0] + ", timeline=" + positions[1] + ")");
+        host.dispose();
+    }
+
+    /**
+     * A proposal running late morning to mid afternoon should draw late morning to mid
+     * afternoon, not nine to nine with the schedule adrift in the middle of it.
+     */
+    @Test
+    void theTimelineIsFittedToTheProposalRatherThanToTheWholeDay() throws Exception {
+        DayPlanViewModel idle = new DayPlanViewModel(planWith(
+                Arrays.asList(event("museum", 9)), Collections.emptySet(),
+                Collections.emptyList()));
+        DayPlanPanel wholeDay = panelFor(idle);
+        DayPlanPanel proposal = panelFor(new DayPlanViewModel(previewState()));
+
+        final int[] heights = new int[2];
+        SwingUtilities.invokeAndWait(() -> {
+            heights[0] = timelineIn(wholeDay).getPreferredSize().height;
+            heights[1] = timelineIn(proposal).getPreferredSize().height;
+        });
+
+        assertTrue(heights[1] < heights[0],
+                "the previewed timeline should be shorter than a whole empty day (day="
+                        + heights[0] + ", proposal=" + heights[1] + ")");
+    }
+
+    /** The timeline the panel builds its cards into, found by its accessible name. */
+    private static Container timelineIn(Component root) {
+        for (Component component : all(root)) {
+            if ("Day schedule timeline".equals(component.getName())) {
+                return (Container) component;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isTravelCard(Component card) {
+        for (Component component : all(card)) {
+            String text = component instanceof JLabel ? ((JLabel) component).getText() : null;
+            if (text != null && text.contains("Travel to")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A travel block has no activity behind it, so the card takes its name from the notes —
+     * and then printed the notes again as the subtitle, giving every journey its own name
+     * twice over.
+     */
+    @Test
+    void aTravelCardNamesItsJourneyOnce() throws Exception {
+        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        DayPlanPanel panel = panelFor(viewModel);
+
+        int mentions = 0;
+        for (Component component : all(panel)) {
+            String text = component instanceof JLabel ? ((JLabel) component).getText() : null;
+            if (text != null && text.contains("Travel to St Lawrence Market")) {
+                mentions++;
+            }
+        }
+
+        assertEquals(1, mentions, "the journey is named once on its card, not twice");
+    }
+
+    /**
+     * A short journey is drawn at a readable minimum height and painted in front, and the
+     * activity it reaches reserves that overrun as blank padding.
+     *
+     * <p>Both were previously impossible at once: the connector was sent to the back, so a
+     * ten-minute walk was legible only in the sliver of gap it happened to have. Reserving
+     * the overrun means neither has to lose — and the activity still begins at its true
+     * time, only its contents start lower.</p>
+     */
+    @Test
+    void aShortJourneyStaysReadableWithoutCoveringTheActivityItReaches() throws Exception {
+        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        DayPlanPanel panel = panelFor(viewModel);
+
+        final int[] depths = new int[]{Integer.MIN_VALUE, Integer.MAX_VALUE};
+        SwingUtilities.invokeAndWait(() -> {
+            Container timeline = timelineIn(panel);
+            assertNotNull(timeline, "the schedule is drawn into a timeline");
+            for (Component card : timeline.getComponents()) {
+                // Swing paints the lowest z-order index last, so "in front" means smaller.
+                int depth = timeline.getComponentZOrder(card);
+                if (isTravelCard(card)) {
+                    depths[0] = Math.max(depths[0], depth);
+                } else {
+                    depths[1] = Math.min(depths[1], depth);
+                }
+            }
+        });
+
+        assertTrue(depths[0] != Integer.MIN_VALUE, "the fixture has a travel row");
+        assertTrue(depths[1] != Integer.MAX_VALUE, "the fixture has activity rows");
+        assertTrue(depths[0] < depths[1],
+                "every travel connector paints in front of every activity (rearmost travel="
+                        + depths[0] + ", frontmost activity=" + depths[1] + ")");
+    }
+
+    /** A connector is never drawn shorter than it can be read at. */
+    @Test
+    void aShortJourneyIsDrawnAtALeastItsMinimumReadableHeight() throws Exception {
+        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        DayPlanPanel panel = panelFor(viewModel);
+        // Without a peer nothing gets real bounds, and every card measures zero high.
+        final javax.swing.JFrame host = new javax.swing.JFrame();
+        SwingUtilities.invokeAndWait(() -> {
+            host.setUndecorated(true);
+            host.getContentPane().add(panel);
+            host.setSize(DayPlanPanel.WIDE_LAYOUT_MINIMUM + 120, 900);
+            host.addNotify();
+            host.validate();
+        });
+        SwingUtilities.invokeAndWait(() -> { });
+
+        final int[] shortest = new int[]{Integer.MAX_VALUE};
+        SwingUtilities.invokeAndWait(() -> {
+            Container timeline = timelineIn(panel);
+            // The timeline positions its own children, and a scroll viewport may not have
+            // asked it to yet; laying it out explicitly is what gives the cards bounds.
+            timeline.setSize(600, timeline.getPreferredSize().height);
+            timeline.doLayout();
+            for (Component card : timeline.getComponents()) {
+                if (isTravelCard(card)) {
+                    shortest[0] = Math.min(shortest[0], card.getHeight());
+                }
+            }
+        });
+
+        assertTrue(shortest[0] >= DayPlanPanel.MINIMUM_CONNECTOR_HEIGHT,
+                "a journey drawn at " + shortest[0] + "px cannot be read");
+        host.dispose();
+    }
+    /**
+     * Which activities the schedule actually changed is the whole point of a Preview, so
+     * the two markers had to survive the move onto the timeline. The card has no badge
+     * slot, so "moved" leads the subtitle and locking keeps its own toggle.
+     */
+    @Test
+    void movedAndLockedStaySignpostedOnTheTimelineCards() throws Exception {
+        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        DayPlanPanel panel = panelFor(viewModel);
+
+        String text = allText(panel);
+
+        assertTrue(text.contains("moved"), "the moved activity must say so: " + text);
         assertFalse(text.contains("[locked]"), "the bracketed form should be gone");
         assertFalse(text.contains("[moved]"), "the bracketed form should be gone");
+
+        boolean lockedToggleShown = false;
+        for (JToggleButton toggle : lockToggles(panel)) {
+            String name = toggle.getAccessibleContext().getAccessibleName();
+            lockedToggleShown |= name != null && name.startsWith("Unlock ");
+        }
+        assertTrue(lockedToggleShown,
+                "the locked activity keeps a toggle offering to unlock it");
     }
 
     @Test
@@ -362,23 +546,27 @@ class AutoschedulePolishedUiTest {
                 "a search that hit its limit must say so: " + allText(panel));
     }
 
+    /**
+     * There is no disclosure any more, and nothing is hidden by its absence.
+     *
+     * <p>It duplicated the figures above it, the tiles beside it and the reasons already
+     * printed on the rows themselves, so a traveller had to open a panel to be told three
+     * things they could already see. Per-activity reasons live on their own rows.</p>
+     */
     @Test
-    void reasoningIsCollapsedBehindADisclosureAndExpandsWithEveryReason() throws Exception {
+    void thereIsNoDisclosureAndTheReasonsAreOnTheRowsThemselves() throws Exception {
         DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
         DayPlanPanel panel = panelFor(viewModel);
 
-        AbstractButton disclosure = buttonNamed(panel, "▸ Why this schedule?");
-        assertNotNull(disclosure, "there should be a collapsed disclosure: " + allText(panel));
-        assertFalse(allText(panel).contains("less travel than before"),
-                "reasons start hidden");
-
-        SwingUtilities.invokeAndWait(disclosure::doClick);
-
-        String expanded = allText(panel);
-        assertTrue(expanded.contains("less travel than before"), expanded);
-        assertTrue(expanded.contains("a usual mealtime"), expanded);
-        assertTrue(expanded.contains("Times you pinned") || expanded.contains("Mealtimes"),
-                "reasons are grouped under headings: " + expanded);
+        String text = allText(panel);
+        assertNull(buttonNamed(panel, "Why these changes? ▸"),
+                "the disclosure should be gone: " + text);
+        assertFalse(text.contains("Why this schedule?") || text.contains("Why these changes?"),
+                "and nothing should still offer to expand: " + text);
+        assertTrue(text.contains("you locked this time"),
+                "a pinned row still says why, on the row: " + text);
+        assertTrue(text.contains("a usual mealtime"),
+                "and so does a mealtime row: " + text);
     }
 
     @Test
@@ -444,7 +632,7 @@ class AutoschedulePolishedUiTest {
         JLabel weatherLine = null;
         for (Component component : all(panel)) {
             if (component instanceof JLabel
-                    && ((JLabel) component).getText().startsWith("13:00 · Rain")) {
+                    && ((JLabel) component).getText().startsWith("1:00 PM · Rain")) {
                 weatherLine = (JLabel) component;
             }
         }
@@ -577,5 +765,84 @@ class AutoschedulePolishedUiTest {
 
         assertEquals(before, java.awt.Window.getWindows().length,
                 "a panel is not a window; the Day Plan must not open one to render");
+    }
+
+    /**
+     * Explanations belong with the proposal, not after the whole timeline.
+     *
+     * <p>A five-activity day becomes nine rows once travel is interleaved. With the "Why
+     * this schedule?" control rendered after those rows, the one thing that justifies the
+     * schedule was the one thing a user had to scroll the entire day to reach — which is
+     * exactly what was reported. On a wide window it now sits in a column beside the
+     * schedule, so this pins it by horizontal position: right of the timeline, not under it.
+     */
+    @Test
+    void theExplanationSitsBesideTheTimelineRatherThanBelowIt() throws Exception {
+        List<ImprovementView> improvements = Collections.singletonList(
+                new ImprovementView("\u23f3", "63 min of waiting removed", "Less dead time"));
+        DayPlanViewModel viewModel =
+                new DayPlanViewModel(previewWithImprovements(improvements));
+        DayPlanPanel panel = panelFor(viewModel);
+        // A component with no peer never gets real bounds, so host it in a frame that is
+        // never shown; addNotify + validate is what gives every child a position.
+        final javax.swing.JFrame host = new javax.swing.JFrame();
+        SwingUtilities.invokeAndWait(() -> {
+            host.setUndecorated(true);
+            host.getContentPane().add(panel);
+            host.setSize(DayPlanPanel.WIDE_LAYOUT_MINIMUM + 120, 900);
+            host.addNotify();
+            host.validate();
+        });
+        resizeTo(panel, DayPlanPanel.WIDE_LAYOUT_MINIMUM + 120);
+        SwingUtilities.invokeAndWait(host::validate);
+
+        // Rendering rebuilds the schedule on the event thread, so a tree read from the test
+        // thread can land between "clear" and "refill" and see a panel that never existed.
+        final int[] positions = new int[3];
+        SwingUtilities.invokeAndWait(() -> {
+            ScheduleImprovementsPanel reasoning = stackIn(panel);
+            assertNotNull(reasoning, "the Preview must show its reasoning");
+            positions[0] = xWithin(panel, reasoning);
+            positions[1] = -1;
+            for (Component component : all(panel)) {
+                String text = component instanceof JLabel
+                        ? ((JLabel) component).getText() : null;
+                if (text != null && text.contains("Travel to")) {
+                    positions[1] = Math.max(positions[1], xWithin(panel, component));
+                    positions[2]++;
+                }
+            }
+        });
+
+        assertTrue(positions[1] > 0, "the proposal should contain travel rows");
+        assertTrue(positions[0] > positions[1],
+                "the reasoning sits in the column beside the schedule, not below it (reasoning x="
+                        + positions[0] + ", schedule x=" + positions[1] + ")");
+        assertEquals(1, positions[2],
+                "the schedule is drawn once; a second copy below it is the duplicate that "
+                        + "the timeline takeover removed");
+        host.dispose();
+    }
+
+    /** X position of a component relative to the panel, summing container offsets. */
+    private static int xWithin(Component root, Component target) {
+        int x = 0;
+        Component cursor = target;
+        while (cursor != null && cursor != root) {
+            x += cursor.getX();
+            cursor = cursor.getParent();
+        }
+        return x;
+    }
+
+    /** Y position of a component relative to the panel, summing container offsets. */
+    private static int yWithin(Component root, Component target) {
+        int y = 0;
+        Component cursor = target;
+        while (cursor != null && cursor != root) {
+            y += cursor.getY();
+            cursor = cursor.getParent();
+        }
+        return y;
     }
 }

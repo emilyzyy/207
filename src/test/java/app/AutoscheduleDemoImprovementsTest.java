@@ -83,15 +83,15 @@ class AutoscheduleDemoImprovementsTest {
     private static List<String> headlines(DayPlanState state) {
         List<String> headlines = new ArrayList<>();
         for (ImprovementView improvement : state.getImprovements()) {
-            headlines.add(improvement.getHeadline());
+            headlines.add(improvement.getPrimary());
         }
         return headlines;
     }
 
     private static String subjectOf(DayPlanState state, String headline) {
         for (ImprovementView improvement : state.getImprovements()) {
-            if (improvement.getHeadline().equals(headline)) {
-                return improvement.getDetail();
+            if (improvement.getPrimary().equals(headline)) {
+                return improvement.getSecondary();
             }
         }
         return null;
@@ -117,12 +117,15 @@ class AutoscheduleDemoImprovementsTest {
         List<String> shown = headlines(state);
 
         // Six, and each is a before/after comparison the Interactor computed.
-        assertTrue(shown.contains("63 min of waiting removed"), shown.toString());
-        assertTrue(shown.contains("8 min less travel"), shown.toString());
-        assertTrue(shown.contains("Pinned activity kept at its time"), shown.toString());
-        assertTrue(shown.contains("Meal moved to a better time"), shown.toString());
-        assertTrue(shown.contains("Moved into daylight"), shown.toString());
-        assertTrue(shown.contains("Moved to better weather"), shown.toString());
+        // Waiting is now reported as all of it, so the saving is measured against the
+        // waiting the timeline still shows rather than against the smaller "avoidable"
+        // figure the ranking uses. Most of this day's waiting was never reclaimable.
+        assertTrue(shown.contains("3 MIN"), shown.toString());
+        assertTrue(shown.contains("8 MIN"), shown.toString());
+        assertTrue(shown.contains("PIN KEPT"), shown.toString());
+        assertTrue(shown.contains("BETTER MEAL TIME"), shown.toString());
+        assertTrue(shown.contains("DAYLIGHT"), shown.toString());
+        assertTrue(shown.contains("WEATHER IMPROVED"), shown.toString());
         assertEquals(6, shown.size(), "no other card should appear: " + shown);
     }
 
@@ -131,10 +134,10 @@ class AutoscheduleDemoImprovementsTest {
         DayPlanState state = runDemo();
 
         assertEquals("Royal Ontario Museum",
-                subjectOf(state, "Pinned activity kept at its time"));
-        assertEquals("St Lawrence Market", subjectOf(state, "Meal moved to a better time"));
-        assertEquals("High Park", subjectOf(state, "Moved into daylight"));
-        assertEquals("High Park", subjectOf(state, "Moved to better weather"));
+                subjectOf(state, "PIN KEPT"));
+        assertEquals("St Lawrence Market", subjectOf(state, "BETTER MEAL TIME"));
+        assertEquals("High Park", subjectOf(state, "DAYLIGHT"));
+        assertEquals("High Park", subjectOf(state, "WEATHER IMPROVED"));
     }
 
     /**

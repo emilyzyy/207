@@ -4,8 +4,10 @@ import interface_adapter.viewmodels.AutoScheduleStatus;
 import interface_adapter.viewmodels.DayPlanState;
 import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.PreviewMetricsView;
+import interface_adapter.viewmodels.ConstraintChipView;
 import interface_adapter.viewmodels.ImprovementView;
 import interface_adapter.viewmodels.PreviewRowView;
+import interface_adapter.viewmodels.TimeDisplay;
 import use_case.autoschedule.AutoScheduleAppliedOutputData;
 import use_case.autoschedule.AutoScheduleConflictOutputData;
 import use_case.autoschedule.AutoScheduleOutputBoundary;
@@ -13,6 +15,7 @@ import use_case.autoschedule.AutoSchedulePreviewOutputData;
 import use_case.autoschedule.PolicyId;
 import use_case.autoschedule.ProposedEventData;
 import use_case.autoschedule.ScheduleImprovement;
+import use_case.autoschedule.ScheduleImprovementType;
 import use_case.autoschedule.Reason;
 import use_case.autoschedule.ReasonCode;
 import use_case.autoschedule.ScheduleConflict;
@@ -96,7 +99,87 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
                 travelQualityNote(outputData.getTravelQuality()),
                 outputData.getScheduleFingerprint(), current.getLockedEventIds(),
                 improvementViews(outputData.getImprovements()),
-                current.getTripDates(), current.getActiveDayIndex()));
+                current.getTripDates(), current.getActiveDayIndex())
+                .withReasoning(constraintChips(outputData), tradeOff(outputData, metrics)));
+    }
+
+    /**
+     * The requirements this schedule actively worked around.
+     *
+     * <p>Built from the reason codes the engine and policies already emit, so a chip is
+     * evidence rather than a restatement of a settings screen. Only codes that <em>changed
+     * where something went</em> qualify: a venue that happened to be open all day did not
+     * constrain anything, and a chip saying so would teach the traveller to stop reading the
+     * row.</p>
+     */
+    private static List<ConstraintChipView> constraintChips(
+            AutoSchedulePreviewOutputData outputData) {
+        java.util.LinkedHashMap<String, ConstraintChipView> chips = new java.util.LinkedHashMap<>();
+        for (Reason reason : outputData.getReasons()) {
+            String subject = subjectFor(reason, outputData);
+            switch (reason.getCode()) {
+                case LOCKED_BY_USER:
+                    chips.put("lock:" + subject,
+                            new ConstraintChipView("\u26bf", subject + " kept at your time"));
+                    break;
+                case AVOIDS_UNAVAILABLE_PERIOD:
+                    chips.put("unavailable",
+                            new ConstraintChipView("\u25f7", "Your unavailable time kept free"));
+                    break;
+                case OPENS_LATER:
+                    chips.put("opens:" + subject,
+                            new ConstraintChipView("\u25f4", subject + " waited for opening"));
+                    break;
+                case CLOSING_SOON:
+                    chips.put("closes:" + subject,
+                            new ConstraintChipView("\u25f4", subject + " finished before closing"));
+                    break;
+                default:
+                    break;
+            }
+        }
+        // Worth saying only when there was something to lose: a day of one activity has not
+        // "retained" anything.
+        if (outputData.getActivityCount() > 1
+                && outputData.getRows().size() >= outputData.getActivityCount()) {
+            chips.put("retained", new ConstraintChipView("\u2713",
+                    "All " + outputData.getActivityCount() + " activities kept"));
+        }
+        return new ArrayList<>(chips.values());
+    }
+
+    private static String subjectFor(Reason reason, AutoSchedulePreviewOutputData outputData) {
+        for (ProposedEventData row : outputData.getRows()) {
+            if (row.getEventId().equals(reason.getEventId())) {
+                return row.getTitle();
+            }
+        }
+        return "An activity";
+    }
+
+    /**
+     * One sentence naming a disadvantage this schedule deliberately accepted.
+     *
+     * <p>Only when the figures themselves show the exchange: something measurable got worse
+     * while something else measurable got better. An arrangement that improved on every axis
+     * has no trade-off to confess, and inventing one to look thorough would be its own kind
+     * of dishonesty.</p>
+     */
+    private static String tradeOff(AutoSchedulePreviewOutputData outputData,
+                                   PreviewMetricsView metrics) {
+        int extraTravel = -metrics.getTravelSavedMinutes();
+        int waitingRemoved = metrics.getIdleSavedMinutes();
+        if (extraTravel <= 0 || waitingRemoved <= 0) {
+            return "";
+        }
+        for (Reason reason : outputData.getReasons()) {
+            if (reason.getCode() == ReasonCode.LOCKED_BY_USER) {
+                return "Trade-off: " + extraTravel + " extra travel minutes to keep "
+                        + subjectFor(reason, outputData) + " at the time you pinned.";
+            }
+        }
+        return "Trade-off: " + extraTravel + " extra travel minutes to remove "
+                + waitingRemoved + " minutes of waiting.";
     }
 
     /**
@@ -106,47 +189,75 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
      *
      * <p>Each marker is a glyph, so the categories remain distinguishable without colour.</p>
      */
+    /**
+     * The improvements as tiles, strongest first.
+     *
+     * <p>Ordered here rather than in the View because which of two true statements matters
+     * more to a traveller is a presentation judgement, not a layout one. Measurable savings
+     * lead, then a constraint the traveller asked for by hand, then a preference that
+     * actually improved, then the explanations. Within a rank the larger figure wins, so a
+     * one-minute travel saving cannot outrank an hour of waiting removed.</p>
+     */
     private static List<ImprovementView> improvementViews(
             List<ScheduleImprovement> improvements) {
+        List<ScheduleImprovement> ordered = new ArrayList<>(improvements);
+        java.util.Collections.sort(ordered, (left, right) -> {
+            int byRank = Integer.compare(rank(left.getType()), rank(right.getType()));
+            return byRank != 0 ? byRank : Integer.compare(right.getAmount(), left.getAmount());
+        });
+
         List<ImprovementView> views = new ArrayList<>();
-        for (ScheduleImprovement improvement : improvements) {
-            switch (improvement.getType()) {
-                case WAITING_REDUCED:
-                    views.add(new ImprovementView("\u23f3",
-                            improvement.getAmount() + " min of waiting removed",
-                            "Less dead time between activities"));
-                    break;
-                case TRAVEL_REDUCED:
-                    views.add(new ImprovementView("\u2192",
-                            improvement.getAmount() + " min less travel",
-                            "Shorter journeys than your current order"));
-                    break;
-                case LOCK_PRESERVED:
-                    views.add(new ImprovementView("\u26bf",
-                            "Pinned activity kept at its time",
-                            improvement.getSubject()));
-                    break;
-                case MOVED_INTO_DAYLIGHT:
-                    views.add(new ImprovementView("\u2600",
-                            "Moved into daylight", improvement.getSubject()));
-                    break;
-                case MOVED_TO_BETTER_WEATHER:
-                    views.add(new ImprovementView("\u2602",
-                            "Moved to better weather", improvement.getSubject()));
-                    break;
-                case MEAL_MOVED_TOWARD_WINDOW:
-                    views.add(new ImprovementView("\u25f4",
-                            "Meal moved to a better time", improvement.getSubject()));
-                    break;
-                case ORDER_PRESERVED:
-                    views.add(new ImprovementView("\u2261",
-                            "Your original order was kept", "Nothing was reordered"));
-                    break;
-                default:
-                    break;
+        for (ScheduleImprovement improvement : ordered) {
+            ImprovementView view = tileFor(improvement);
+            if (view != null) {
+                views.add(view);
             }
         }
         return views;
+    }
+
+    /** 0 is the strongest. See {@link #improvementViews}. */
+    private static int rank(ScheduleImprovementType type) {
+        switch (type) {
+            case TRAVEL_REDUCED:
+            case WAITING_REDUCED:
+                return 0;
+            case LOCK_PRESERVED:
+                return 1;
+            case MOVED_INTO_DAYLIGHT:
+            case MOVED_TO_BETTER_WEATHER:
+            case MEAL_MOVED_TOWARD_WINDOW:
+                return 2;
+            default:
+                return 3;
+        }
+    }
+
+    private static ImprovementView tileFor(ScheduleImprovement improvement) {
+        switch (improvement.getType()) {
+            case WAITING_REDUCED:
+                return new ImprovementView("\u25f4",
+                        improvement.getAmount() + " MIN", "waiting removed");
+            case TRAVEL_REDUCED:
+                return new ImprovementView("\u2192",
+                        improvement.getAmount() + " MIN", "less travel");
+            case LOCK_PRESERVED:
+                return new ImprovementView("\u26bf", "PIN KEPT", improvement.getSubject());
+            case MOVED_INTO_DAYLIGHT:
+                return new ImprovementView("\u2600", "DAYLIGHT", improvement.getSubject());
+            case MOVED_TO_BETTER_WEATHER:
+                return new ImprovementView("\u2602", "WEATHER IMPROVED",
+                        improvement.getSubject());
+            case MEAL_MOVED_TOWARD_WINDOW:
+                return new ImprovementView("\u25d5", "BETTER MEAL TIME",
+                        improvement.getSubject());
+            case ORDER_PRESERVED:
+                // No supporting line: "nothing was reordered" only says "order kept" again,
+                // and a tile that repeats itself is one the eye learns to skip.
+                return new ImprovementView("\u2261", "ORDER KEPT", "");
+            default:
+                return null;
+        }
     }
 
     @Override
@@ -238,6 +349,28 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
         return sentences;
     }
 
+    /**
+     * A time or a time range from a reason detail, on the same 12-hour clock as the rest
+     * of the screen.
+     *
+     * <p>Reasons carry machine times ("19:15", "15:00-16:00") because the use case has no
+     * business knowing how a clock is written. Turning them into words is this class's job,
+     * and doing it here is what stops 24-hour times leaking into a UI that is otherwise
+     * entirely am/pm.</p>
+     */
+    static String clock(String detail) {
+        if (detail.contains("-")) {
+            int dash = detail.indexOf('-');
+            return clock(detail.substring(0, dash).trim())
+                    + " to " + clock(detail.substring(dash + 1).trim());
+        }
+        try {
+            return TimeDisplay.format(java.time.LocalTime.parse(detail.trim()));
+        } catch (java.time.format.DateTimeParseException notATime) {
+            return detail;
+        }
+    }
+
     /** Turns one reason code into a short phrase. This is the only place they get words. */
     String describe(Reason reason) {
         String detail = reason.getDetail();
@@ -247,9 +380,9 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
             case AVOIDS_UNAVAILABLE_PERIOD:
                 return "moved clear of your unavailable time";
             case CLOSING_SOON:
-                return detail.isEmpty() ? "closes soon after" : "closes at " + detail;
+                return detail.isEmpty() ? "closes soon after" : "closes at " + clock(detail);
             case OPENS_LATER:
-                return detail.isEmpty() ? "opens later" : "opens at " + detail;
+                return detail.isEmpty() ? "opens later" : "opens at " + clock(detail);
             case WEATHER_EXPOSURE:
                 return "poorer weather expected outdoors";
             case IN_MEAL_WINDOW:
@@ -269,10 +402,19 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
     String describe(AutoScheduleConflictOutputData conflict) {
         String subject = conflict.getSubject().isEmpty() ? "An activity" : conflict.getSubject();
         String unchanged = " Your Day Plan was not changed.";
+        // Closed all day is its own sentence. Reported as "only 0 minutes fit" it read as a
+        // window that was merely too narrow, so the traveller kept moving the activity around
+        // a date it could never sit on and got the same answer every time.
+        if (conflict.getKind() == ScheduleConflict.Kind.ACTIVITY_CLOSED_ON_DATE) {
+            String day = conflict.getDetail().isEmpty() ? "this day" : "on " + conflict.getDetail();
+            return subject + " is closed " + day + ", so it cannot be scheduled on this date "
+                    + "at any time. Remove it from the day, or choose a date it is open."
+                    + unchanged;
+        }
         if (conflict.getKind() == ScheduleConflict.Kind.ACTIVITY_CANNOT_FIT) {
             return subject + " needs " + conflict.getRequiredMinutes()
-                    + " minutes, but only " + conflict.getAvailableMinutes()
-                    + " fit between its opening hours and the time you are available."
+                    + " minutes, but its opening hours and the hours you are available "
+                    + "overlap by only " + conflict.getAvailableMinutes() + "."
                     + unchanged;
         }
         if (conflict.getKind() == ScheduleConflict.Kind.LOCK_OUTSIDE_AVAILABILITY) {

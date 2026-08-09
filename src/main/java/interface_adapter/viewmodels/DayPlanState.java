@@ -41,6 +41,8 @@ public final class DayPlanState {
     private final String previewFingerprint;
     private final Set<String> lockedEventIds;
     private final List<ImprovementView> improvements;
+    private final List<ConstraintChipView> constraintChips;
+    private final String tradeOff;
 
     public DayPlanState(
             String tripId, List<ScheduledEvent> events, String message, boolean error) {
@@ -145,6 +147,10 @@ public final class DayPlanState {
         this.improvements = Collections.unmodifiableList(new ArrayList<>(
                 improvements == null
                         ? Collections.<ImprovementView>emptyList() : improvements));
+        // Chips and the trade-off are chosen after the figures are known, so they arrive by
+        // withReasoning rather than through every constructor in this class.
+        this.constraintChips = Collections.<ConstraintChipView>emptyList();
+        this.tradeOff = "";
     }
 
     public String getTripId() {
@@ -217,6 +223,46 @@ public final class DayPlanState {
     }
 
     /** Proven before/after gains, for the "Schedule improvements" stack; empty when none. */
+    /** Requirements the schedule worked around; smaller and quieter than an improvement. */
+    public List<ConstraintChipView> getConstraintChips() {
+        return constraintChips;
+    }
+
+    /** One sentence naming a disadvantage the schedule accepted, or empty. */
+    public String getTradeOff() {
+        return tradeOff;
+    }
+
+    /** The same state carrying the reasoning the Presenter selected for this proposal. */
+    public DayPlanState withReasoning(List<ConstraintChipView> chips, String tradeOffSentence) {
+        return new DayPlanState(this, chips, tradeOffSentence);
+    }
+
+    private DayPlanState(DayPlanState source, List<ConstraintChipView> chips,
+                         String tradeOffSentence) {
+        this.tripId = source.tripId;
+        this.events = source.events;
+        this.message = source.message;
+        this.error = source.error;
+        this.hourlyWeather = source.hourlyWeather;
+        this.status = source.status;
+        this.previewRows = source.previewRows;
+        this.metrics = source.metrics;
+        this.warnings = source.warnings;
+        this.objectiveSummary = source.objectiveSummary;
+        this.keptCurrentOrder = source.keptCurrentOrder;
+        this.searchCompletedWithinLimit = source.searchCompletedWithinLimit;
+        this.travelQualityNote = source.travelQualityNote;
+        this.previewFingerprint = source.previewFingerprint;
+        this.lockedEventIds = source.lockedEventIds;
+        this.improvements = source.improvements;
+        this.tripDates = source.tripDates;
+        this.activeDayIndex = source.activeDayIndex;
+        this.constraintChips = Collections.unmodifiableList(new ArrayList<>(
+                chips == null ? Collections.<ConstraintChipView>emptyList() : chips));
+        this.tradeOff = tradeOffSentence == null ? "" : tradeOffSentence;
+    }
+
     public List<ImprovementView> getImprovements() {
         return improvements;
     }
@@ -231,7 +277,46 @@ public final class DayPlanState {
         return new DayPlanState(tripId, events, newMessage, false, hourlyWeather, AutoScheduleStatus.IDLE,
                 Collections.<PreviewRowView>emptyList(), null, Collections.<String>emptyList(),
                 "", keptCurrentOrder, true, "", "", lockedEventIds,
-                improvements, tripDates, activeDayIndex);
+                // Improvements are claims about a proposal. Carrying them past the proposal
+                // they describe leaves the screen holding cards for a schedule that no longer
+                // exists, so they go with the rows and the figures.
+                Collections.<ImprovementView>emptyList(), tripDates, activeDayIndex);
+    }
+
+    /**
+     * The same state with a fresh hourly forecast and nothing else touched.
+     *
+     * <p>The forecast arrives on a background worker whenever it happens to arrive. Rebuilding
+     * the state from the short constructor instead reset the status to IDLE and emptied the
+     * rows, so a forecast landing while a Preview was open silently threw the proposal away,
+     * along with the traveller's pins.</p>
+     */
+    public DayPlanState withHourlyWeather(List<WeatherWarning> updatedWeather) {
+        return new DayPlanState(tripId, events, message, error, updatedWeather, status,
+                previewRows, metrics, warnings, objectiveSummary, keptCurrentOrder,
+                searchCompletedWithinLimit, travelQualityNote, previewFingerprint,
+                lockedEventIds, improvements, tripDates, activeDayIndex);
+    }
+
+    /**
+     * The same day with a blocking notice dismissed.
+     *
+     * <p>Dismissing is only about the message. The saved day, the pins and the forecast are
+     * untouched, and Autoschedule stays available — the whole point of the OK button is that
+     * the traveller can now change something and try again.</p>
+     */
+    public DayPlanState withoutNotice() {
+        return new DayPlanState(tripId, events, "", false, hourlyWeather,
+                AutoScheduleStatus.IDLE, Collections.<PreviewRowView>emptyList(), null,
+                Collections.<String>emptyList(), "", keptCurrentOrder, true, "", "",
+                lockedEventIds, Collections.<ImprovementView>emptyList(),
+                tripDates, activeDayIndex);
+    }
+
+    /** Whether a blocking notice is on screen: a conflict or a failure, never a Preview. */
+    public boolean hasBlockingNotice() {
+        return error && !message.isEmpty()
+                && (status == AutoScheduleStatus.CONFLICT || status == AutoScheduleStatus.FAILURE);
     }
 
     /** Same state with a different set of pinned activities. */

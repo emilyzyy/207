@@ -60,6 +60,9 @@ public final class DayPlanPanel extends JPanel {
     /** Below this the sidebar would squeeze the schedule, so the cards go underneath. */
     static final int WIDE_LAYOUT_MINIMUM = 820;
 
+    /** The least height a journey can be drawn at and still be read. */
+    static final int MINIMUM_CONNECTOR_HEIGHT = 24;
+
     private final DayPlanViewModel viewModel;
     private final AutoScheduleController autoScheduleController;
     private final ManualPlanController manualPlanController;
@@ -67,15 +70,29 @@ public final class DayPlanPanel extends JPanel {
     private TripAccessViewModel tripAccess;
     private final JPanel eventList = new JPanel();
     private final ScheduleTimeline timeline = new ScheduleTimeline();
-    private final JPanel previewArea = new JPanel();
+    /**
+     * Where the reasoning goes when the window is too narrow for two columns: above the
+     * schedule, never below it. Placed after a full day of timeline it was unreachable
+     * without scrolling past the whole proposal, which is the complaint this all started
+     * from.
+     */
+    private final JPanel narrowSlot = new JPanel(new BorderLayout());
     private final JPanel sidebarSlot = new JPanel(new BorderLayout());
+    /**
+     * A blocking conflict, directly under the heading and above the schedule.
+     *
+     * <p>It used to be a line of small red text in the status row at the very bottom, where it
+     * was both easy to miss and easy to mistake for the previous attempt's message — which is
+     * exactly what happened: an edit was made, the same sentence was still on screen, and the
+     * feature looked stuck when it had simply given the same true answer twice.</p>
+     */
+    private final JPanel noticeSlot = new JPanel(new BorderLayout());
     private final JLabel status = new JLabel();
     private final Spinner spinner = new Spinner();
     private final JLabel objective = new JLabel();
     private final JButton autoscheduleButton = SwingTheme.primaryButton("Autoschedule");
     private final JButton applyButton = SwingTheme.primaryButton("Apply");
     private final JButton cancelButton = SwingTheme.secondaryButton("Cancel");
-    private final JToggleButton whyButton = new JToggleButton("Why this schedule?");
 
     private LocalTime tripStart = LocalTime.of(9, 0);
     private LocalTime tripEnd = LocalTime.of(21, 0);
@@ -121,18 +138,36 @@ public final class DayPlanPanel extends JPanel {
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
-        add(header(), BorderLayout.NORTH);
+        JPanel top = new JPanel();
+        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
+        top.setOpaque(false);
+        JPanel headerRow = header();
+        headerRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        top.add(headerRow);
+        noticeSlot.setOpaque(false);
+        noticeSlot.setVisible(false);
+        noticeSlot.setAlignmentX(Component.LEFT_ALIGNMENT);
+        noticeSlot.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+        top.add(noticeSlot);
+        add(top, BorderLayout.NORTH);
 
         eventList.setLayout(new BorderLayout(0, 8));
         eventList.setBackground(SwingTheme.BACKGROUND);
-        previewArea.setLayout(new BoxLayout(previewArea, BoxLayout.Y_AXIS));
-        previewArea.setBackground(SwingTheme.BACKGROUND);
+        // BoxLayout lines its children up on a shared alignment axis, so one child left of
+        // the others drags the whole stack off centre. Both say left.
+        eventList.setAlignmentX(Component.LEFT_ALIGNMENT);
+        narrowSlot.setBackground(SwingTheme.BACKGROUND);
+        narrowSlot.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JPanel centre = new JPanel();
         centre.setLayout(new BoxLayout(centre, BoxLayout.Y_AXIS));
         centre.setBackground(SwingTheme.BACKGROUND);
+        centre.add(narrowSlot);
         centre.add(eventList);
-        centre.add(previewArea);
+        // Without this the slack goes to whichever child will take it, and the empty
+        // narrow-layout slot took all of it -- pushing the schedule a third of the way down
+        // a window it had plenty of room in.
+        centre.add(Box.createVerticalGlue());
 
         JScrollPane scroll = new JScrollPane(centre);
         scroll.setBorder(BorderFactory.createEmptyBorder());
@@ -159,12 +194,6 @@ public final class DayPlanPanel extends JPanel {
         });
         add(actions(), BorderLayout.SOUTH);
 
-        whyButton.setFont(SwingTheme.SMALL);
-        whyButton.setFocusPainted(true);
-        whyButton.setContentAreaFilled(false);
-        whyButton.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
-        whyButton.setForeground(SwingTheme.BLUE);
-        whyButton.addActionListener(event -> render(viewModel.getState()));
 
         render(viewModel.getState());
         viewModel.addPropertyChangeListener(event ->
@@ -227,6 +256,90 @@ public final class DayPlanPanel extends JPanel {
 
     public DayPlanViewModel getViewModel() {
         return viewModel;
+    }
+
+    /**
+     * The one blocking notice, or nothing.
+     *
+     * <p>Rebuilt from the current state every render, so a retry replaces the message rather
+     * than stacking a second bar, and a successful Preview removes it without anyone having
+     * to remember to.</p>
+     */
+    private void renderNotice(DayPlanState state) {
+        noticeSlot.removeAll();
+        noticeSlot.setVisible(state.hasBlockingNotice());
+        if (!state.hasBlockingNotice()) {
+            return;
+        }
+        noticeSlot.add(conflictBar(state.getMessage()), BorderLayout.CENTER);
+        // A conflict that appears while the traveller is scrolled halfway down the day is a
+        // conflict they never see.
+        SwingUtilities.invokeLater(() -> {
+            JScrollPane scroll = enclosingScrollPane();
+            if (scroll != null) {
+                scroll.getVerticalScrollBar().setValue(0);
+            }
+        });
+    }
+
+    private JScrollPane enclosingScrollPane() {
+        for (Component child : getComponents()) {
+            if (child instanceof Container) {
+                for (Component grandchild : ((Container) child).getComponents()) {
+                    if (grandchild instanceof JScrollPane) {
+                        return (JScrollPane) grandchild;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A shallow inline bar: warning rule, heading, the full sentence, and one OK.
+     *
+     * <p>Deliberately not a dialog and not a tall card. The traveller has to be able to read
+     * it and keep working in the same breath — the next thing they do is edit an activity and
+     * press Autoschedule again.</p>
+     */
+    private JPanel conflictBar(String message) {
+        JPanel bar = new JPanel(new BorderLayout(12, 0));
+        bar.setBackground(SwingTheme.WARNING_SOFT);
+        bar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 3, 1, 1, SwingTheme.ERROR),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)));
+        bar.getAccessibleContext().setAccessibleName("Autoschedule could not run: " + message);
+
+        JPanel text = new JPanel();
+        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
+        text.setOpaque(false);
+
+        JLabel heading = new JLabel("\u26a0  Couldn't generate a schedule");
+        heading.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
+        heading.setForeground(SwingTheme.ERROR);
+        heading.setAlignmentX(Component.LEFT_ALIGNMENT);
+        text.add(heading);
+
+        // Wrapped rather than truncated: the sentence names which activity and why, and half
+        // of it is no use at all.
+        JLabel detail = new JLabel("<html><div style='width:640px'>" + escape(message)
+                + "</div></html>");
+        detail.setFont(SwingTheme.SMALL);
+        detail.setForeground(SwingTheme.NAVY);
+        detail.setAlignmentX(Component.LEFT_ALIGNMENT);
+        text.add(detail);
+        bar.add(text, BorderLayout.CENTER);
+
+        JButton dismiss = SwingTheme.secondaryButton("OK");
+        dismiss.setToolTipText("Dismiss this message; your Day Plan is unchanged");
+        dismiss.getAccessibleContext().setAccessibleName("Dismiss the Autoschedule message");
+        dismiss.addActionListener(event -> viewModel.setState(
+                viewModel.getState().withoutNotice()));
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        right.setOpaque(false);
+        right.add(dismiss);
+        bar.add(right, BorderLayout.EAST);
+        return bar;
     }
 
     private JPanel header() {
@@ -297,8 +410,11 @@ public final class DayPlanPanel extends JPanel {
         optionsButton.addActionListener(event -> openOptionsAction.run());
         secondary.add(optionsButton);
         autoscheduleButton.setToolTipText("Suggest a better order and times for this day");
-        autoscheduleButton.setPreferredSize(new java.awt.Dimension(118, 38));
-        autoscheduleButton.setMinimumSize(new java.awt.Dimension(118, 38));
+        // Height is fixed to match the row; width follows the label. Pinning both meant
+        // "Autoschedule" did not fit inside its own button and rendered as "Autosched...".
+        autoscheduleButton.setPreferredSize(new java.awt.Dimension(
+                autoscheduleButton.getPreferredSize().width + 24, 38));
+        autoscheduleButton.setMinimumSize(autoscheduleButton.getPreferredSize());
         autoscheduleButton.addActionListener(event -> openSettings());
         secondary.add(autoscheduleButton);
         JButton calendar = SwingTheme.secondaryButton("Calendar View");
@@ -336,6 +452,11 @@ public final class DayPlanPanel extends JPanel {
         renderItinerary(state);
         renderPreview(state);
 
+        renderNotice(state);
+        // A blocking conflict has its own bar at the top and says everything there, including
+        // that the day is unchanged. Leaving the status line to repeat it put the same
+        // sentence on screen twice, once in green.
+        status.setVisible(!state.hasBlockingNotice());
         status.setText(state.getMessage().isEmpty()
                 ? "Add activities, then choose Autoschedule." : state.getMessage());
         status.setForeground(state.isError() ? SwingTheme.ERROR : SwingTheme.SUCCESS);
@@ -371,48 +492,142 @@ public final class DayPlanPanel extends JPanel {
         repaint();
     }
 
+    /**
+     * The proposal expressed as ordinary schedule events, so the timeline can draw it.
+     *
+     * <p>Preview used to be a second list underneath the real day, which meant two
+     * schedules on screen and the proposal rendered in a style the rest of the app had
+     * left behind. Converting the rows back into events lets the one timeline show the
+     * proposal instead, in the same cards, with nothing saved until Apply.</p>
+     *
+     * <p>Each activity row is matched to its original event by id so the card keeps the
+     * activity behind it — that is what the weather line and the drag handles read.</p>
+     */
+    private static List<ScheduledEvent> proposalAsEvents(DayPlanState state) {
+        java.util.Map<String, ScheduledEvent> originals = new java.util.HashMap<>();
+        for (ScheduledEvent event : state.getEvents()) {
+            originals.put(event.getId(), event);
+        }
+        List<ScheduledEvent> proposal = new java.util.ArrayList<>();
+        for (PreviewRowView row : state.getPreviewRows()) {
+            if (row.getKind() == PreviewRowView.Kind.TRAVEL) {
+                proposal.add(new ScheduledEvent(row.getEventId(), null, row.getStart(),
+                        row.getEnd(), EventType.TRAVEL, row.getTitle()));
+                continue;
+            }
+            ScheduledEvent original = originals.get(row.getEventId());
+            String reason = row.getReason() == null ? "" : row.getReason();
+            // "Moved" was a badge on the old list. The timeline card has no badge slot, so
+            // it leads the subtitle instead -- losing it would drop the one marker that
+            // says which activities the schedule actually changed.
+            String note = row.isMoved() && !reason.isEmpty() ? "moved \u00b7 " + reason
+                    : row.isMoved() ? "moved" : reason;
+            // With no original there is no Activity to name the card, and a card titled by
+            // its reason would read as an activity called "a usual mealtime". The row's own
+            // title is the honest fallback.
+            proposal.add(new ScheduledEvent(row.getEventId(),
+                    original == null ? null : original.getActivity(),
+                    row.getStart(), row.getEnd(), EventType.ACTIVITY,
+                    original == null ? row.getTitle() : note));
+        }
+        return proposal;
+    }
+
     private void renderItinerary(DayPlanState state) {
         eventList.removeAll();
-        eventList.add(SwingTheme.sectionHeader("YOUR DAY PLAN",
-                state.getStatus() == AutoScheduleStatus.PREVIEW ? "unchanged so far" : "",
-                SwingTheme.NAVY), BorderLayout.NORTH);
+        // The heading is the only thing telling the user which day they are looking at now
+        // that the timeline itself switches to the proposal during a Preview.
+        boolean previewing = state.getStatus() == AutoScheduleStatus.PREVIEW;
+        eventList.add(SwingTheme.sectionHeader(
+                previewing ? "PROPOSED SCHEDULE" : "YOUR DAY PLAN",
+                previewing ? "Nothing has been saved yet" : "",
+                previewing ? SwingTheme.BLUE : SwingTheme.NAVY), BorderLayout.NORTH);
         timeline.setSchedule(state);
         eventList.add(timeline, BorderLayout.CENTER);
     }
 
+    /**
+     * Everything explaining the proposal, built once and placed according to the width.
+     *
+     * <p>There is deliberately one implementation. The Preview had grown three: a row list
+     * repeating the schedule, a stack of improvement cards, and a warning band under the
+     * timeline, each added at a different time and none of them aware of the others. On a
+     * full day the explanation ended up below hours of empty timeline, which is where it was
+     * reported from. Wide windows now put this column beside the schedule; narrow ones put it
+     * above, never after.</p>
+     */
     private void renderPreview(DayPlanState state) {
-        previewArea.removeAll();
+        narrowSlot.removeAll();
+        sidebarSlot.removeAll();
         if (state.getStatus() != AutoScheduleStatus.PREVIEW) {
+            sidebarSlot.setVisible(false);
+            narrowSlot.setVisible(false);
             return;
         }
 
-        previewArea.add(Box.createVerticalStrut(18));
-        previewArea.add(SwingTheme.sectionHeader("PROPOSED SCHEDULE", "not applied yet",
-                SwingTheme.BLUE));
-        previewArea.add(Box.createVerticalStrut(8));
+        boolean wide = getWidth() >= WIDE_LAYOUT_MINIMUM;
+        JPanel column = reasoningColumn(state);
+        sidebarSlot.setVisible(wide);
+        // An empty BorderLayout panel still reports an unbounded maximum height, so on a wide
+        // window the unused narrow slot swallowed the spare vertical space and pushed the
+        // schedule a third of the way down the panel.
+        narrowSlot.setVisible(!wide);
+        if (wide) {
+            sidebarSlot.add(column, BorderLayout.NORTH);
+        } else {
+            column.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE,
+                    column.getPreferredSize().height));
+            // BorderLayout.NORTH, so the column takes the full width and its own height.
+            // Stacked in a BoxLayout it was sized to its preferred width and centred, which
+            // left it floating in the middle of the panel with dead space either side.
+            narrowSlot.setBorder(BorderFactory.createEmptyBorder(0, 0, 12, 0));
+            narrowSlot.add(column, BorderLayout.NORTH);
+            narrowSlot.setMaximumSize(new Dimension(Integer.MAX_VALUE,
+                    column.getPreferredSize().height + 12));
+        }
+    }
 
-        // The improvements stack sits beside the schedule when there is room for it and
-        // below when there is not. Which side it lands on is this panel's business; the
-        // stack itself is identical either way, which is what lets it move to a calendar
-        // view later without being rewritten.
+    /** The reasoning column: what changed, what was respected, what to be careful of. */
+    private JPanel reasoningColumn(DayPlanState state) {
+        JPanel column = new JPanel();
+        column.setLayout(new BoxLayout(column, BoxLayout.Y_AXIS));
+        column.setOpaque(false);
+        column.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel figures = figuresCard(state.getMetrics());
+        if (figures != null) {
+            column.add(figures);
+            column.add(Box.createVerticalStrut(10));
+        }
+
         ScheduleImprovementsPanel improvements =
                 new ScheduleImprovementsPanel(state.getImprovements());
-        boolean wide = getWidth() >= WIDE_LAYOUT_MINIMUM;
-        if (!wide) {
-            improvements.setAlignmentX(Component.LEFT_ALIGNMENT);
+        improvements.setAlignmentX(Component.LEFT_ALIGNMENT);
+        if (getWidth() < WIDE_LAYOUT_MINIMUM) {
+            // Side by side the tiles keep a column's width. Stacked above the schedule they
+            // have the whole panel, and a 360px island under a full-width card reads as a
+            // mistake.
             improvements.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE,
                     improvements.getPreferredSize().height));
-            previewArea.add(improvements);
-            previewArea.add(Box.createVerticalStrut(10));
         }
-        sidebarSlot.removeAll();
-        if (wide) {
-            sidebarSlot.add(improvements, BorderLayout.NORTH);
-        }
-        sidebarSlot.setVisible(wide);
+        column.add(improvements);
 
-        // Warnings get their own band. Previously they were SMALL/MUTED labels immediately
-        // under the figures, which made a routing caveat look like part of the arithmetic.
+        // Chips sit under the tiles and are visibly quieter: a constraint honoured is not the
+        // same kind of claim as a saving measured in minutes, and sizing them alike would
+        // make four results look like nine.
+        if (!state.getConstraintChips().isEmpty()) {
+            column.add(Box.createVerticalStrut(8));
+            column.add(chipRow(state.getConstraintChips()));
+        }
+        if (!state.getTradeOff().isEmpty()) {
+            column.add(Box.createVerticalStrut(8));
+            column.add(tradeOffStrip(state.getTradeOff()));
+        }
+
+        // Warnings live here rather than in their own band under the schedule. A routing
+        // caveat is part of how far to trust the proposal, which is what this column is for,
+        // and a band below the timeline was a second place to look that competed with the
+        // Apply and Cancel buttons for the same corner of the screen.
         List<String> warnings = new java.util.ArrayList<>(state.getWarnings());
         if (!state.getTravelQualityNote().isEmpty()) {
             warnings.add(state.getTravelQualityNote());
@@ -421,28 +636,116 @@ public final class DayPlanPanel extends JPanel {
             warnings.add("This is the best arrangement found within the search limit.");
         }
         if (!warnings.isEmpty()) {
+            column.add(Box.createVerticalStrut(10));
             JPanel band = SwingTheme.warningBand(warnings);
+            band.setAlignmentX(Component.LEFT_ALIGNMENT);
             band.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE,
                     band.getPreferredSize().height));
-            previewArea.add(band);
-            previewArea.add(Box.createVerticalStrut(10));
+            column.add(band);
         }
 
-        for (PreviewRowView row : state.getPreviewRows()) {
-            previewArea.add(previewCard(row));
-            previewArea.add(Box.createVerticalStrut(6));
-        }
+        return column;
+    }
 
-        previewArea.add(Box.createVerticalStrut(4));
-        {
-            whyButton.setText((whyButton.isSelected() ? "\u25be " : "\u25b8 ")
-                    + "Why this schedule?");
-            whyButton.setAlignmentX(Component.LEFT_ALIGNMENT);
-            previewArea.add(whyButton);
-            if (whyButton.isSelected()) {
-                previewArea.add(whySection(state));
-            }
+    /** The constraints this schedule worked around, wrapped into as many rows as it takes. */
+    private JPanel chipRow(java.util.List<interface_adapter.viewmodels.ConstraintChipView> chips) {
+        JPanel row = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 6, 6));
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        for (interface_adapter.viewmodels.ConstraintChipView chip : chips) {
+            JLabel label = new JLabel(chip.getMarker() + "  " + chip.getLabel());
+            label.setFont(SwingTheme.SMALL);
+            label.setForeground(SwingTheme.MUTED);
+            label.setOpaque(true);
+            label.setBackground(SwingTheme.BACKGROUND);
+            label.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(SwingTheme.LINE, 1, true),
+                    BorderFactory.createEmptyBorder(3, 8, 3, 8)));
+            label.getAccessibleContext().setAccessibleName(chip.getLabel());
+            row.add(label);
         }
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
+        return row;
+    }
+
+    /** One amber line naming a disadvantage the schedule accepted on purpose. */
+    private JPanel tradeOffStrip(String sentence) {
+        JPanel strip = new JPanel(new BorderLayout());
+        strip.setBackground(SwingTheme.WARNING_SOFT);
+        strip.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 3, 0, 0, SwingTheme.WARNING),
+                BorderFactory.createEmptyBorder(6, 8, 6, 8)));
+        strip.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel label = new JLabel("<html><div style='width:300px'>" + escape(sentence)
+                + "</div></html>");
+        label.setFont(SwingTheme.SMALL);
+        label.setForeground(SwingTheme.NAVY);
+        strip.add(label, BorderLayout.CENTER);
+        strip.setMaximumSize(new Dimension(Integer.MAX_VALUE, strip.getPreferredSize().height));
+        return strip;
+    }
+
+    /**
+     * The before-and-after figures, each named and each carrying its own difference.
+     *
+     * <p>Written out rather than shown as {@code 24 → 17}: an arrow between two numbers does
+     * not say which direction is good, and the same arrow appeared for travel that fell and
+     * waiting that rose.</p>
+     */
+    private JPanel figuresCard(PreviewMetricsView metrics) {
+        if (metrics == null) {
+            return null;
+        }
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(SwingTheme.PANEL);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(SwingTheme.LINE, 1, true),
+                BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+        card.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel heading = new JLabel("BEFORE AND AFTER");
+        heading.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
+        heading.setForeground(SwingTheme.MUTED);
+        heading.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(heading);
+        card.add(Box.createVerticalStrut(6));
+
+        card.add(figureLine("Travel", metrics.getTravelBeforeMinutes(),
+                metrics.getTravelAfterMinutes(), "saved", "more"));
+        card.add(figureLine("Waiting", metrics.getIdleBeforeMinutes(),
+                metrics.getIdleAfterMinutes(), "removed", "more"));
+
+        JLabel moved = new JLabel("<html><b>Activities moved</b> &nbsp;"
+                + metrics.getMovedActivityCount() + " of " + metrics.getActivityCount()
+                + "</html>");
+        moved.setFont(SwingTheme.SMALL);
+        moved.setForeground(SwingTheme.NAVY);
+        moved.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(moved);
+        return card;
+    }
+
+    /** One named figure: before, proposed, and what the difference means in words. */
+    private JLabel figureLine(String name, int before, int after,
+                              String betterWord, String worseWord) {
+        int difference = before - after;
+        String change;
+        if (difference > 0) {
+            change = "<font color='#1A7F53'>" + difference + " min " + betterWord + "</font>";
+        } else if (difference < 0) {
+            change = "<font color='#925E06'>" + (-difference) + " min " + worseWord + "</font>";
+        } else {
+            change = "<font color='#5B6A7B'>unchanged</font>";
+        }
+        JLabel line = new JLabel("<html><b>" + escape(name) + "</b> &nbsp; Before "
+                + before + " min &nbsp;·&nbsp; Proposed " + after + " min &nbsp;·&nbsp; "
+                + change + "</html>");
+        line.setFont(SwingTheme.SMALL);
+        line.setForeground(SwingTheme.NAVY);
+        line.setAlignmentX(Component.LEFT_ALIGNMENT);
+        line.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
+        return line;
     }
 
     private JLabel noticeLabel(String text) {
@@ -453,133 +756,7 @@ public final class DayPlanPanel extends JPanel {
         return label;
     }
 
-    /**
-     * The reasoning, grouped by what it is about rather than listed row by row.
-     *
-     * <p>Per-row lines answered "what happened to this activity"; a traveller asking why the
-     * day looks like this wants "what was this arranged for". Grouping answers that without
-     * losing a single sentence the Presenter produced.</p>
-     */
-    private JPanel whySection(DayPlanState state) {
-        JPanel section = new JPanel();
-        section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
-        section.setBackground(SwingTheme.BACKGROUND);
-        section.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(SwingTheme.LINE),
-                BorderFactory.createEmptyBorder(10, 12, 10, 12)));
-        section.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        PreviewMetricsView metrics = state.getMetrics();
-        if (metrics != null) {
-            JLabel figuresHeading = new JLabel("Before and after");
-            figuresHeading.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
-            figuresHeading.setForeground(SwingTheme.NAVY);
-            figuresHeading.setAlignmentX(Component.LEFT_ALIGNMENT);
-            section.add(figuresHeading);
-            section.add(detailLine("Travel: " + metrics.getTravelBeforeMinutes()
-                    + " min before, " + metrics.getTravelAfterMinutes() + " min after"));
-            section.add(detailLine("Waiting: " + metrics.getIdleBeforeMinutes()
-                    + " min before, " + metrics.getIdleAfterMinutes() + " min after"));
-            section.add(detailLine("Activities moved: " + metrics.getMovedActivityCount()
-                    + " of " + metrics.getActivityCount()));
-            section.add(Box.createVerticalStrut(6));
-
-            // Whatever got worse is stated here rather than omitted. The improvement cards
-            // are positive by design, so this is the only place the full trade is visible,
-            // and a comparison that only ever flatters the feature is not a comparison.
-            java.util.List<String> tradeOffs = new java.util.ArrayList<>();
-            if (metrics.getTravelSavedMinutes() < 0) {
-                tradeOffs.add("Travel increased by " + (-metrics.getTravelSavedMinutes())
-                        + " min, in exchange for the gains above");
-            }
-            if (metrics.getIdleSavedMinutes() < 0) {
-                tradeOffs.add("Waiting increased by " + (-metrics.getIdleSavedMinutes()) + " min");
-            }
-            if (!tradeOffs.isEmpty()) {
-                JLabel tradeHeading = new JLabel("Trade-offs");
-                tradeHeading.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
-                tradeHeading.setForeground(SwingTheme.NAVY);
-                tradeHeading.setAlignmentX(Component.LEFT_ALIGNMENT);
-                section.add(tradeHeading);
-                for (String tradeOff : tradeOffs) {
-                    section.add(detailLine(tradeOff));
-                }
-                section.add(Box.createVerticalStrut(6));
-            }
-        }
-
-        java.util.Map<String, java.util.List<String>> grouped =
-                new java.util.LinkedHashMap<>();
-        for (PreviewRowView row : state.getPreviewRows()) {
-            for (String reason : row.getAllReasons()) {
-                grouped.computeIfAbsent(categoryOf(reason),
-                        key -> new java.util.ArrayList<>()).add(row.getTitle() + " — " + reason);
-            }
-        }
-
-        for (java.util.Map.Entry<String, java.util.List<String>> entry : grouped.entrySet()) {
-            JLabel category = new JLabel(entry.getKey());
-            category.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
-            category.setForeground(SwingTheme.NAVY);
-            category.setAlignmentX(Component.LEFT_ALIGNMENT);
-            section.add(category);
-            for (String line : entry.getValue()) {
-                JLabel item = new JLabel("<html>&nbsp;&nbsp;" + escape(line) + "</html>");
-                item.setFont(SwingTheme.SMALL);
-                item.setForeground(SwingTheme.MUTED);
-                item.setAlignmentX(Component.LEFT_ALIGNMENT);
-                section.add(item);
-            }
-            section.add(Box.createVerticalStrut(6));
-        }
-        section.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE,
-                section.getPreferredSize().height));
-        return section;
-    }
-
-    private static JLabel detailLine(String text) {
-        JLabel line = new JLabel("<html>&nbsp;&nbsp;" + escape(text) + "</html>");
-        line.setFont(SwingTheme.SMALL);
-        line.setForeground(SwingTheme.MUTED);
-        line.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return line;
-    }
-
-    /**
-     * Sorts a Presenter sentence into a heading. The wording comes from
-     * {@code AutoSchedulePresenter}, so matching on it keeps the categories honest without
-     * the view inventing meaning the use case did not supply.
-     */
-    private static String categoryOf(String reason) {
-        String lower = reason.toLowerCase(java.util.Locale.ROOT);
-        if (lower.contains("lock")) {
-            return "Times you pinned";
-        }
-        if (lower.contains("mealtime") || lower.contains("meal")) {
-            return "Mealtimes";
-        }
-        if (lower.contains("daylight") || lower.contains("dark")) {
-            return "Daylight";
-        }
-        if (lower.contains("weather") || lower.contains("rain") || lower.contains("forecast")) {
-            return "Weather";
-        }
-        if (lower.contains("open") || lower.contains("close")) {
-            return "Opening hours";
-        }
-        if (lower.contains("travel") || lower.contains("journey")) {
-            return "Less travel";
-        }
-        if (lower.contains("wait") || lower.contains("gap") || lower.contains("idle")) {
-            return "Reduced waiting";
-        }
-        if (lower.contains("order")) {
-            return "Preserved order";
-        }
-        return "Other considerations";
-    }
-
-    private JPanel previewCard(PreviewRowView row) {
+        private JPanel previewCard(PreviewRowView row) {
         boolean travel = row.getKind() == PreviewRowView.Kind.TRAVEL;
         JPanel card = new JPanel(new BorderLayout(12, 4));
         card.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -630,10 +807,33 @@ public final class DayPlanPanel extends JPanel {
     }
 
     private JPanel eventCard(ScheduledEvent event, DayPlanState state,
-                             List<WeatherWarning> hourlyWeather) {
+                             List<WeatherWarning> hourlyWeather,
+                             ScheduledEvent arrivedBy) {
         boolean locked = state.getLockedEventIds().contains(event.getId());
         JPanel card = new JPanel(new BorderLayout(12, 5));
         SwingTheme.styleCard(card);
+        // A journey shorter than its own connector overruns into this activity's interval.
+        // Reserving that overrun as blank space at the top means the connector can be drawn
+        // in front and read, while nothing of this card is ever covered. The card still
+        // starts at its true time; only its contents begin lower.
+        if (arrivedBy != null) {
+            int slot = minutesBetween(arrivedBy.getStartTime(), arrivedBy.getEndTime())
+                    * ScheduleTimeline.HOUR_HEIGHT / 60;
+            int overrun = Math.max(0, MINIMUM_CONNECTOR_HEIGHT - slot);
+            if (overrun > 0) {
+                card.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createEmptyBorder(overrun, 0, 0, 0), card.getBorder()));
+            }
+        }
+        // A journey is a connector between two activities, not an activity, and the twelve
+        // pixels of padding an activity card carries are more than a ten-minute gap has to
+        // give. Trimming them lets a short hop label itself inside its own slot instead of
+        // reaching down over the place it leads to.
+        if (event.getEventType() == EventType.TRAVEL) {
+            card.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(SwingTheme.LINE, 1, true),
+                    BorderFactory.createEmptyBorder(3, 14, 3, 14)));
+        }
         if (event.getActivity() != null) {
             card.setBackground(SwingTheme.categorySurface(
                     event.getActivity().getCategory()));
@@ -655,14 +855,23 @@ public final class DayPlanPanel extends JPanel {
         details.setLayout(new BoxLayout(details, BoxLayout.Y_AXIS));
         details.setOpaque(false);
 
-        JLabel title = new JLabel("<html><b>" + escape(visibleName) + "</b> &nbsp; "
-                + escape(TimeDisplay.range(event.getStartTime(), event.getEndTime())) + "</html>");
+        // Not html: a wrapping title breaks "9:00 AM - 10:00 AM" across two lines the moment
+        // a category glyph makes the name a little longer, and a time split in half is worse
+        // than a name truncated at the end.
+        JLabel title = new JLabel(visibleName + "   "
+                + TimeDisplay.range(event.getStartTime(), event.getEndTime()));
         title.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
+        // BoxLayout hands a label exactly its preferred width, which a category glyph can
+        // push past what the measurer expected; letting it stretch means the clock is never
+        // cut in half to save a few pixels.
+        title.setMaximumSize(new Dimension(Integer.MAX_VALUE, title.getPreferredSize().height));
         title.setForeground(SwingTheme.NAVY);
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
         details.add(title);
 
-        if (!event.getNotes().isEmpty()) {
+        // A travel block has no activity, so its name already comes from the notes; printing
+        // them again underneath repeated "Travel to St Lawrence Market" on its own card.
+        if (!event.getNotes().isEmpty() && !name.equals(event.getNotes())) {
             JLabel notes = new JLabel(event.getNotes());
             notes.setFont(SwingTheme.SMALL);
             notes.setForeground(SwingTheme.MUTED);
@@ -726,10 +935,15 @@ public final class DayPlanPanel extends JPanel {
 
     /** Google Calendar-style day grid whose event blocks are positioned by start time. */
     private final class ScheduleTimeline extends JPanel implements Scrollable {
-        private static final int HOUR_HEIGHT = 72;
+        static final int HOUR_HEIGHT = 72;
         private static final int TIME_GUTTER = 68;
         private static final int EVENT_GAP = 8;
+        /** The cards in schedule order; z-order no longer matches, so index lookups cannot. */
+        private final List<JPanel> cards = new java.util.ArrayList<>();
         private DayPlanState state;
+        /** The stretch of day actually drawn. Narrower than the trip while previewing. */
+        private LocalTime viewStart = LocalTime.of(9, 0);
+        private LocalTime viewEnd = LocalTime.of(21, 0);
 
         private ScheduleTimeline() {
             setLayout(null);
@@ -742,22 +956,86 @@ public final class DayPlanPanel extends JPanel {
         private void setSchedule(DayPlanState updatedState) {
             state = updatedState;
             removeAll();
-            for (ScheduledEvent event : updatedState.getEvents()) {
+            cards.clear();
+            List<JPanel> travelCards = new java.util.ArrayList<>();
+            List<ScheduledEvent> shown = displayed(updatedState);
+            for (int i = 0; i < shown.size(); i++) {
+                ScheduledEvent event = shown.get(i);
+                ScheduledEvent arrivedBy = i > 0
+                        && shown.get(i - 1).getEventType() == EventType.TRAVEL
+                        ? shown.get(i - 1) : null;
                 JPanel card = eventCard(event, updatedState,
-                        updatedState.getHourlyWeatherFor(event));
+                        updatedState.getHourlyWeatherFor(event), arrivedBy);
                 add(card);
+                cards.add(card);
+                if (event.getEventType() == EventType.TRAVEL) {
+                    travelCards.add(card);
+                }
+                // Not while previewing. These cards are a proposal, and dragging one would
+                // write a proposed time onto the saved day behind the traveller's back --
+                // exactly what Apply and Cancel exist to prevent.
                 if (event.getEventType() == EventType.ACTIVITY
-                        && manualPlanController != null) {
+                        && manualPlanController != null
+                        && updatedState.getStatus() != AutoScheduleStatus.PREVIEW) {
                     installDragHandling(card, event);
                 }
             }
+            // A short journey needs more height than its slot to stay legible, so its
+            // connector necessarily runs past its own interval and into the next activity's.
+            // Both stay readable because the activity below reserves that overlap as blank
+            // padding (see eventCard), and the connector is painted in front of it. Sending
+            // travel to the back instead only chose which of the two to lose.
+            for (JPanel travel : travelCards) {
+                setComponentZOrder(travel, 0);
+            }
+            fitWindowTo(displayed(updatedState), updatedState);
             updatePreferredSize();
             revalidate();
             repaint();
         }
 
+        /** The proposal while previewing, the saved day otherwise. */
+        private List<ScheduledEvent> displayed(DayPlanState state) {
+            return state.getStatus() == AutoScheduleStatus.PREVIEW
+                    ? proposalAsEvents(state) : state.getEvents();
+        }
+
+        /**
+         * The window to draw: the whole trip normally, and just the proposal while previewing.
+         *
+         * <p>A proposal that runs 11:30 to 2:30 drawn against a 9-to-9 day put five hours of
+         * empty timeline between the schedule and everything explaining it, which is what made
+         * the explanation unreachable without scrolling. Half an hour of padding keeps the
+         * proposal from sitting flush against the edges without reintroducing the empty day.</p>
+         */
+        private void fitWindowTo(List<ScheduledEvent> events, DayPlanState updatedState) {
+            viewStart = tripStart;
+            viewEnd = tripEnd;
+            if (updatedState.getStatus() != AutoScheduleStatus.PREVIEW || events.isEmpty()) {
+                return;
+            }
+            LocalTime first = events.get(0).getStartTime();
+            LocalTime last = events.get(0).getEndTime();
+            for (ScheduledEvent event : events) {
+                if (event.getStartTime().isBefore(first)) {
+                    first = event.getStartTime();
+                }
+                if (event.getEndTime().isAfter(last)) {
+                    last = event.getEndTime();
+                }
+            }
+            LocalTime padded = first.minusMinutes(30);
+            viewStart = padded.isBefore(tripStart) || padded.isAfter(first) ? tripStart : padded;
+            LocalTime paddedEnd = last.plusMinutes(30);
+            viewEnd = paddedEnd.isAfter(tripEnd) || paddedEnd.isBefore(last) ? tripEnd : paddedEnd;
+            if (!viewEnd.isAfter(viewStart)) {
+                viewStart = tripStart;
+                viewEnd = tripEnd;
+            }
+        }
+
         private void updatePreferredSize() {
-            int minutes = Math.max(60, minutesBetween(tripStart, tripEnd));
+            int minutes = Math.max(60, minutesBetween(viewStart, viewEnd));
             int height = Math.max(360, minutes * HOUR_HEIGHT / 60 + 1);
             setPreferredSize(new Dimension(520, height));
             setMinimumSize(new Dimension(0, height));
@@ -767,15 +1045,23 @@ public final class DayPlanPanel extends JPanel {
         public void doLayout() {
             if (state == null) return;
             int cardWidth = Math.max(160, getWidth() - TIME_GUTTER - EVENT_GAP * 2);
-            List<ScheduledEvent> events = state.getEvents();
-            for (int i = 0; i < events.size() && i < getComponentCount(); i++) {
+            List<ScheduledEvent> events = displayed(state);
+            for (int i = 0; i < events.size() && i < cards.size(); i++) {
                 ScheduledEvent event = events.get(i);
-                int start = signedMinutesBetween(tripStart, event.getStartTime());
+                int start = signedMinutesBetween(viewStart, event.getStartTime());
                 int duration = Math.max(1, minutesBetween(
                         event.getStartTime(), event.getEndTime()));
                 int y = Math.max(0, start * HOUR_HEIGHT / 60 + 2);
-                int height = Math.max(64, duration * HOUR_HEIGHT / 60 - 4);
-                getComponent(i).setBounds(
+                // Travel is a thin connector, so it keeps a much smaller floor than an
+                // activity card. Forcing every row to 64px made a half-hour journey taller
+                // than its own slot and draw straight over the activity it leads to; a fixed
+                // small floor then cut the label in half, because the floor has to cover the
+                // card's own padding as well as the line of text. Asking the card what it
+                // needs keeps both ends honest.
+                int minimumHeight = event.getEventType() == EventType.TRAVEL
+                        ? MINIMUM_CONNECTOR_HEIGHT : 64;
+                int height = Math.max(minimumHeight, duration * HOUR_HEIGHT / 60 - 4);
+                cards.get(i).setBounds(
                         TIME_GUTTER + EVENT_GAP, y, cardWidth, height);
             }
         }
@@ -785,10 +1071,10 @@ public final class DayPlanPanel extends JPanel {
             super.paintComponent(graphics);
             Graphics2D g2 = (Graphics2D) graphics.create();
             g2.setFont(SwingTheme.SMALL);
-            int totalMinutes = Math.max(60, minutesBetween(tripStart, tripEnd));
+            int totalMinutes = Math.max(60, minutesBetween(viewStart, viewEnd));
             for (int minute = 0; minute <= totalMinutes; minute += 60) {
                 int y = minute * HOUR_HEIGHT / 60;
-                LocalTime time = tripStart.plusMinutes(minute);
+                LocalTime time = viewStart.plusMinutes(minute);
                 String label = TimeDisplay.format(time);
                 g2.setColor(SwingTheme.MUTED);
                 g2.drawString(label, 8, Math.min(y + 14, getHeight() - 4));
@@ -845,7 +1131,7 @@ public final class DayPlanPanel extends JPanel {
                             mouseEvent.getComponent(), mouseEvent.getPoint(), ScheduleTimeline.this);
                     int duration = Math.max(1, minutesBetween(
                             event.getStartTime(), event.getEndTime()));
-                    int total = Math.max(1, minutesBetween(tripStart, tripEnd));
+                    int total = Math.max(1, minutesBetween(viewStart, viewEnd));
                     int latestStart = Math.max(0, total - duration);
                     int maximumY = latestStart * HOUR_HEIGHT / 60;
                     int y = Math.max(0, Math.min(maximumY, point.y - pointerOffset));
@@ -860,7 +1146,7 @@ public final class DayPlanPanel extends JPanel {
                     int duration = Math.max(1, minutesBetween(
                             event.getStartTime(), event.getEndTime()));
                     LocalTime start = draggedStartFor(
-                            tripStart, tripEnd, card.getY(), HOUR_HEIGHT, duration);
+                            viewStart, viewEnd, card.getY(), HOUR_HEIGHT, duration);
                     LocalTime end = start.plusMinutes(duration);
                     manualPlanController.edit(
                             event.getId(), start.toString(), end.toString(), event.getNotes());
