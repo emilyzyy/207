@@ -139,6 +139,8 @@ public final class BookmarksPanel extends JPanel {
         for (Activity activity : state.getBookmarks()) {
             JPanel card = new JPanel(new BorderLayout());
             SwingTheme.styleCard(card);
+            card.setPreferredSize(new Dimension(10, 132));
+            card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 132));
             card.setBackground(SwingTheme.categorySurface(activity.getCategory()));
             makeSelectable(card, activity);
             JLabel name = new JLabel(ActivityCategoryPresentation.decorate(
