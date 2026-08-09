@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /** Overpass adapter dedicated to set-based nearby and viewport discovery. */
 public final class OverpassNearbyActivityDiscovery implements NearbyActivityDiscovery {
@@ -30,6 +31,12 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
             URI.create("https://overpass.private.coffee/api/interpreter"));
     private static final String USER_AGENT =
             "Trippy-CSC207/1.0 (academic project; github.com/emilyzyy/207)";
+    /** Per-endpoint ceiling; the overall deadline below still bounds the total. */
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(8);
+    /** Hard ceiling for the whole endpoint-retry sequence so discovery never hangs. */
+    private static final long MAX_OVERALL_WAIT_MILLIS = 10_000L;
+    private static final long MAX_RETRY_AFTER_MILLIS = 4_000L;
+    private static final long DEFAULT_RATE_LIMIT_WAIT_MILLIS = 1_000L;
     private final HttpClient http;
     private final ObjectMapper json;
     private final OsmActivityMapper mapper;
@@ -102,13 +109,20 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
     }
 
     private JsonNode request(String query) {
+        long deadline = System.nanoTime()
+                + TimeUnit.MILLISECONDS.toNanos(MAX_OVERALL_WAIT_MILLIS);
         PlaceSearchException last = null;
         JsonNode validEmptyResponse = null;
         for (URI endpoint : endpoints) {
+            long remainingMillis = remainingMillis(deadline);
+            if (remainingMillis <= 0) {
+                break;
+            }
             try {
                 String body = "data=" + URLEncoder.encode(query, StandardCharsets.UTF_8);
                 HttpRequest request = HttpRequest.newBuilder(endpoint)
-                        .timeout(Duration.ofSeconds(20))
+                        .timeout(Duration.ofMillis(Math.min(
+                                REQUEST_TIMEOUT.toMillis(), remainingMillis)))
                         .header("Content-Type", "application/x-www-form-urlencoded")
                         .header("User-Agent", USER_AGENT)
                         .POST(HttpRequest.BodyPublishers.ofString(body)).build();
@@ -117,6 +131,7 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
                 if (response.statusCode() == 429) {
                     last = new PlaceSearchException(SearchFailure.RATE_LIMITED,
                             "Overpass is rate limited");
+                    sleepRetryAfter(response, deadline);
                     continue;
                 }
                 if (response.statusCode() < 200 || response.statusCode() >= 300) {
@@ -156,6 +171,31 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
         if (validEmptyResponse != null) return validEmptyResponse;
         throw last == null ? new PlaceSearchException(SearchFailure.SERVICE_UNAVAILABLE,
                 "No Overpass endpoint is configured") : last;
+    }
+
+    /** How much of the overall deadline is left, in milliseconds (at least zero). */
+    private static long remainingMillis(long deadline) {
+        return Math.max(0L, TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime()));
+    }
+
+    /** Honours Retry-After when present, otherwise a short default, all within the deadline. */
+    private void sleepRetryAfter(HttpResponse<?> response, long deadline)
+            throws InterruptedException {
+        long waitMillis = DEFAULT_RATE_LIMIT_WAIT_MILLIS;
+        String retryAfter = response.headers().firstValue("Retry-After").orElse(null);
+        if (retryAfter != null) {
+            try {
+                waitMillis = Math.min(
+                        TimeUnit.SECONDS.toMillis(Math.max(0L, Long.parseLong(retryAfter.trim()))),
+                        MAX_RETRY_AFTER_MILLIS);
+            } catch (NumberFormatException ignored) {
+                // fall back to the default wait
+            }
+        }
+        long allowed = Math.min(waitMillis, remainingMillis(deadline));
+        if (allowed > 0) {
+            Thread.sleep(allowed);
+        }
     }
 
     private static String query(String area, int limit) {
