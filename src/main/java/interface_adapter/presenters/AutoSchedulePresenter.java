@@ -6,6 +6,7 @@ import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.PreviewMetricsView;
 import interface_adapter.viewmodels.ImprovementView;
 import interface_adapter.viewmodels.PreviewRowView;
+import interface_adapter.viewmodels.TimeDisplay;
 import use_case.autoschedule.AutoScheduleAppliedOutputData;
 import use_case.autoschedule.AutoScheduleConflictOutputData;
 import use_case.autoschedule.AutoScheduleOutputBoundary;
@@ -238,6 +239,28 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
         return sentences;
     }
 
+    /**
+     * A time or a time range from a reason detail, on the same 12-hour clock as the rest
+     * of the screen.
+     *
+     * <p>Reasons carry machine times ("19:15", "15:00-16:00") because the use case has no
+     * business knowing how a clock is written. Turning them into words is this class's job,
+     * and doing it here is what stops 24-hour times leaking into a UI that is otherwise
+     * entirely am/pm.</p>
+     */
+    static String clock(String detail) {
+        if (detail.contains("-")) {
+            int dash = detail.indexOf('-');
+            return clock(detail.substring(0, dash).trim())
+                    + " to " + clock(detail.substring(dash + 1).trim());
+        }
+        try {
+            return TimeDisplay.format(java.time.LocalTime.parse(detail.trim()));
+        } catch (java.time.format.DateTimeParseException notATime) {
+            return detail;
+        }
+    }
+
     /** Turns one reason code into a short phrase. This is the only place they get words. */
     String describe(Reason reason) {
         String detail = reason.getDetail();
@@ -247,9 +270,9 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
             case AVOIDS_UNAVAILABLE_PERIOD:
                 return "moved clear of your unavailable time";
             case CLOSING_SOON:
-                return detail.isEmpty() ? "closes soon after" : "closes at " + detail;
+                return detail.isEmpty() ? "closes soon after" : "closes at " + clock(detail);
             case OPENS_LATER:
-                return detail.isEmpty() ? "opens later" : "opens at " + detail;
+                return detail.isEmpty() ? "opens later" : "opens at " + clock(detail);
             case WEATHER_EXPOSURE:
                 return "poorer weather expected outdoors";
             case IN_MEAL_WINDOW:

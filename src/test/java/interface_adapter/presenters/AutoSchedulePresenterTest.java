@@ -118,9 +118,9 @@ class AutoSchedulePresenterTest {
                 true, true, TravelEstimateQuality.ROUTED));
 
         PreviewRowView row = viewModel.getState().getPreviewRows().get(0);
-        assertEquals("closes at 17:00", row.getReason(),
+        assertEquals("closes at 5:00 PM", row.getReason(),
                 "the constraint the traveller cannot change should be shown first");
-        assertEquals(Arrays.asList("closes at 17:00", "a usual mealtime"), row.getAllReasons());
+        assertEquals(Arrays.asList("closes at 5:00 PM", "a usual mealtime"), row.getAllReasons());
     }
 
     @Test

@@ -297,8 +297,11 @@ public final class DayPlanPanel extends JPanel {
         optionsButton.addActionListener(event -> openOptionsAction.run());
         secondary.add(optionsButton);
         autoscheduleButton.setToolTipText("Suggest a better order and times for this day");
-        autoscheduleButton.setPreferredSize(new java.awt.Dimension(118, 38));
-        autoscheduleButton.setMinimumSize(new java.awt.Dimension(118, 38));
+        // Height is fixed to match the row; width follows the label. Pinning both meant
+        // "Autoschedule" did not fit inside its own button and rendered as "Autosched...".
+        autoscheduleButton.setPreferredSize(new java.awt.Dimension(
+                autoscheduleButton.getPreferredSize().width + 24, 38));
+        autoscheduleButton.setMinimumSize(autoscheduleButton.getPreferredSize());
         autoscheduleButton.addActionListener(event -> openSettings());
         secondary.add(autoscheduleButton);
         JButton calendar = SwingTheme.secondaryButton("Calendar View");
@@ -371,11 +374,56 @@ public final class DayPlanPanel extends JPanel {
         repaint();
     }
 
+    /**
+     * The proposal expressed as ordinary schedule events, so the timeline can draw it.
+     *
+     * <p>Preview used to be a second list underneath the real day, which meant two
+     * schedules on screen and the proposal rendered in a style the rest of the app had
+     * left behind. Converting the rows back into events lets the one timeline show the
+     * proposal instead, in the same cards, with nothing saved until Apply.</p>
+     *
+     * <p>Each activity row is matched to its original event by id so the card keeps the
+     * activity behind it — that is what the weather line and the drag handles read.</p>
+     */
+    private static List<ScheduledEvent> proposalAsEvents(DayPlanState state) {
+        java.util.Map<String, ScheduledEvent> originals = new java.util.HashMap<>();
+        for (ScheduledEvent event : state.getEvents()) {
+            originals.put(event.getId(), event);
+        }
+        List<ScheduledEvent> proposal = new java.util.ArrayList<>();
+        for (PreviewRowView row : state.getPreviewRows()) {
+            if (row.getKind() == PreviewRowView.Kind.TRAVEL) {
+                proposal.add(new ScheduledEvent(row.getEventId(), null, row.getStart(),
+                        row.getEnd(), EventType.TRAVEL, row.getTitle()));
+                continue;
+            }
+            ScheduledEvent original = originals.get(row.getEventId());
+            String reason = row.getReason() == null ? "" : row.getReason();
+            // "Moved" was a badge on the old list. The timeline card has no badge slot, so
+            // it leads the subtitle instead -- losing it would drop the one marker that
+            // says which activities the schedule actually changed.
+            String note = row.isMoved() && !reason.isEmpty() ? "moved \u00b7 " + reason
+                    : row.isMoved() ? "moved" : reason;
+            // With no original there is no Activity to name the card, and a card titled by
+            // its reason would read as an activity called "a usual mealtime". The row's own
+            // title is the honest fallback.
+            proposal.add(new ScheduledEvent(row.getEventId(),
+                    original == null ? null : original.getActivity(),
+                    row.getStart(), row.getEnd(), EventType.ACTIVITY,
+                    original == null ? row.getTitle() : note));
+        }
+        return proposal;
+    }
+
     private void renderItinerary(DayPlanState state) {
         eventList.removeAll();
-        eventList.add(SwingTheme.sectionHeader("YOUR DAY PLAN",
-                state.getStatus() == AutoScheduleStatus.PREVIEW ? "unchanged so far" : "",
-                SwingTheme.NAVY), BorderLayout.NORTH);
+        // The heading is the only thing telling the user which day they are looking at now
+        // that the timeline itself switches to the proposal during a Preview.
+        boolean previewing = state.getStatus() == AutoScheduleStatus.PREVIEW;
+        eventList.add(SwingTheme.sectionHeader(
+                previewing ? "PROPOSED SCHEDULE" : "YOUR DAY PLAN",
+                previewing ? "nothing saved until you choose Apply" : "",
+                previewing ? SwingTheme.BLUE : SwingTheme.NAVY), BorderLayout.NORTH);
         timeline.setSchedule(state);
         eventList.add(timeline, BorderLayout.CENTER);
     }
@@ -407,29 +455,14 @@ public final class DayPlanPanel extends JPanel {
             return;
         }
 
-        previewArea.add(Box.createVerticalStrut(18));
-        previewArea.add(SwingTheme.sectionHeader("PROPOSED SCHEDULE", "not applied yet",
-                SwingTheme.BLUE));
-        previewArea.add(Box.createVerticalStrut(8));
-
-        // The improvements stack sits beside the schedule when there is room for it and
-        // below when there is not. Which side it lands on is this panel's business; the
-        // stack itself is identical either way, which is what lets it move to a calendar
-        // view later without being rewritten.
+        // The timeline above is already showing the proposal, so this area no longer
+        // repeats it. Duplicating the day here put two schedules on screen -- the saved one
+        // and a second, differently-styled copy below it -- which read as leftover UI and
+        // buried everything explaining the proposal beneath a full day of scrolling.
         ScheduleImprovementsPanel improvements =
                 new ScheduleImprovementsPanel(state.getImprovements());
         boolean wide = getWidth() >= WIDE_LAYOUT_MINIMUM;
-        if (!wide) {
-            improvements.setAlignmentX(Component.LEFT_ALIGNMENT);
-            improvements.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE,
-                    improvements.getPreferredSize().height));
-            previewArea.add(improvements);
-            previewArea.add(Box.createVerticalStrut(10));
-        }
-        // On a wide window the whole explanation column lives beside the schedule rather
-        // than under it. The Day Plan timeline is full height, so anything appended below
-        // it can only be reached by scrolling past the entire day -- which made the
-        // reasoning that justifies the proposal the hardest thing on screen to find.
+
         sidebarSlot.removeAll();
         if (wide) {
             JPanel column = new JPanel();
@@ -443,8 +476,18 @@ public final class DayPlanPanel extends JPanel {
         }
         sidebarSlot.setVisible(wide);
 
-        // Warnings get their own band. Previously they were SMALL/MUTED labels immediately
-        // under the figures, which made a routing caveat look like part of the arithmetic.
+        if (!wide) {
+            improvements.setAlignmentX(Component.LEFT_ALIGNMENT);
+            improvements.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE,
+                    improvements.getPreferredSize().height));
+            previewArea.add(Box.createVerticalStrut(10));
+            previewArea.add(improvements);
+            previewArea.add(Box.createVerticalStrut(10));
+            previewArea.add(explanationControl(state));
+        }
+
+        // Warnings stay under the schedule in both layouts: a routing caveat is about the
+        // whole proposal rather than any one row.
         List<String> warnings = new java.util.ArrayList<>(state.getWarnings());
         if (!state.getTravelQualityNote().isEmpty()) {
             warnings.add(state.getTravelQualityNote());
@@ -456,20 +499,8 @@ public final class DayPlanPanel extends JPanel {
             JPanel band = SwingTheme.warningBand(warnings);
             band.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE,
                     band.getPreferredSize().height));
+            previewArea.add(Box.createVerticalStrut(10));
             previewArea.add(band);
-            previewArea.add(Box.createVerticalStrut(10));
-        }
-
-        // Narrow windows have no column to put it in, so it goes above the rows rather
-        // than after them, for the same reason.
-        if (!wide) {
-            previewArea.add(explanationControl(state));
-            previewArea.add(Box.createVerticalStrut(10));
-        }
-
-        for (PreviewRowView row : state.getPreviewRows()) {
-            previewArea.add(previewCard(row));
-            previewArea.add(Box.createVerticalStrut(6));
         }
 
     }
@@ -663,6 +694,15 @@ public final class DayPlanPanel extends JPanel {
         boolean locked = state.getLockedEventIds().contains(event.getId());
         JPanel card = new JPanel(new BorderLayout(12, 5));
         SwingTheme.styleCard(card);
+        // A journey is a connector between two activities, not an activity, and the twelve
+        // pixels of padding an activity card carries are more than a ten-minute gap has to
+        // give. Trimming them lets a short hop label itself inside its own slot instead of
+        // reaching down over the place it leads to.
+        if (event.getEventType() == EventType.TRAVEL) {
+            card.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(SwingTheme.LINE, 1, true),
+                    BorderFactory.createEmptyBorder(3, 14, 3, 14)));
+        }
         if (event.getActivity() != null) {
             card.setBackground(SwingTheme.categorySurface(
                     event.getActivity().getCategory()));
@@ -685,7 +725,9 @@ public final class DayPlanPanel extends JPanel {
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
         details.add(title);
 
-        if (!event.getNotes().isEmpty()) {
+        // A travel block has no activity, so its name already comes from the notes; printing
+        // them again underneath repeated "Travel to St Lawrence Market" on its own card.
+        if (!event.getNotes().isEmpty() && !name.equals(event.getNotes())) {
             JLabel notes = new JLabel(event.getNotes());
             notes.setFont(SwingTheme.SMALL);
             notes.setForeground(SwingTheme.MUTED);
@@ -749,6 +791,8 @@ public final class DayPlanPanel extends JPanel {
         private static final int HOUR_HEIGHT = 72;
         private static final int TIME_GUTTER = 68;
         private static final int EVENT_GAP = 8;
+        /** The cards in schedule order; z-order no longer matches, so index lookups cannot. */
+        private final List<JPanel> cards = new java.util.ArrayList<>();
         private DayPlanState state;
 
         private ScheduleTimeline() {
@@ -762,18 +806,37 @@ public final class DayPlanPanel extends JPanel {
         private void setSchedule(DayPlanState updatedState) {
             state = updatedState;
             removeAll();
-            for (ScheduledEvent event : updatedState.getEvents()) {
+            cards.clear();
+            List<JPanel> travelCards = new java.util.ArrayList<>();
+            for (ScheduledEvent event : displayed(updatedState)) {
                 JPanel card = eventCard(event, updatedState,
                         updatedState.getHourlyWeatherFor(event));
                 add(card);
+                cards.add(card);
+                if (event.getEventType() == EventType.TRAVEL) {
+                    travelCards.add(card);
+                }
                 if (event.getEventType() == EventType.ACTIVITY
                         && manualPlanController != null) {
                     installDragHandling(card, event);
                 }
             }
+            // A ten-minute journey needs more height to stay legible than ten minutes of the
+            // timeline gives it, so a short travel card necessarily runs past its slot. Send
+            // travel to the back: the label still starts at the right time, and what gets
+            // covered is the tail of a connector rather than the name of an activity.
+            for (JPanel travel : travelCards) {
+                setComponentZOrder(travel, getComponentCount() - 1);
+            }
             updatePreferredSize();
             revalidate();
             repaint();
+        }
+
+        /** The proposal while previewing, the saved day otherwise. */
+        private List<ScheduledEvent> displayed(DayPlanState state) {
+            return state.getStatus() == AutoScheduleStatus.PREVIEW
+                    ? proposalAsEvents(state) : state.getEvents();
         }
 
         private void updatePreferredSize() {
@@ -787,15 +850,23 @@ public final class DayPlanPanel extends JPanel {
         public void doLayout() {
             if (state == null) return;
             int cardWidth = Math.max(160, getWidth() - TIME_GUTTER - EVENT_GAP * 2);
-            List<ScheduledEvent> events = state.getEvents();
-            for (int i = 0; i < events.size() && i < getComponentCount(); i++) {
+            List<ScheduledEvent> events = displayed(state);
+            for (int i = 0; i < events.size() && i < cards.size(); i++) {
                 ScheduledEvent event = events.get(i);
                 int start = signedMinutesBetween(tripStart, event.getStartTime());
                 int duration = Math.max(1, minutesBetween(
                         event.getStartTime(), event.getEndTime()));
                 int y = Math.max(0, start * HOUR_HEIGHT / 60 + 2);
-                int height = Math.max(64, duration * HOUR_HEIGHT / 60 - 4);
-                getComponent(i).setBounds(
+                // Travel is a thin connector, so it keeps a much smaller floor than an
+                // activity card. Forcing every row to 64px made a half-hour journey taller
+                // than its own slot and draw straight over the activity it leads to; a fixed
+                // small floor then cut the label in half, because the floor has to cover the
+                // card's own padding as well as the line of text. Asking the card what it
+                // needs keeps both ends honest.
+                int minimumHeight = event.getEventType() == EventType.TRAVEL
+                        ? cards.get(i).getPreferredSize().height : 64;
+                int height = Math.max(minimumHeight, duration * HOUR_HEIGHT / 60 - 4);
+                cards.get(i).setBounds(
                         TIME_GUTTER + EVENT_GAP, y, cardWidth, height);
             }
         }
