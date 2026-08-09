@@ -4,11 +4,11 @@ import trippy.adapters.controllers.ActivityDiscoveryController;
 import trippy.adapters.controllers.BookmarkController;
 import trippy.adapters.controllers.ManualPlanController;
 import trippy.adapters.viewmodels.ActivitySelectionViewModel;
+import trippy.adapters.viewmodels.DayPlanViewModel;
 import trippy.adapters.viewmodels.SearchState;
 import trippy.adapters.viewmodels.SearchViewModel;
-import trippy.adapters.viewmodels.DayPlanViewModel;
+import trippy.adapters.viewmodels.TripAccessViewModel;
 import trippy.adapters.viewmodels.TripOptionsViewModel;
-import trippy.application.usecases.AvailableTimeSlotFinder;
 import trippy.domain.entities.Activity;
 import trippy.domain.valueobjects.ActivityCategory;
 import trippy.domain.valueobjects.IndoorOutdoorType;
@@ -32,7 +32,6 @@ import javax.swing.JComponent;
 import javax.swing.JList;
 import javax.swing.JLabel;
 import javax.swing.DefaultListCellRenderer;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
@@ -48,6 +47,7 @@ public final class SearchPanel extends JPanel {
     private final ActivitySelectionViewModel selection;
     private final DayPlanViewModel dayPlan;
     private final TripOptionsViewModel tripOptions;
+    private TripAccessViewModel tripAccess;
     private final JPanel results = new JPanel();
     private final JScrollPane scroll;
     private final JTextField search = new JTextField();
@@ -66,29 +66,46 @@ public final class SearchPanel extends JPanel {
     private final JLabel feedback = new JLabel(" ");
 
     public SearchPanel(SearchViewModel viewModel) {
-        this(viewModel, null, null, null, null);
+        this(viewModel, null, null, null, null, null, null, null);
     }
 
     public SearchPanel(SearchViewModel viewModel, ActivityDiscoveryController discovery,
                        BookmarkController bookmarks) {
-        this(viewModel, discovery, bookmarks, null, null);
+        this(viewModel, discovery, bookmarks, null, null, null, null, null);
     }
 
     public SearchPanel(SearchViewModel viewModel, ActivityDiscoveryController discovery,
                        BookmarkController bookmarks, ManualPlanController manualPlan) {
-        this(viewModel, discovery, bookmarks, manualPlan, null);
+        this(viewModel, discovery, bookmarks, manualPlan, null, null, null, null);
     }
 
     public SearchPanel(SearchViewModel viewModel, ActivityDiscoveryController discovery,
                        BookmarkController bookmarks, ManualPlanController manualPlan,
                        ActivitySelectionViewModel selection) {
-        this(viewModel, discovery, bookmarks, manualPlan, selection, null, null);
+        this(viewModel, discovery, bookmarks, manualPlan, selection, null, null, null);
     }
 
     public SearchPanel(SearchViewModel viewModel, ActivityDiscoveryController discovery,
                        BookmarkController bookmarks, ManualPlanController manualPlan,
-                       ActivitySelectionViewModel selection, DayPlanViewModel dayPlan,
+                       ActivitySelectionViewModel selection,
+                       DayPlanViewModel dayPlan,
                        TripOptionsViewModel tripOptions) {
+        this(viewModel, discovery, bookmarks, manualPlan, selection, dayPlan, tripOptions, null);
+    }
+
+    public SearchPanel(SearchViewModel viewModel, ActivityDiscoveryController discovery,
+                       BookmarkController bookmarks, ManualPlanController manualPlan,
+                       ActivitySelectionViewModel selection,
+                       TripAccessViewModel tripAccess) {
+        this(viewModel, discovery, bookmarks, manualPlan, selection, null, null, tripAccess);
+    }
+
+    public SearchPanel(SearchViewModel viewModel, ActivityDiscoveryController discovery,
+                       BookmarkController bookmarks, ManualPlanController manualPlan,
+                       ActivitySelectionViewModel selection,
+                       DayPlanViewModel dayPlan,
+                       TripOptionsViewModel tripOptions,
+                       TripAccessViewModel tripAccess) {
         this.viewModel = viewModel;
         this.discovery = discovery;
         this.bookmarks = bookmarks;
@@ -96,6 +113,7 @@ public final class SearchPanel extends JPanel {
         this.selection = selection;
         this.dayPlan = dayPlan;
         this.tripOptions = tripOptions;
+        this.tripAccess = tripAccess;
         SwingTheme.styleComboBox(category);
         SwingTheme.styleComboBox(rating);
         SwingTheme.styleComboBox(type);
@@ -117,6 +135,13 @@ public final class SearchPanel extends JPanel {
         if (selection != null) {
             selection.addPropertyChangeListener(event -> render(viewModel.getState()));
         }
+        if (tripAccess != null) {
+            tripAccess.addPropertyChangeListener(event -> render(viewModel.getState()));
+        }
+    }
+
+    private boolean canEditItinerary() {
+        return tripAccess == null || tripAccess.canEditItinerary();
     }
 
     private JPanel searchControls() {
@@ -335,8 +360,12 @@ public final class SearchPanel extends JPanel {
         JButton bookmarkButton = saved
                 ? SwingTheme.secondaryButton("Remove bookmark")
                 : SwingTheme.primaryButton("Bookmark");
-        bookmarkButton.setEnabled(bookmarks != null);
-        bookmarkButton.addActionListener(event -> bookmarks.toggle(activity.getId()));
+        bookmarkButton.setEnabled(bookmarks != null && canEditItinerary());
+        bookmarkButton.addActionListener(event -> {
+            if (canEditItinerary()) {
+                bookmarks.toggle(activity.getId());
+            }
+        });
         actions.add(bookmarkButton);
         boolean planned = state.getScheduledIds().contains(activity.getId());
         if (planned) {
@@ -346,8 +375,15 @@ public final class SearchPanel extends JPanel {
             actions.add(plannedLabel);
         } else {
             JButton add = SwingTheme.primaryButton("Add to plan");
-            add.setEnabled(manualPlan != null);
-            add.addActionListener(event -> addToPlan(activity));
+            add.setEnabled(manualPlan != null && canEditItinerary());
+            if (!canEditItinerary()) {
+                add.setToolTipText("View only — you cannot change this itinerary");
+            }
+            add.addActionListener(event -> {
+                if (canEditItinerary()) {
+                    addToPlan(activity);
+                }
+            });
             actions.add(add);
         }
         card.add(actions, BorderLayout.SOUTH);
@@ -385,10 +421,10 @@ public final class SearchPanel extends JPanel {
     }
 
     private void addToPlan(Activity activity) {
-        if (dayPlan == null || tripOptions == null) {
+        if (dayPlan != null && tripOptions != null) {
+            AddToPlanDialog.open(this, activity, dayPlan, tripOptions, manualPlan);
+        } else {
             manualPlan.add(activity.getId(), "");
-            return;
         }
-        AddToPlanDialog.open(this, activity, dayPlan, tripOptions, manualPlan);
     }
 }

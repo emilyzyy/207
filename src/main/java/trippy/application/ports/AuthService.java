@@ -8,6 +8,12 @@ public interface AuthService {
 
     AuthSession signIn(String email, String password);
 
+    /**
+     * Updates the signed-in user's email and/or password via the auth provider.
+     * Blank password leaves the current password unchanged.
+     */
+    AuthSession updateCredentials(String email, String password);
+
     void signOut();
 
     Optional<AuthSession> currentSession();

@@ -6,6 +6,7 @@ import trippy.adapters.viewmodels.ActivitySelectionViewModel;
 import trippy.adapters.viewmodels.BookmarksState;
 import trippy.adapters.viewmodels.BookmarksViewModel;
 import trippy.adapters.viewmodels.DayPlanViewModel;
+import trippy.adapters.viewmodels.TripAccessViewModel;
 import trippy.adapters.viewmodels.TripOptionsViewModel;
 import trippy.domain.entities.Activity;
 import java.awt.BorderLayout;
@@ -19,7 +20,6 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 
@@ -31,25 +31,26 @@ public final class BookmarksPanel extends JPanel {
     private final ActivitySelectionViewModel selection;
     private final DayPlanViewModel dayPlan;
     private final TripOptionsViewModel tripOptions;
+    private TripAccessViewModel tripAccess;
     private final JPanel list = new JPanel();
 
     public BookmarksPanel(BookmarksViewModel viewModel) {
-        this(viewModel, null, null, null, null, null);
+        this(viewModel, null, null, null, null, null, null);
     }
 
     public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller) {
-        this(viewModel, controller, null, null, null, null);
+        this(viewModel, controller, null, null, null, null, null);
     }
 
     public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller,
                           ManualPlanController manualPlan) {
-        this(viewModel, controller, manualPlan, null, null, null);
+        this(viewModel, controller, manualPlan, null, null, null, null);
     }
 
     public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller,
                           ManualPlanController manualPlan,
                           ActivitySelectionViewModel selection) {
-        this(viewModel, controller, manualPlan, selection, null, null);
+        this(viewModel, controller, manualPlan, selection, null, null, null);
     }
 
     public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller,
@@ -57,12 +58,29 @@ public final class BookmarksPanel extends JPanel {
                           ActivitySelectionViewModel selection,
                           DayPlanViewModel dayPlan,
                           TripOptionsViewModel tripOptions) {
+        this(viewModel, controller, manualPlan, selection, dayPlan, tripOptions, null);
+    }
+
+    public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller,
+                          ManualPlanController manualPlan,
+                          ActivitySelectionViewModel selection,
+                          TripAccessViewModel tripAccess) {
+        this(viewModel, controller, manualPlan, selection, null, null, tripAccess);
+    }
+
+    public BookmarksPanel(BookmarksViewModel viewModel, BookmarkController controller,
+                          ManualPlanController manualPlan,
+                          ActivitySelectionViewModel selection,
+                          DayPlanViewModel dayPlan,
+                          TripOptionsViewModel tripOptions,
+                          TripAccessViewModel tripAccess) {
         this.viewModel = viewModel;
         this.controller = controller;
         this.manualPlan = manualPlan;
         this.selection = selection;
         this.dayPlan = dayPlan;
         this.tripOptions = tripOptions;
+        this.tripAccess = tripAccess;
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.PANEL);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -90,6 +108,13 @@ public final class BookmarksPanel extends JPanel {
         if (selection != null) {
             selection.addPropertyChangeListener(event -> render(viewModel.getState()));
         }
+        if (tripAccess != null) {
+            tripAccess.addPropertyChangeListener(event -> render(viewModel.getState()));
+        }
+    }
+
+    private boolean canEditItinerary() {
+        return tripAccess == null || tripAccess.canEditItinerary();
     }
 
     private void render(BookmarksState state) {
@@ -117,12 +142,22 @@ public final class BookmarksPanel extends JPanel {
             JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
             actions.setOpaque(false);
             JButton remove = SwingTheme.secondaryButton("Remove bookmark");
-            remove.setEnabled(controller != null);
-            remove.addActionListener(event -> controller.remove(activity.getId()));
+            remove.setEnabled(controller != null && canEditItinerary());
+            remove.addActionListener(event -> {
+                if (canEditItinerary()) {
+                    controller.remove(activity.getId());
+                }
+            });
             actions.add(remove);
             JButton add = SwingTheme.primaryButton("Add to plan");
-            add.setEnabled(manualPlan != null);
+            add.setEnabled(manualPlan != null && canEditItinerary());
+            if (!canEditItinerary()) {
+                add.setToolTipText("View only — you cannot change this itinerary");
+            }
             add.addActionListener(event -> {
+                if (!canEditItinerary()) {
+                    return;
+                }
                 if (dayPlan != null && tripOptions != null) {
                     AddToPlanDialog.open(
                             this, activity, dayPlan, tripOptions, manualPlan);
