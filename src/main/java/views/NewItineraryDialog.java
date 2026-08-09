@@ -75,7 +75,7 @@ public final class NewItineraryDialog extends JDialog {
     private final JScrollPane suggestionScroll;
     private final DatePickerPanel datePicker = new DatePickerPanel();
     private final JSpinner durationSpinner = new JSpinner(
-            new SpinnerNumberModel(1, 1, 14, 1));
+            new SpinnerNumberModel(1, 1, 42, 1));
     private final JLabel statusLabel = new JLabel("Start typing a city name...");
     private final JButton okButton = SwingTheme.primaryButton("Create Itinerary");
     private final Timer debounce = new Timer(400, e -> loadSuggestions(cityField.getText().trim()));
@@ -130,7 +130,7 @@ public final class NewItineraryDialog extends JDialog {
 
         gbc.gridy = 3;
         gbc.insets = new Insets(0, 0, 6, 0);
-        form.add(label("Trip date"), gbc);
+        form.add(label("Trip dates — click the first day, then drag the rest"), gbc);
 
         gbc.gridy = 4;
         gbc.insets = new Insets(0, 0, 12, 0);
@@ -234,6 +234,23 @@ public final class NewItineraryDialog extends JDialog {
                     e.consume();
                 }
             }
+        });
+
+        // The drag-to-select range and the duration spinner stay in sync: dragging a range
+        // updates the day count, and nudging the spinner extends the range from its start.
+        datePicker.setRangeChangeListener(() -> {
+            int days = datePicker.getDayCount();
+            if ((Integer) durationSpinner.getValue() != days) {
+                durationSpinner.setValue(days);
+            }
+        });
+        durationSpinner.addChangeListener(event -> {
+            LocalDate rangeStart = datePicker.getStartDate();
+            if (rangeStart == null) {
+                return;
+            }
+            int days = Math.max(1, (Integer) durationSpinner.getValue());
+            datePicker.setRange(rangeStart, rangeStart.plusDays(days - 1));
         });
     }
 

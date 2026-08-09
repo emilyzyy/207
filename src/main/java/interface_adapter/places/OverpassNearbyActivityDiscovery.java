@@ -25,26 +25,51 @@ import java.util.concurrent.TimeUnit;
 
 /** Overpass adapter dedicated to set-based nearby and viewport discovery. */
 public final class OverpassNearbyActivityDiscovery implements NearbyActivityDiscovery {
+    /**
+     * Mirrors are tried in order under a shared deadline. maps.mail.ru is first because
+     * overpass-api.de's DNS can return a first A record that is unreachable from a given
+     * network (the JVM HttpClient does not fall through to the next A record), so reaching
+     * the canonical host costs an 8 s connect timeout on every request. The other hosts stay
+     * as fallbacks in case the working mirror is itself unavailable.
+     */
     private static final List<URI> DEFAULT_ENDPOINTS = List.of(
+            URI.create("https://maps.mail.ru/osm/tools/overpass/api/interpreter"),
             URI.create("https://overpass-api.de/api/interpreter"),
-            URI.create("https://overpass.kumi.systems/api/interpreter"),
-            URI.create("https://overpass.private.coffee/api/interpreter"));
+            URI.create("https://overpass.private.coffee/api/interpreter"),
+            URI.create("https://overpass.kumi.systems/api/interpreter"));
     private static final String USER_AGENT =
             "Trippy-CSC207/1.0 (academic project; github.com/emilyzyy/207)";
     /** Per-endpoint ceiling; the overall deadline below still bounds the total. */
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(8);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(15);
     /** Hard ceiling for the whole endpoint-retry sequence so discovery never hangs. */
-    private static final long MAX_OVERALL_WAIT_MILLIS = 10_000L;
+    private static final long MAX_OVERALL_WAIT_MILLIS = 55_000L;
     private static final long MAX_RETRY_AFTER_MILLIS = 4_000L;
     private static final long DEFAULT_RATE_LIMIT_WAIT_MILLIS = 1_000L;
+    /**
+     * The discovery radius is bounded by the municipal bounding box, which for a city can reach
+     * the geocoder's 3000 m ceiling. Around queries at that size are too heavy for the public
+     * Overpass replicas: they time out server-side or return 504. 1500 m reliably answers with a
+     * full result set within the client budget, so discovery is clamped here.
+     */
+    private static final int MAX_AROUND_RADIUS_METERS = 1_500;
+    /**
+     * Places per query window are capped at 25, the value that kept discovery responsive on the
+     * public replicas. Asking for 100 makes the response larger and the server-side evaluation
+     * heavier without helping the itinerary; a smaller answer arrives within the client budget.
+     */
+    private static final int MAX_WINDOW_RESULTS = 25;
     private final HttpClient http;
     private final ObjectMapper json;
     private final OsmActivityMapper mapper;
     private final DestinationGeocoder geocoder;
     private final List<URI> endpoints;
     private final Map<String, List<Activity>> cache = new ConcurrentHashMap<>();
-    /** Prevents trip enrichment, map loading, and Search from flooding Overpass in parallel. */
-    private final Object discoveryLock = new Object();
+    /**
+     * Deduplicates concurrent lookups per key. Identical in-flight requests share one lock, but
+     * unrelated keys (trip enrichment, a viewport cell, and a Search click) run in parallel
+     * instead of queueing behind one another.
+     */
+    private final Map<String, Object> keyLocks = new ConcurrentHashMap<>();
 
     public OverpassNearbyActivityDiscovery(DestinationGeocoder geocoder) {
         this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build(),
@@ -62,50 +87,94 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
 
     @Override
     public List<Activity> around(String destination, int limit) {
-        String key = "around|" + normalize(destination) + "|" + limit;
+        int window = windowLimit(limit);
+        String key = "around|" + normalize(destination) + "|" + window;
         List<Activity> cached = cache.get(key);
         if (cached != null) return new ArrayList<>(cached);
         GeoPoint center = geocoder.geocode(destination);
-        String area = "around:" + center.getDiscoveryRadiusMeters() + ","
+        int radius = Math.min(center.getDiscoveryRadiusMeters(), MAX_AROUND_RADIUS_METERS);
+        String area = "around:" + radius + ","
                 + center.getLatitude() + "," + center.getLongitude();
-        return coordinatedLoad(key, query(area, limit), limit);
+        return coordinatedLoad(key, query(area, window), window);
     }
 
     @Override
     public List<Activity> inBounds(double south, double west, double north, double east, int limit) {
+        int window = windowLimit(limit);
         String key = "bounds|" + Math.round(south * 100) + "," + Math.round(west * 100)
-                + "," + Math.round(north * 100) + "," + Math.round(east * 100) + "|" + limit;
+                + "," + Math.round(north * 100) + "," + Math.round(east * 100) + "|" + window;
         List<Activity> cached = cache.get(key);
         if (cached != null) return new ArrayList<>(cached);
-        String area = "bbox:" + south + "," + west + "," + north + "," + east;
-        return coordinatedLoad(key, query(area, limit), limit);
+        double centerLat = (south + north) / 2;
+        double centerLng = (west + east) / 2;
+        int radius = viewportRadius(south, west, north, east);
+        String area = "around:" + radius + ","
+                + centerLat + "," + centerLng;
+        return coordinatedLoad(key, query(area, window), window);
     }
 
     /**
-     * Serializes public Overpass access and repeats the cache check after waiting. A trip opening
-     * starts enrichment and viewport discovery almost together; without this boundary, a Search
-     * click can launch a duplicate request before the first call has populated the cache.
+     * The visible box is queried as one around at its centre, which answers reliably on the
+     * public replicas (a whole-box bbox query does not). The radius is clamped to the reliable
+     * ceiling, so a wide view fills around its centre while panning pulls in the neighbouring
+     * boxes. Each box is cached under its own key, so revisiting a seen view is instant.
+     */
+    private static int viewportRadius(double south, double west,
+                                      double north, double east) {
+        double metersPerDegreeLng = 111_320.0
+                * Math.cos(Math.toRadians((south + north) / 2));
+        double halfWidthMeters = (east - west) * metersPerDegreeLng / 2.0;
+        double halfHeightMeters = (north - south) * 111_320.0 / 2.0;
+        double halfMin = Math.max(500.0, Math.min(halfWidthMeters, halfHeightMeters));
+        return (int) Math.round(Math.min(MAX_AROUND_RADIUS_METERS, halfMin));
+    }
+
+    private static int windowLimit(int limit) {
+        return Math.min(Math.max(1, limit), MAX_WINDOW_RESULTS);
+    }
+
+    /**
+     * Deduplicates repeated lookups for the same key and repeats the cache check after waiting.
+     * A trip opening starts enrichment and viewport discovery almost together; without this
+     * boundary, a Search click can launch a duplicate request before the first call has populated
+     * the cache. Locking is per key, so unrelated lookups are not blocked by an in-flight one.
      */
     private List<Activity> coordinatedLoad(String key, String query, int limit) {
-        synchronized (discoveryLock) {
-            List<Activity> cached = cache.get(key);
-            if (cached != null) return new ArrayList<>(cached);
-            return loadAndCache(key, query, limit);
+        return coordinatedLoad(key, () -> loadAndCache(key, query, limit));
+    }
+
+    private List<Activity> coordinatedLoad(String key,
+                                           java.util.function.Supplier<List<Activity>> loader) {
+        List<Activity> cached = cache.get(key);
+        if (cached != null) return new ArrayList<>(cached);
+        Object lock = keyLocks.computeIfAbsent(key, ignored -> new Object());
+        synchronized (lock) {
+            try {
+                cached = cache.get(key);
+                if (cached != null) return new ArrayList<>(cached);
+                return loader.get();
+            } finally {
+                keyLocks.remove(key, lock);
+            }
         }
     }
 
     private List<Activity> loadAndCache(String key, String query, int limit) {
+        List<Activity> result = fetch(query, limit);
+        // A transient empty Overpass response must not poison this destination for the
+        // remainder of the session. Successful results are stable enough to cache.
+        if (!result.isEmpty()) cache.put(key, new ArrayList<>(result));
+        return result;
+    }
+
+    private List<Activity> fetch(String query, int limit) {
         JsonNode elements = request(query);
         Map<String, Activity> unique = new LinkedHashMap<>();
         for (JsonNode element : elements) {
             mapper.fromOverpass(element).ifPresent(activity -> unique.put(activity.getId(), activity));
             if (unique.size() >= limit) break;
         }
-        List<Activity> result = new ArrayList<>(unique.values());
-        // A transient empty Overpass response must not poison this destination for the
-        // remainder of the session. Successful results are stable enough to cache.
-        if (!result.isEmpty()) cache.put(key, new ArrayList<>(result));
-        return result;
+        return new ArrayList<>(unique.values());
     }
 
     private JsonNode request(String query) {
@@ -146,6 +215,15 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
                     continue;
                 }
                 JsonNode root = json.readTree(text);
+                String remark = root.path("remark").asText("");
+                if (remark.contains("timed out") || remark.contains("runtime error")) {
+                    // Overpass answers a server-side timeout with HTTP 200, an empty elements
+                    // array and a remark such as "Query timed out". That is a failure, not a
+                    // legitimate "no places here" answer, so try the next configured replica.
+                    last = new PlaceSearchException(SearchFailure.SERVICE_UNAVAILABLE,
+                            "Overpass query failed: " + remark);
+                    continue;
+                }
                 JsonNode elements = root.has("elements")
                         ? root.path("elements") : json.createArrayNode();
                 if (elements.isArray() && elements.isEmpty()) {
@@ -199,7 +277,9 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
     }
 
     private static String query(String area, int limit) {
-        return "[out:json][timeout:25];(" + selectors(area) + ");out center " + limit + ";";
+        // Server-side timeout must stay comfortably below the client's REQUEST_TIMEOUT so a
+        // replica that hits its limit responds 504/429 instead of hanging the client connection.
+        return "[out:json][timeout:10];(" + selectors(area) + ");out center " + limit + ";";
     }
 
     /** Selector groups remain separate and testable while sharing one network request. */
@@ -228,8 +308,11 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
     }
 
     private static String shoppingAndHistoric(String a) {
-        return "nwr[\"shop\"](" + a + ");"
-                + "nwr[\"historic\"~\"^(castle|fort|ruins|monument|memorial|archaeological_site|city_gate|manor)$\"](" + a + ");"
+        // The bare nwr["shop"] selector matches every shop in the area, making the request far
+        // too heavy for the public replicas: they either time out or rate-limit it. Specific shop
+        // kinds (bakery, deli, coffee, ...) are already covered by foodAndCoffee; generic shops
+        // without any of the mapped categories would be dropped by the mapper anyway.
+        return "nwr[\"historic\"~\"^(castle|fort|ruins|monument|memorial|archaeological_site|city_gate|manor)$\"](" + a + ");"
                 + "nwr[\"man_made\"~\"^(observatory|tower)$\"](" + a + ");";
     }
 

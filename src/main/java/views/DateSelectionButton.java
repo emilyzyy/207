@@ -30,6 +30,7 @@ public final class DateSelectionButton extends JButton {
 
     private void showCalendar() {
         DatePickerPanel picker = new DatePickerPanel(date);
+        picker.setAllowClickExtend(false);
         JDialog dialog = new JDialog(
                 SwingUtilities.getWindowAncestor(this), "Select trip start date",
                 Dialog.ModalityType.APPLICATION_MODAL);

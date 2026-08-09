@@ -28,8 +28,7 @@ public final class OpenStreetMapPlacesService
     private final NearbyActivityDiscovery nearby;
     private final DestinationGeocoder geocoder;
     private final Map<String, Map<String, Activity>> index = new ConcurrentHashMap<>();
-    private final Map<String, Activity> visibleIndex = new ConcurrentHashMap<>();
-    private volatile String activeDestination = "";
+    private final Map<String, Map<String, Activity>> visibleIndex = new ConcurrentHashMap<>();
 
     public OpenStreetMapPlacesService() {
         NominatimNamedPlaceSearch nominatim = new NominatimNamedPlaceSearch();
@@ -60,7 +59,6 @@ public final class OpenStreetMapPlacesService
         if (request.getDestination().isEmpty()) return new ActivitySearchResult(
                 List.of(), SearchSource.LOCAL, false, SearchFailure.INVALID_DESTINATION);
         String destinationKey = normalize(request.getDestination());
-        selectDestination(destinationKey);
         List<Activity> local = filterAndRank(candidates(destinationKey), request);
         if (request.getQuery().isEmpty()) {
             return discoverNearby(request, destinationKey, local);
@@ -107,10 +105,11 @@ public final class OpenStreetMapPlacesService
     }
 
     @Override
-    public List<Activity> searchInBounds(double south, double west, double north, double east,
-                                         int maxResults) {
+    public List<Activity> searchInBounds(String destination, double south, double west,
+                                         double north, double east, int maxResults) {
         List<Activity> activities = nearby.inBounds(south, west, north, east, maxResults);
-        for (Activity activity : activities) visibleIndex.put(activity.getId(), activity);
+        Map<String, Activity> viewport = visibleIndex(normalize(destination));
+        for (Activity activity : activities) viewport.put(activity.getId(), activity);
         return activities;
     }
 
@@ -118,12 +117,8 @@ public final class OpenStreetMapPlacesService
         return index.computeIfAbsent(destination, ignored -> new ConcurrentHashMap<>());
     }
 
-    private synchronized void selectDestination(String destination) {
-        if (destination.equals(activeDestination)) return;
-        // A map may finish its first viewport load just before the first text search.
-        // Preserve that initial viewport, but clear it when changing between known trips.
-        if (!activeDestination.isEmpty()) visibleIndex.clear();
-        activeDestination = destination;
+    private Map<String, Activity> visibleIndex(String destination) {
+        return visibleIndex.computeIfAbsent(destination, ignored -> new ConcurrentHashMap<>());
     }
 
     private void add(String destination, List<Activity> activities) {
@@ -132,7 +127,9 @@ public final class OpenStreetMapPlacesService
     }
 
     private Iterable<Activity> candidates(String destination) {
-        Map<String, Activity> merged = new LinkedHashMap<>(visibleIndex);
+        // Viewport places are recorded per destination so a trip that finishes loading after the
+        // user has moved on can never leak its markers into the next itinerary's search results.
+        Map<String, Activity> merged = new LinkedHashMap<>(visibleIndex(destination));
         merged.putAll(index(destination));
         return merged.values();
     }

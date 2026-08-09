@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.JCheckBox;
@@ -45,7 +46,9 @@ public final class MapPanel extends JPanel {
     private static final int TILE_SIZE = 256;
     private static final int MIN_ZOOM = 2;
     private static final int MAX_ZOOM = 18;
-    private static final int MAX_VIEWPORT_RESULTS = 75;
+    private static final int MAX_VIEWPORT_RESULTS = 25;
+    /** Split the visible box into at most this many cells so places appear as each one answers. */
+    private static final int MAX_VIEWPORT_CELLS = 4;
     private static final int MAX_GENERIC_MARKERS = 65;
     private static final int GENERIC_MARKER_RADIUS = 11;
     private static final int HIGHLIGHTED_MARKER_RADIUS = 14;
@@ -79,6 +82,7 @@ public final class MapPanel extends JPanel {
     private boolean hasHomeLocation;
     private double homeLat;
     private double homeLng;
+    private boolean hasFittedActivities;
 
     private final List<Integer> markerHitboxesX = new ArrayList<>();
     private final List<Integer> markerHitboxesY = new ArrayList<>();
@@ -90,6 +94,8 @@ public final class MapPanel extends JPanel {
     private final JCheckBox highlightOnly =
             new JCheckBox("Bookmarked & added to plan only");
 
+    private final Spinner loadingSpinner = new Spinner(34, 3f);
+
     private final ConcurrentHashMap<String, BufferedImage> tileCache = new ConcurrentHashMap<>();
     private final Set<String> pendingLoads = ConcurrentHashMap.newKeySet();
     private final ExecutorService tileLoader = Executors.newFixedThreadPool(2,
@@ -99,7 +105,7 @@ public final class MapPanel extends JPanel {
     private final boolean tileLoadingEnabled;
 
     private Timer viewportTimer;
-    private final ExecutorService viewportLoaderExecutor = Executors.newSingleThreadExecutor(
+    private final ExecutorService viewportLoaderExecutor = Executors.newFixedThreadPool(3,
             r -> { Thread t = new Thread(r, "ViewportLoader"); t.setDaemon(true); return t; });
 
     private ViewportPlacesLoader viewportLoader;
@@ -194,10 +200,13 @@ public final class MapPanel extends JPanel {
             repaint();
         });
         add(highlightOnly);
+        loadingSpinner.setVisible(false);
+        add(loadingSpinner);
         addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
                 positionHighlightToggle();
+                positionLoadingSpinner();
             }
         });
     }
@@ -208,6 +217,12 @@ public final class MapPanel extends JPanel {
         highlightOnly.setBounds(x, 6, preferred.width, 24);
     }
 
+    private void positionLoadingSpinner() {
+        Dimension size = loadingSpinner.getPreferredSize();
+        loadingSpinner.setBounds(12, Math.max(0, getHeight() - size.height - 12),
+                size.width, size.height);
+    }
+
     public void setActivities(List<Activity> activities) {
         List<Activity> newList = (activities == null) ? new ArrayList<>() : new ArrayList<>(activities);
         if (sameIds(newList, this.activities)) {
@@ -216,7 +231,12 @@ public final class MapPanel extends JPanel {
         }
         boolean wasEmpty = this.activities.isEmpty();
         this.activities = newList;
-        if (wasEmpty && !this.activities.isEmpty()) fitToActivities();
+        // Fit only the first time the map fills. A later empty->non-empty transition (places
+        // briefly clearing during a refresh, then coming back) must not yank the user's view.
+        if (wasEmpty && !this.activities.isEmpty() && !hasFittedActivities) {
+            hasFittedActivities = true;
+            fitToActivities();
+        }
         repaint();
     }
 
@@ -249,9 +269,19 @@ public final class MapPanel extends JPanel {
         repaint();
     }
 
-    /** Selects, centers, and visually emphasizes one activity marker. */
+    /**
+     * Selects and visually emphasizes one activity marker. The view centers on it only when the
+     * selection actually changes: refresh flows (viewport merges, bookmark/day-plan updates) keep
+     * re-applying the same selection, and re-flying on every one would yank the map back whenever
+     * the user pans away from the clicked marker.
+     */
     public void selectActivity(Activity activity) {
-        selectedActivityId = activity == null ? "" : activity.getId();
+        String nextId = activity == null ? "" : activity.getId();
+        if (nextId.equals(selectedActivityId)) {
+            repaint();
+            return;
+        }
+        selectedActivityId = nextId;
         if (activity != null) {
             zoom = Math.max(zoom, 15);
             flyTo(activity.getLocation().getLatitude(), activity.getLocation().getLongitude());
@@ -298,7 +328,9 @@ public final class MapPanel extends JPanel {
     public void flyTo(double lat, double lng) {
         centerLat = lat;
         centerLng = lng;
-        scheduleViewportReload();
+        // Programmatic navigation (initial city focus, marker selection) loads right away;
+        // the debounce is only meant to let drag/zoom gestures settle.
+        SwingUtilities.invokeLater(this::reloadViewport);
         repaint();
     }
 
@@ -307,7 +339,7 @@ public final class MapPanel extends JPanel {
         this.viewportLoader = loader;
         // The initial city focus can happen before AppBuilder installs the live loader.
         // Request that already-visible viewport now instead of waiting for a pan or zoom.
-        if (loader != null) SwingUtilities.invokeLater(this::scheduleViewportReload);
+        if (loader != null) SwingUtilities.invokeLater(this::reloadViewport);
     }
 
     /** Registers a callback invoked when the user clicks a marker on the map. */
@@ -345,7 +377,9 @@ public final class MapPanel extends JPanel {
     private void scheduleViewportReload() {
         if (viewportLoader == null) return;
         if (viewportTimer == null) {
-            viewportTimer = new Timer(300, e -> reloadViewport());
+            // Let pan/zoom settle for a bit before new places start loading, so a quick drag
+            // doesn't fire a storm of viewport queries.
+            viewportTimer = new Timer(1000, e -> reloadViewport());
             viewportTimer.setRepeats(false);
         }
         viewportTimer.restart();
@@ -353,7 +387,11 @@ public final class MapPanel extends JPanel {
 
     void reloadViewport() {
         if (viewportLoader == null) return;
-        if (hasHomeLocation && distanceToHomeMeters() > MAX_CITY_DISTANCE_METERS) return;
+        // Until the trip's destination is resolved the map still sits on the default center
+        // (Toronto). Loading places there would pollute every itinerary with the wrong city,
+        // so wait for the destination geocode before any viewport query runs.
+        if (!hasHomeLocation) return;
+        if (distanceToHomeMeters() > MAX_CITY_DISTANCE_METERS) return;
         int w = getWidth(), h = getHeight();
         if (w <= 0 || h <= 0) return;
         double[][] corners = visibleCoords(w, h);
@@ -388,35 +426,89 @@ public final class MapPanel extends JPanel {
     }
 
     private void loadViewport(ViewportRequest request) {
-        viewportLoaderExecutor.submit(() -> {
-            List<Activity> found = Collections.emptyList();
-            try {
-                found = viewportLoader.load(request.south, request.west,
-                        request.north, request.east, request.maxResults);
-            } catch (Exception ignored) {
-                // A failed public lookup leaves the current markers intact.
-            }
-            List<Activity> completed = found;
-            SwingUtilities.invokeLater(() -> finishViewportLoad(request, completed));
-        });
+        List<double[]> cells = viewportCells(request.south, request.west,
+                request.north, request.east);
+        int perCell = Math.max(1,
+                (int) Math.ceil(request.maxResults / (double) cells.size()));
+        AtomicInteger pending = new AtomicInteger(cells.size());
+        for (double[] cell : cells) {
+            double cellSouth = cell[0];
+            double cellWest = cell[1];
+            double cellNorth = cell[2];
+            double cellEast = cell[3];
+            viewportLoaderExecutor.submit(() -> {
+                List<Activity> found = Collections.emptyList();
+                try {
+                    found = viewportLoader.load(cellSouth, cellWest,
+                            cellNorth, cellEast, perCell);
+                } catch (Exception ignored) {
+                    // A failed public lookup leaves the current markers intact.
+                }
+                List<Activity> completed = found;
+                SwingUtilities.invokeLater(() -> {
+                    // Places appear as each cell answers; a cell that finished after the user
+                    // panned on is dropped so it cannot pollute the newer view.
+                    boolean current = activeViewportKey.equals(request.key);
+                    boolean last = current && pending.decrementAndGet() == 0;
+                    if (current && completed != null && !completed.isEmpty()) {
+                        mergeViewportResults(completed);
+                    }
+                    if (last) {
+                        finishViewportLoad(request);
+                    }
+                });
+            });
+        }
     }
 
-    private void finishViewportLoad(ViewportRequest completed, List<Activity> found) {
+    private void finishViewportLoad(ViewportRequest completed) {
         ViewportRequest next = null;
-        boolean apply;
         synchronized (this) {
-            apply = queuedViewportRequest == null;
-            if (apply) lastLoadedViewportKey = completed.key;
+            lastLoadedViewportKey = completed.key;
             viewportLoadRunning = false;
             activeViewportKey = "";
             if (queuedViewportRequest != null) next = takeQueuedViewportRequest();
         }
-        if (apply && found != null && !found.isEmpty()) mergeViewportResults(found);
         if (next == null) {
             notifyPlacesLoading(false);
         } else {
             loadViewport(next);
         }
+    }
+
+    /**
+     * Splits the visible box into a few cells of about a discovery radius across, capped so a
+     * fresh pan loads at most a handful of queries instead of one oversized whole-box request.
+     */
+    private static List<double[]> viewportCells(double south, double west,
+                                                double north, double east) {
+        double metersPerDegreeLng = 111_320.0
+                * Math.cos(Math.toRadians((south + north) / 2));
+        double cellSizeMeters = 3_000.0;
+        int cols = Math.max(1, (int) Math.ceil(
+                (east - west) * metersPerDegreeLng / cellSizeMeters));
+        int rows = Math.max(1, (int) Math.ceil(
+                (north - south) * 111_320.0 / cellSizeMeters));
+        while (rows * cols > MAX_VIEWPORT_CELLS) {
+            if (cols >= rows) {
+                cols--;
+            } else {
+                rows--;
+            }
+            cols = Math.max(1, cols);
+            rows = Math.max(1, rows);
+        }
+        List<double[]> cells = new ArrayList<>();
+        for (int row = 0; row < rows; row++) {
+            for (int col = 0; col < cols; col++) {
+                cells.add(new double[]{
+                        south + row * (north - south) / rows,
+                        west + col * (east - west) / cols,
+                        south + (row + 1) * (north - south) / rows,
+                        west + (col + 1) * (east - west) / cols});
+            }
+        }
+        return cells;
     }
 
     private static String viewportKey(double[][] corners, int maxResults) {
@@ -446,6 +538,7 @@ public final class MapPanel extends JPanel {
     }
 
     private void notifyPlacesLoading(boolean loading) {
+        loadingSpinner.setVisible(loading);
         if (placesLoadingListener != null) {
             placesLoadingListener.accept(loading);
         }

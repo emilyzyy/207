@@ -82,6 +82,103 @@ final class OverpassNearbyActivityDiscoveryTest {
     }
 
     @Test
+    void serverSideTimeoutRemarkIsTreatedAsAFailureAndTriesTheNextEndpoint() throws Exception {
+        AtomicInteger requests = new AtomicInteger();
+        AtomicReference<String> query = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/interpreter", exchange -> {
+            requests.incrementAndGet();
+            exchange.getRequestBody().readAllBytes();
+            String body;
+            if (requests.get() == 1) {
+                body = "{\"remark\":\"runtime error: Query timed out in \\\"query\\\" after 11 seconds.\","
+                        + "\"elements\":[]}";
+            } else {
+                body = "{\"elements\":[{\"type\":\"node\",\"id\":42,\"lat\":43.65,\"lon\":-79.38,"
+                        + "\"tags\":{\"name\":\"Recovered Cafe\",\"amenity\":\"cafe\"}}]}";
+                query.set("second");
+            }
+            byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+        });
+        server.start();
+
+        URI endpoint = URI.create("http://127.0.0.1:"
+                + server.getAddress().getPort() + "/interpreter");
+        OverpassNearbyActivityDiscovery discovery = new OverpassNearbyActivityDiscovery(
+                HttpClient.newHttpClient(), new ObjectMapper(),
+                destination -> new GeoPoint(43.65, -79.38), List.of(endpoint, endpoint));
+
+        List<Activity> results = discovery.around("Toronto", 25);
+
+        assertEquals(2, requests.get());
+        assertEquals(1, results.size());
+        assertEquals("osm-node-42", results.get(0).getId());
+    }
+
+    @Test
+    void placesPerWindowAreCappedAtTwentyFiveEvenWhenAskedForMore() throws Exception {
+        AtomicReference<String> query = new AtomicReference<>();
+        start(200, "{\"elements\":[{\"type\":\"node\",\"id\":7,\"lat\":43.65,\"lon\":-79.38,"
+                + "\"tags\":{\"name\":\"Park\",\"leisure\":\"park\"}}]}", query);
+
+        service().around("Toronto", 100);
+
+        assertTrue(query.get().contains("out center 25;"));
+    }
+
+    @Test
+    void discoveryRadiusIsClampedToTheReliableOverpassCeiling() throws Exception {
+        AtomicReference<String> query = new AtomicReference<>();
+        start(200, "{\"elements\":[{\"type\":\"node\",\"id\":7,\"lat\":43.65,\"lon\":-79.38,"
+                + "\"tags\":{\"name\":\"Park\",\"leisure\":\"park\"}}]}", query);
+
+        URI endpoint = URI.create("http://127.0.0.1:"
+                + server.getAddress().getPort() + "/interpreter");
+        OverpassNearbyActivityDiscovery discovery = new OverpassNearbyActivityDiscovery(
+                HttpClient.newHttpClient(), new ObjectMapper(),
+                destination -> new GeoPoint(43.65, -79.38, 3_000), List.of(endpoint));
+
+        List<Activity> results = discovery.around("Toronto", 25);
+
+        assertEquals(1, results.size());
+        assertTrue(query.get().contains("around:1500,43.65,-79.38"));
+    }
+
+    @Test
+    void viewportBoxIsLoadedByOneAroundQueryAtItsCentreAndCached() throws Exception {
+        AtomicInteger requests = new AtomicInteger();
+        AtomicReference<String> query = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/interpreter", exchange -> {
+            requests.incrementAndGet();
+            String body = new String(exchange.getRequestBody().readAllBytes(),
+                    StandardCharsets.UTF_8);
+            query.set(java.net.URLDecoder.decode(body.substring("data=".length()),
+                    StandardCharsets.UTF_8));
+            byte[] bytes = ("{\"elements\":[{\"type\":\"node\",\"id\":7,\"lat\":43.65,"
+                    + "\"lon\":-79.38,\"tags\":{\"name\":\"Park\",\"leisure\":\"park\"}}]}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+        });
+        server.start();
+
+        OverpassNearbyActivityDiscovery discovery = service();
+        List<Activity> first = discovery.inBounds(43.6, -79.5, 43.7, -79.3, 25);
+        List<Activity> second = discovery.inBounds(43.6, -79.5, 43.7, -79.3, 25);
+
+        assertEquals(1, first.size());
+        assertEquals(1, second.size());
+        assertEquals(1, requests.get());
+        assertTrue(query.get().contains("around:1500,"));
+        assertTrue(query.get().contains("out center"));
+    }
+
+    @Test
     void concurrentInitialSearchesShareTheCompletedDiscovery() throws Exception {
         AtomicInteger requests = new AtomicInteger();
         CountDownLatch requestStarted = new CountDownLatch(1);

@@ -47,6 +47,11 @@ public final class MockPlacesService implements PlacesService, ActivityRepositor
         return result;
     }
 
+    public List<Activity> searchInBounds(String destination, double south, double west,
+                                         double north, double east, int maxResults) {
+        return searchInBounds(south, west, north, east, maxResults);
+    }
+
     public List<Activity> searchInBounds(double south, double west, double north, double east,
                                          int maxResults) {
         List<Activity> result = new ArrayList<Activity>();
