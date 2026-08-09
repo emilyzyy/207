@@ -51,7 +51,7 @@ Real places and OpenStreetMap tiles are separate, explicit opt-ins:
 
 `.env` is gitignored. Resolution order: `-D` system properties, then real env vars, then `.env`.
 
-Sign in is optional: the app opens on **My Trips**. Use **Sign in** (gallery or trip header, next to Share) anytime. While signed out, itineraries stay local to the session; after sign-in the current trip is saved to your account and prior cloud trips load. Sign-out clears the local session and returns you to an empty gallery.
+Sign in is optional: the app opens on **My Trips**. Use **Sign in** (gallery or trip header) anytime. While signed out, itineraries stay local to the session; after sign-in the current trip is saved to your account and prior cloud trips load. When signed in, the corner shows your **profile picture** (default white) and a **Friends** button. Open the avatar to edit username, email, password, and picture (solid colours or upload), then **Save**; use **Sign out** from the profile dialog. Friends supports sending requests by username, accepting/cancelling requests, and viewing current friends. When creating an itinerary while signed in, you can multi-select friends to share it. In **Trip Options**, the owner appears as `@username (Owner)` and cannot be removed; each shared person has a **View** / **Edit** / **Admin** dropdown (View = see only, Edit = change the itinerary, Admin = also manage people). Changes sync while a shared trip is open. Re-run the full [`docs/supabase/schema.sql`](docs/supabase/schema.sql) so `trip_members.role` and related policies exist.
 
 The places and weather refresh runs in a `SwingWorker`, not on the Swing event-dispatch thread. If either service fails, the created trip remains valid and the UI retains its cached mock places.
 

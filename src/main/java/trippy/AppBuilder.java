@@ -27,6 +27,7 @@ import trippy.adapters.viewmodels.SearchState;
 import trippy.adapters.viewmodels.SearchViewModel;
 import trippy.adapters.viewmodels.ShareState;
 import trippy.adapters.viewmodels.ShareViewModel;
+import trippy.adapters.viewmodels.TripAccessViewModel;
 import trippy.adapters.viewmodels.TripOptionsState;
 import trippy.adapters.viewmodels.TripOptionsViewModel;
 import trippy.adapters.viewmodels.TripAssistantState;
@@ -51,6 +52,7 @@ import trippy.application.autoschedule.policy.DaylightPolicy;
 import trippy.application.autoschedule.policy.MealWindowPolicy;
 import trippy.application.autoschedule.policy.SoftPolicy;
 import trippy.application.autoschedule.policy.WeatherSuitabilityPolicy;
+import trippy.application.ports.AccountService;
 import trippy.application.ports.AuthService;
 import trippy.application.ports.PlacesService;
 import trippy.application.ports.DestinationGeocoder;
@@ -68,6 +70,7 @@ import trippy.domain.entities.Trip;
 import trippy.domain.entities.WeatherWarning;
 import trippy.domain.valueobjects.Location;
 import trippy.domain.valueobjects.TransportationMode;
+import trippy.domain.valueobjects.TripAccessLevel;
 import trippy.domain.valueobjects.WeatherSeverity;
 import trippy.infrastructure.config.DotEnv;
 import trippy.infrastructure.ai.FallbackTripAssistantGateway;
@@ -83,6 +86,7 @@ import trippy.infrastructure.persistence.DayScopedTripRepository;
 import trippy.infrastructure.persistence.InMemoryItineraryDataAccessObject;
 import trippy.infrastructure.routing.FastestModeDistanceService;
 import trippy.infrastructure.routing.OsrmDistanceService;
+import trippy.infrastructure.supabase.SupabaseAccountClient;
 import trippy.infrastructure.supabase.SupabaseItineraryDataAccess;
 import trippy.infrastructure.weather.OpenMeteoWeatherService;
 import java.net.URI;
@@ -161,6 +165,7 @@ public final class AppBuilder {
                         trip.getActiveDayIndex()));
         TripOptionsViewModel tripOptionsViewModel = new TripOptionsViewModel(
                 TripOptionsState.fromTrip(trip, "", false));
+        TripAccessViewModel tripAccessViewModel = new TripAccessViewModel();
         CalendarViewModel calendarViewModel = new CalendarViewModel(
                 dashboardViewModel, dayPlanViewModel);
         ShareViewModel shareViewModel = new ShareViewModel(
@@ -204,15 +209,15 @@ public final class AppBuilder {
         SearchPanel searchPanel = new SearchPanel(
                 searchViewModel, discoveryController, bookmarkController,
                 manualPlanController, activitySelectionViewModel,
-                dayPlanViewModel, tripOptionsViewModel);
+                dayPlanViewModel, tripOptionsViewModel, tripAccessViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(
                 bookmarksViewModel, bookmarkController,
                 manualPlanController, activitySelectionViewModel,
-                dayPlanViewModel, tripOptionsViewModel);
+                dayPlanViewModel, tripOptionsViewModel, tripAccessViewModel);
         DayPlanPanel dayPlanPanel =
                 new DayPlanPanel(dayPlanViewModel, autoScheduleController,
                         manualPlanController, activitySelectionViewModel,
-                        tripDayController);
+                        tripAccessViewModel);
         dayPlanPanel.setTripDefaults(trip.getStartTime(), trip.getEndTime());
         TripOptionsPresenter tripOptionsPresenter = new TripOptionsPresenter(
                 dashboardViewModel, dayPlanViewModel, tripOptionsViewModel);
@@ -222,7 +227,8 @@ public final class AppBuilder {
                         .orElse(null),
                 tripOptionsPresenter);
         dayPlanPanel.setOpenOptionsAction(() -> new TripOptionsDialog(
-                dayPlanPanel, tripOptionsViewModel, tripOptionsController).showDialog());
+                dayPlanPanel, tripOptionsViewModel, tripOptionsController,
+                app.account, tripAccessViewModel).showDialog());
         tripOptionsViewModel.addPropertyChangeListener(event -> {
             TripOptionsState options = tripOptionsViewModel.getState();
             dayPlanPanel.setTripDefaults(options.getStartTime(), options.getEndTime());
@@ -247,6 +253,7 @@ public final class AppBuilder {
                 searchViewModel,
                 bookmarksViewModel);
         refreshWeatherAsync(app, trip, dashboardViewModel, dayPlanViewModel);
+        loadTripAccessAsync(app, trip.getId(), tripAccessViewModel);
         return frame;
     }
 
@@ -283,6 +290,7 @@ public final class AppBuilder {
                         LocalDate.now().plusDays(1),
                         LocalTime.of(9, 0),
                         LocalTime.of(18, 0)));
+        TripAccessViewModel tripAccessViewModel = new TripAccessViewModel();
 
         AutoScheduleController autoScheduleController =
                 buildAutoSchedule(app, dayPlanViewModel);
@@ -322,15 +330,15 @@ public final class AppBuilder {
         SearchPanel searchPanel = new SearchPanel(
                 searchViewModel, discoveryController, bookmarkController,
                 manualPlanController, activitySelectionViewModel,
-                dayPlanViewModel, tripOptionsViewModel);
+                dayPlanViewModel, tripOptionsViewModel, tripAccessViewModel);
         BookmarksPanel bookmarksPanel = new BookmarksPanel(
                 bookmarksViewModel, bookmarkController,
                 manualPlanController, activitySelectionViewModel,
-                dayPlanViewModel, tripOptionsViewModel);
+                dayPlanViewModel, tripOptionsViewModel, tripAccessViewModel);
         DayPlanPanel dayPlanPanel =
                 new DayPlanPanel(dayPlanViewModel, autoScheduleController,
                         manualPlanController, activitySelectionViewModel,
-                        tripDayController);
+                        tripAccessViewModel);
         TripAssistantPanel tripAssistantPanel = buildTripAssistant(
                 app, dayPlanViewModel,
                 "Hi, I'm George. Create a trip, then ask me for activity recommendations.");
@@ -502,6 +510,26 @@ public final class AppBuilder {
                 "Fetching the forecast for " + trip.getDestination() + "\u2026");
     }
 
+    private void loadTripAccessAsync(AppContainer app, String tripId,
+                                     TripAccessViewModel tripAccessViewModel) {
+        if (app == null || app.account == null || tripId == null || tripId.trim().isEmpty()
+                || tripAccessViewModel == null) {
+            return;
+        }
+        Thread worker = new Thread(() -> {
+            try {
+                TripAccessLevel access = app.account.getMyTripAccess(tripId);
+                SwingUtilities.invokeLater(() ->
+                        tripAccessViewModel.setAccess(
+                                access.canEditItinerary(), access.canManagePeople()));
+            } catch (RuntimeException exception) {
+                // Keep default editable until access loads, or user retries.
+            }
+        }, "Trip-Access-" + tripId);
+        worker.setDaemon(true);
+        worker.start();
+    }
+
     private void refreshWeatherAsync(AppContainer app, Trip trip,
                                      DashboardViewModel dashboardViewModel,
                                      DayPlanViewModel dayPlanViewModel) {
@@ -571,6 +599,7 @@ public final class AppBuilder {
 
         String persistence = System.getProperty("trippy.persistence.mode", "memory");
         TripRepository trips;
+        AccountService account = null;
         if ("supabase".equalsIgnoreCase(persistence)) {
             AuthService auth = authSession;
             if (auth == null) {
@@ -588,6 +617,7 @@ public final class AppBuilder {
             SupabaseItineraryDataAccess remote =
                     new SupabaseItineraryDataAccess(url, anonKey, auth, hydrator);
             trips = new DualModeItineraryDataAccess(local, remote, auth);
+            account = new SupabaseAccountClient(url, anonKey, auth);
         } else {
             trips = new InMemoryItineraryDataAccessObject();
         }
@@ -599,6 +629,8 @@ public final class AppBuilder {
                 new FastestModeDistanceService(new OsrmDistanceService()),
                 weather,
                 new DefaultActivityScoringPolicy(),
-                (trippy.application.ports.ItineraryDataAccessInterface) trips);
+                (trippy.application.ports.ItineraryDataAccessInterface) trips,
+                cachedPlaces,
+                account);
     }
 }

@@ -5,6 +5,7 @@ import trippy.adapters.viewmodels.CalendarViewModel;
 import trippy.adapters.viewmodels.DayPlanViewModel;
 import trippy.adapters.viewmodels.SearchViewModel;
 import trippy.adapters.viewmodels.ShareViewModel;
+import trippy.domain.entities.User;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import javax.swing.BorderFactory;
@@ -86,6 +87,22 @@ public final class TrippyFrame extends JFrame {
 
     public void setAuthAction(Runnable action, boolean signedIn) {
         headerPanel.setAuthAction(action, signedIn);
+    }
+
+    public void setProfileAction(Runnable action) {
+        headerPanel.setProfileAction(action);
+    }
+
+    public void setFriendsAction(Runnable action) {
+        headerPanel.setFriendsAction(action);
+    }
+
+    public void setIncomingFriendRequestCount(int count) {
+        headerPanel.setIncomingFriendRequestCount(count);
+    }
+
+    public void setProfileUser(User user) {
+        headerPanel.setProfileUser(user);
     }
 
     public DayPlanPanel getDayPlanPanel() {

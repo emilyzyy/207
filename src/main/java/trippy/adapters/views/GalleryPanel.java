@@ -1,9 +1,8 @@
 package trippy.adapters.views;
 
 import trippy.application.ports.DestinationGeocoder;
-import trippy.application.search.GeoPoint;
 import trippy.domain.entities.Trip;
-import trippy.domain.valueobjects.TransportationMode;
+import trippy.domain.entities.User;
 import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -18,8 +17,7 @@ import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -38,20 +36,25 @@ import javax.swing.SwingUtilities;
 public final class GalleryPanel extends JPanel {
     private static final int CARD_ARC = 16;
     private static final Color OVERLAY = new Color(13, 35, 64, 180);
-    private static final Color OVERLAY_TOP = new Color(13, 35, 64, 100);
     private static final int MAP_ZOOM = 11;
+    private static final int AVATAR_SIZE = 34;
+    private static final int WITH_LINE_MAX_CHARS = 36;
 
     private final transient Consumer<Trip> onOpenTrip;
     private final transient Runnable onCreateTrip;
     private final transient Consumer<Trip> onDeleteTrip;
     private final transient DestinationGeocoder destinationGeocoder;
     private final transient Runnable onAuthAction;
+    private final transient Runnable onProfileAction;
+    private final transient Runnable onFriendsAction;
+    private final Map<String, List<String>> companionsByTripId;
     private final JPanel cardGrid;
     private final Map<String, BufferedImage> tileCache = new ConcurrentHashMap<>();
-    private JButton authButton;
+    private BadgedButton friendsButton;
+    private JButton avatarButton;
 
     public GalleryPanel(List<Trip> trips, Consumer<Trip> onOpenTrip, Runnable onCreateTrip) {
-        this(trips, onOpenTrip, onCreateTrip, null, null, null, false);
+        this(trips, onOpenTrip, onCreateTrip, null, null, null, null, null, null, false, 0, null);
     }
 
     public GalleryPanel(
@@ -59,8 +62,26 @@ public final class GalleryPanel extends JPanel {
             Consumer<Trip> onOpenTrip,
             Runnable onCreateTrip,
             Runnable onAuthAction,
+            Runnable onProfileAction,
+            Runnable onFriendsAction,
+            User profile,
             boolean signedIn) {
-        this(trips, onOpenTrip, onCreateTrip, null, null, onAuthAction, signedIn);
+        this(trips, onOpenTrip, onCreateTrip, onAuthAction, onProfileAction, onFriendsAction,
+                profile, signedIn, 0, null);
+    }
+
+    public GalleryPanel(
+            List<Trip> trips,
+            Consumer<Trip> onOpenTrip,
+            Runnable onCreateTrip,
+            Runnable onAuthAction,
+            Runnable onProfileAction,
+            Runnable onFriendsAction,
+            User profile,
+            boolean signedIn,
+            int incomingFriendRequests) {
+        this(trips, onOpenTrip, onCreateTrip, null, null, onAuthAction, onProfileAction,
+                onFriendsAction, profile, signedIn, incomingFriendRequests, null);
     }
 
     public GalleryPanel(
@@ -71,11 +92,47 @@ public final class GalleryPanel extends JPanel {
             DestinationGeocoder destinationGeocoder,
             Runnable onAuthAction,
             boolean signedIn) {
+        this(trips, onOpenTrip, onCreateTrip, onDeleteTrip, destinationGeocoder,
+                onAuthAction, null, null, null, signedIn, 0, null);
+    }
+
+    public GalleryPanel(
+            List<Trip> trips,
+            Consumer<Trip> onOpenTrip,
+            Runnable onCreateTrip,
+            Runnable onAuthAction,
+            Runnable onProfileAction,
+            Runnable onFriendsAction,
+            User profile,
+            boolean signedIn,
+            int incomingFriendRequests,
+            Map<String, List<String>> companionsByTripId) {
+        this(trips, onOpenTrip, onCreateTrip, null, null, onAuthAction, onProfileAction,
+                onFriendsAction, profile, signedIn, incomingFriendRequests, companionsByTripId);
+    }
+
+    public GalleryPanel(
+            List<Trip> trips,
+            Consumer<Trip> onOpenTrip,
+            Runnable onCreateTrip,
+            Consumer<Trip> onDeleteTrip,
+            DestinationGeocoder destinationGeocoder,
+            Runnable onAuthAction,
+            Runnable onProfileAction,
+            Runnable onFriendsAction,
+            User profile,
+            boolean signedIn,
+            int incomingFriendRequests,
+            Map<String, List<String>> companionsByTripId) {
         this.onOpenTrip = onOpenTrip;
         this.onCreateTrip = onCreateTrip;
         this.onDeleteTrip = onDeleteTrip;
         this.destinationGeocoder = destinationGeocoder;
         this.onAuthAction = onAuthAction;
+        this.onProfileAction = onProfileAction;
+        this.onFriendsAction = onFriendsAction;
+        this.companionsByTripId = companionsByTripId == null
+                ? new HashMap<>() : new HashMap<>(companionsByTripId);
         setLayout(new BorderLayout());
         setBackground(SwingTheme.BACKGROUND);
 
@@ -93,11 +150,23 @@ public final class GalleryPanel extends JPanel {
         newTrip.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         newTrip.addActionListener(e -> onCreateTrip.run());
         actions.add(newTrip);
-        if (onAuthAction != null) {
-            authButton = new JButton(signedIn ? "Sign out" : "Sign in");
+        if (onAuthAction != null && !signedIn) {
+            JButton authButton = new JButton("Sign in");
             authButton.setFont(SwingTheme.BODY);
             authButton.addActionListener(e -> onAuthAction.run());
             actions.add(authButton);
+        }
+        if (signedIn && onFriendsAction != null) {
+            friendsButton = new BadgedButton("Friends");
+            friendsButton.setBadgeCount(incomingFriendRequests);
+            friendsButton.setToolTipText(tooltipForIncoming(incomingFriendRequests));
+            friendsButton.addActionListener(e -> onFriendsAction.run());
+            actions.add(friendsButton);
+        }
+        if (signedIn && onProfileAction != null) {
+            avatarButton = AvatarSupport.avatarButton(profile, AVATAR_SIZE);
+            avatarButton.addActionListener(e -> onProfileAction.run());
+            actions.add(avatarButton);
         }
         header.add(actions, BorderLayout.EAST);
 
@@ -117,6 +186,49 @@ public final class GalleryPanel extends JPanel {
         add(scroll, BorderLayout.CENTER);
 
         startTileLoading(trips);
+    }
+
+    public void setIncomingFriendRequestCount(int count) {
+        if (friendsButton == null) {
+            return;
+        }
+        friendsButton.setBadgeCount(count);
+        friendsButton.setToolTipText(tooltipForIncoming(count));
+    }
+
+    public void setProfileUser(User user) {
+        if (avatarButton == null) {
+            return;
+        }
+        avatarButton.setIcon(AvatarSupport.iconFor(user, AVATAR_SIZE));
+        avatarButton.setToolTipText(user == null ? "Profile" : "@" + user.getUsername());
+        avatarButton.revalidate();
+        avatarButton.repaint();
+    }
+
+    private static String tooltipForIncoming(int count) {
+        if (count <= 0) {
+            return "Friends";
+        }
+        return count + " incoming friend request" + (count == 1 ? "" : "s");
+    }
+
+    private static String formatWithLine(List<String> usernames) {
+        if (usernames == null || usernames.isEmpty()) {
+            return null;
+        }
+        StringBuilder line = new StringBuilder("With ");
+        for (int i = 0; i < usernames.size(); i++) {
+            String piece = (i == 0 ? "" : ", ") + "@" + usernames.get(i);
+            if (line.length() + piece.length() > WITH_LINE_MAX_CHARS) {
+                if (!line.toString().endsWith("...")) {
+                    line.append("...");
+                }
+                break;
+            }
+            line.append(piece);
+        }
+        return line.toString();
     }
 
     private JPanel createCard(Trip trip) {
@@ -209,6 +321,27 @@ public final class GalleryPanel extends JPanel {
             meta.setFont(SwingTheme.SMALL);
             meta.setAlignmentX(Component.CENTER_ALIGNMENT);
             content.add(meta);
+
+            String withLine = formatWithLine(companionsByTripId.get(trip.getId()));
+            if (withLine != null) {
+                content.add(Box.createVerticalStrut(4));
+                JLabel withLabel = new JLabel(withLine);
+                withLabel.setForeground(new Color(180, 200, 220));
+                withLabel.setFont(SwingTheme.SMALL);
+                withLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+                List<String> names = companionsByTripId.get(trip.getId());
+                if (names != null && !names.isEmpty()) {
+                    StringBuilder tip = new StringBuilder("With ");
+                    for (int i = 0; i < names.size(); i++) {
+                        if (i > 0) {
+                            tip.append(", ");
+                        }
+                        tip.append('@').append(names.get(i));
+                    }
+                    withLabel.setToolTipText(tip.toString());
+                }
+                content.add(withLabel);
+            }
 
             content.add(Box.createVerticalStrut(4));
 
