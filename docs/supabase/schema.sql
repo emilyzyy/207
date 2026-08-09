@@ -163,6 +163,7 @@ create policy trips_delete_own on public.trips
   for delete to authenticated using (auth.uid() = user_id);
 
 grant select, insert, update, delete on table public.trips to authenticated;
+grant select, insert, update, delete on table public.trip_days to authenticated;
 grant select, insert, update, delete on table public.trip_bookmarks to authenticated;
 grant select, insert, update, delete on table public.scheduled_events to authenticated;
 
@@ -170,45 +171,21 @@ drop policy if exists days_select_own on public.trip_days;
 drop policy if exists days_insert_own on public.trip_days;
 drop policy if exists days_update_own on public.trip_days;
 drop policy if exists days_delete_own on public.trip_days;
+drop policy if exists days_select_member on public.trip_days;
+drop policy if exists days_insert_member on public.trip_days;
+drop policy if exists days_update_member on public.trip_days;
+drop policy if exists days_delete_member on public.trip_days;
 
-create policy days_select_own on public.trip_days
-  for select using (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-  );
-create policy days_insert_own on public.trip_days
-  for insert with check (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-  );
-create policy days_update_own on public.trip_days
-  for update using (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-  );
-create policy days_delete_own on public.trip_days
-  for delete using (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-  );
-
-drop policy if exists days_select_own on public.trip_days;
-drop policy if exists days_insert_own on public.trip_days;
-drop policy if exists days_update_own on public.trip_days;
-drop policy if exists days_delete_own on public.trip_days;
-
-create policy days_select_own on public.trip_days
-  for select using (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-  );
-create policy days_insert_own on public.trip_days
-  for insert with check (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-  );
-create policy days_update_own on public.trip_days
-  for update using (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-  );
-create policy days_delete_own on public.trip_days
-  for delete using (
-    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
-  );
+create policy days_select_member on public.trip_days
+  for select to authenticated using (public.can_access_trip(trip_id));
+create policy days_insert_member on public.trip_days
+  for insert to authenticated with check (public.can_edit_trip(trip_id));
+create policy days_update_member on public.trip_days
+  for update to authenticated
+  using (public.can_edit_trip(trip_id))
+  with check (public.can_edit_trip(trip_id));
+create policy days_delete_member on public.trip_days
+  for delete to authenticated using (public.can_edit_trip(trip_id));
 
 drop policy if exists bookmarks_select_own on public.trip_bookmarks;
 drop policy if exists bookmarks_insert_own on public.trip_bookmarks;
