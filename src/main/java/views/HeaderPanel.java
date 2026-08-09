@@ -7,6 +7,7 @@ import interface_adapter.viewmodels.DayPlanViewModel;
 import entity.entities.User;
 import java.awt.BorderLayout;
 import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -90,6 +91,13 @@ public final class HeaderPanel extends JPanel {
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         actions.setOpaque(false);
+        Dimension headerActionSize = new Dimension(82, 38);
+        shareButton.setPreferredSize(headerActionSize);
+        shareButton.setMinimumSize(headerActionSize);
+        friendsButton.setPreferredSize(headerActionSize);
+        friendsButton.setMinimumSize(headerActionSize);
+        avatarButton.setPreferredSize(new Dimension(38, 38));
+        avatarButton.setMinimumSize(new Dimension(38, 38));
         shareButton.setName("share-trip");
         shareButton.addActionListener(event -> {
             shareController.execute();

@@ -9,10 +9,12 @@ import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.TripAccessViewModel;
 import interface_adapter.viewmodels.TripOptionsViewModel;
 import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
 import java.awt.BorderLayout;
+import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.Cursor;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.BorderFactory;
@@ -107,6 +109,9 @@ public final class BookmarksPanel extends JPanel {
         add(scroll, BorderLayout.CENTER);
         render(viewModel.getState());
         viewModel.addPropertyChangeListener(event -> render(viewModel.getState()));
+        if (dayPlan != null) {
+            dayPlan.addPropertyChangeListener(event -> render(viewModel.getState()));
+        }
         if (selection != null) {
             selection.addPropertyChangeListener(event -> render(viewModel.getState()));
         }
@@ -151,29 +156,55 @@ public final class BookmarksPanel extends JPanel {
                 }
             });
             actions.add(remove);
-            JButton add = SwingTheme.primaryButton("Add to plan");
-            add.setEnabled(manualPlan != null && canEditItinerary());
-            if (!canEditItinerary()) {
-                add.setToolTipText("View only — you cannot change this itinerary");
-            }
-            add.addActionListener(event -> {
+            if (isInDayPlan(activity)) {
+                JLabel planned = new JLabel("In day plan");
+                planned.setFont(SwingTheme.SMALL);
+                planned.setForeground(SwingTheme.MUTED);
+                actions.add(planned);
+            } else {
+                JButton add = SwingTheme.primaryButton("Add to plan");
+                add.setEnabled(manualPlan != null && canEditItinerary());
+
                 if (!canEditItinerary()) {
-                    return;
+                    add.setToolTipText("View only — you cannot change this itinerary");
                 }
-                if (dayPlan != null && tripOptions != null) {
-                    AddToPlanDialog.open(
-                            this, activity, dayPlan, tripOptions, manualPlan);
-                } else {
-                    manualPlan.add(activity.getId(), "");
-                }
-            });
-            actions.add(add);
+
+                add.addActionListener(event -> {
+                    if (!canEditItinerary()) {
+                        return;
+                    }
+
+                    if (dayPlan != null && tripOptions != null) {
+                        AddToPlanDialog.open(
+                                this, activity, dayPlan, tripOptions, manualPlan);
+                    } else {
+                        manualPlan.add(activity.getId(), "");
+                    }
+                });
+
+                actions.add(add);
+            }
             card.add(actions, BorderLayout.SOUTH);
             list.add(card);
             list.add(Box.createVerticalStrut(8));
         }
         list.revalidate();
         list.repaint();
+    }
+
+    private boolean isInDayPlan(Activity activity) {
+        if (dayPlan == null || activity == null) {
+            return false;
+        }
+
+        for (ScheduledEvent event : dayPlan.getState().getEvents()) {
+            if (event.getActivity() != null
+                    && activity.getId().equals(event.getActivity().getId())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void makeSelectable(JPanel card, Activity activity) {

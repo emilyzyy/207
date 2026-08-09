@@ -289,14 +289,21 @@ public final class DayPlanPanel extends JPanel {
 
         JPanel secondary = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         secondary.setOpaque(false);
+        java.awt.Dimension actionHeight = new java.awt.Dimension(78, 38);
+        optionsButton.setPreferredSize(actionHeight);
+        optionsButton.setMinimumSize(actionHeight);
         optionsButton.setEnabled(false);
         optionsButton.setToolTipText("Edit this trip's date and daily start/end times");
         optionsButton.addActionListener(event -> openOptionsAction.run());
         secondary.add(optionsButton);
         autoscheduleButton.setToolTipText("Suggest a better order and times for this day");
+        autoscheduleButton.setPreferredSize(new java.awt.Dimension(118, 38));
+        autoscheduleButton.setMinimumSize(new java.awt.Dimension(118, 38));
         autoscheduleButton.addActionListener(event -> openSettings());
         secondary.add(autoscheduleButton);
         JButton calendar = SwingTheme.secondaryButton("Calendar View");
+        calendar.setPreferredSize(new java.awt.Dimension(116, 38));
+        calendar.setMinimumSize(new java.awt.Dimension(116, 38));
         calendar.addActionListener(event -> openCalendarAction.run());
         secondary.add(calendar);
         bar.add(secondary, BorderLayout.EAST);
@@ -950,14 +957,14 @@ public final class DayPlanPanel extends JPanel {
     }
 
     private void editEvent(ScheduledEvent event) {
-        JTextField start = new JTextField(TimeDisplay.format(event.getStartTime()));
-        JTextField end = new JTextField(TimeDisplay.format(event.getEndTime()));
+        TimeSelectorPanel start = new TimeSelectorPanel(event.getStartTime());
+        TimeSelectorPanel end = new TimeSelectorPanel(event.getEndTime());
         JTextField notes = new JTextField(event.getNotes());
         JPanel form = new JPanel();
         form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
-        form.add(new JLabel("Start time, e.g. 9:00 AM"));
+        form.add(new JLabel("Start time"));
         form.add(start);
-        form.add(new JLabel("End time, e.g. 10:30 AM"));
+        form.add(new JLabel("End time"));
         form.add(end);
         form.add(new JLabel("Notes"));
         form.add(notes);
@@ -966,7 +973,8 @@ public final class DayPlanPanel extends JPanel {
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (choice == JOptionPane.OK_OPTION) {
             manualPlanController.edit(
-                    event.getId(), start.getText(), end.getText(), notes.getText());
+                    event.getId(), TimeDisplay.format(start.getTime()),
+                    TimeDisplay.format(end.getTime()), notes.getText());
         }
     }
 }
