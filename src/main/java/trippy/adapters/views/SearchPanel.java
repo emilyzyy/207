@@ -115,6 +115,12 @@ public final class SearchPanel extends JPanel {
         this.tripAccess = tripAccess;
         SwingTheme.styleComboBox(category);
         SwingTheme.styleComboBox(type);
+        Dimension categorySize = new Dimension(category.getPreferredSize().width, 32);
+        Dimension settingSize = new Dimension(type.getPreferredSize().width, 32);
+        category.setPreferredSize(categorySize);
+        category.setMinimumSize(categorySize);
+        type.setPreferredSize(settingSize);
+        type.setMinimumSize(settingSize);
         category.setRenderer(new CategoryFilterRenderer());
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.BACKGROUND);

@@ -289,14 +289,21 @@ public final class DayPlanPanel extends JPanel {
 
         JPanel secondary = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         secondary.setOpaque(false);
+        java.awt.Dimension actionHeight = new java.awt.Dimension(78, 38);
+        optionsButton.setPreferredSize(actionHeight);
+        optionsButton.setMinimumSize(actionHeight);
         optionsButton.setEnabled(false);
         optionsButton.setToolTipText("Edit this trip's date and daily start/end times");
         optionsButton.addActionListener(event -> openOptionsAction.run());
         secondary.add(optionsButton);
         autoscheduleButton.setToolTipText("Suggest a better order and times for this day");
+        autoscheduleButton.setPreferredSize(new java.awt.Dimension(118, 38));
+        autoscheduleButton.setMinimumSize(new java.awt.Dimension(118, 38));
         autoscheduleButton.addActionListener(event -> openSettings());
         secondary.add(autoscheduleButton);
         JButton calendar = SwingTheme.secondaryButton("Calendar View");
+        calendar.setPreferredSize(new java.awt.Dimension(116, 38));
+        calendar.setMinimumSize(new java.awt.Dimension(116, 38));
         calendar.addActionListener(event -> openCalendarAction.run());
         secondary.add(calendar);
         bar.add(secondary, BorderLayout.EAST);

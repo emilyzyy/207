@@ -163,6 +163,8 @@ public final class GalleryPanel extends JPanel {
         }
         if (signedIn && onFriendsAction != null) {
             friendsButton = new BadgedButton("Friends");
+            friendsButton.setPreferredSize(new Dimension(100, galleryActionSize.height));
+            friendsButton.setMinimumSize(new Dimension(100, galleryActionSize.height));
             friendsButton.setBadgeCount(incomingFriendRequests);
             friendsButton.setToolTipText(tooltipForIncoming(incomingFriendRequests));
             friendsButton.addActionListener(e -> onFriendsAction.run());
@@ -170,6 +172,10 @@ public final class GalleryPanel extends JPanel {
         }
         if (signedIn && onProfileAction != null) {
             avatarButton = AvatarSupport.avatarButton(profile, AVATAR_SIZE);
+            avatarButton.setPreferredSize(new Dimension(
+                    galleryActionSize.height, galleryActionSize.height));
+            avatarButton.setMinimumSize(new Dimension(
+                    galleryActionSize.height, galleryActionSize.height));
             avatarButton.addActionListener(e -> onProfileAction.run());
             actions.add(avatarButton);
         }
