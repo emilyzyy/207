@@ -373,6 +373,27 @@ public final class DayPlanPanel extends JPanel {
         eventList.add(timeline, BorderLayout.CENTER);
     }
 
+    /**
+     * The "Why this schedule?" control and, when expanded, the figures and reasons.
+     *
+     * <p>Built here rather than inline so the same component can sit in the side column on
+     * a wide window and above the rows on a narrow one, without the two drifting apart.</p>
+     */
+    private JPanel explanationControl(DayPlanState state) {
+        JPanel holder = new JPanel();
+        holder.setLayout(new BoxLayout(holder, BoxLayout.Y_AXIS));
+        holder.setOpaque(false);
+        holder.setAlignmentX(Component.LEFT_ALIGNMENT);
+        whyButton.setText((whyButton.isSelected() ? "\u25be " : "\u25b8 ")
+                + "Why this schedule?");
+        whyButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+        holder.add(whyButton);
+        if (whyButton.isSelected()) {
+            holder.add(whySection(state));
+        }
+        return holder;
+    }
+
     private void renderPreview(DayPlanState state) {
         previewArea.removeAll();
         if (state.getStatus() != AutoScheduleStatus.PREVIEW) {
@@ -398,9 +419,20 @@ public final class DayPlanPanel extends JPanel {
             previewArea.add(improvements);
             previewArea.add(Box.createVerticalStrut(10));
         }
+        // On a wide window the whole explanation column lives beside the schedule rather
+        // than under it. The Day Plan timeline is full height, so anything appended below
+        // it can only be reached by scrolling past the entire day -- which made the
+        // reasoning that justifies the proposal the hardest thing on screen to find.
         sidebarSlot.removeAll();
         if (wide) {
-            sidebarSlot.add(improvements, BorderLayout.NORTH);
+            JPanel column = new JPanel();
+            column.setLayout(new BoxLayout(column, BoxLayout.Y_AXIS));
+            column.setOpaque(false);
+            improvements.setAlignmentX(Component.LEFT_ALIGNMENT);
+            column.add(improvements);
+            column.add(Box.createVerticalStrut(10));
+            column.add(explanationControl(state));
+            sidebarSlot.add(column, BorderLayout.NORTH);
         }
         sidebarSlot.setVisible(wide);
 
@@ -421,21 +453,18 @@ public final class DayPlanPanel extends JPanel {
             previewArea.add(Box.createVerticalStrut(10));
         }
 
+        // Narrow windows have no column to put it in, so it goes above the rows rather
+        // than after them, for the same reason.
+        if (!wide) {
+            previewArea.add(explanationControl(state));
+            previewArea.add(Box.createVerticalStrut(10));
+        }
+
         for (PreviewRowView row : state.getPreviewRows()) {
             previewArea.add(previewCard(row));
             previewArea.add(Box.createVerticalStrut(6));
         }
 
-        previewArea.add(Box.createVerticalStrut(4));
-        {
-            whyButton.setText((whyButton.isSelected() ? "\u25be " : "\u25b8 ")
-                    + "Why this schedule?");
-            whyButton.setAlignmentX(Component.LEFT_ALIGNMENT);
-            previewArea.add(whyButton);
-            if (whyButton.isSelected()) {
-                previewArea.add(whySection(state));
-            }
-        }
     }
 
     private JLabel noticeLabel(String text) {

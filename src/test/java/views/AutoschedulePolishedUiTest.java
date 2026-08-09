@@ -579,4 +579,68 @@ class AutoschedulePolishedUiTest {
         assertEquals(before, java.awt.Window.getWindows().length,
                 "a panel is not a window; the Day Plan must not open one to render");
     }
+
+    /**
+     * Explanations belong with the proposal, not after the whole timeline.
+     *
+     * <p>A five-activity day becomes nine preview rows once travel is interleaved. With the
+     * "Why this schedule?" control rendered after those rows, the one thing that justifies
+     * the schedule was the one thing a user had to scroll the entire schedule to reach —
+     * which is exactly what was reported. This pins the order by component position.
+     */
+    @Test
+    void theExplanationControlComesBeforeTheProposedRowsNotAfterThem() throws Exception {
+        List<ImprovementView> improvements = Collections.singletonList(
+                new ImprovementView("\u23f3", "63 min of waiting removed", "Less dead time"));
+        DayPlanViewModel viewModel =
+                new DayPlanViewModel(previewWithImprovements(improvements));
+        DayPlanPanel panel = panelFor(viewModel);
+        // A component with no peer never gets real bounds, so host it in a frame that is
+        // never shown; addNotify + validate is what gives every child a position.
+        final javax.swing.JFrame host = new javax.swing.JFrame();
+        SwingUtilities.invokeAndWait(() -> {
+            host.setUndecorated(true);
+            host.getContentPane().add(panel);
+            host.setSize(DayPlanPanel.WIDE_LAYOUT_MINIMUM + 120, 900);
+            host.addNotify();
+            host.validate();
+        });
+        resizeTo(panel, DayPlanPanel.WIDE_LAYOUT_MINIMUM + 120);
+        SwingUtilities.invokeAndWait(host::validate);
+
+        AbstractButton why = null;
+        for (Component component : all(panel)) {
+            if (component instanceof AbstractButton
+                    && ((AbstractButton) component).getText() != null
+                    && ((AbstractButton) component).getText().contains("Why this schedule?")) {
+                why = (AbstractButton) component;
+            }
+        }
+        assertNotNull(why, "the Preview must offer its reasoning");
+
+        int whyY = yWithin(panel, why);
+        int lastRowY = -1;
+        for (Component component : all(panel)) {
+            String text = component instanceof JLabel ? ((JLabel) component).getText() : null;
+            if (text != null && text.contains("Travel to")) {
+                lastRowY = Math.max(lastRowY, yWithin(panel, component));
+            }
+        }
+        assertTrue(lastRowY > 0, "the proposal should contain travel rows");
+        assertTrue(whyY < lastRowY,
+                "the reasoning control sits above the timeline, not below it (why=" + whyY
+                        + ", lastRow=" + lastRowY + ")");
+        host.dispose();
+    }
+
+    /** Y position of a component relative to the panel, summing container offsets. */
+    private static int yWithin(Component root, Component target) {
+        int y = 0;
+        Component cursor = target;
+        while (cursor != null && cursor != root) {
+            y += cursor.getY();
+            cursor = cursor.getParent();
+        }
+        return y;
+    }
 }

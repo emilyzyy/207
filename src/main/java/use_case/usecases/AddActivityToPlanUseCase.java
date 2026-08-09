@@ -38,7 +38,10 @@ public final class AddActivityToPlanUseCase {
     }
 
     private Trip add(Trip trip, Activity activity, LocalTime start, LocalTime end) {
-        List<ScheduledEvent> updated = new ArrayList<>(trip.getScheduledEvents());
+        // A new activity changes the route, so the previously computed journeys no longer
+        // describe this day. They go until Autoschedule works them out again.
+        List<ScheduledEvent> updated = new ArrayList<>(
+                ScheduleEdits.withoutDerivedTravel(trip.getScheduledEvents()));
         updated.add(new ScheduledEvent(UUID.randomUUID().toString(), activity, start, end,
                 EventType.ACTIVITY, "Added manually"));
         updated.sort(Comparator.comparing(ScheduledEvent::getStartTime));
