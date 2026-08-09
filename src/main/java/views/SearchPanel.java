@@ -367,8 +367,18 @@ public final class SearchPanel extends JPanel {
                 : SwingTheme.primaryButton("Bookmark");
         bookmarkButton.setEnabled(bookmarks != null && canEditItinerary());
         bookmarkButton.addActionListener(event -> {
-            if (canEditItinerary()) {
-                bookmarks.toggle(activity.getId());
+            if (!canEditItinerary()) {
+                return;
+            }
+            if (saved && !RemovalDialogs.confirm(
+                    this,
+                    "Remove bookmark",
+                    "Remove \"" + activity.getName() + "\" from your bookmarks?")) {
+                return;
+            }
+            bookmarks.toggle(activity.getId());
+            if (saved) {
+                feedback.setText("Bookmark removed: " + activity.getName());
             }
         });
         actions.add(bookmarkButton);
