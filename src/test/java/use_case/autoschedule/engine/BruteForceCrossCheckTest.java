@@ -337,14 +337,22 @@ class BruteForceCrossCheckTest {
             // The journey is then slid as late as it will go while still arriving by the
             // start, worked out here from scratch rather than by calling the planner, so the
             // two sides of this comparison stay genuinely independent.
+            List<LocalTime> arrivals = new ArrayList<>();
+            arrivals.add(start);
+            for (TimeWindow window : blocked) {
+                if (window.getStart().isAfter(cursor) && !window.getStart().isAfter(start)) {
+                    arrivals.add(window.getStart());
+                }
+            }
             if (previous != null) {
+                for (LocalTime arriveBy : arrivals) {
                 for (DeparturePeriod period : DeparturePeriod.values()) {
                     int minutes = problem.getTravel().estimateAt(previous.getEventId(),
                             task.getEventId(), period.getStart()).getMinutes();
-                    LocalTime candidate = start.minusMinutes(minutes);
+                    LocalTime candidate = arriveBy.minusMinutes(minutes);
                     boolean sameCost = problem.getTravel().estimateAt(previous.getEventId(),
                             task.getEventId(), candidate).getMinutes() == minutes;
-                    if (minutes > 0 && !candidate.isBefore(start)) {
+                    if (minutes > 0 && !candidate.isBefore(arriveBy)) {
                         continue;
                     }
                     if (candidate.isBefore(cursor) || !candidate.isAfter(departure) || !sameCost) {
@@ -356,6 +364,7 @@ class BruteForceCrossCheckTest {
                     }
                     departure = candidate;
                     travel = minutes;
+                }
                 }
                 idle = Math.max(0,
                         (start.toSecondOfDay() - cursor.toSecondOfDay()) / 60 - travel);
