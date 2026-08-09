@@ -342,6 +342,75 @@ class AutoschedulePolishedUiTest {
                 "travel got worse in this fixture and the screen must say so: " + expanded);
     }
 
+    /**
+     * On a narrow window the two columns collapse into one, and the order matters: the
+     * reasoning goes above the schedule. Below it, a full day of timeline stood between the
+     * proposal and the only thing explaining it.
+     */
+    @Test
+    void theReasoningSitsAboveTheTimelineOnANarrowWindow() throws Exception {
+        DayPlanViewModel viewModel = new DayPlanViewModel(previewWithImprovements(
+                Collections.singletonList(new ImprovementView("\u23f3",
+                        "63 min of waiting removed", "Less dead time"))));
+        DayPlanPanel panel = panelFor(viewModel);
+        final javax.swing.JFrame host = new javax.swing.JFrame();
+        SwingUtilities.invokeAndWait(() -> {
+            host.setUndecorated(true);
+            host.getContentPane().add(panel);
+            host.setSize(DayPlanPanel.WIDE_LAYOUT_MINIMUM - 90, 900);
+            host.addNotify();
+            host.validate();
+        });
+        resizeTo(panel, DayPlanPanel.WIDE_LAYOUT_MINIMUM - 90);
+        SwingUtilities.invokeAndWait(host::validate);
+
+        final int[] positions = new int[2];
+        SwingUtilities.invokeAndWait(() -> {
+            AbstractButton why = null;
+            for (Component component : all(panel)) {
+                if (component instanceof AbstractButton
+                        && ((AbstractButton) component).getText() != null
+                        && ((AbstractButton) component).getText()
+                        .contains("Why this schedule?")) {
+                    why = (AbstractButton) component;
+                }
+            }
+            assertNotNull(why, "the Preview must offer its reasoning: " + allText(panel));
+            positions[0] = yWithin(panel, why);
+            Container timeline = timelineIn(panel);
+            assertNotNull(timeline, "the schedule is drawn into a timeline");
+            positions[1] = yWithin(panel, timeline);
+        });
+
+        assertTrue(positions[0] < positions[1],
+                "the reasoning belongs above the schedule when there is only one column "
+                        + "(why=" + positions[0] + ", timeline=" + positions[1] + ")");
+        host.dispose();
+    }
+
+    /**
+     * A proposal running late morning to mid afternoon should draw late morning to mid
+     * afternoon, not nine to nine with the schedule adrift in the middle of it.
+     */
+    @Test
+    void theTimelineIsFittedToTheProposalRatherThanToTheWholeDay() throws Exception {
+        DayPlanViewModel idle = new DayPlanViewModel(planWith(
+                Arrays.asList(event("museum", 9)), Collections.emptySet(),
+                Collections.emptyList()));
+        DayPlanPanel wholeDay = panelFor(idle);
+        DayPlanPanel proposal = panelFor(new DayPlanViewModel(previewState()));
+
+        final int[] heights = new int[2];
+        SwingUtilities.invokeAndWait(() -> {
+            heights[0] = timelineIn(wholeDay).getPreferredSize().height;
+            heights[1] = timelineIn(proposal).getPreferredSize().height;
+        });
+
+        assertTrue(heights[1] < heights[0],
+                "the previewed timeline should be shorter than a whole empty day (day="
+                        + heights[0] + ", proposal=" + heights[1] + ")");
+    }
+
     /** The timeline the panel builds its cards into, found by its accessible name. */
     private static Container timelineIn(Component root) {
         for (Component component : all(root)) {
