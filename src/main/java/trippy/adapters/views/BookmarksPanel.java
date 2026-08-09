@@ -9,10 +9,12 @@ import trippy.adapters.viewmodels.DayPlanViewModel;
 import trippy.adapters.viewmodels.TripAccessViewModel;
 import trippy.adapters.viewmodels.TripOptionsViewModel;
 import trippy.domain.entities.Activity;
+import trippy.domain.entities.ScheduledEvent;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.BorderFactory;
@@ -107,6 +109,9 @@ public final class BookmarksPanel extends JPanel {
         add(scroll, BorderLayout.CENTER);
         render(viewModel.getState());
         viewModel.addPropertyChangeListener(event -> render(viewModel.getState()));
+        if (dayPlan != null) {
+            dayPlan.addPropertyChangeListener(event -> render(viewModel.getState()));
+        }
         if (selection != null) {
             selection.addPropertyChangeListener(event -> render(viewModel.getState()));
         }
@@ -130,6 +135,9 @@ public final class BookmarksPanel extends JPanel {
         for (Activity activity : state.getBookmarks()) {
             JPanel card = new JPanel(new BorderLayout());
             SwingTheme.styleCard(card);
+            card.setPreferredSize(new Dimension(10, 132));
+            card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 132));
+            card.setMinimumSize(new Dimension(0, 132));
             card.setBackground(SwingTheme.categorySurface(activity.getCategory()));
             makeSelectable(card, activity);
             JLabel name = new JLabel(activity.getName());
@@ -151,6 +159,16 @@ public final class BookmarksPanel extends JPanel {
                 }
             });
             actions.add(remove);
+            if (isInDayPlan(activity)) {
+                JLabel planned = new JLabel("In day plan");
+                planned.setFont(SwingTheme.SMALL);
+                planned.setForeground(SwingTheme.MUTED);
+                actions.add(planned);
+                card.add(actions, BorderLayout.SOUTH);
+                list.add(card);
+                list.add(Box.createVerticalStrut(8));
+                continue;
+            }
             JButton add = SwingTheme.primaryButton("Add to plan");
             add.setEnabled(manualPlan != null && canEditItinerary());
             if (!canEditItinerary()) {
@@ -174,6 +192,19 @@ public final class BookmarksPanel extends JPanel {
         }
         list.revalidate();
         list.repaint();
+    }
+
+    private boolean isInDayPlan(Activity activity) {
+        if (dayPlan == null || activity == null) {
+            return false;
+        }
+        for (ScheduledEvent event : dayPlan.getState().getEvents()) {
+            if (event.getActivity() != null
+                    && activity.getId().equals(event.getActivity().getId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void makeSelectable(JPanel card, Activity activity) {

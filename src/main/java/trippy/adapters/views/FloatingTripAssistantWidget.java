@@ -8,6 +8,11 @@ import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.geom.Ellipse2D;
 import javax.swing.JButton;
+import javax.swing.BorderFactory;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import javax.swing.JLayeredPane;
 
 /** Keeps George available above every planner tab without creating another window. */
@@ -23,6 +28,7 @@ public final class FloatingTripAssistantWidget extends JLayeredPane {
     private final Component content;
     private final TripAssistantPanel assistantPanel;
     private final JButton avatarButton = new CircularAvatarButton();
+    private final JPanel greeting = createGreeting();
     private boolean expanded;
 
     public FloatingTripAssistantWidget(
@@ -37,6 +43,7 @@ public final class FloatingTripAssistantWidget extends JLayeredPane {
         setBackground(SwingTheme.BACKGROUND);
         add(content, DEFAULT_LAYER);
         add(assistantPanel, PALETTE_LAYER);
+        add(greeting, PALETTE_LAYER);
         add(avatarButton, MODAL_LAYER);
 
         assistantPanel.setVisible(false);
@@ -53,6 +60,12 @@ public final class FloatingTripAssistantWidget extends JLayeredPane {
         int avatarX = Math.max(0, getWidth() - EDGE_GAP - avatarWidth);
         int avatarY = Math.max(0, getHeight() - AVATAR_BOTTOM_GAP - avatarHeight);
         avatarButton.setBounds(avatarX, avatarY, avatarWidth, avatarHeight);
+
+        int greetingWidth = Math.min(300, Math.max(0, avatarX - 2 * EDGE_GAP));
+        int greetingHeight = 58;
+        int greetingX = Math.max(EDGE_GAP, avatarX - PANEL_GAP - greetingWidth);
+        int greetingY = Math.max(EDGE_GAP, avatarY + (avatarHeight - greetingHeight) / 2);
+        greeting.setBounds(greetingX, greetingY, greetingWidth, greetingHeight);
 
         int availableWidth = Math.max(0, getWidth() - 2 * EDGE_GAP);
         int availableHeight = Math.max(0, avatarY - PANEL_GAP - EDGE_GAP);
@@ -101,6 +114,30 @@ public final class FloatingTripAssistantWidget extends JLayeredPane {
 
     public TripAssistantPanel getAssistantPanel() {
         return assistantPanel;
+    }
+
+    private JPanel createGreeting() {
+        JPanel bubble = new JPanel(new BorderLayout(8, 0));
+        bubble.setBackground(SwingTheme.PANEL);
+        bubble.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(SwingTheme.LINE, 1, true),
+                BorderFactory.createEmptyBorder(10, 12, 10, 6)));
+        JLabel message = new JLabel("Hi, I'm George. Ask me anything! :3");
+        message.setFont(SwingTheme.BODY);
+        message.setForeground(SwingTheme.NAVY);
+        bubble.add(message, BorderLayout.CENTER);
+        JButton clear = new JButton("\u00d7");
+        clear.setToolTipText("Dismiss George's greeting");
+        clear.setBorder(BorderFactory.createEmptyBorder(2, 8, 2, 8));
+        clear.setContentAreaFilled(false);
+        clear.setFocusPainted(false);
+        clear.setForeground(SwingTheme.MUTED);
+        clear.addActionListener(event -> bubble.setVisible(false));
+        JPanel close = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        close.setOpaque(false);
+        close.add(clear);
+        bubble.add(close, BorderLayout.EAST);
+        return bubble;
     }
 
     /** Circular, transparent avatar button without a painted surround. */

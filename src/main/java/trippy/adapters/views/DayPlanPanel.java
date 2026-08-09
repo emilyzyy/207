@@ -950,14 +950,14 @@ public final class DayPlanPanel extends JPanel {
     }
 
     private void editEvent(ScheduledEvent event) {
-        JTextField start = new JTextField(TimeDisplay.format(event.getStartTime()));
-        JTextField end = new JTextField(TimeDisplay.format(event.getEndTime()));
+        TimeSelectorPanel start = new TimeSelectorPanel(event.getStartTime());
+        TimeSelectorPanel end = new TimeSelectorPanel(event.getEndTime());
         JTextField notes = new JTextField(event.getNotes());
         JPanel form = new JPanel();
         form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
-        form.add(new JLabel("Start time, e.g. 9:00 AM"));
+        form.add(new JLabel("Start time"));
         form.add(start);
-        form.add(new JLabel("End time, e.g. 10:30 AM"));
+        form.add(new JLabel("End time"));
         form.add(end);
         form.add(new JLabel("Notes"));
         form.add(notes);
@@ -966,7 +966,8 @@ public final class DayPlanPanel extends JPanel {
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (choice == JOptionPane.OK_OPTION) {
             manualPlanController.edit(
-                    event.getId(), start.getText(), end.getText(), notes.getText());
+                    event.getId(), TimeDisplay.format(start.getTime()),
+                    TimeDisplay.format(end.getTime()), notes.getText());
         }
     }
 }

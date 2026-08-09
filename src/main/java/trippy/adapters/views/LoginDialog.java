@@ -207,7 +207,7 @@ public final class LoginDialog extends JDialog {
             switchLink.setText("Sign in");
         } else {
             setTitle("Sign in");
-            titleLabel.setText("Sign in to save and reopen itineraries");
+            titleLabel.setText("Sign in");
             primaryButton.setText("Sign in");
             confirmLabel.setVisible(false);
             confirmPasswordField.setVisible(false);

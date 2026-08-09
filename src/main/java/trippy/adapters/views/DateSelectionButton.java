@@ -31,7 +31,7 @@ public final class DateSelectionButton extends JButton {
     private void showCalendar() {
         DatePickerPanel picker = new DatePickerPanel(date);
         JDialog dialog = new JDialog(
-                SwingUtilities.getWindowAncestor(this), "Select trip date",
+                SwingUtilities.getWindowAncestor(this), "Select trip start date",
                 Dialog.ModalityType.APPLICATION_MODAL);
         JButton cancel = SwingTheme.secondaryButton("Cancel");
         cancel.addActionListener(event -> dialog.dispose());
