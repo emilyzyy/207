@@ -1,0 +1,137 @@
+@startuml autoschedule-use-case
+' Autoschedule full use-case slice — verified against commit 7f3293a (2026-08-08).
+' Slide-legible companion to the exhaustive diagram in docs/autoschedule/diagrams/.
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 13
+skinparam classFontSize 13
+skinparam ArrowColor #37474F
+skinparam classBorderColor #546E7A
+skinparam packageBorderColor #90A4AE
+skinparam packageFontStyle bold
+skinparam classAttributeIconSize 0
+left to right direction
+
+package "Frameworks & Drivers" #F4F7FA {
+  class DayPlanPanel <<Swing View>>
+  class AutoScheduleSettingsDialog <<Swing View>>
+  class ScheduleImprovementsPanel <<Swing View>>
+  class InMemoryTripRepository
+  class OsrmDistanceService
+  class OpenMeteoWeatherService
+  class AppBuilder <<composition root>>
+}
+
+package "Interface Adapters" #F7F9FB {
+  class AutoScheduleController
+  class AutoScheduleSettings <<DTO>>
+  class AutoSchedulePresenter
+  class DayPlanViewModel
+  class DayPlanState <<immutable state>>
+  class DistanceServiceTravelTimeEstimator <<adapter>>
+  class WeatherServiceContextGateway <<adapter>>
+}
+
+package "Application Business Rules" #F5FAF6 {
+  interface AutoScheduleInputBoundary <<Input Boundary>>
+  class AutoScheduleInputData <<Input Data>>
+  class AutoScheduleApplyInputData <<Input Data>>
+  class AutoScheduleInteractor
+
+  interface AutoScheduleOutputBoundary <<Output Boundary>>
+  class AutoSchedulePreviewOutputData <<Output Data>>
+  class AutoScheduleConflictOutputData <<Output Data>>
+
+  interface TripRepository <<Data Access>>
+  interface TravelTimeEstimator <<gateway>>
+  interface WeatherContextGateway <<gateway>>
+
+  class ProblemValidator
+  class TravelMatrixPrefetcher
+  class ScheduleTask
+  class ScheduleEngine <<pure search>>
+  class ActivityPlacer
+  class ScheduleImprovementFinder
+  class ReasonCollector
+
+  interface SoftPolicy <<Strategy>>
+  class WeatherSuitabilityPolicy
+  class MealWindowPolicy
+  class DaylightPolicy
+}
+
+package "Entities" #FBF7F0 {
+  class Trip <<entity>>
+  class ScheduledEvent <<entity>>
+  class Activity <<entity>>
+  class OpeningHours <<value object>>
+}
+
+' layer ordering anchors (invisible): Frameworks -> Adapters -> Application -> Entities
+AutoScheduleSettingsDialog -[hidden]-> AutoScheduleSettings
+InMemoryTripRepository -[hidden]-> DistanceServiceTravelTimeEstimator
+DayPlanState -[hidden]-> AutoScheduleInputData
+WeatherServiceContextGateway -[hidden]-> WeatherContextGateway
+ScheduleEngine -[hidden]-> Trip
+DaylightPolicy -[hidden]-> OpeningHours
+
+' ---- user request path ----
+DayPlanPanel --> AutoScheduleSettingsDialog : opens
+DayPlanPanel --> AutoScheduleController
+AutoScheduleController --> AutoScheduleSettings
+AutoScheduleController --> AutoScheduleInputBoundary : preview / apply
+AutoScheduleController ..> AutoScheduleInputData : creates
+AutoScheduleController ..> AutoScheduleApplyInputData : creates
+AutoScheduleInteractor .up.|> AutoScheduleInputBoundary
+
+' ---- what the use case depends on (all inward-owned) ----
+AutoScheduleInteractor --> TripRepository
+AutoScheduleInteractor --> TravelTimeEstimator : via prefetcher
+AutoScheduleInteractor --> WeatherContextGateway
+AutoScheduleInteractor --> AutoScheduleOutputBoundary
+AutoScheduleInteractor --> ProblemValidator
+AutoScheduleInteractor --> TravelMatrixPrefetcher
+AutoScheduleInteractor --> ScheduleEngine
+AutoScheduleInteractor --> ScheduleImprovementFinder
+AutoScheduleInteractor --> ReasonCollector
+AutoScheduleInteractor ..> ScheduleTask : builds for trip date
+AutoScheduleInteractor ..> AutoSchedulePreviewOutputData : creates
+AutoScheduleInteractor ..> AutoScheduleConflictOutputData : creates
+
+ScheduleEngine --> ActivityPlacer
+ScheduleEngine --> SoftPolicy : scores placements
+WeatherSuitabilityPolicy .up.|> SoftPolicy
+MealWindowPolicy .up.|> SoftPolicy
+DaylightPolicy .up.|> SoftPolicy
+
+' ---- entities ----
+AutoScheduleInteractor --> Trip : loads / replaceSchedule
+Trip *-- ScheduledEvent
+ScheduledEvent --> Activity
+Activity *-- OpeningHours
+ScheduleTask --> Activity
+
+' ---- results path ----
+AutoSchedulePresenter .up.|> AutoScheduleOutputBoundary
+AutoSchedulePresenter --> DayPlanViewModel : setState
+DayPlanViewModel --> DayPlanState
+DayPlanViewModel ..> DayPlanPanel : property change (Observer)
+DayPlanPanel --> ScheduleImprovementsPanel : renders cards
+
+' ---- outer implementations of inner interfaces ----
+InMemoryTripRepository .up.|> TripRepository
+DistanceServiceTravelTimeEstimator .up.|> TravelTimeEstimator
+WeatherServiceContextGateway .up.|> WeatherContextGateway
+DistanceServiceTravelTimeEstimator --> OsrmDistanceService
+WeatherServiceContextGateway --> OpenMeteoWeatherService
+
+AppBuilder ..> AutoScheduleController : wires everything
+
+note bottom of AppBuilder
+  Source dependencies point inward:
+  outer classes implement interfaces
+  owned by the application layer.
+end note
+@enduml

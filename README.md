@@ -57,30 +57,57 @@ The places and weather refresh runs in a `SwingWorker`, not on the Swing event-d
 
 ## Trip Assistant (George)
 
-Open a trip and select **Trip Assistant** to chat with George. George automatically receives the
-current destination and date, trip hours, transportation mode, available activities, bookmarks,
-Day Plan, and hourly weather. Useful questions include:
+Open a trip and select George's circular avatar in the bottom-right corner to expand the chat.
+The avatar remains available while you move between planner tabs, and collapsing the panel keeps
+the conversation ready for the next time you open it. George automatically receives the current
+destination and date, trip hours, transportation mode, available activities, bookmarks, Day Plan,
+and hourly weather. Useful questions include:
 
 - `What activities do you recommend for this trip?`
 - `What should I do if it rains?`
 - `Which activity fits into my afternoon?`
 - `Which of my bookmarked activities should I visit?`
 - `Why is this activity a good choice?`
+- `What is your name?`
+- `What is 3 + 3?`
 
-George runs in deterministic offline mode by default, so the app and normal test suite need no
-API key or internet connection:
+George uses the project's public Cloudflare Worker proxy by default. The OpenAI key stays in the
+Worker secret store and is never distributed with the desktop app or committed to Git. If the
+live service is unavailable, George automatically falls back to deterministic offline
+recommendations.
+
+Run the app with the default proxy mode:
 
 ```bash
 ./mvnw compile exec:java -Dexec.mainClass=closeai.Main
 ```
 
-To enable the live implementation, put the key in the gitignored `.env` file (or export it as a
-real environment variable), then explicitly opt in when launching:
+The checked-in default endpoint is
+`https://closeai-george-proxy.power-feast.workers.dev/v1/responses`. It is an account-owned
+Cloudflare Worker for the course demo, backed by an OpenAI project with a 5 USD monthly hard
+spend limit.
+
+To force fully offline behavior:
+
+```bash
+./mvnw compile exec:java -Dexec.mainClass=closeai.Main \
+  -Dcloseai.chatbot.mode=offline
+```
+
+Developers can point the app at another compatible proxy without rebuilding it:
+
+```bash
+./mvnw compile exec:java -Dexec.mainClass=closeai.Main \
+  -Dcloseai.ai.proxy.url=https://your-worker.example/v1/responses
+```
+
+Direct OpenAI mode remains available only for local development. Put the key in the gitignored
+`.env` file (or export it as a real environment variable), then explicitly opt in:
 
 ```dotenv
 OPENAI_API_KEY=your-project-key
-# Optional; the current default is gpt-5.6-sol
-OPENAI_MODEL=gpt-5.6-sol
+# Optional; the current default is gpt-5.4-mini
+OPENAI_MODEL=gpt-5.4-mini
 ```
 
 ```bash
@@ -88,20 +115,45 @@ OPENAI_MODEL=gpt-5.6-sol
   -Dcloseai.chatbot.mode=openai
 ```
 
-The live gateway calls `POST https://api.openai.com/v1/responses` with `store: false` and a strict
-Structured Outputs schema. OpenAI can select only activity IDs supplied by the current trip.
-George's displayed names and recommendation details are then rendered from CloseAI entities, so
-the model cannot introduce an unrecognized place. A live API, authentication, timeout, or schema
-failure is shown in the answer and automatically falls back to the deterministic offline gateway.
+The live gateway calls the Responses API with `store: false` and a strict Structured Outputs
+schema. OpenAI can answer ordinary questions directly or select only activity IDs supplied by the
+current trip. General replies are displayed as AI text; activity names and recommendation details
+are rendered from CloseAI entities, so the model cannot introduce an unrecognized recommended
+place. A live API, authentication, timeout, or schema failure is shown in the answer and
+automatically falls back to the deterministic offline gateway.
 All gateway and weather work runs through a background `SwingWorker`, never on Swing's event-
-dispatch thread. Keys are read through the existing `DotEnv` resolution order and are never logged.
+dispatch thread. The default desktop client does not read or send an OpenAI API key.
+
+### Deploying the George proxy
+
+The Worker lives in [`george-proxy`](george-proxy). It fixes the model to `gpt-5.4-mini`, caps
+output at 300 tokens, validates and trims trip context, accepts only grounded activity IDs, and
+rate-limits requests. From that directory:
+
+```bash
+pnpm install
+pnpm test
+pnpm exec wrangler login
+pnpm exec wrangler deploy --secrets-file ../.env.proxy
+```
+
+`../.env.proxy` must contain only the server-side secret and is ignored by Git:
+
+```dotenv
+OPENAI_API_KEY=your-project-key
+```
+
+After deployment, set `DEFAULT_PROXY_ENDPOINT` in `AppBuilder` to the Worker's
+`/v1/responses` URL. OpenAI spending limits are project-wide, so use a dedicated OpenAI project
+for this Worker before setting a 5 USD hard project limit.
 
 Current limitations:
 
-- Offline recommendations use a small deterministic ranking heuristic rather than natural-language
+- Fallback recommendations use a small deterministic ranking heuristic rather than natural-language
   reasoning.
-- Live AI selects grounded activity IDs and an intent; final wording is deliberately generated from
-  application data to enforce the no-invented-places guarantee.
+- Live AI answers general questions directly. For travel recommendations it selects grounded
+  activity IDs, while final place names and details are generated from application data to enforce
+  the no-invented-places guarantee.
 - George uses the existing activity setting value but does not classify or change indoor/outdoor
   data.
 - Transportation mode is included as context, but this MVP does not ask the routing service to
@@ -147,6 +199,7 @@ closeai.AppBuilder / Main
 - `TripSetupController` chooses Create Trip when there is no active trip and Edit Itinerary afterward.
 - `TripSetupPresenter` updates Dashboard, Trip Options, Bookmarks, and the Day Plan with the same saved trip ID.
 - Destination weather and place refresh happens asynchronously; failure never rolls back a successfully created trip.
+- The Overview weather card opens a modeless hourly forecast window. It shows every available hour for the trip date and refreshes automatically when the shared weather state changes.
 
 ## Edit Itinerary
 
@@ -237,6 +290,61 @@ Individual activities can be pinned with the **Lock** checkbox on their row. A p
 activity keeps its exact time and everything else is arranged around it. Pins last as long
 as the application is open and are never written to the trip.
 
+### Schedule improvements
+
+The Preview reports what it can prove. Each card is a before/after comparison computed in the
+use case — waiting removed, travel saved, a pin honoured, a meal moved toward its window, an
+outdoor activity moved into daylight or milder weather, an order genuinely preserved.
+
+A card appears only when the comparison supports it. An activity already in daylight earns
+nothing, a whole-day forecast cannot produce a weather card, and "order preserved" compares
+the actual sequence rather than the preference you set. Anything that got *worse* is not
+dressed as an achievement: trade-offs and the complete before/after figures sit under
+**Why this schedule?**. When nothing improved, it says so.
+
+The cards stack beside the schedule on a wide window and below it on a narrow one.
+
+### Opening hours
+
+Opening hours are a **hard constraint**, in the same class as the traveller's own unavailable
+periods. An activity is placed entirely inside one of its venue's opening intervals, never
+across the gap between two — a museum open 09:00–12:00 and 14:00–18:00 offers a visitor two
+shifts, not a nine-hour day. Travel is deliberately free to happen outside them, because
+walking to a museum before it opens is how anyone gets there.
+
+Hours come from the venue's OpenStreetMap `opening_hours` tag. `NominatimPlacesService`
+reads the tag and keeps it verbatim on the activity, and derives a single coarse window
+spanning the whole week so that any code knowing only about one always has something valid.
+`OpeningHoursParser` then reads the same text a second way, into per-weekday intervals, in
+the infrastructure layer — so no scheduling code has to know that
+`Mo-Fr 09:00-17:00; Sa 10:00-14:00; Su off` is a syntax. Weekday selectors and ranges,
+several intervals in a day, `off`/`closed`, `24/7`, and spans past midnight are all handled;
+the trip's own date decides which day's hours apply.
+
+The two readings are kept side by side on purpose, and they disagree. For
+`Mo-Fr 09:00-17:00; Sa-Su 11:00-23:00` the coarse window is 09:00–23:00 — the earliest
+opening anywhere in the week to the latest closing anywhere — which is wrong about both
+Wednesday's closing and Saturday's opening. **Autoschedule uses the per-weekday reading.**
+The coarse window remains the guard the `Trip` entity applies (it cannot hold an event
+outside it) and the fallback whenever the parser returns unknown, so nothing is ever less
+schedulable than it was before hours were parsed at all.
+
+Three outcomes, and the last is the one that matters:
+
+| The provider says | Autoschedule does |
+|---|---|
+| Real hours for the trip date | Places the activity inside one interval; a pin outside one is a named conflict |
+| The venue is shut that day | Refuses to schedule it, naming the venue and reporting zero minutes available |
+| **Nothing, or something unreadable** | **Schedules it inside its general daily window** |
+
+The third row is the common one: most OpenStreetMap places carry no `opening_hours` tag, and
+treating silence as "shut" would refuse to plan almost any real day. So those venues fall
+back to the single opening/closing window the activity already carries, which is still
+enforced — and the preview says nothing about it, because a caution that appears on almost
+every schedule only teaches people to ignore the ones that matter. Anything the parser cannot
+fully understand — month ranges, `sunrise`/`sunset`, free text — is treated the same way
+rather than guessed at.
+
 ### Preview and Apply
 
 Generating a preview shows the proposal underneath the unchanged Day Plan, with before and
@@ -306,6 +414,18 @@ output.
   claim should be made**. `TomTomLiveVerificationTest` will settle it in one command once a
   credential is present — it calls the fallback-free TomTom path directly, so it cannot be
   satisfied by an OSRM fallback. Walking (OSRM) and transit (Transitous) are live-verified.
+- **Public holidays are not known.** A `PH`/`SH` rule in an `opening_hours` tag is skipped
+  rather than rejected, so `Mo-Fr 09:00-17:00; PH off` still yields ordinary weekday hours —
+  but a public holiday is then treated as an ordinary weekday. Rejecting the whole tag would
+  have been worse: it would have discarded good hours for every venue that bothers to record
+  a holiday.
+- **Only the common `opening_hours` shapes are parsed.** Month and date ranges
+  (`Jan-Mar 09:00-17:00`), week selectors, nth-weekday selectors (`Mo[1]`),
+  `sunrise`/`sunset` times and quoted comments all yield *unknown*, which is permissive and
+  stated, never a guess. A midnight closing time is held as 23:59, costing at most one
+  minute, because the scheduler works in whole minutes inside a single day.
+- **Hours are only as good as OpenStreetMap.** Nothing verifies them against the venue, and
+  the mock places provider supplies none at all, so an offline run warns about every activity.
 - Single day only, one transportation mode per run, and travel between activities only -
   there is no hotel or origin leg because `Trip` has no origin coordinate.
 
