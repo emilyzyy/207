@@ -1,4 +1,4 @@
-package app;
+package use_case.usecases;
 
 import entity.entities.Activity;
 import entity.valueobjects.ActivityCategory;

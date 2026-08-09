@@ -2,7 +2,7 @@ package interface_adapter.places;
 
 import use_case.search.PlaceSearchException;
 import use_case.search.SearchFailure;
-import use_case.search.GeoPoint;
+import entity.valueobjects.GeoPoint;
 import entity.entities.Activity;
 import entity.valueobjects.ActivityCategory;
 import com.fasterxml.jackson.databind.ObjectMapper;

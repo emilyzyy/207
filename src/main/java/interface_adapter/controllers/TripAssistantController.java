@@ -4,7 +4,7 @@ import interface_adapter.presenters.TripAssistantPresenter;
 import interface_adapter.viewmodels.TripAssistantViewModel;
 import use_case.tripassistant.TripAssistantInputBoundary;
 import use_case.tripassistant.TripAssistantInputData;
-import use_case.tripassistant.TripAssistantMessage;
+import entity.valueobjects.TripAssistantMessage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;

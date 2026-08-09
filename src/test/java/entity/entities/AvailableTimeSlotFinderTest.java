@@ -1,4 +1,4 @@
-package use_case.usecases;
+package entity.entities;
 
 import entity.entities.ScheduledEvent;
 import entity.valueobjects.EventType;

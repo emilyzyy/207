@@ -1,6 +1,6 @@
 package interface_adapter.places;
 
-import use_case.search.GeoPoint;
+import entity.valueobjects.GeoPoint;
 import use_case.search.PlaceSearchException;
 import use_case.search.SearchFailure;
 import entity.entities.Activity;

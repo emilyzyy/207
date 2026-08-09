@@ -3,7 +3,7 @@ package views;
 import interface_adapter.controllers.TripAssistantController;
 import interface_adapter.viewmodels.TripAssistantState;
 import interface_adapter.viewmodels.TripAssistantViewModel;
-import use_case.tripassistant.TripAssistantMessage;
+import entity.valueobjects.TripAssistantMessage;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;

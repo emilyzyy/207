@@ -1,7 +1,7 @@
 package interface_adapter.controllers;
 
 import interface_adapter.presenters.JsonPresenter;
-import app.AppContainer;
+import use_case.ports.ApiTripService;
 import use_case.usecases.CreateTripInputData;
 import use_case.usecases.EditItineraryInputData;
 import entity.entities.Activity;
@@ -26,19 +26,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class ApiController implements HttpHandler {
-    private final AppContainer app;
+    private final ApiTripService app;
     private final PlacesWriter cachedPlaces;
     private final JsonPresenter presenter = new JsonPresenter();
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public ApiController(AppContainer app) {
-        this(
-                app,
-                app != null && app.activities instanceof PlacesWriter
-                        ? (PlacesWriter) app.activities : null);
+    public ApiController(ApiTripService app) {
+        this(app, app != null ? app.cachedPlaces() : null);
     }
 
-    public ApiController(AppContainer app, PlacesWriter cachedPlaces) {
+    public ApiController(ApiTripService app, PlacesWriter cachedPlaces) {
         if (app == null) {
             throw new IllegalArgumentException("Application container is required");
         }
@@ -55,7 +52,7 @@ public final class ApiController implements HttpHandler {
             String[] parts = path.split("/");
             if ("GET".equals(method) && "/api/activities".equals(path)) {
                 String query = queryParam(exchange.getRequestURI().getRawQuery(), "query");
-                respond(exchange, 200, presenter.activities(app.searchActivities.execute("Toronto", query))); return;
+                respond(exchange, 200, presenter.activities(app.searchActivities("Toronto", query))); return;
             }
             if ("POST".equals(method) && "/api/places/search".equals(path)) {
                 if (cachedPlaces == null) {
@@ -69,7 +66,7 @@ public final class ApiController implements HttpHandler {
             if ("POST".equals(method) && "/api/trips".equals(path)) {
                 JsonRequest request = new JsonRequest(readBody(exchange));
                 int dayCount = parseDayCount(request.get("dayCount", "1"));
-                Trip trip = app.createTrip.execute(new CreateTripInputData(
+                Trip trip = app.createTrip(new CreateTripInputData(
                         request.get("destination", "Toronto"),
                         LocalDate.parse(request.get("date", "2026-07-18")),
                         LocalTime.parse(request.get("startTime", "09:00")),
@@ -82,14 +79,14 @@ public final class ApiController implements HttpHandler {
             if (parts.length >= 4 && "trips".equals(parts[2])) {
                 String tripId = parts[3];
                 if (parts.length == 4 && "GET".equals(method)) {
-                    Trip trip = app.trips.findById(tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
+                    Trip trip = app.findTrip(tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
                     respond(exchange, 200, presenter.trip(trip)); return;
                 }
                 if (parts.length == 4 && "PUT".equals(method)) {
                     JsonRequest request = new JsonRequest(readBody(exchange));
-                    Trip existing = app.trips.findById(tripId)
+                    Trip existing = app.findTrip(tripId)
                             .orElseThrow(() -> new IllegalArgumentException("Itinerary not found"));
-                    Trip trip = app.editItinerary.execute(new EditItineraryInputData(
+                    Trip trip = app.editItinerary(new EditItineraryInputData(
                             tripId,
                             request.get("destination", existing.getDestination()),
                             LocalDate.parse(request.get("date", existing.getDate().toString())),
@@ -100,42 +97,42 @@ public final class ApiController implements HttpHandler {
                     respond(exchange, 200, presenter.trip(trip)); return;
                 }
                 if (parts.length == 6 && "bookmarks".equals(parts[4])) {
-                    Trip trip = "POST".equals(method) ? app.bookmarkActivity.execute(tripId, parts[5])
-                            : app.removeBookmark.execute(tripId, parts[5]);
+                    Trip trip = "POST".equals(method) ? app.bookmarkActivity(tripId, parts[5])
+                            : app.removeBookmark(tripId, parts[5]);
                     respond(exchange, 200, presenter.trip(trip)); return;
                 }
                 if (parts.length == 6 && "plan".equals(parts[4]) && "manual".equals(parts[5]) && "POST".equals(method)) {
                     JsonRequest request = new JsonRequest(readBody(exchange));
-                    Trip trip = app.addActivityToPlan.execute(tripId, request.get("activityId", "rom"),
+                    Trip trip = app.addActivityToPlan(tripId, request.get("activityId", "rom"),
                             optionalTime(request.get("startTime", "")));
                     respond(exchange, 200, presenter.trip(trip)); return;
                 }
                 if (parts.length == 6 && "plan".equals(parts[4]) && "autoschedule".equals(parts[5]) && "POST".equals(method)) {
-                    respond(exchange, 200, presenter.trip(app.autoSchedule.execute(tripId))); return;
+                    respond(exchange, 200, presenter.trip(app.autoSchedule(tripId))); return;
                 }
                 if (parts.length == 6 && "plan".equals(parts[4]) && "DELETE".equals(method)) {
-                    respond(exchange, 200, presenter.trip(app.removeEvent.execute(tripId, parts[5]))); return;
+                    respond(exchange, 200, presenter.trip(app.removeEvent(tripId, parts[5]))); return;
                 }
                 if (parts.length == 6 && "plan".equals(parts[4]) && "PUT".equals(method)) {
                     JsonRequest request = new JsonRequest(readBody(exchange));
-                    Trip trip = app.editEvent.execute(tripId, parts[5],
+                    Trip trip = app.editEvent(tripId, parts[5],
                             LocalTime.parse(request.get("startTime", "10:00")),
                             LocalTime.parse(request.get("endTime", "11:00")), request.get("notes", "Edited"));
                     respond(exchange, 200, presenter.trip(trip)); return;
                 }
                 if (parts.length == 5 && "summary".equals(parts[4]) && "GET".equals(method)) {
-                    respond(exchange, 200, presenter.message(app.summary.execute(tripId))); return;
+                    respond(exchange, 200, presenter.message(app.tripSummary(tripId))); return;
                 }
                 if (parts.length == 5 && "share".equals(parts[4]) && "GET".equals(method)) {
-                    respond(exchange, 200, presenter.message(app.share.execute(tripId))); return;
+                    respond(exchange, 200, presenter.message(app.shareTrip(tripId))); return;
                 }
                 if (parts.length == 5 && "weather".equals(parts[4]) && "GET".equals(method)) {
-                    respond(exchange, 200, presenter.weather(app.weatherWarning.execute(tripId))); return;
+                    respond(exchange, 200, presenter.weather(app.weatherWarning(tripId))); return;
                 }
                 if (parts.length == 6 && "weather".equals(parts[4])
                         && "hourly".equals(parts[5]) && "GET".equals(method)) {
                     respond(exchange, 200,
-                            presenter.hourlyWeather(app.weatherWarning.executeHourly(tripId))); return;
+                            presenter.hourlyWeather(app.hourlyWeather(tripId))); return;
                 }
             }
             respond(exchange, 404, presenter.error("Route not found"));

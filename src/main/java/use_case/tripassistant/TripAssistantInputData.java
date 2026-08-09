@@ -1,5 +1,7 @@
 package use_case.tripassistant;
 
+import entity.valueobjects.TripAssistantMessage;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

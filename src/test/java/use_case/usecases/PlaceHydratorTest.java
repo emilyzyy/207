@@ -1,4 +1,4 @@
-package app;
+package use_case.usecases;
 
 import use_case.ports.ActivityRepository;
 import use_case.ports.PlacesService;

@@ -5,7 +5,7 @@ import interface_adapter.controllers.TripAssistantController;
 import interface_adapter.presenters.TripAssistantPresenter;
 import interface_adapter.viewmodels.TripAssistantState;
 import interface_adapter.viewmodels.TripAssistantViewModel;
-import use_case.tripassistant.TripAssistantMessage;
+import entity.valueobjects.TripAssistantMessage;
 import use_case.tripassistant.TripAssistantOutputData;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;

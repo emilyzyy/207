@@ -14,7 +14,7 @@ import use_case.autoschedule.AutoScheduleApplyInputData;
 import use_case.autoschedule.AutoScheduleInputBoundary;
 import use_case.autoschedule.AutoScheduleInputData;
 import use_case.autoschedule.ProposedEventData;
-import use_case.autoschedule.WeatherOption;
+import entity.valueobjects.WeatherOption;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;

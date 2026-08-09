@@ -3,7 +3,6 @@ package interface_adapter.routing;
 import use_case.ports.DistanceService;
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;
-import app.config.DotEnv;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
@@ -32,17 +31,26 @@ public final class OsrmDistanceService implements DistanceService {
 
     public OsrmDistanceService() {
         this(HttpClient.newBuilder().connectTimeout(TIMEOUT).build(), new ObjectMapper(),
-                OsrmDistanceService::tomtomApiKey);
+                OsrmDistanceService::configuredKey);
     }
 
+    /** Package-visible constructor used by tests. */
     OsrmDistanceService(HttpClient client, ObjectMapper mapper) {
-        this(client, mapper, OsrmDistanceService::tomtomApiKey);
+        this(client, mapper, OsrmDistanceService::configuredKey);
     }
 
     OsrmDistanceService(HttpClient client, ObjectMapper mapper, Supplier<String> apiKey) {
         this.client = client;
         this.mapper = mapper;
         this.apiKey = apiKey;
+    }
+
+    /**
+     * The TomTom key is a configuration concern owned by the composition root, which passes
+     * it in; the adapter never reads {@code .env} or system properties itself.
+     */
+    public OsrmDistanceService(Supplier<String> apiKey) {
+        this(HttpClient.newBuilder().connectTimeout(TIMEOUT).build(), new ObjectMapper(), apiKey);
     }
 
     @Override
@@ -208,8 +216,14 @@ public final class OsrmDistanceService implements DistanceService {
         }
     }
 
-    private static String tomtomApiKey() {
-        return DotEnv.get("TOMTOM_API_KEY", "tomtom.api.key");
+    /** Reads only the JVM property / environment variable; the composition root owns {@code .env}. */
+    private static String configuredKey() {
+        String fromProperty = System.getProperty("tomtom.api.key");
+        if (fromProperty != null && !fromProperty.isBlank()) {
+            return fromProperty.trim();
+        }
+        String fromEnvironment = System.getenv("TOMTOM_API_KEY");
+        return fromEnvironment != null && !fromEnvironment.isBlank() ? fromEnvironment.trim() : null;
     }
 
     private static void warnOnce(String message) {

@@ -1,4 +1,4 @@
-package use_case.tripassistant;
+package entity.valueobjects;
 
 import java.util.ArrayList;
 import java.util.Collections;

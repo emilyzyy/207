@@ -3,7 +3,7 @@ package views;
 import interface_adapter.controllers.AutoScheduleSettings;
 import entity.valueobjects.TransportationMode;
 import interface_adapter.controllers.AutoScheduleSettingsValidator;
-import use_case.autoschedule.WeatherOption;
+import entity.valueobjects.WeatherOption;
 import interface_adapter.viewmodels.TimeDisplay;
 import java.awt.BorderLayout;
 import java.awt.Component;

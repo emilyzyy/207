@@ -1,6 +1,6 @@
 package database.supabase;
 
-import app.PlaceHydrator;
+import use_case.usecases.PlaceHydrator;
 import use_case.ports.AuthService;
 import use_case.ports.AuthSession;
 import use_case.ports.ItineraryDataAccessInterface;

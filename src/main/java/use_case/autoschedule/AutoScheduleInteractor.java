@@ -1,5 +1,7 @@
 package use_case.autoschedule;
 
+import entity.valueobjects.WeatherOption;
+
 import use_case.autoschedule.engine.PlanValidator;
 import use_case.autoschedule.engine.ScheduleEngine;
 import use_case.autoschedule.engine.SchedulePlanRebuilder;

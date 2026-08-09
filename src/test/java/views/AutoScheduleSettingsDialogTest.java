@@ -343,7 +343,7 @@ class AutoScheduleSettingsDialogTest {
                 null, LocalTime.of(9, 0), LocalTime.of(21, 0));
         // With no usable forecast the weather switch is off and disabled, which is its own
         // documented state; ask for the ordinary case where it can be offered.
-        dialog.applyWeatherOption(use_case.autoschedule.WeatherOption.available());
+        dialog.applyWeatherOption(entity.valueobjects.WeatherOption.available());
 
         java.util.List<ToggleSwitch> switches = new java.util.ArrayList<>();
         collectSwitches(dialog.getContentPane(), switches);

@@ -1,6 +1,6 @@
 package interface_adapter.viewmodels;
 
-import use_case.tripassistant.TripAssistantMessage;
+import entity.valueobjects.TripAssistantMessage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

@@ -1,6 +1,6 @@
 package views;
 
-import use_case.usecases.AvailableTimeSlotFinder;
+import entity.entities.AvailableTimeSlotFinder;
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.valueobjects.EventType;

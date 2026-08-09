@@ -1,6 +1,6 @@
 package use_case.ports;
 
-import use_case.search.GeoPoint;
+import entity.valueobjects.GeoPoint;
 
 public interface DestinationGeocoder {
     GeoPoint geocode(String destination);

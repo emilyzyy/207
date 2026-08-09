@@ -21,7 +21,7 @@ import interface_adapter.viewmodels.PreviewRowView;
 import app.AppContainer;
 import use_case.autoschedule.AutoScheduleInteractor;
 import use_case.autoschedule.WeatherContext;
-import use_case.autoschedule.WeatherOption;
+import entity.valueobjects.WeatherOption;
 import use_case.autoschedule.engine.ScheduleEngine;
 import use_case.autoschedule.policy.DaylightPolicy;
 import use_case.autoschedule.policy.MealWindowPolicy;

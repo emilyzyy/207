@@ -1,4 +1,4 @@
-package use_case.search;
+package entity.valueobjects;
 
 public final class GeoPoint {
     private final double latitude;

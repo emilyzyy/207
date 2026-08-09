@@ -1,5 +1,7 @@
 package use_case.tripassistant;
 
+import entity.valueobjects.TripAssistantMessage;
+
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.entities.WeatherWarning;

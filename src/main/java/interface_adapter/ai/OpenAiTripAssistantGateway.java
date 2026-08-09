@@ -2,7 +2,7 @@ package interface_adapter.ai;
 
 import use_case.ports.TripAssistantGateway;
 import use_case.tripassistant.TripAssistantDecision;
-import use_case.tripassistant.TripAssistantMessage;
+import entity.valueobjects.TripAssistantMessage;
 import use_case.tripassistant.TripAssistantRequest;
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;

@@ -45,7 +45,6 @@ import views.TripOptionsDialog;
 import interface_adapter.gateways.DistanceServiceTravelTimeEstimator;
 import interface_adapter.gateways.WeatherServiceContextGateway;
 import app.AppContainer;
-import app.PlaceHydrator;
 import use_case.autoschedule.AutoScheduleInteractor;
 import use_case.autoschedule.engine.ScheduleEngine;
 import use_case.autoschedule.policy.DaylightPolicy;
@@ -61,9 +60,10 @@ import use_case.ports.TripAssistantGateway;
 import use_case.ports.WeatherService;
 import use_case.scheduling.DefaultActivityScoringPolicy;
 import use_case.usecases.CreateTripInputData;
+import use_case.usecases.PlaceHydrator;
 import use_case.tripassistant.TripAssistantDecision;
 import use_case.tripassistant.TripAssistantInteractor;
-import use_case.tripassistant.TripAssistantMessage;
+import entity.valueobjects.TripAssistantMessage;
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
@@ -478,7 +478,7 @@ public final class AppBuilder {
         AutoScheduleInteractor interactor = new AutoScheduleInteractor(
                 new DayScopedTripRepository(app.trips,
                         () -> dayPlanViewModel.getState().getActiveDayIndex()),
-                new DistanceServiceTravelTimeEstimator(app.distances),
+                new DistanceServiceTravelTimeEstimator(app.distances, tomtomConfigured()),
                 new WeatherServiceContextGateway(app.weather),
                 presenter,
                 builtInPolicies,
@@ -626,11 +626,17 @@ public final class AppBuilder {
                 trips,
                 places,
                 cachedPlaces,
-                new FastestModeDistanceService(new OsrmDistanceService()),
+                new FastestModeDistanceService(new OsrmDistanceService(
+                        () -> DotEnv.get("TOMTOM_API_KEY", "tomtom.api.key"))),
                 weather,
                 new DefaultActivityScoringPolicy(),
                 (use_case.ports.ItineraryDataAccessInterface) trips,
                 cachedPlaces,
                 account);
+    }
+
+    /** Whether driving estimates can be traffic-aware. Read once at wiring time. */
+    private static boolean tomtomConfigured() {
+        return DotEnv.get("TOMTOM_API_KEY", "tomtom.api.key") != null;
     }
 }

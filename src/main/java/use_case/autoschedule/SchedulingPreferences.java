@@ -1,5 +1,7 @@
 package use_case.autoschedule;
 
+import entity.valueobjects.WeatherOption;
+
 import use_case.autoschedule.policy.SoftPolicy;
 import java.util.ArrayList;
 import java.util.Collections;

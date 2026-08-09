@@ -2,7 +2,7 @@ package interface_adapter.presenters;
 
 import interface_adapter.viewmodels.TripAssistantState;
 import interface_adapter.viewmodels.TripAssistantViewModel;
-import use_case.tripassistant.TripAssistantMessage;
+import entity.valueobjects.TripAssistantMessage;
 import use_case.tripassistant.TripAssistantOutputBoundary;
 import use_case.tripassistant.TripAssistantOutputData;
 import java.util.ArrayList;

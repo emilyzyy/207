@@ -1,5 +1,7 @@
 package use_case.autoschedule;
 
+import entity.valueobjects.WeatherOption;
+
 import static use_case.autoschedule.ProblemFixtures.at;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

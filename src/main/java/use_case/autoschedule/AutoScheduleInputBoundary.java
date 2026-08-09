@@ -1,5 +1,7 @@
 package use_case.autoschedule;
 
+import entity.valueobjects.WeatherOption;
+
 /**
  * The Autoschedule use case as its callers see it.
  *

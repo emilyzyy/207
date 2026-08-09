@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import interface_adapter.controllers.AutoScheduleSettings;
-import use_case.autoschedule.WeatherOption;
+import entity.valueobjects.WeatherOption;
 import java.awt.GraphicsEnvironment;
 import java.util.ArrayList;
 import java.util.List;

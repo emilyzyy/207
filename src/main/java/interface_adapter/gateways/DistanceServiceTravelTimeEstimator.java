@@ -6,7 +6,6 @@ import use_case.autoschedule.TravelTimeEstimator;
 import use_case.ports.DistanceService;
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;
-import app.config.DotEnv;
 import java.time.LocalDateTime;
 
 /**
@@ -16,21 +15,20 @@ import java.time.LocalDateTime;
  * TomTom for driving. This class exists only to answer the two questions scheduling asks
  * that the shared port cannot: how much to trust a number, and whether a mode varies with
  * departure time at all.</p>
+ *
+ * <p>Whether driving is traffic-aware is a configuration decision made by the composition
+ * root; this adapter only ever hears the resulting boolean.</p>
  */
 public final class DistanceServiceTravelTimeEstimator implements TravelTimeEstimator {
-
-    /** Property and variable the routing adapter reads its TomTom key from. */
-    static final String TOMTOM_KEY_PROPERTY = "tomtom.api.key";
-    static final String TOMTOM_KEY_ENVIRONMENT_VARIABLE = "TOMTOM_API_KEY";
 
     private final DistanceService distances;
     private final boolean trafficAwareDriving;
 
     public DistanceServiceTravelTimeEstimator(DistanceService distances) {
-        this(distances, tomtomKeyPresent());
+        this(distances, false);
     }
 
-    DistanceServiceTravelTimeEstimator(DistanceService distances, boolean trafficAwareDriving) {
+    public DistanceServiceTravelTimeEstimator(DistanceService distances, boolean trafficAwareDriving) {
         if (distances == null) {
             throw new IllegalArgumentException("Distance service is required");
         }
@@ -60,10 +58,5 @@ public final class DistanceServiceTravelTimeEstimator implements TravelTimeEstim
             return trafficAwareDriving;
         }
         return false;
-    }
-
-    /** Presence check only. The key itself is never read into scheduling code or logged. */
-    private static boolean tomtomKeyPresent() {
-        return DotEnv.get(TOMTOM_KEY_ENVIRONMENT_VARIABLE, TOMTOM_KEY_PROPERTY) != null;
     }
 }

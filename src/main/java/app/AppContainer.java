@@ -1,7 +1,11 @@
 package app;
 
+import entity.entities.Activity;
+import entity.entities.Trip;
+import entity.entities.WeatherWarning;
 import use_case.ports.AccountService;
 import use_case.ports.ActivityRepository;
+import use_case.ports.ApiTripService;
 import use_case.ports.DistanceService;
 import use_case.ports.ItineraryDataAccessInterface;
 import use_case.ports.PlacesService;
@@ -10,9 +14,17 @@ import use_case.ports.TripRepository;
 import use_case.ports.WeatherService;
 import use_case.scheduling.ActivityScoringPolicy;
 import use_case.usecases.*;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Optional;
 
-/** Application-layer use-case registry. Concrete infrastructure is supplied by an outer builder. */
-public final class AppContainer {
+/**
+ * Application-layer use-case registry. Concrete infrastructure is supplied by an outer builder.
+ *
+ * <p>Implements {@link ApiTripService} so the HTTP adapter can call the application through a
+ * port instead of reaching into the composition root.</p>
+ */
+public final class AppContainer implements ApiTripService {
     public final TripRepository trips;
     public final PlacesService places;
     public final ActivityRepository activities;
@@ -94,6 +106,82 @@ public final class AppContainer {
         weatherWarning = new GetWeatherWarningUseCase(trips, weather);
         listTrips = new ListTripsUseCase(trips);
         deleteTrip = new DeleteTripUseCase(trips);
+    }
+
+    @Override
+    public List<Activity> searchActivities(String destination, String query) {
+        return searchActivities.execute(destination, query);
+    }
+
+    @Override
+    public Trip createTrip(CreateTripInputData inputData) {
+        return createTrip.execute(inputData);
+    }
+
+    @Override
+    public Optional<Trip> findTrip(String tripId) {
+        return trips.findById(tripId);
+    }
+
+    @Override
+    public Trip editItinerary(EditItineraryInputData inputData) {
+        return editItinerary.execute(inputData);
+    }
+
+    @Override
+    public Trip bookmarkActivity(String tripId, String activityId) {
+        return bookmarkActivity.execute(tripId, activityId);
+    }
+
+    @Override
+    public Trip removeBookmark(String tripId, String activityId) {
+        return removeBookmark.execute(tripId, activityId);
+    }
+
+    @Override
+    public Trip addActivityToPlan(String tripId, String activityId, LocalTime startTime) {
+        return addActivityToPlan.execute(tripId, activityId, startTime);
+    }
+
+    @Override
+    public Trip autoSchedule(String tripId) {
+        return autoSchedule.execute(tripId);
+    }
+
+    @Override
+    public Trip removeEvent(String tripId, String eventId) {
+        return removeEvent.execute(tripId, eventId);
+    }
+
+    @Override
+    public Trip editEvent(String tripId, String eventId, LocalTime startTime,
+                          LocalTime endTime, String notes) {
+        return editEvent.execute(tripId, eventId, startTime, endTime, notes);
+    }
+
+    @Override
+    public String tripSummary(String tripId) {
+        return summary.execute(tripId);
+    }
+
+    @Override
+    public String shareTrip(String tripId) {
+        return share.execute(tripId);
+    }
+
+    @Override
+    public WeatherWarning weatherWarning(String tripId) {
+        return weatherWarning.execute(tripId);
+    }
+
+    @Override
+    public List<WeatherWarning> hourlyWeather(String tripId) {
+        return weatherWarning.executeHourly(tripId);
+    }
+
+    @Override
+    public PlacesWriter cachedPlaces() {
+        return activities instanceof PlacesWriter ? (PlacesWriter) activities : null;
     }
 
     private static ItineraryDataAccessInterface itineraryAccessFor(TripRepository trips) {

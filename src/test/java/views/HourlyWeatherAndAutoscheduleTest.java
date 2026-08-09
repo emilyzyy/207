@@ -14,7 +14,7 @@ import interface_adapter.viewmodels.DayPlanViewModel;
 import use_case.autoschedule.AutoScheduleApplyInputData;
 import use_case.autoschedule.AutoScheduleInputBoundary;
 import use_case.autoschedule.AutoScheduleInputData;
-import use_case.autoschedule.WeatherOption;
+import entity.valueobjects.WeatherOption;
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.entities.WeatherWarning;

@@ -1,4 +1,4 @@
-package use_case.autoschedule;
+package entity.valueobjects;
 
 /**
  * Whether the weather preference can honestly be offered for a given trip.

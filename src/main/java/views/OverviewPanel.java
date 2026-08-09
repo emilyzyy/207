@@ -10,7 +10,7 @@ import interface_adapter.viewmodels.SearchViewModel;
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import use_case.ports.DestinationGeocoder;
-import use_case.search.GeoPoint;
+import entity.valueobjects.GeoPoint;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;

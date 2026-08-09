@@ -47,7 +47,7 @@ public final class OpenStreetMapPlacesService
     }
 
     @Override
-    public use_case.search.GeoPoint geocode(String destination) {
+    public entity.valueobjects.GeoPoint geocode(String destination) {
         if (geocoder == null) {
             throw new PlaceSearchException(SearchFailure.SERVICE_UNAVAILABLE,
                     "Destination geocoding is unavailable");

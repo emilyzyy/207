@@ -4,7 +4,7 @@ import use_case.ports.PlacesService;
 import use_case.ports.PlacesWriter;
 import use_case.ports.ActivitySearchGateway;
 import use_case.ports.DestinationGeocoder;
-import use_case.search.GeoPoint;
+import entity.valueobjects.GeoPoint;
 import use_case.search.ActivitySearchRequest;
 import use_case.search.ActivitySearchResult;
 import entity.entities.Activity;

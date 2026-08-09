@@ -252,8 +252,8 @@ final class SwingPanelStructureTest {
         }
 
         @Override
-        public use_case.autoschedule.WeatherOption weatherOptionFor(String tripId) {
-            return use_case.autoschedule.WeatherOption.available();
+        public entity.valueobjects.WeatherOption weatherOptionFor(String tripId) {
+            return entity.valueobjects.WeatherOption.available();
         }
     }
 }

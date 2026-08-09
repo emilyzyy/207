@@ -4,7 +4,7 @@ import interface_adapter.controllers.ManualPlanController;
 import interface_adapter.viewmodels.TimeDisplay;
 import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.TripOptionsViewModel;
-import use_case.usecases.AvailableTimeSlotFinder;
+import entity.entities.AvailableTimeSlotFinder;
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import java.awt.BorderLayout;

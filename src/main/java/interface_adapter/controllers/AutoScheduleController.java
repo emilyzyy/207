@@ -8,7 +8,7 @@ import use_case.autoschedule.AutoScheduleInputBoundary;
 import use_case.autoschedule.AutoScheduleInputData;
 import use_case.autoschedule.ProposedEventData;
 import use_case.autoschedule.TimeWindow;
-import use_case.autoschedule.WeatherOption;
+import entity.valueobjects.WeatherOption;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;

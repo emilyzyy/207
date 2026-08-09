@@ -1,5 +1,7 @@
 package use_case.autoschedule;
 
+import entity.valueobjects.WeatherOption;
+
 import entity.valueobjects.TransportationMode;
 import java.time.LocalTime;
 import java.util.ArrayList;
