@@ -612,6 +612,18 @@ public final class DayPlanPanel extends JPanel {
         }
         column.add(improvements);
 
+        // Chips sit under the tiles and are visibly quieter: a constraint honoured is not the
+        // same kind of claim as a saving measured in minutes, and sizing them alike would
+        // make four results look like nine.
+        if (!state.getConstraintChips().isEmpty()) {
+            column.add(Box.createVerticalStrut(8));
+            column.add(chipRow(state.getConstraintChips()));
+        }
+        if (!state.getTradeOff().isEmpty()) {
+            column.add(Box.createVerticalStrut(8));
+            column.add(tradeOffStrip(state.getTradeOff()));
+        }
+
         // Warnings live here rather than in their own band under the schedule. A routing
         // caveat is part of how far to trust the proposal, which is what this column is for,
         // and a band below the timeline was a second place to look that competed with the
@@ -633,6 +645,44 @@ public final class DayPlanPanel extends JPanel {
         }
 
         return column;
+    }
+
+    /** The constraints this schedule worked around, wrapped into as many rows as it takes. */
+    private JPanel chipRow(java.util.List<interface_adapter.viewmodels.ConstraintChipView> chips) {
+        JPanel row = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 6, 6));
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        for (interface_adapter.viewmodels.ConstraintChipView chip : chips) {
+            JLabel label = new JLabel(chip.getMarker() + "  " + chip.getLabel());
+            label.setFont(SwingTheme.SMALL);
+            label.setForeground(SwingTheme.MUTED);
+            label.setOpaque(true);
+            label.setBackground(SwingTheme.BACKGROUND);
+            label.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(SwingTheme.LINE, 1, true),
+                    BorderFactory.createEmptyBorder(3, 8, 3, 8)));
+            label.getAccessibleContext().setAccessibleName(chip.getLabel());
+            row.add(label);
+        }
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
+        return row;
+    }
+
+    /** One amber line naming a disadvantage the schedule accepted on purpose. */
+    private JPanel tradeOffStrip(String sentence) {
+        JPanel strip = new JPanel(new BorderLayout());
+        strip.setBackground(SwingTheme.WARNING_SOFT);
+        strip.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 3, 0, 0, SwingTheme.WARNING),
+                BorderFactory.createEmptyBorder(6, 8, 6, 8)));
+        strip.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel label = new JLabel("<html><div style='width:300px'>" + escape(sentence)
+                + "</div></html>");
+        label.setFont(SwingTheme.SMALL);
+        label.setForeground(SwingTheme.NAVY);
+        strip.add(label, BorderLayout.CENTER);
+        strip.setMaximumSize(new Dimension(Integer.MAX_VALUE, strip.getPreferredSize().height));
+        return strip;
     }
 
     /**

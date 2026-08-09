@@ -22,10 +22,14 @@ import org.junit.jupiter.api.Test;
  * Travel blocks are derived from one particular arrangement of activities, so they must not
  * outlive it.
  *
- * <p>Before these tests the three hand-edit use cases kept them: removing an activity left
- * the journey that led to it, and a Day Plan emptied of activities still displayed a column
- * of journeys to places no longer in the plan. That is the corruption a user reported, and
- * every test here fails against the old behaviour.</p>
+ * <p>Two opposite faults have been reported here. First the hand-edit use cases kept every
+ * journey, so a Day Plan emptied of activities still displayed a column of journeys to places
+ * no longer in it. Then the correction went too far the other way: removing one activity from
+ * an applied four-activity day erased the journeys between the three that remained.</p>
+ *
+ * <p>The contract that satisfies both: a journey survives exactly as long as the pair of
+ * activities it joins stays adjacent. Removing an activity invalidates the leg into it and the
+ * leg out of it, and creates one new adjacency which is estimated afresh.</p>
  */
 class DerivedTravelLifecycleTest {
 
@@ -50,8 +54,11 @@ class DerivedTravelLifecycleTest {
         for (int i = 0; i < acts.size(); i++) {
             if (i > 0) {
                 ScheduledEvent previous = acts.get(i - 1);
-                combined.add(new ScheduledEvent("travel-" + i, null, previous.getEndTime(),
-                        previous.getEndTime().plusMinutes(10), EventType.TRAVEL,
+                // The identifier Autoschedule actually materialises: travel-<destination>,
+                // which is what makes "the leg into D" findable later.
+                combined.add(new ScheduledEvent("travel-" + acts.get(i).getId(), null,
+                        previous.getEndTime(), previous.getEndTime().plusMinutes(10),
+                        EventType.TRAVEL,
                         "Travel to " + acts.get(i).getActivity().getName()));
             }
             combined.add(acts.get(i));
@@ -81,38 +88,78 @@ class DerivedTravelLifecycleTest {
         assertEquals(2, countOf(trip, EventType.TRAVEL), "precondition: the day has travel");
     }
 
+    /** Removing the first activity takes its outgoing leg and leaves the rest alone. */
     @Test
-    void removingTheFirstActivityLeavesNoOrphanedTravel() {
+    void removingTheFirstActivityDropsOnlyItsOwnLeg() {
         Trip after = app.removeEvent.execute("t", activities.get(0).getId());
 
         assertEquals(2, countOf(after, EventType.ACTIVITY));
-        assertEquals(0, countOf(after, EventType.TRAVEL));
+        assertNoOrphanedTravel(after);
+        assertEquals(1, countOf(after, EventType.TRAVEL),
+                "the journey between the two that remain is still true: " + describe(after));
     }
 
+    /** The reported case: the pair either side of the gap is joined again. */
     @Test
-    void removingAMiddleActivityLeavesNoOrphanedTravel() {
+    void removingAMiddleActivityReplacesItsTwoLegsWithOne() {
         Trip after = app.removeEvent.execute("t", activities.get(1).getId());
 
         assertEquals(2, countOf(after, EventType.ACTIVITY));
-        assertEquals(0, countOf(after, EventType.TRAVEL),
-                "the journey to a removed activity describes a trip nobody is making");
+        assertNoOrphanedTravel(after);
+        assertEquals(1, countOf(after, EventType.TRAVEL),
+                "the two remaining activities are now adjacent and need one journey: "
+                        + describe(after));
     }
 
     @Test
-    void removingTheFinalActivityLeavesNoOrphanedTravel() {
+    void removingTheFinalActivityDropsOnlyItsIncomingLeg() {
         Trip after = app.removeEvent.execute("t", activities.get(2).getId());
 
         assertEquals(2, countOf(after, EventType.ACTIVITY));
-        assertEquals(0, countOf(after, EventType.TRAVEL));
+        assertNoOrphanedTravel(after);
+        assertEquals(1, countOf(after, EventType.TRAVEL), describe(after));
     }
 
     @Test
-    void removingTwoConsecutiveActivitiesLeavesNoOrphanedTravel() {
+    void removingTwoConsecutiveActivitiesLeavesOneActivityAndNoTravel() {
         app.removeEvent.execute("t", activities.get(0).getId());
         Trip after = app.removeEvent.execute("t", activities.get(1).getId());
 
         assertEquals(1, countOf(after, EventType.ACTIVITY));
-        assertEquals(0, countOf(after, EventType.TRAVEL));
+        assertEquals(0, countOf(after, EventType.TRAVEL),
+                "one activity has nothing to travel between: " + describe(after));
+        assertNoOrphanedTravel(after);
+    }
+
+    /** No journey may name a destination that is no longer in the day. */
+    private static void assertNoOrphanedTravel(Trip trip) {
+        java.util.Set<String> present = new java.util.HashSet<>();
+        for (ScheduledEvent event : trip.getScheduledEvents()) {
+            if (event.getEventType() == EventType.ACTIVITY) {
+                present.add(event.getId());
+            }
+        }
+        java.util.Set<String> destinations = new java.util.HashSet<>();
+        for (ScheduledEvent event : trip.getScheduledEvents()) {
+            if (event.getEventType() != EventType.TRAVEL) {
+                continue;
+            }
+            String destination = event.getId().replaceFirst("^travel-", "");
+            assertTrue(present.contains(destination),
+                    "travel to a removed activity: " + event.getId() + describe(trip));
+            assertTrue(destinations.add(destination),
+                    "two journeys to the same activity: " + event.getId() + describe(trip));
+        }
+    }
+
+    private static String describe(Trip trip) {
+        StringBuilder text = new StringBuilder("\n");
+        for (ScheduledEvent event : trip.getScheduledEvents()) {
+            text.append("  ").append(event.getEventType()).append(' ')
+                    .append(event.getStartTime()).append('-').append(event.getEndTime())
+                    .append(' ').append(event.getId()).append('\n');
+        }
+        return text.toString();
     }
 
     /** The exact state a user reported: a plan with no activities still showing journeys. */

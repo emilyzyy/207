@@ -100,7 +100,7 @@ public final class AppContainer implements ApiTripService {
         autoSchedule = new AutoScheduleTripUseCase(trips, distances, weather, scoringPolicy);
         editItinerary = new EditItineraryInteractor(itineraries);
         editEvent = new EditScheduledEventUseCase(trips);
-        removeEvent = new RemoveScheduledEventUseCase(trips);
+        removeEvent = new RemoveScheduledEventUseCase(trips, distances);
         summary = new GetTripSummaryUseCase(trips);
         share = new ShareTripUseCase(summary);
         weatherWarning = new GetWeatherWarningUseCase(trips, weather);

@@ -4,6 +4,7 @@ import interface_adapter.viewmodels.AutoScheduleStatus;
 import interface_adapter.viewmodels.DayPlanState;
 import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.PreviewMetricsView;
+import interface_adapter.viewmodels.ConstraintChipView;
 import interface_adapter.viewmodels.ImprovementView;
 import interface_adapter.viewmodels.PreviewRowView;
 import interface_adapter.viewmodels.TimeDisplay;
@@ -98,7 +99,87 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
                 travelQualityNote(outputData.getTravelQuality()),
                 outputData.getScheduleFingerprint(), current.getLockedEventIds(),
                 improvementViews(outputData.getImprovements()),
-                current.getTripDates(), current.getActiveDayIndex()));
+                current.getTripDates(), current.getActiveDayIndex())
+                .withReasoning(constraintChips(outputData), tradeOff(outputData, metrics)));
+    }
+
+    /**
+     * The requirements this schedule actively worked around.
+     *
+     * <p>Built from the reason codes the engine and policies already emit, so a chip is
+     * evidence rather than a restatement of a settings screen. Only codes that <em>changed
+     * where something went</em> qualify: a venue that happened to be open all day did not
+     * constrain anything, and a chip saying so would teach the traveller to stop reading the
+     * row.</p>
+     */
+    private static List<ConstraintChipView> constraintChips(
+            AutoSchedulePreviewOutputData outputData) {
+        java.util.LinkedHashMap<String, ConstraintChipView> chips = new java.util.LinkedHashMap<>();
+        for (Reason reason : outputData.getReasons()) {
+            String subject = subjectFor(reason, outputData);
+            switch (reason.getCode()) {
+                case LOCKED_BY_USER:
+                    chips.put("lock:" + subject,
+                            new ConstraintChipView("\u26bf", subject + " kept at your time"));
+                    break;
+                case AVOIDS_UNAVAILABLE_PERIOD:
+                    chips.put("unavailable",
+                            new ConstraintChipView("\u25f7", "Your unavailable time kept free"));
+                    break;
+                case OPENS_LATER:
+                    chips.put("opens:" + subject,
+                            new ConstraintChipView("\u25f4", subject + " waited for opening"));
+                    break;
+                case CLOSING_SOON:
+                    chips.put("closes:" + subject,
+                            new ConstraintChipView("\u25f4", subject + " finished before closing"));
+                    break;
+                default:
+                    break;
+            }
+        }
+        // Worth saying only when there was something to lose: a day of one activity has not
+        // "retained" anything.
+        if (outputData.getActivityCount() > 1
+                && outputData.getRows().size() >= outputData.getActivityCount()) {
+            chips.put("retained", new ConstraintChipView("\u2713",
+                    "All " + outputData.getActivityCount() + " activities kept"));
+        }
+        return new ArrayList<>(chips.values());
+    }
+
+    private static String subjectFor(Reason reason, AutoSchedulePreviewOutputData outputData) {
+        for (ProposedEventData row : outputData.getRows()) {
+            if (row.getEventId().equals(reason.getEventId())) {
+                return row.getTitle();
+            }
+        }
+        return "An activity";
+    }
+
+    /**
+     * One sentence naming a disadvantage this schedule deliberately accepted.
+     *
+     * <p>Only when the figures themselves show the exchange: something measurable got worse
+     * while something else measurable got better. An arrangement that improved on every axis
+     * has no trade-off to confess, and inventing one to look thorough would be its own kind
+     * of dishonesty.</p>
+     */
+    private static String tradeOff(AutoSchedulePreviewOutputData outputData,
+                                   PreviewMetricsView metrics) {
+        int extraTravel = -metrics.getTravelSavedMinutes();
+        int waitingRemoved = metrics.getIdleSavedMinutes();
+        if (extraTravel <= 0 || waitingRemoved <= 0) {
+            return "";
+        }
+        for (Reason reason : outputData.getReasons()) {
+            if (reason.getCode() == ReasonCode.LOCKED_BY_USER) {
+                return "Trade-off: " + extraTravel + " extra travel minutes to keep "
+                        + subjectFor(reason, outputData) + " at the time you pinned.";
+            }
+        }
+        return "Trade-off: " + extraTravel + " extra travel minutes to remove "
+                + waitingRemoved + " minutes of waiting.";
     }
 
     /**

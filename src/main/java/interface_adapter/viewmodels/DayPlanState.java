@@ -41,6 +41,8 @@ public final class DayPlanState {
     private final String previewFingerprint;
     private final Set<String> lockedEventIds;
     private final List<ImprovementView> improvements;
+    private final List<ConstraintChipView> constraintChips;
+    private final String tradeOff;
 
     public DayPlanState(
             String tripId, List<ScheduledEvent> events, String message, boolean error) {
@@ -145,6 +147,10 @@ public final class DayPlanState {
         this.improvements = Collections.unmodifiableList(new ArrayList<>(
                 improvements == null
                         ? Collections.<ImprovementView>emptyList() : improvements));
+        // Chips and the trade-off are chosen after the figures are known, so they arrive by
+        // withReasoning rather than through every constructor in this class.
+        this.constraintChips = Collections.<ConstraintChipView>emptyList();
+        this.tradeOff = "";
     }
 
     public String getTripId() {
@@ -217,6 +223,46 @@ public final class DayPlanState {
     }
 
     /** Proven before/after gains, for the "Schedule improvements" stack; empty when none. */
+    /** Requirements the schedule worked around; smaller and quieter than an improvement. */
+    public List<ConstraintChipView> getConstraintChips() {
+        return constraintChips;
+    }
+
+    /** One sentence naming a disadvantage the schedule accepted, or empty. */
+    public String getTradeOff() {
+        return tradeOff;
+    }
+
+    /** The same state carrying the reasoning the Presenter selected for this proposal. */
+    public DayPlanState withReasoning(List<ConstraintChipView> chips, String tradeOffSentence) {
+        return new DayPlanState(this, chips, tradeOffSentence);
+    }
+
+    private DayPlanState(DayPlanState source, List<ConstraintChipView> chips,
+                         String tradeOffSentence) {
+        this.tripId = source.tripId;
+        this.events = source.events;
+        this.message = source.message;
+        this.error = source.error;
+        this.hourlyWeather = source.hourlyWeather;
+        this.status = source.status;
+        this.previewRows = source.previewRows;
+        this.metrics = source.metrics;
+        this.warnings = source.warnings;
+        this.objectiveSummary = source.objectiveSummary;
+        this.keptCurrentOrder = source.keptCurrentOrder;
+        this.searchCompletedWithinLimit = source.searchCompletedWithinLimit;
+        this.travelQualityNote = source.travelQualityNote;
+        this.previewFingerprint = source.previewFingerprint;
+        this.lockedEventIds = source.lockedEventIds;
+        this.improvements = source.improvements;
+        this.tripDates = source.tripDates;
+        this.activeDayIndex = source.activeDayIndex;
+        this.constraintChips = Collections.unmodifiableList(new ArrayList<>(
+                chips == null ? Collections.<ConstraintChipView>emptyList() : chips));
+        this.tradeOff = tradeOffSentence == null ? "" : tradeOffSentence;
+    }
+
     public List<ImprovementView> getImprovements() {
         return improvements;
     }
