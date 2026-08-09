@@ -27,7 +27,7 @@ import javax.swing.JPanel;
  * most important thing about a schedule is not worth the room it takes from the first.</p>
  *
  * <p>Nothing negative appears here. Travel that grew, waiting that grew, an activity pushed
- * out of daylight — those are real and belong under "Why this schedule?" with the full
+ * out of daylight — those are real and belong under "Why these changes?" with the full
  * before/after figures, not dressed as an achievement.</p>
  */
 public final class ScheduleImprovementsPanel extends JPanel {
@@ -71,7 +71,7 @@ public final class ScheduleImprovementsPanel extends JPanel {
             add(tileGrid(improvements));
             if (improvements.size() > MOST_SHOWN) {
                 JLabel more = new JLabel("<html>and " + (improvements.size() - MOST_SHOWN)
-                        + " more, under Why this schedule?</html>");
+                        + " more, under Why these changes?</html>");
                 more.setFont(SwingTheme.SMALL);
                 more.setForeground(SwingTheme.MUTED);
                 more.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -105,39 +105,42 @@ public final class ScheduleImprovementsPanel extends JPanel {
         return grid;
     }
 
+    /**
+     * One tile: a glyph and figure on the top line, one quiet line under it.
+     *
+     * <p>Flat and softly rounded, sized by the grid rather than by its own text, so four
+     * tiles read as a set rather than as four differently-shaped notices.</p>
+     */
     private static JPanel card(ImprovementView improvement) {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBackground(SwingTheme.PANEL);
+        card.setBackground(SwingTheme.BLUE_SOFT);
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(SwingTheme.LINE, 1, true),
-                BorderFactory.createEmptyBorder(8, 9, 8, 9)));
+                BorderFactory.createEmptyBorder(9, 10, 9, 10)));
         card.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // The glyph leads the headline rather than sitting in its own colour swatch, so the
-        // category survives being read aloud or printed in grey. A tile is narrow, so the
-        // headline wraps inside it rather than forcing the grid wider.
-        JLabel headline = new JLabel("<html><div style='width:" + TEXT_WIDTH + "px'><b>"
-                + improvement.getMarker() + "&nbsp; " + escape(improvement.getHeadline())
+        // The glyph leads the figure rather than sitting in its own colour swatch, so the
+        // category survives being read aloud or printed in grey.
+        JLabel primary = new JLabel("<html><div style='width:" + TEXT_WIDTH + "px'>"
+                + improvement.getMarker() + "&nbsp; <b>" + escape(improvement.getPrimary())
                 + "</b></div></html>");
-        headline.setFont(SwingTheme.SMALL);
-        headline.setForeground(SwingTheme.NAVY);
-        headline.setAlignmentX(Component.LEFT_ALIGNMENT);
-        card.add(headline);
+        primary.setFont(SwingTheme.SMALL);
+        primary.setForeground(SwingTheme.NAVY);
+        primary.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(primary);
 
-        if (!improvement.getDetail().isEmpty()) {
-            JLabel detail = new JLabel("<html><div style='width:" + TEXT_WIDTH + "px'>"
-                    + escape(improvement.getDetail()) + "</div></html>");
-            detail.setFont(SwingTheme.SMALL);
-            detail.setForeground(SwingTheme.MUTED);
-            detail.setAlignmentX(Component.LEFT_ALIGNMENT);
-            card.add(detail);
+        if (!improvement.getSecondary().isEmpty()) {
+            JLabel secondary = new JLabel("<html><div style='width:" + TEXT_WIDTH + "px'>"
+                    + escape(improvement.getSecondary()) + "</div></html>");
+            secondary.setFont(SwingTheme.SMALL);
+            secondary.setForeground(SwingTheme.MUTED);
+            secondary.setAlignmentX(Component.LEFT_ALIGNMENT);
+            card.add(secondary);
         }
 
-        String spoken = improvement.getHeadline()
-                + (improvement.getDetail().isEmpty() ? "" : ", " + improvement.getDetail());
-        card.getAccessibleContext().setAccessibleName(spoken);
-        card.setToolTipText(spoken);
+        card.getAccessibleContext().setAccessibleName(improvement.spoken());
+        card.setToolTipText(improvement.spoken());
         return card;
     }
 

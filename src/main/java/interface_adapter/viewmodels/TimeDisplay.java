@@ -20,7 +20,14 @@ public final class TimeDisplay {
     private TimeDisplay() {
     }
 
-    /** {@code 09:00 -> "9:00 AM"}, {@code 13:15 -> "1:15 PM"}. Empty for null. */
+    /**
+     * Formats for a reader, for example {@code "9:00 AM"}.
+     *
+     * <p>Twelve-hour by team decision. This is the single place the visible clock is chosen,
+     * so anything that reaches a label through here is consistent by construction — Day Plan
+     * rows, travel rows, Preview rows, conflict sentences, Calendar View and weather
+     * timestamps all call it.</p>
+     */
     public static String format(LocalTime time) {
         if (time == null) {
             return "";

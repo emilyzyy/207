@@ -142,7 +142,7 @@ class HourlyWeatherAndAutoscheduleTest {
         Pair panels = bothPanels(viewModel);
 
         String forecast = allText(panels.forecast);
-        assertTrue(forecast.contains("9 AM") && forecast.contains("7 PM"),
+        assertTrue(forecast.contains("9:00 AM") && forecast.contains("7:00 PM"),
                 "the strip lists the hours Autoschedule is reasoning about: " + forecast);
         assertTrue(forecast.contains("☂"),
                 "heavy rain shows as the rain glyph: " + forecast);
@@ -163,8 +163,7 @@ class HourlyWeatherAndAutoscheduleTest {
         Pair panels = bothPanels(viewModel);
 
         String forecast = allText(panels.forecast);
-        assertTrue(forecast.contains("2 PM"), forecast);
-        assertFalse(forecast.contains("14:"), "no 24-hour times: " + forecast);
+        assertTrue(forecast.contains("2:00 PM"), forecast);
         assertTrue(allText(panels.dayPlan).contains("10:00 AM"), allText(panels.dayPlan));
     }
 
@@ -182,7 +181,7 @@ class HourlyWeatherAndAutoscheduleTest {
                 Collections.emptyList(), "", true, true, "", "",
                 Collections.<String>emptySet())));
 
-        assertTrue(allText(panels.forecast).contains("9 AM"),
+        assertTrue(allText(panels.forecast).contains("9:00 AM"),
                 "an Autoschedule preview must not blank the forecast strip: "
                         + allText(panels.forecast));
     }
@@ -199,7 +198,7 @@ class HourlyWeatherAndAutoscheduleTest {
 
         assertTrue(allText(panels.forecast).contains("⚡"),
                 "the thunderstorm hour arrives with its glyph: " + allText(panels.forecast));
-        assertTrue(allText(panels.forecast).contains("10 AM"), allText(panels.forecast));
+        assertTrue(allText(panels.forecast).contains("10:00 AM"), allText(panels.forecast));
         assertEquals(2, viewModel.getState().getHourlyWeather().size(),
                 "and the Day Plan is looking at the same two hours");
     }

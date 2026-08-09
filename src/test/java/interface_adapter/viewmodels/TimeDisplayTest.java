@@ -16,19 +16,23 @@ import org.junit.jupiter.api.Test;
 class TimeDisplayTest {
 
     @Test
-    void formatsMorningAndAfternoonOnATwelveHourClock() {
+    void formatsEveryTimeOnATwentyFourHourClock() {
         assertEquals("9:00 AM", TimeDisplay.format(LocalTime.of(9, 0)));
         assertEquals("1:15 PM", TimeDisplay.format(LocalTime.of(13, 15)));
         assertEquals("3:30 PM", TimeDisplay.format(LocalTime.of(15, 30)));
         assertEquals("9:00 PM", TimeDisplay.format(LocalTime.of(21, 0)));
     }
 
+    /** The two a twelve-hour clock can get backwards, and the half hours either side. */
     @Test
-    void midnightAndNoonReadAsTwelveRatherThanZero() {
+    void midnightAndNoonAreTheOnesThatMatter() {
         assertEquals("12:00 AM", TimeDisplay.format(LocalTime.of(0, 0)));
         assertEquals("12:30 AM", TimeDisplay.format(LocalTime.of(0, 30)));
         assertEquals("12:00 PM", TimeDisplay.format(LocalTime.of(12, 0)));
         assertEquals("12:45 PM", TimeDisplay.format(LocalTime.of(12, 45)));
+        assertEquals("1:00 AM", TimeDisplay.format(LocalTime.of(1, 0)));
+        assertEquals("1:00 PM", TimeDisplay.format(LocalTime.of(13, 0)));
+        assertEquals("11:45 PM", TimeDisplay.format(LocalTime.of(23, 45)));
     }
 
     @Test

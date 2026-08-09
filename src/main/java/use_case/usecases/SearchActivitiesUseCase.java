@@ -1,25 +1,24 @@
 package use_case.usecases;
 
-import use_case.ports.PlacesService;
 import use_case.ports.ActivitySearchGateway;
 import use_case.search.ActivitySearchRequest;
 import use_case.search.ActivitySearchResult;
-import use_case.search.SearchFailure;
-import use_case.search.SearchSource;
-import entity.entities.Activity;
-import java.util.List;
 
+/** Executes user-driven activity discovery through its dedicated application boundary. */
 public final class SearchActivitiesUseCase {
-    private final PlacesService places;
-    public SearchActivitiesUseCase(PlacesService places) { this.places = places; }
-    public List<Activity> execute(String destination, String query) { return places.search(destination, query); }
+    private final ActivitySearchGateway searchGateway;
+
+    public SearchActivitiesUseCase(ActivitySearchGateway searchGateway) {
+        if (searchGateway == null) {
+            throw new IllegalArgumentException("Activity search gateway is required");
+        }
+        this.searchGateway = searchGateway;
+    }
 
     public ActivitySearchResult execute(ActivitySearchRequest request) {
-        if (places instanceof ActivitySearchGateway) {
-            return ((ActivitySearchGateway) places).search(request);
+        if (request == null) {
+            throw new IllegalArgumentException("Activity search request is required");
         }
-        List<Activity> activities = places.search(request.getDestination(), request.getQuery());
-        return new ActivitySearchResult(activities, SearchSource.LOCAL, false,
-                activities.isEmpty() ? SearchFailure.NO_MATCH : SearchFailure.NONE);
+        return searchGateway.search(request);
     }
 }

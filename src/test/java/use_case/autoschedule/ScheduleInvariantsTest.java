@@ -389,7 +389,8 @@ class ScheduleInvariantsTest {
             String detail = scenario.describe(state);
 
             for (ImprovementView card : state.getImprovements()) {
-                String headline = card.getHeadline();
+                // The whole card, so a claim is checked wherever its words happen to sit.
+                String headline = card.spoken();
                 assertTrue(!headline.startsWith("0 "),
                         "a saving of nothing is not an improvement: " + headline + detail);
 
@@ -403,7 +404,7 @@ class ScheduleInvariantsTest {
                                     > state.getMetrics().getTravelAfterMinutes(),
                             "travel can only be claimed saved if it fell" + detail);
                 }
-                if (headline.contains("original order was kept")) {
+                if (headline.contains("ORDER KEPT")) {
                     List<String> before = new ArrayList<>();
                     for (ScheduledEvent event : scenario.trip.getScheduledEvents()) {
                         if (event.getEventType() == EventType.ACTIVITY) {
@@ -419,7 +420,7 @@ class ScheduleInvariantsTest {
                     assertEquals(before, after,
                             "the order was reported kept but it changed" + detail);
                 }
-                if (headline.contains("Pinned activity kept")) {
+                if (headline.contains("PIN KEPT")) {
                     assertTrue(!scenario.locks.isEmpty(),
                             "nothing was pinned, so nothing can have been kept" + detail);
                 }

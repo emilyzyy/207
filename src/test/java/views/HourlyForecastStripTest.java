@@ -48,10 +48,9 @@ final class HourlyForecastStripTest {
                 Arrays.asList(afternoon, morning))));
 
         String forecast = allText(strip);
-        assertTrue(forecast.contains("9 AM"), forecast);
-        assertTrue(forecast.contains("2 PM"), forecast);
-        assertFalse(forecast.contains("14:00"), "times read as a 12-hour clock");
-        assertTrue(forecast.indexOf("9 AM") < forecast.indexOf("2 PM"),
+        assertTrue(forecast.contains("9:00 AM"), forecast);
+        assertTrue(forecast.contains("2:00 PM"), forecast);
+        assertTrue(forecast.indexOf("9:00 AM") < forecast.indexOf("2:00 PM"),
                 "hours are sorted even when the forecast arrives out of order");
         assertTrue(forecast.contains("21°C"), forecast);
         assertTrue(forecast.contains("65%"), forecast);

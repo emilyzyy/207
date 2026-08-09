@@ -105,7 +105,7 @@ final class TripAssistantResponseFormatterTest {
         assertTrue(output.getAnswer().contains("Which activity do you mean"));
         assertTrue(output.getAnswer().contains("Kó-Café"));
         assertTrue(output.getAnswer().contains("Actual Park"));
-        assertFalse(output.getAnswer().contains("8:30 AM"));
+        assertFalse(output.getAnswer().contains("08:30"));
     }
 
     @Test

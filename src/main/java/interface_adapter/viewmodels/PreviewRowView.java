@@ -81,7 +81,7 @@ public final class PreviewRowView {
         return allReasons;
     }
 
-    /** The row's span as the traveller reads a clock, e.g. {@code "9:00 AM – 10:00 AM"}. */
+    /** The row's span as the traveller reads a clock, e.g. {@code "09:00 – 10:00"}. */
     public String getTimeLabel() {
         return TimeDisplay.range(start, end);
     }

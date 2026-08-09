@@ -55,7 +55,7 @@ public final class HourlyForecastStrip extends JPanel {
 
     private static final int SCROLLBAR_THICKNESS = 6;
     private static final DateTimeFormatter HOUR_FORMAT =
-            DateTimeFormatter.ofPattern("h a", Locale.ENGLISH);
+            DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH);
     private static final LocalTime FIRST_INTERESTING_HOUR = LocalTime.of(8, 0);
 
     private final DayPlanViewModel dayPlanViewModel;

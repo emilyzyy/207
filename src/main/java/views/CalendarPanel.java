@@ -336,7 +336,12 @@ public final class CalendarPanel extends JPanel {
         time.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         time.setForeground(SwingTheme.BLUE);
         card.add(time, BorderLayout.WEST);
-        JLabel name = new JLabel(eventName(event));
+        String eventName = eventName(event);
+        if (event.getActivity() != null) {
+            eventName = ActivityCategoryPresentation.decorate(
+                    event.getActivity().getCategory(), eventName);
+        }
+        JLabel name = new JLabel(eventName);
         name.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         name.setForeground(SwingTheme.NAVY);
         card.add(name, BorderLayout.CENTER);

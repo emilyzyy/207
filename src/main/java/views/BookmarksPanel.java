@@ -35,6 +35,7 @@ public final class BookmarksPanel extends JPanel {
     private final TripOptionsViewModel tripOptions;
     private TripAccessViewModel tripAccess;
     private final JPanel list = new JPanel();
+    private final JLabel feedback = new JLabel(" ");
 
     public BookmarksPanel(BookmarksViewModel viewModel) {
         this(viewModel, null, null, null, null, null, null);
@@ -98,6 +99,9 @@ public final class BookmarksPanel extends JPanel {
         copy.setFont(SwingTheme.SMALL);
         copy.setForeground(SwingTheme.MUTED);
         heading.add(copy);
+        feedback.setFont(SwingTheme.SMALL);
+        feedback.setForeground(SwingTheme.SUCCESS);
+        heading.add(feedback);
         add(heading, BorderLayout.NORTH);
 
         list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
@@ -137,7 +141,8 @@ public final class BookmarksPanel extends JPanel {
             SwingTheme.styleCard(card);
             card.setBackground(SwingTheme.categorySurface(activity.getCategory()));
             makeSelectable(card, activity);
-            JLabel name = new JLabel(activity.getName());
+            JLabel name = new JLabel(ActivityCategoryPresentation.decorate(
+                    activity.getCategory(), activity.getName()));
             name.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
             name.setForeground(SwingTheme.NAVY);
             card.add(name, BorderLayout.NORTH);
@@ -151,8 +156,12 @@ public final class BookmarksPanel extends JPanel {
             JButton remove = SwingTheme.secondaryButton("Remove bookmark");
             remove.setEnabled(controller != null && canEditItinerary());
             remove.addActionListener(event -> {
-                if (canEditItinerary()) {
+                if (canEditItinerary() && RemovalDialogs.confirm(
+                        this,
+                        "Remove bookmark",
+                        "Remove \"" + activity.getName() + "\" from your bookmarks?")) {
                     controller.remove(activity.getId());
+                    feedback.setText("Bookmark removed: " + activity.getName());
                 }
             });
             actions.add(remove);

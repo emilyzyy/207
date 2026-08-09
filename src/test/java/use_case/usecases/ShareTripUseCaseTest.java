@@ -40,7 +40,7 @@ final class ShareTripUseCaseTest {
         assertTrue(shared.contains("Trippy trip to Toronto"));
         assertTrue(shared.contains("Date: 2026-08-12"));
         assertTrue(shared.contains("Transportation: TRANSIT"));
-        assertTrue(shared.contains("10:00 AM – 11:30 AM · Royal Ontario Museum"));
+        assertTrue(shared.contains("10:00 AM – 11:30 AM · Royal Ontario Museum"), shared);
         assertTrue(shared.endsWith("Shared from Trippy"));
     }
 

@@ -60,8 +60,8 @@ public final class DayPlanPanel extends JPanel {
     /** Below this the sidebar would squeeze the schedule, so the cards go underneath. */
     static final int WIDE_LAYOUT_MINIMUM = 820;
 
-    /** Shorter than this and the journey cannot be drawn large enough to read. */
-    static final int SHORT_JOURNEY_MINUTES = 20;
+    /** The least height a journey can be drawn at and still be read. */
+    static final int MINIMUM_CONNECTOR_HEIGHT = 24;
 
     private final DayPlanViewModel viewModel;
     private final AutoScheduleController autoScheduleController;
@@ -93,7 +93,6 @@ public final class DayPlanPanel extends JPanel {
     private final JButton autoscheduleButton = SwingTheme.primaryButton("Autoschedule");
     private final JButton applyButton = SwingTheme.primaryButton("Apply");
     private final JButton cancelButton = SwingTheme.secondaryButton("Cancel");
-    private final JToggleButton whyButton = new JToggleButton("Why this schedule?");
 
     private LocalTime tripStart = LocalTime.of(9, 0);
     private LocalTime tripEnd = LocalTime.of(21, 0);
@@ -165,6 +164,10 @@ public final class DayPlanPanel extends JPanel {
         centre.setBackground(SwingTheme.BACKGROUND);
         centre.add(narrowSlot);
         centre.add(eventList);
+        // Without this the slack goes to whichever child will take it, and the empty
+        // narrow-layout slot took all of it -- pushing the schedule a third of the way down
+        // a window it had plenty of room in.
+        centre.add(Box.createVerticalGlue());
 
         JScrollPane scroll = new JScrollPane(centre);
         scroll.setBorder(BorderFactory.createEmptyBorder());
@@ -191,12 +194,6 @@ public final class DayPlanPanel extends JPanel {
         });
         add(actions(), BorderLayout.SOUTH);
 
-        whyButton.setFont(SwingTheme.SMALL);
-        whyButton.setFocusPainted(true);
-        whyButton.setContentAreaFilled(false);
-        whyButton.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
-        whyButton.setForeground(SwingTheme.BLUE);
-        whyButton.addActionListener(event -> render(viewModel.getState()));
 
         render(viewModel.getState());
         viewModel.addPropertyChangeListener(event ->
@@ -550,27 +547,6 @@ public final class DayPlanPanel extends JPanel {
     }
 
     /**
-     * The "Why this schedule?" control and, when expanded, the figures and reasons.
-     *
-     * <p>Built here rather than inline so the same component can sit in the side column on
-     * a wide window and above the rows on a narrow one, without the two drifting apart.</p>
-     */
-    private JPanel explanationControl(DayPlanState state) {
-        JPanel holder = new JPanel();
-        holder.setLayout(new BoxLayout(holder, BoxLayout.Y_AXIS));
-        holder.setOpaque(false);
-        holder.setAlignmentX(Component.LEFT_ALIGNMENT);
-        whyButton.setText((whyButton.isSelected() ? "\u25be " : "\u25b8 ")
-                + "Why this schedule?");
-        whyButton.setAlignmentX(Component.LEFT_ALIGNMENT);
-        holder.add(whyButton);
-        if (whyButton.isSelected()) {
-            holder.add(whySection(state));
-        }
-        return holder;
-    }
-
-    /**
      * Everything explaining the proposal, built once and placed according to the width.
      *
      * <p>There is deliberately one implementation. The Preview had grown three: a row list
@@ -585,12 +561,17 @@ public final class DayPlanPanel extends JPanel {
         sidebarSlot.removeAll();
         if (state.getStatus() != AutoScheduleStatus.PREVIEW) {
             sidebarSlot.setVisible(false);
+            narrowSlot.setVisible(false);
             return;
         }
 
         boolean wide = getWidth() >= WIDE_LAYOUT_MINIMUM;
         JPanel column = reasoningColumn(state);
         sidebarSlot.setVisible(wide);
+        // An empty BorderLayout panel still reports an unbounded maximum height, so on a wide
+        // window the unused narrow slot swallowed the spare vertical space and pushed the
+        // schedule a third of the way down the panel.
+        narrowSlot.setVisible(!wide);
         if (wide) {
             sidebarSlot.add(column, BorderLayout.NORTH);
         } else {
@@ -601,6 +582,8 @@ public final class DayPlanPanel extends JPanel {
             // left it floating in the middle of the panel with dead space either side.
             narrowSlot.setBorder(BorderFactory.createEmptyBorder(0, 0, 12, 0));
             narrowSlot.add(column, BorderLayout.NORTH);
+            narrowSlot.setMaximumSize(new Dimension(Integer.MAX_VALUE,
+                    column.getPreferredSize().height + 12));
         }
     }
 
@@ -649,8 +632,6 @@ public final class DayPlanPanel extends JPanel {
             column.add(band);
         }
 
-        column.add(Box.createVerticalStrut(10));
-        column.add(explanationControl(state));
         return column;
     }
 
@@ -725,133 +706,7 @@ public final class DayPlanPanel extends JPanel {
         return label;
     }
 
-    /**
-     * The reasoning, grouped by what it is about rather than listed row by row.
-     *
-     * <p>Per-row lines answered "what happened to this activity"; a traveller asking why the
-     * day looks like this wants "what was this arranged for". Grouping answers that without
-     * losing a single sentence the Presenter produced.</p>
-     */
-    private JPanel whySection(DayPlanState state) {
-        JPanel section = new JPanel();
-        section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
-        section.setBackground(SwingTheme.BACKGROUND);
-        section.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(SwingTheme.LINE),
-                BorderFactory.createEmptyBorder(10, 12, 10, 12)));
-        section.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        PreviewMetricsView metrics = state.getMetrics();
-        if (metrics != null) {
-            JLabel figuresHeading = new JLabel("Before and after");
-            figuresHeading.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
-            figuresHeading.setForeground(SwingTheme.NAVY);
-            figuresHeading.setAlignmentX(Component.LEFT_ALIGNMENT);
-            section.add(figuresHeading);
-            section.add(detailLine("Travel: " + metrics.getTravelBeforeMinutes()
-                    + " min before, " + metrics.getTravelAfterMinutes() + " min after"));
-            section.add(detailLine("Waiting: " + metrics.getIdleBeforeMinutes()
-                    + " min before, " + metrics.getIdleAfterMinutes() + " min after"));
-            section.add(detailLine("Activities moved: " + metrics.getMovedActivityCount()
-                    + " of " + metrics.getActivityCount()));
-            section.add(Box.createVerticalStrut(6));
-
-            // Whatever got worse is stated here rather than omitted. The improvement cards
-            // are positive by design, so this is the only place the full trade is visible,
-            // and a comparison that only ever flatters the feature is not a comparison.
-            java.util.List<String> tradeOffs = new java.util.ArrayList<>();
-            if (metrics.getTravelSavedMinutes() < 0) {
-                tradeOffs.add("Travel increased by " + (-metrics.getTravelSavedMinutes())
-                        + " min, in exchange for the gains above");
-            }
-            if (metrics.getIdleSavedMinutes() < 0) {
-                tradeOffs.add("Waiting increased by " + (-metrics.getIdleSavedMinutes()) + " min");
-            }
-            if (!tradeOffs.isEmpty()) {
-                JLabel tradeHeading = new JLabel("Trade-offs");
-                tradeHeading.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
-                tradeHeading.setForeground(SwingTheme.NAVY);
-                tradeHeading.setAlignmentX(Component.LEFT_ALIGNMENT);
-                section.add(tradeHeading);
-                for (String tradeOff : tradeOffs) {
-                    section.add(detailLine(tradeOff));
-                }
-                section.add(Box.createVerticalStrut(6));
-            }
-        }
-
-        java.util.Map<String, java.util.List<String>> grouped =
-                new java.util.LinkedHashMap<>();
-        for (PreviewRowView row : state.getPreviewRows()) {
-            for (String reason : row.getAllReasons()) {
-                grouped.computeIfAbsent(categoryOf(reason),
-                        key -> new java.util.ArrayList<>()).add(row.getTitle() + " — " + reason);
-            }
-        }
-
-        for (java.util.Map.Entry<String, java.util.List<String>> entry : grouped.entrySet()) {
-            JLabel category = new JLabel(entry.getKey());
-            category.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
-            category.setForeground(SwingTheme.NAVY);
-            category.setAlignmentX(Component.LEFT_ALIGNMENT);
-            section.add(category);
-            for (String line : entry.getValue()) {
-                JLabel item = new JLabel("<html>&nbsp;&nbsp;" + escape(line) + "</html>");
-                item.setFont(SwingTheme.SMALL);
-                item.setForeground(SwingTheme.MUTED);
-                item.setAlignmentX(Component.LEFT_ALIGNMENT);
-                section.add(item);
-            }
-            section.add(Box.createVerticalStrut(6));
-        }
-        section.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE,
-                section.getPreferredSize().height));
-        return section;
-    }
-
-    private static JLabel detailLine(String text) {
-        JLabel line = new JLabel("<html>&nbsp;&nbsp;" + escape(text) + "</html>");
-        line.setFont(SwingTheme.SMALL);
-        line.setForeground(SwingTheme.MUTED);
-        line.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return line;
-    }
-
-    /**
-     * Sorts a Presenter sentence into a heading. The wording comes from
-     * {@code AutoSchedulePresenter}, so matching on it keeps the categories honest without
-     * the view inventing meaning the use case did not supply.
-     */
-    private static String categoryOf(String reason) {
-        String lower = reason.toLowerCase(java.util.Locale.ROOT);
-        if (lower.contains("lock")) {
-            return "Times you pinned";
-        }
-        if (lower.contains("mealtime") || lower.contains("meal")) {
-            return "Mealtimes";
-        }
-        if (lower.contains("daylight") || lower.contains("dark")) {
-            return "Daylight";
-        }
-        if (lower.contains("weather") || lower.contains("rain") || lower.contains("forecast")) {
-            return "Weather";
-        }
-        if (lower.contains("open") || lower.contains("close")) {
-            return "Opening hours";
-        }
-        if (lower.contains("travel") || lower.contains("journey")) {
-            return "Less travel";
-        }
-        if (lower.contains("wait") || lower.contains("gap") || lower.contains("idle")) {
-            return "Reduced waiting";
-        }
-        if (lower.contains("order")) {
-            return "Preserved order";
-        }
-        return "Other considerations";
-    }
-
-    private JPanel previewCard(PreviewRowView row) {
+        private JPanel previewCard(PreviewRowView row) {
         boolean travel = row.getKind() == PreviewRowView.Kind.TRAVEL;
         JPanel card = new JPanel(new BorderLayout(12, 4));
         card.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -907,6 +762,19 @@ public final class DayPlanPanel extends JPanel {
         boolean locked = state.getLockedEventIds().contains(event.getId());
         JPanel card = new JPanel(new BorderLayout(12, 5));
         SwingTheme.styleCard(card);
+        // A journey shorter than its own connector overruns into this activity's interval.
+        // Reserving that overrun as blank space at the top means the connector can be drawn
+        // in front and read, while nothing of this card is ever covered. The card still
+        // starts at its true time; only its contents begin lower.
+        if (arrivedBy != null) {
+            int slot = minutesBetween(arrivedBy.getStartTime(), arrivedBy.getEndTime())
+                    * ScheduleTimeline.HOUR_HEIGHT / 60;
+            int overrun = Math.max(0, MINIMUM_CONNECTOR_HEIGHT - slot);
+            if (overrun > 0) {
+                card.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createEmptyBorder(overrun, 0, 0, 0), card.getBorder()));
+            }
+        }
         // A journey is a connector between two activities, not an activity, and the twelve
         // pixels of padding an activity card carries are more than a ten-minute gap has to
         // give. Trimming them lets a short hop label itself inside its own slot instead of
@@ -923,17 +791,30 @@ public final class DayPlanPanel extends JPanel {
         card.setAlignmentX(Component.LEFT_ALIGNMENT);
         makeSelectable(card, event);
 
-        String name = event.getActivity() == null
+        final String name = event.getActivity() == null
                 ? (event.getNotes().isEmpty() ? event.getEventType().toString() : event.getNotes())
                 : event.getActivity().getName();
+        String displayedName = name;
+        if (event.getActivity() != null) {
+            displayedName = ActivityCategoryPresentation.decorate(
+                    event.getActivity().getCategory(), name);
+        }
+        final String visibleName = displayedName;
 
         JPanel details = new JPanel();
         details.setLayout(new BoxLayout(details, BoxLayout.Y_AXIS));
         details.setOpaque(false);
 
-        JLabel title = new JLabel("<html><b>" + escape(name) + "</b> &nbsp; "
-                + escape(TimeDisplay.range(event.getStartTime(), event.getEndTime())) + "</html>");
+        // Not html: a wrapping title breaks "9:00 AM - 10:00 AM" across two lines the moment
+        // a category glyph makes the name a little longer, and a time split in half is worse
+        // than a name truncated at the end.
+        JLabel title = new JLabel(visibleName + "   "
+                + TimeDisplay.range(event.getStartTime(), event.getEndTime()));
         title.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
+        // BoxLayout hands a label exactly its preferred width, which a category glyph can
+        // push past what the measurer expected; letting it stretch means the clock is never
+        // cut in half to save a few pixels.
+        title.setMaximumSize(new Dimension(Integer.MAX_VALUE, title.getPreferredSize().height));
         title.setForeground(SwingTheme.NAVY);
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
         details.add(title);
@@ -946,20 +827,6 @@ public final class DayPlanPanel extends JPanel {
             notes.setForeground(SwingTheme.MUTED);
             notes.setAlignmentX(Component.LEFT_ALIGNMENT);
             details.add(notes);
-        }
-
-        // A four-minute walk is four pixels of timeline, which is not a thing anyone can
-        // read. The journey still has its own row at its own time; this line is how the
-        // traveller finds out about it, so a short hop is never merely invisible.
-        if (arrivedBy != null) {
-            int journey = minutesBetween(arrivedBy.getStartTime(), arrivedBy.getEndTime());
-            if (journey < SHORT_JOURNEY_MINUTES) {
-                JLabel connector = new JLabel("\u21b3 " + journey + " min journey to get here");
-                connector.setFont(SwingTheme.SMALL);
-                connector.setForeground(SwingTheme.MUTED);
-                connector.setAlignmentX(Component.LEFT_ALIGNMENT);
-                details.add(connector);
-            }
         }
 
         // Shiyuan's per-hour forecast. Each hour is one line, shortened to a width that
@@ -999,7 +866,10 @@ public final class DayPlanPanel extends JPanel {
                 }
             });
             remove.addActionListener(action -> {
-                if (canEditItinerary()) {
+                if (canEditItinerary() && RemovalDialogs.confirm(
+                        this,
+                        "Remove from Day Plan",
+                        "Remove \"" + name + "\" from your Day Plan?")) {
                     manualPlanController.remove(event.getId());
                 }
             });
@@ -1015,7 +885,7 @@ public final class DayPlanPanel extends JPanel {
 
     /** Google Calendar-style day grid whose event blocks are positioned by start time. */
     private final class ScheduleTimeline extends JPanel implements Scrollable {
-        private static final int HOUR_HEIGHT = 72;
+        static final int HOUR_HEIGHT = 72;
         private static final int TIME_GUTTER = 68;
         private static final int EVENT_GAP = 8;
         /** The cards in schedule order; z-order no longer matches, so index lookups cannot. */
@@ -1060,12 +930,13 @@ public final class DayPlanPanel extends JPanel {
                     installDragHandling(card, event);
                 }
             }
-            // A ten-minute journey needs more height to stay legible than ten minutes of the
-            // timeline gives it, so a short travel card necessarily runs past its slot. Send
-            // travel to the back: the label still starts at the right time, and what gets
-            // covered is the tail of a connector rather than the name of an activity.
+            // A short journey needs more height than its slot to stay legible, so its
+            // connector necessarily runs past its own interval and into the next activity's.
+            // Both stay readable because the activity below reserves that overlap as blank
+            // padding (see eventCard), and the connector is painted in front of it. Sending
+            // travel to the back instead only chose which of the two to lose.
             for (JPanel travel : travelCards) {
-                setComponentZOrder(travel, getComponentCount() - 1);
+                setComponentZOrder(travel, 0);
             }
             fitWindowTo(displayed(updatedState), updatedState);
             updatePreferredSize();
@@ -1138,7 +1009,7 @@ public final class DayPlanPanel extends JPanel {
                 // card's own padding as well as the line of text. Asking the card what it
                 // needs keeps both ends honest.
                 int minimumHeight = event.getEventType() == EventType.TRAVEL
-                        ? cards.get(i).getPreferredSize().height : 64;
+                        ? MINIMUM_CONNECTOR_HEIGHT : 64;
                 int height = Math.max(minimumHeight, duration * HOUR_HEIGHT / 60 - 4);
                 cards.get(i).setBounds(
                         TIME_GUTTER + EVENT_GAP, y, cardWidth, height);
