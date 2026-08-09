@@ -796,3 +796,147 @@ The three surviving cards are all robust, and the two hard-constraint reasons on
 (unavailable period, closing time) are stronger evidence than a weather card anyway. **No
 outdoor venue with real hours currently appears in the Venice results**, so a weather or
 daylight card cannot be promised on live data. Do not script one.
+
+
+---
+
+# Final live-production demo search
+
+> **All earlier sections are analysis experiments only.** Anything above that used
+> hand-built `Activity` objects, `MockDistanceService`, frozen weather or copied
+> opening-hours values is *not* the demo. This section is the demo: every value below came
+> out of the running application using its own search, its own routing and its own forecast.
+
+## Project state
+
+| | |
+|---|---|
+| Branch | `main` |
+| Working tree | clean |
+| Commit tested | **`9efc167`** (merge of `origin/main` `17944b4`, PR #32) |
+| Production compiles | ✅ |
+| Tests | **559 passing**, 0 failures, 9 skipped (opt-in live tests) |
+
+**Fixes verified present after the merge:**
+
+| Fix | Status |
+|---|---|
+| `OsmActivityMapper` parses returned opening hours | ✅ `OpeningHoursParser.parse(hoursText)` present |
+| `WeatherSuitabilityPolicy.reasonFor` silent in good weather | ✅ gated to MEDIUM/HIGH |
+| `closeai` → `trippy` rename integrated | ✅ no `closeai` package remains |
+| Map route line follows Day Plan order | ✅ `drawRoute` / `routeOrder` present |
+
+## Destinations tested
+
+| City | Results | Hours parsed | Outdoor | Believable split-hours food | Verdict |
+|---|---|---|---|---|---|
+| **Venice** | 88 | 28 | 6 (MIXED) | **3** — La Zucca, Anice Stellato, Spaghetteria 6342 | **SELECTED** |
+| Amsterdam | 99 | **56** | 5 (MIXED) | 10, but all midnight-wrap artefacts (`00:00-01:00, 09:00-23:59`) | Best hour coverage, unusable conflict story |
+| Toronto | 94 | 36 | 1 | 0 | No conflict venue |
+| Barcelona | 97 | 17 | 0 | 2 | Weak |
+| Rome, Paris | **0** | – | – | – | Geocoding returns nothing for the bare city name |
+
+Venice wins because it is the only destination whose live results contain a restaurant with a
+**genuine, one-sentence-explainable afternoon closure**. Amsterdam has better hours coverage
+but its split-hours venues are all "closed 01:00–09:00", which is not a mistake anyone makes.
+
+## Selected scenario — Venice, Wednesday 12 August 2026
+
+**Story:** *Bob books a late lunch for half past three. La Zucca stops serving lunch at half
+past two.* His 9:30 call touches neither the mistaken pin nor the corrected one.
+
+### Manual UI recipe
+
+1. **Trip:** destination **Venice**, date **2026-08-12**, hours **09:00–21:00**.
+2. **Search tab → type `Venice`** (empty query is fine). Add these five results:
+
+| # | Search result | Returned category | Hours the app receives | Set times to |
+|---|---|---|---|---|
+| 1 | **Museo Ebraico** | MUSEUM / INDOOR (default 120 min) | `[10:00–17:30]` | **10:00 – 11:00** (trim to 60) |
+| 2 | **Libreria Acqua Alta** | SHOPPING / INDOOR (60) | `[09:00–19:10]` | **11:30 – 12:30** |
+| 3 | **La Zucca** | FOOD / INDOOR (60) | **`[12:30–14:30, 19:00–22:30]`** | **15:30 – 16:30** ← the mistake |
+| 4 | **Accademia Gallery** | MUSEUM / INDOOR (120) | `[08:15–19:15]` | **17:00 – 19:00** |
+| 5 | **Barbacn de Paragon** | ATTRACTION / **MIXED** (90) | UNKNOWN — unconstrained | **19:15 – 20:45** |
+
+3. **Pin La Zucca** (padlock).
+4. **Autoschedule:** availability **09:00–21:00**; **unavailable 09:30–10:30** ("call with head
+   office before the day starts"); **Getting around by: Walking**; **Preserve plan order OFF**;
+   other five switches ON.
+5. **Generate Preview** → conflict.
+6. **Edit La Zucca → 12:45 – 13:45.**
+7. **Generate Preview** again.
+
+### Observed result — three consecutive runs, byte-identical
+
+**Beat 1** — `CONFLICT`, before any search:
+> **La Zucca is locked to a time when it is closed. Your Day Plan was not changed.**
+
+**Beat 2** — `PREVIEW`, **Travel 75 → 56 · Waiting 184 → 15**
+
+| Time | Row | Reason shown |
+|---|---|---|
+| 10:30–11:30 | Museo Ebraico | **moved clear of your unavailable time** |
+| 12:45–13:45 | **La Zucca** | **LOCKED — you locked this time** |
+| 14:04–15:04 | Libreria Acqua Alta | |
+| 15:14–16:44 | Barbacn de Paragon | poorer weather expected outdoors |
+| 16:59–18:59 | Accademia Gallery | **closes at 19:15** |
+
+**Cards:**
+1. ⏳ **169 min of waiting removed**
+2. → **19 min less travel**
+3. ⚿ **Pinned activity kept at its time** — La Zucca
+4. ☀ **Moved into daylight** — Barbacn de Paragon
+
+**Eight distinct visible proofs:** the named conflict, plan-unchanged, pin held exactly, all
+five preserved, durations preserved, unavailable-period dodge, closing-time awareness, and
+four improvement cards — plus the route line untangling on the map.
+
+### Stable vs live-dependent
+
+| Guaranteed (hard constraints) | May vary (live services) |
+|---|---|
+| Conflict fires and names La Zucca | Travel minutes (OSRM foot) |
+| Corrected pin held at 12:45–13:45 exactly | Waiting figure |
+| Five activities, durations unchanged | Whether the daylight card appears (needs Barbacn after 19:00 initially — it does) |
+| 09:30–10:30 avoided, row says so | Whether "poorer weather" shows (needs MEDIUM/HIGH at that hour) |
+| "closes at 19:15" on Accademia | Search availability — see risk below |
+| Nothing changes until Apply | |
+
+Margins are wide: 19 min travel and 169 min waiting are not one-minute effects.
+
+## Backups
+
+**Backup A — same city, different pin.** Replace La Zucca with **Spaghetteria 6342 A Le Tole**
+(FOOD, `[12:00–15:30, 19:00–22:30]`, 45.43875, 12.34244). Pin **16:00**, correct to **13:00**.
+Identical story shape; survives La Zucca dropping out of the results.
+
+**Backup B — weather-free, closed-all-day.** **Bar pasticceria Chiusso** (COFFEE, 45.43561,
+12.34576) is **CLOSED every Wednesday** (`Mo-Tu,Th-Su 07:00-20:00; We closed`). Pin it anywhere
+on 12 Aug and the conflict fires by name. Weakest story (a closed *day*, not a time slip) but
+immune to hour-tag edits and needs no forecast.
+
+**Backup C — different destination.** **Amsterdam** returns 99 places with **56** hours parsed —
+the best coverage of any city tested. No believable split-hours conflict, so use a
+**closing-time** story instead: pin an activity so it would overrun a venue's closing time.
+Fewer proofs, but the richest hours data if Venice's OSM entries change.
+
+**Most likely to survive to presentation day:** the primary scenario. La Zucca, Museo Ebraico
+and Accademia Gallery are long-standing OSM entries with stable hour tags, and the two
+strongest cards (waiting, travel) depend only on routing, not weather.
+
+## Live-data risks
+
+1. **Search returned zero results once during testing**, then worked again after a pause —
+   Overpass rate-limiting after repeated queries. **Run the search once well before presenting
+   so the per-destination cache is warm**, and do not re-search during the demo.
+2. Rome and Paris return **nothing** for the bare city name. Do not switch destination live.
+3. `Barbacn de Paragon` is an odd, mojibake-looking name (the OSM data itself). If that reads
+   badly on a projector, drop it and accept losing the daylight card.
+4. No outdoor venue with parsed hours exists in **any** city tested, so a "Moved to better
+   weather" card cannot be promised. Do not script one.
+
+## Bugs
+
+No new production bug found in this pass. The two fixed earlier are verified still present and
+are behaving correctly — the "poorer weather expected outdoors" text now appears **only** where
+the live forecast really is MEDIUM (15:00 in this run), which is the intended behaviour.
