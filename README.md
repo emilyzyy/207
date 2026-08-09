@@ -42,11 +42,11 @@ Real places and OpenStreetMap tiles are separate, explicit opt-ins:
 4. Run from the project root (so `.env` is found):
 
 ```bash
-./mvnw compile exec:java -Dexec.mainClass=closeai.Main \
-  -Dcloseai.persistence.mode=supabase \
-  -Dcloseai.weather.mode=open-meteo \
-  -Dcloseai.places.mode=nominatim \
-  -Dcloseai.map.tiles.mode=osm
+./mvnw compile exec:java -Dexec.mainClass=trippy.Main \
+  -Dtrippy.persistence.mode=supabase \
+  -Dtrippy.weather.mode=open-meteo \
+  -Dtrippy.places.mode=nominatim \
+  -Dtrippy.map.tiles.mode=osm
 ```
 
 `.env` is gitignored. Resolution order: `-D` system properties, then real env vars, then `.env`.
