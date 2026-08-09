@@ -188,6 +188,28 @@ create policy days_delete_own on public.trip_days
     exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
   );
 
+drop policy if exists days_select_own on public.trip_days;
+drop policy if exists days_insert_own on public.trip_days;
+drop policy if exists days_update_own on public.trip_days;
+drop policy if exists days_delete_own on public.trip_days;
+
+create policy days_select_own on public.trip_days
+  for select using (
+    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
+  );
+create policy days_insert_own on public.trip_days
+  for insert with check (
+    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
+  );
+create policy days_update_own on public.trip_days
+  for update using (
+    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
+  );
+create policy days_delete_own on public.trip_days
+  for delete using (
+    exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid())
+  );
+
 drop policy if exists bookmarks_select_own on public.trip_bookmarks;
 drop policy if exists bookmarks_insert_own on public.trip_bookmarks;
 drop policy if exists bookmarks_update_own on public.trip_bookmarks;
