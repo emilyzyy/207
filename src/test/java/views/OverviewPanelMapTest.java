@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -56,8 +57,10 @@ final class OverviewPanelMapTest {
         map.setSize(620, 520);
 
         CountDownLatch loaded = new CountDownLatch(1);
+        AtomicInteger requestedLimit = new AtomicInteger();
         List<Activity> mock = new MockPlacesService().findAll();
         map.setViewportLoader((south, west, north, east, max) -> {
+            requestedLimit.set(max);
             loaded.countDown();
             return mock;
         });
@@ -70,6 +73,7 @@ final class OverviewPanelMapTest {
             Thread.sleep(50);
         }
         assertEquals(mock.size(), map.getActivityCount());
+        assertTrue(requestedLimit.get() <= 75);
     }
 
     @Test
@@ -143,6 +147,10 @@ final class OverviewPanelMapTest {
         assertEquals(bookmarked.getId(), ordered.get(1).getId());
         assertEquals(planned.getId(), ordered.get(2).getId());
         assertEquals(selectedGeneric.getId(), ordered.get(3).getId());
+        assertTrue(map.markerRadius(generic.getId())
+                < map.markerRadius(bookmarked.getId()));
+        assertTrue(map.markerRadius(bookmarked.getId())
+                < map.markerRadius(selectedGeneric.getId()));
     }
 
     @Test
