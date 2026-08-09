@@ -137,7 +137,8 @@ public final class BookmarksPanel extends JPanel {
             SwingTheme.styleCard(card);
             card.setBackground(SwingTheme.categorySurface(activity.getCategory()));
             makeSelectable(card, activity);
-            JLabel name = new JLabel(activity.getName());
+            JLabel name = new JLabel(ActivityCategoryPresentation.decorate(
+                    activity.getCategory(), activity.getName()));
             name.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
             name.setForeground(SwingTheme.NAVY);
             card.add(name, BorderLayout.NORTH);

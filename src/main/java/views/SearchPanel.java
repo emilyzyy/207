@@ -248,6 +248,10 @@ public final class SearchPanel extends JPanel {
                     list, value, index, isSelected, cellHasFocus);
             ActivityCategory activityCategory = categoryForLabel(
                     value == null ? null : value.toString());
+            if (activityCategory != null) {
+                label.setText(ActivityCategoryPresentation.decorate(
+                        activityCategory, value.toString()));
+            }
             Color surface = activityCategory == null
                     ? SwingTheme.PANEL : SwingTheme.categorySurface(activityCategory);
             label.setBackground(surface);
@@ -336,7 +340,8 @@ public final class SearchPanel extends JPanel {
         card.setBackground(SwingTheme.categorySurface(activity.getCategory()));
         card.putClientProperty("activityId", activity.getId());
         makeSelectable(card, activity, focused);
-        JLabel name = new JLabel(activity.getName());
+        JLabel name = new JLabel(ActivityCategoryPresentation.decorate(
+                activity.getCategory(), activity.getName()));
         name.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         name.setForeground(SwingTheme.NAVY);
         card.add(name, BorderLayout.NORTH);

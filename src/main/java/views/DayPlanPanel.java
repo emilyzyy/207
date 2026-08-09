@@ -644,6 +644,10 @@ public final class DayPlanPanel extends JPanel {
         String name = event.getActivity() == null
                 ? (event.getNotes().isEmpty() ? event.getEventType().toString() : event.getNotes())
                 : event.getActivity().getName();
+        if (event.getActivity() != null) {
+            name = ActivityCategoryPresentation.decorate(
+                    event.getActivity().getCategory(), name);
+        }
 
         JPanel details = new JPanel();
         details.setLayout(new BoxLayout(details, BoxLayout.Y_AXIS));
