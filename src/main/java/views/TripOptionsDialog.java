@@ -98,7 +98,7 @@ public final class TripOptionsDialog {
         JPanel fields = new JPanel(new GridBagLayout());
         fields.setBorder(BorderFactory.createEmptyBorder(16, 16, 8, 16));
         addField(fields, 0, "Destination", boldLabel(state.getDestination()));
-        addField(fields, 1, "Trip date", date);
+        addField(fields, 1, "Trip start date", date);
         addField(fields, 2, "Day starts", start);
         addField(fields, 3, "Day ends", end);
         feedback.setFont(SwingTheme.SMALL);
@@ -446,6 +446,11 @@ public final class TripOptionsDialog {
             });
             roleBox.setSelectedItem(role.displayName());
             roleBox.setFont(SwingTheme.SMALL);
+            // Protect the selected value from platform-specific combo-box arrow widths.
+            // Without an explicit width Aqua truncates "Edit" and Windows may show only "...".
+            Dimension roleSize = new Dimension(112, 32);
+            roleBox.setPreferredSize(roleSize);
+            roleBox.setMinimumSize(roleSize);
             if (selfLocked) {
                 roleBox.setVisible(false);
                 JLabel roleLabel = new JLabel(role.displayName());

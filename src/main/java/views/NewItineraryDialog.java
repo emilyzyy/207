@@ -103,6 +103,7 @@ public final class NewItineraryDialog extends JDialog {
         suggestionScroll = new JScrollPane(suggestionList);
         suggestionScroll.setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
         suggestionScroll.setPreferredSize(new Dimension(520, CELL_HEIGHT * VISIBLE_ROWS + 8));
+        suggestionScroll.setMinimumSize(new Dimension(320, CELL_HEIGHT * VISIBLE_ROWS + 8));
         suggestionScroll.setVisible(false);
 
         JPanel form = new JPanel(new GridBagLayout());
@@ -277,6 +278,7 @@ public final class NewItineraryDialog extends JDialog {
         JScrollPane scroll = new JScrollPane(list);
         scroll.setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
         scroll.setPreferredSize(new Dimension(520, 140));
+        scroll.setMinimumSize(new Dimension(320, 140));
         scroll.getVerticalScrollBar().setUnitIncrement(12);
         return scroll;
     }
@@ -429,6 +431,14 @@ public final class NewItineraryDialog extends JDialog {
         suggestionScroll.setVisible(visible);
         revalidate();
         pack();
+        // Some platform LAFs shrink scroll panes before honoring their preferred height.
+        // Reassert the form's useful minimum after the dynamic suggestions row appears.
+        if (visible && !friends.isEmpty()) {
+            setMinimumSize(new Dimension(560, 700));
+            if (getHeight() < 700) {
+                setSize(Math.max(getWidth(), 560), 700);
+            }
+        }
     }
 
     private void select(Suggestion s) {

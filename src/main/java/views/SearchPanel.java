@@ -115,6 +115,12 @@ public final class SearchPanel extends JPanel {
         this.tripAccess = tripAccess;
         SwingTheme.styleComboBox(category);
         SwingTheme.styleComboBox(type);
+        Dimension categorySize = new Dimension(category.getPreferredSize().width, 32);
+        Dimension settingSize = new Dimension(type.getPreferredSize().width, 32);
+        category.setPreferredSize(categorySize);
+        category.setMinimumSize(categorySize);
+        type.setPreferredSize(settingSize);
+        type.setMinimumSize(settingSize);
         category.setRenderer(new CategoryFilterRenderer());
         setLayout(new BorderLayout(0, 12));
         setBackground(SwingTheme.BACKGROUND);
@@ -324,6 +330,9 @@ public final class SearchPanel extends JPanel {
     private JComponent activityCard(Activity activity, SearchState state, boolean focused) {
         JPanel card = new JPanel(new BorderLayout(10, 8));
         SwingTheme.styleCard(card);
+        card.setPreferredSize(new Dimension(10, 132));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 132));
+        card.setMinimumSize(new Dimension(0, 132));
         card.setBackground(SwingTheme.categorySurface(activity.getCategory()));
         card.putClientProperty("activityId", activity.getId());
         makeSelectable(card, activity, focused);
