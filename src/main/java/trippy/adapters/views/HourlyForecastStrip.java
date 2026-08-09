@@ -73,7 +73,7 @@ public final class HourlyForecastStrip extends JPanel {
         setLayout(new BorderLayout());
         setBackground(SwingTheme.PANEL);
         setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 1, 1, 1, SwingTheme.LINE),
+                BorderFactory.createLineBorder(SwingTheme.LINE, 1, true),
                 BorderFactory.createEmptyBorder(6, 8, 0, 8)));
         getAccessibleContext().setAccessibleName("Hourly forecast");
 

@@ -20,9 +20,11 @@ public final class PlannerPanel extends JPanel {
             DayPlanPanel dayPlanPanel,
             DaySwitcherPanel daySwitcherPanel) {
         setLayout(new BorderLayout());
-        setBackground(SwingTheme.PANEL);
+        setBackground(SwingTheme.BACKGROUND);
 
         JTabbedPane tabs = new JTabbedPane();
+        tabs.setUI(new SwingTheme.MinimalTabbedPaneUI());
+        tabs.setBorder(null);
         tabs.setFont(SwingTheme.BODY);
         tabs.addTab("Search", searchPanel);
         tabs.addTab("Bookmarks", bookmarksPanel);
