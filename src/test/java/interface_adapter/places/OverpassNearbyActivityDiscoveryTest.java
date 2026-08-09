@@ -21,6 +21,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -176,6 +179,40 @@ final class OverpassNearbyActivityDiscoveryTest {
         assertEquals(1, requests.get());
         assertTrue(query.get().contains("around:1500,"));
         assertTrue(query.get().contains("out center"));
+    }
+
+    @Test
+    void boxesFullyInsideTheWholeCityDiscoveryAreServedFromCoverageWithoutNewRequests() throws Exception {
+        AtomicInteger requests = new AtomicInteger();
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/interpreter", exchange -> {
+            requests.incrementAndGet();
+            byte[] bytes = ("{\"elements\":[{\"type\":\"node\",\"id\":7,\"lat\":43.65,"
+                    + "\"lon\":-79.38,\"tags\":{\"name\":\"Park\",\"leisure\":\"park\"}}]}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+        });
+        server.start();
+
+        OverpassNearbyActivityDiscovery discovery = service();
+        List<Activity> city = discovery.around("Toronto", 25);
+        assertFalse(city.isEmpty());
+        int requestsAfterAround = requests.get();
+
+        // A small box at the city centre lies fully inside the 1500 m coverage circle, so it
+        // is answered from the cached whole-city discovery with no further network traffic.
+        List<Activity> covered = discovery.cachedInBounds(
+                "Toronto", 43.649, -79.381, 43.651, -79.379);
+        assertNotNull(covered);
+        assertEquals(city.get(0).getId(), covered.get(0).getId());
+        assertEquals(requestsAfterAround, requests.get());
+
+        // A box ~100 km away falls outside coverage; the caller falls back to a real query.
+        List<Activity> outside = discovery.cachedInBounds(
+                "Toronto", 44.0, -80.0, 44.1, -79.9);
+        assertNull(outside);
     }
 
     @Test

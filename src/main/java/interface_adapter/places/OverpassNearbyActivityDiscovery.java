@@ -70,6 +70,13 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
      * instead of queueing behind one another.
      */
     private final Map<String, Object> keyLocks = new ConcurrentHashMap<>();
+    /**
+     * The circle a successful whole-city around query covered, per destination. Viewport boxes
+     * that fall inside it can be answered from these cached results instead of issuing more
+     * Overpass requests (trip enrichment and the map's first cells otherwise re-query the same
+     * city centre).
+     */
+    private final Map<String, AroundCoverage> aroundCoverage = new ConcurrentHashMap<>();
 
     public OverpassNearbyActivityDiscovery(DestinationGeocoder geocoder) {
         this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build(),
@@ -95,7 +102,12 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
         int radius = Math.min(center.getDiscoveryRadiusMeters(), MAX_AROUND_RADIUS_METERS);
         String area = "around:" + radius + ","
                 + center.getLatitude() + "," + center.getLongitude();
-        return coordinatedLoad(key, query(area, window), window);
+        List<Activity> result = coordinatedLoad(key, query(area, window), window);
+        if (!result.isEmpty()) {
+            aroundCoverage.put(normalize(destination), new AroundCoverage(
+                    center.getLatitude(), center.getLongitude(), radius, result));
+        }
+        return result;
     }
 
     @Override
@@ -111,6 +123,65 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
         String area = "around:" + radius + ","
                 + centerLat + "," + centerLng;
         return coordinatedLoad(key, query(area, window), window);
+    }
+
+    @Override
+    public List<Activity> cachedInBounds(String destination,
+                                         double south, double west, double north, double east) {
+        AroundCoverage coverage = aroundCoverage.get(normalize(destination));
+        if (coverage == null || !covers(coverage, south, west, north, east)) {
+            return null;
+        }
+        List<Activity> inBox = new ArrayList<>();
+        for (Activity activity : coverage.activities) {
+            if (activity.getLocation() == null) continue;
+            double lat = activity.getLocation().getLatitude();
+            double lng = activity.getLocation().getLongitude();
+            if (lat >= south && lat <= north && lng >= west && lng <= east) {
+                inBox.add(activity);
+            }
+        }
+        return inBox;
+    }
+
+    /** True when the whole box, including its corners, lies inside the coverage circle. */
+    private static boolean covers(AroundCoverage coverage,
+                                  double south, double west, double north, double east) {
+        double centerLat = (south + north) / 2;
+        double centerLng = (west + east) / 2;
+        double halfWidth = (east - west) * 111_320.0
+                * Math.cos(Math.toRadians(centerLat)) / 2.0;
+        double halfHeight = (north - south) * 111_320.0 / 2.0;
+        double boxHalfDiagonal = Math.hypot(halfWidth, halfHeight);
+        double distance = distanceMeters(coverage.latitude, coverage.longitude,
+                centerLat, centerLng);
+        return distance + boxHalfDiagonal <= coverage.radiusMeters;
+    }
+
+    /** Great-circle distance in metres (Haversine). */
+    private static double distanceMeters(double lat1, double lng1, double lat2, double lng2) {
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLng = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return 6_371_000.0 * c;
+    }
+
+    private static final class AroundCoverage {
+        final double latitude;
+        final double longitude;
+        final double radiusMeters;
+        final List<Activity> activities;
+
+        AroundCoverage(double latitude, double longitude,
+                       double radiusMeters, List<Activity> activities) {
+            this.latitude = latitude;
+            this.longitude = longitude;
+            this.radiusMeters = radiusMeters;
+            this.activities = activities;
+        }
     }
 
     /**

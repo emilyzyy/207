@@ -35,6 +35,12 @@ public final class NominatimNamedPlaceSearch implements NamedPlaceSearch, Destin
     private final OsmActivityMapper mapper;
     private final Map<String, List<Activity>> searchCache = new ConcurrentHashMap<>();
     private final Map<String, GeoPoint> geocodeCache = new ConcurrentHashMap<>();
+    /**
+     * Deduplicates concurrent geocodes per destination: the map focus and the whole-city
+     * discovery both geocode the same city on a trip open, and a cached result means the second
+     * caller does not queue behind Nominatim's one-request-per-second throttle.
+     */
+    private final Map<String, Object> geocodeLocks = new ConcurrentHashMap<>();
     private long nextRequestAt;
 
     public NominatimNamedPlaceSearch() {
@@ -72,20 +78,29 @@ public final class NominatimNamedPlaceSearch implements NamedPlaceSearch, Destin
         String key = normalize(destination);
         GeoPoint cached = geocodeCache.get(key);
         if (cached != null) return cached;
-        String simplified = simplifyDestination(destination);
-        JsonNode results = request(simplified, 1, false);
-        if (results.isEmpty() && !simplified.equalsIgnoreCase(destination.trim())) {
-            results = request(destination, 1, false);
+        Object lock = geocodeLocks.computeIfAbsent(key, ignored -> new Object());
+        synchronized (lock) {
+            try {
+                cached = geocodeCache.get(key);
+                if (cached != null) return cached;
+                String simplified = simplifyDestination(destination);
+                JsonNode results = request(simplified, 1, false);
+                if (results.isEmpty() && !simplified.equalsIgnoreCase(destination.trim())) {
+                    results = request(destination, 1, false);
+                }
+                if (results.isEmpty()) throw new PlaceSearchException(
+                        SearchFailure.INVALID_DESTINATION, "Destination was not found: " + destination);
+                JsonNode first = results.get(0);
+                double latitude = first.path("lat").asDouble();
+                double longitude = first.path("lon").asDouble();
+                GeoPoint point = new GeoPoint(latitude, longitude,
+                        discoveryRadius(first.path("boundingbox"), latitude));
+                geocodeCache.put(key, point);
+                return point;
+            } finally {
+                geocodeLocks.remove(key, lock);
+            }
         }
-        if (results.isEmpty()) throw new PlaceSearchException(
-                SearchFailure.INVALID_DESTINATION, "Destination was not found: " + destination);
-        JsonNode first = results.get(0);
-        double latitude = first.path("lat").asDouble();
-        double longitude = first.path("lon").asDouble();
-        GeoPoint point = new GeoPoint(latitude, longitude,
-                discoveryRadius(first.path("boundingbox"), latitude));
-        geocodeCache.put(key, point);
-        return point;
     }
 
     private JsonNode request(String query, int limit, boolean details) {

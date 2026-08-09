@@ -107,8 +107,16 @@ public final class OpenStreetMapPlacesService
     @Override
     public List<Activity> searchInBounds(String destination, double south, double west,
                                          double north, double east, int maxResults) {
-        List<Activity> activities = nearby.inBounds(south, west, north, east, maxResults);
         Map<String, Activity> viewport = visibleIndex(normalize(destination));
+        // A box that lies fully inside the already-fetched whole-city discovery is answered from
+        // that cache instead of issuing another Overpass request.
+        List<Activity> covered = nearby.cachedInBounds(
+                destination, south, west, north, east);
+        if (covered != null) {
+            for (Activity activity : covered) viewport.put(activity.getId(), activity);
+            return covered;
+        }
+        List<Activity> activities = nearby.inBounds(south, west, north, east, maxResults);
         for (Activity activity : activities) viewport.put(activity.getId(), activity);
         return activities;
     }

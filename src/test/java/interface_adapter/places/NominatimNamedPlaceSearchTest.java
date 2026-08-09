@@ -12,6 +12,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -73,6 +76,44 @@ final class NominatimNamedPlaceSearchTest {
     void simplifiesDuplicatedIslandDestinationLabels() {
         assertEquals("Sicily, Italy", NominatimNamedPlaceSearch.simplifyDestination(
                 "Sicily island, Sicily, Italy"));
+    }
+
+    @Test
+    void concurrentGeocodesForTheSameDestinationShareOneRequest() throws Exception {
+        AtomicInteger requests = new AtomicInteger();
+        CountDownLatch firstRequestStarted = new CountDownLatch(1);
+        CountDownLatch releaseResponse = new CountDownLatch(1);
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/search", exchange -> {
+            requests.incrementAndGet();
+            firstRequestStarted.countDown();
+            try {
+                releaseResponse.await(2, TimeUnit.SECONDS);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+            }
+            byte[] bytes = ("[{\"lat\":\"43.65\",\"lon\":\"-79.38\","
+                    + "\"boundingbox\":[\"43.5\",\"43.8\",\"-79.6\",\"-79.1\"]}]")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+        });
+        server.start();
+        NominatimNamedPlaceSearch search = service();
+
+        // The map focus and the whole-city discovery both geocode the same destination on a
+        // trip open; the second caller must block behind the first, not send a second request.
+        CompletableFuture<GeoPoint> first = CompletableFuture.supplyAsync(
+                () -> search.geocode("Toronto"));
+        assertTrue(firstRequestStarted.await(2, TimeUnit.SECONDS));
+        CompletableFuture<GeoPoint> second = CompletableFuture.supplyAsync(
+                () -> search.geocode("Toronto"));
+        releaseResponse.countDown();
+
+        assertEquals(43.65, first.get(3, TimeUnit.SECONDS).getLatitude());
+        assertEquals(43.65, second.get(3, TimeUnit.SECONDS).getLatitude());
+        assertEquals(1, requests.get());
     }
 
     @Test

@@ -24,12 +24,14 @@ import javax.swing.SwingUtilities;
  *
  * <p>The 42-cell grid keeps the adjacent month's leading and trailing days enabled, so a
  * selection can span a month boundary mid-drag instead of stopping at the month's last
- * visible cell. A plain second click after the first (no drag) also extends the range.</p>
+ * visible cell. A plain second click after the first (no drag) also extends the range. The
+ * selectable range is capped at two weeks ({@value #MAX_RANGE_DAYS} days).</p>
  */
 public final class DatePickerPanel extends JPanel {
     private static final DateTimeFormatter MONTH_HEADER = DateTimeFormatter.ofPattern("MMMM yyyy");
     private static final int GRID_ROWS = 6;
     private static final int GRID_COLUMNS = 7;
+    private static final int MAX_RANGE_DAYS = 14;
 
     private LocalDate start;
     private LocalDate end;
@@ -43,6 +45,7 @@ public final class DatePickerPanel extends JPanel {
 
     private final JLabel monthLabel = new JLabel("", JLabel.CENTER);
     private final JPanel grid = new JPanel(new GridLayout(GRID_ROWS + 1, GRID_COLUMNS, 4, 4));
+    private final JButton[] dayButtons = new JButton[GRID_ROWS * GRID_COLUMNS];
 
     public DatePickerPanel() {
         this(LocalDate.now());
@@ -79,6 +82,7 @@ public final class DatePickerPanel extends JPanel {
         add(header, BorderLayout.NORTH);
         add(grid, BorderLayout.CENTER);
 
+        buildGrid();
         render();
     }
 
@@ -117,6 +121,9 @@ public final class DatePickerPanel extends JPanel {
         }
         start = newStart;
         end = (newEnd != null && !newEnd.isBefore(newStart)) ? newEnd : newStart;
+        if (end != null && ChronoUnit.DAYS.between(start, end) >= MAX_RANGE_DAYS) {
+            end = start.plusDays(MAX_RANGE_DAYS - 1);
+        }
         displayed = YearMonth.from(start);
         render();
     }
@@ -134,36 +141,42 @@ public final class DatePickerPanel extends JPanel {
         render();
     }
 
-    private void render() {
-        monthLabel.setText(MONTH_HEADER.format(displayed.atDay(1)));
-        grid.removeAll();
+    /** Builds the weekday header and the 42 day cells once; only re-styled afterwards. */
+    private void buildGrid() {
         for (DayOfWeek day : DayOfWeek.values()) {
             JLabel label = new JLabel(day.toString().substring(0, 3), JLabel.CENTER);
             label.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
             label.setForeground(SwingTheme.MUTED);
             grid.add(label);
         }
-        gridStart = displayed.atDay(1)
-                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        for (int index = 0; index < GRID_ROWS * GRID_COLUMNS; index++) {
-            grid.add(dayButton(gridStart.plusDays(index)));
+        for (int index = 0; index < dayButtons.length; index++) {
+            JButton button = new JButton();
+            button.setFont(SwingTheme.SMALL);
+            button.setFocusPainted(false);
+            button.setOpaque(true);
+            button.setBackground(SwingTheme.PANEL);
+            button.setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
+            button.addMouseListener(mouseHandler);
+            button.addMouseMotionListener(mouseHandler);
+            dayButtons[index] = button;
+            grid.add(button);
         }
-        grid.revalidate();
-        grid.repaint();
     }
 
-    private JButton dayButton(LocalDate date) {
-        JButton button = new JButton(String.valueOf(date.getDayOfMonth()));
-        button.setFont(SwingTheme.SMALL);
-        button.setFocusPainted(false);
-        button.setOpaque(true);
-        boolean inMonth = YearMonth.from(date).equals(displayed);
-        button.setForeground(inMonth ? SwingTheme.NAVY : SwingTheme.MUTED);
-        applyRangeStyle(button, date);
-        button.addMouseListener(mouseHandler);
-        button.addMouseMotionListener(mouseHandler);
-        button.getAccessibleContext().setAccessibleName("date " + date);
-        return button;
+    private void render() {
+        monthLabel.setText(MONTH_HEADER.format(displayed.atDay(1)));
+        gridStart = displayed.atDay(1)
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        for (int index = 0; index < dayButtons.length; index++) {
+            LocalDate date = gridStart.plusDays(index);
+            JButton button = dayButtons[index];
+            button.setText(String.valueOf(date.getDayOfMonth()));
+            button.setForeground(YearMonth.from(date).equals(displayed)
+                    ? SwingTheme.NAVY : SwingTheme.MUTED);
+            button.getAccessibleContext().setAccessibleName("date " + date);
+            applyRangeStyle(button, date);
+        }
+        grid.repaint();
     }
 
     private void applyRangeStyle(JButton button, LocalDate date) {
@@ -201,7 +214,7 @@ public final class DatePickerPanel extends JPanel {
             LocalDate day = dayAt(e);
             if (day == null) return;
             if (allowClickExtend && pendingEnd) {
-                end = day;
+                end = clampToMaxRange(day);
                 pendingEnd = false;
             } else {
                 start = day;
@@ -217,7 +230,7 @@ public final class DatePickerPanel extends JPanel {
             if (!dragging) return;
             LocalDate day = dayAt(e);
             if (day == null || day.equals(end)) return;
-            end = day;
+            end = clampToMaxRange(day);
             dragged = true;
             render();
         }
@@ -238,6 +251,21 @@ public final class DatePickerPanel extends JPanel {
             }
         }
     };
+
+    /** Caps a candidate end day so the selected range never exceeds {@link #MAX_RANGE_DAYS}. */
+    private LocalDate clampToMaxRange(LocalDate day) {
+        if (start == null || day == null) {
+            return day;
+        }
+        long span = ChronoUnit.DAYS.between(start, day);
+        if (span >= MAX_RANGE_DAYS) {
+            return start.plusDays(MAX_RANGE_DAYS - 1);
+        }
+        if (span <= -MAX_RANGE_DAYS) {
+            return start.minusDays(MAX_RANGE_DAYS - 1);
+        }
+        return day;
+    }
 
     /** Maps a mouse position (from any day cell) to the LocalDate under the cursor. */
     private LocalDate dayAt(MouseEvent e) {

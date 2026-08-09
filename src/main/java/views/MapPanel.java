@@ -49,6 +49,26 @@ public final class MapPanel extends JPanel {
     private static final int MAX_VIEWPORT_RESULTS = 25;
     /** Split the visible box into at most this many cells so places appear as each one answers. */
     private static final int MAX_VIEWPORT_CELLS = 4;
+    /**
+     * Viewport cells are snapped to a fixed lat/lng grid of roughly this size so panned views
+     * reuse cells already fetched (the per-cell Overpass cache key is the cell's bounds).
+     */
+    private static final double VIEWPORT_CELL_SIZE_METERS = 3_000.0;
+    /**
+     * The lng step of the snap grid must not depend on a viewport's own latitude, or two panned
+     * views would get different grid origins and never reuse cells. It is fixed at the reference
+     * latitude (Toronto), which keeps every lng step a multiple of the same constant.
+     */
+    private static final double GRID_REFERENCE_METERS_PER_DEGREE_LNG =
+            111_320.0 * Math.cos(Math.toRadians(43.6532));
+    /** Background neighbor cells warmed after a viewport load settles, at most. */
+    private static final int MAX_PREFETCH_CELLS = 3;
+    /**
+     * Prefetch only runs after the map has been idle this long. Warm-up requests to the public
+     * Overpass replicas must never compete with the user's own pan/zoom queries, which the public
+     * servers rate-limit aggressively.
+     */
+    private static final int PREFETCH_IDLE_DELAY_MILLIS = 2_000;
     private static final int MAX_GENERIC_MARKERS = 65;
     private static final int GENERIC_MARKER_RADIUS = 11;
     private static final int HIGHLIGHTED_MARKER_RADIUS = 14;
@@ -105,8 +125,12 @@ public final class MapPanel extends JPanel {
     private final boolean tileLoadingEnabled;
 
     private Timer viewportTimer;
+    private Timer prefetchTimer;
+    private ViewportRequest prefetchPending;
     private final ExecutorService viewportLoaderExecutor = Executors.newFixedThreadPool(3,
             r -> { Thread t = new Thread(r, "ViewportLoader"); t.setDaemon(true); return t; });
+    private final ExecutorService prefetchExecutor = Executors.newSingleThreadExecutor(
+            r -> { Thread t = new Thread(r, "ViewportPrefetch"); t.setDaemon(true); return t; });
 
     private ViewportPlacesLoader viewportLoader;
     private boolean viewportLoadRunning;
@@ -376,6 +400,7 @@ public final class MapPanel extends JPanel {
 
     private void scheduleViewportReload() {
         if (viewportLoader == null) return;
+        cancelPrefetch();
         if (viewportTimer == null) {
             // Let pan/zoom settle for a bit before new places start loading, so a quick drag
             // doesn't fire a storm of viewport queries.
@@ -387,6 +412,7 @@ public final class MapPanel extends JPanel {
 
     void reloadViewport() {
         if (viewportLoader == null) return;
+        cancelPrefetch();
         // Until the trip's destination is resolved the map still sits on the default center
         // (Toronto). Loading places there would pollute every itinerary with the wrong city,
         // so wait for the destination geocode before any viewport query runs.
@@ -471,44 +497,150 @@ public final class MapPanel extends JPanel {
         }
         if (next == null) {
             notifyPlacesLoading(false);
+            schedulePrefetch(completed);
         } else {
             loadViewport(next);
         }
     }
 
     /**
-     * Splits the visible box into a few cells of about a discovery radius across, capped so a
-     * fresh pan loads at most a handful of queries instead of one oversized whole-box request.
+     * Warm-up runs only once the map has sat idle for a moment. A user mid-pan or mid-zoom is
+     * exactly when the public Overpass replicas are most likely to rate-limit, so the neighbor
+     * cells wait until the interaction has stopped before they start asking for anything.
      */
-    private static List<double[]> viewportCells(double south, double west,
-                                                double north, double east) {
-        double metersPerDegreeLng = 111_320.0
-                * Math.cos(Math.toRadians((south + north) / 2));
-        double cellSizeMeters = 3_000.0;
-        int cols = Math.max(1, (int) Math.ceil(
-                (east - west) * metersPerDegreeLng / cellSizeMeters));
-        int rows = Math.max(1, (int) Math.ceil(
-                (north - south) * 111_320.0 / cellSizeMeters));
-        while (rows * cols > MAX_VIEWPORT_CELLS) {
-            if (cols >= rows) {
-                cols--;
-            } else {
-                rows--;
-            }
-            cols = Math.max(1, cols);
-            rows = Math.max(1, rows);
+    private void schedulePrefetch(ViewportRequest settled) {
+        cancelPrefetch();
+        prefetchPending = settled;
+        prefetchTimer = new Timer(PREFETCH_IDLE_DELAY_MILLIS, e -> {
+            prefetchNeighbours(prefetchPending);
+            prefetchPending = null;
+        });
+        prefetchTimer.setRepeats(false);
+        prefetchTimer.start();
+    }
+
+    /** Stops a scheduled warm-up so a new pan/zoom never finds prefetch in the way. */
+    private void cancelPrefetch() {
+        if (prefetchTimer != null) {
+            prefetchTimer.stop();
+            prefetchTimer = null;
         }
+        prefetchPending = null;
+    }
+
+    /**
+     * Warms the ring of cells just beyond the settled view so the next pan is answered from the
+     * per-cell cache instead of fresh Overpass queries. Background work only: each cell checks
+     * that no user-driven load has started, runs on its own single thread, and uses the same
+     * per-cell result limit as the user's own load so a warm-up query is never heavier than a
+     * pan would have made.
+     */
+    private void prefetchNeighbours(ViewportRequest settled) {
+        if (viewportLoader == null || !hasHomeLocation) return;
+        GridCells grid = gridFor(settled.south, settled.west, settled.north, settled.east);
+        int perCell = Math.max(1,
+                (int) Math.ceil(settled.maxResults / (double) grid.rows / grid.cols));
+        double marginLat = grid.stepLat;
+        double marginLng = grid.stepLng;
+        double south = Math.floor((settled.south - marginLat) / grid.stepLat) * grid.stepLat;
+        double west = Math.floor((settled.west - marginLng) / grid.stepLng) * grid.stepLng;
+        double north = Math.ceil((settled.north + marginLat) / grid.stepLat) * grid.stepLat;
+        double east = Math.ceil((settled.east + marginLng) / grid.stepLng) * grid.stepLng;
+        int queued = 0;
+        outer:
+        for (double cellSouth = south; cellSouth < north; cellSouth += grid.stepLat) {
+            for (double cellWest = west; cellWest < east; cellWest += grid.stepLng) {
+                if (cellSouth < settled.north && cellWest < settled.east
+                        && cellSouth + grid.stepLat > settled.south
+                        && cellWest + grid.stepLng > settled.west) {
+                    continue;
+                }
+                if (queued >= MAX_PREFETCH_CELLS) break outer;
+                queued++;
+                final double cSouth = cellSouth;
+                final double cWest = cellWest;
+                final double cNorth = cellSouth + grid.stepLat;
+                final double cEast = cellWest + grid.stepLng;
+                prefetchExecutor.submit(() ->
+                        prefetchCell(cSouth, cWest, cNorth, cEast, perCell));
+            }
+        }
+    }
+
+    /** Loads one prefetch cell, dropping it the moment a user-driven load takes over. */
+    private void prefetchCell(double south, double west, double north, double east, int perCell) {
+        synchronized (this) {
+            if (viewportLoadRunning || queuedViewportRequest != null) return;
+        }
+        try {
+            viewportLoader.load(south, west, north, east, perCell);
+        } catch (Exception ignored) {
+            // A failed background prefetch must never disturb the map or the UI thread.
+        }
+    }
+
+    /**
+     * Splits the visible box into a few grid-aligned cells of about a discovery radius across,
+     * capped so a fresh pan loads at most a handful of queries instead of one oversized
+     * whole-box request. Cell edges snap to a fixed global grid, so two panned views that share a
+     * cell produce identical bounds (and identical Overpass cache keys) instead of re-querying a
+     * slightly shifted rectangle. The cell size doubles, keeping the grid alignment, until the
+     * box fits within the cell budget.
+     */
+    static List<double[]> viewportCells(double south, double west,
+                                        double north, double east) {
+        GridCells grid = gridFor(south, west, north, east);
         List<double[]> cells = new ArrayList<>();
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < cols; col++) {
+        for (int row = 0; row < grid.rows; row++) {
+            for (int col = 0; col < grid.cols; col++) {
                 cells.add(new double[]{
-                        south + row * (north - south) / rows,
-                        west + col * (east - west) / cols,
-                        south + (row + 1) * (north - south) / rows,
-                        west + (col + 1) * (east - west) / cols});
+                        grid.south + row * grid.stepLat,
+                        grid.west + col * grid.stepLng,
+                        grid.south + (row + 1) * grid.stepLat,
+                        grid.west + (col + 1) * grid.stepLng});
             }
         }
         return cells;
+    }
+
+    private static GridCells gridFor(double south, double west, double north, double east) {
+        int scale = 1;
+        while (true) {
+            double stepLat = VIEWPORT_CELL_SIZE_METERS * scale / 111_320.0;
+            double stepLng = VIEWPORT_CELL_SIZE_METERS * scale
+                    / GRID_REFERENCE_METERS_PER_DEGREE_LNG;
+            double gridSouth = Math.floor(south / stepLat) * stepLat;
+            double gridWest = Math.floor(west / stepLng) * stepLng;
+            double gridNorth = Math.ceil(north / stepLat) * stepLat;
+            double gridEast = Math.ceil(east / stepLng) * stepLng;
+            int rows = Math.max(1, (int) Math.round((gridNorth - gridSouth) / stepLat));
+            int cols = Math.max(1, (int) Math.round((gridEast - gridWest) / stepLng));
+            if (rows * cols <= MAX_VIEWPORT_CELLS) {
+                return new GridCells(gridSouth, gridWest, rows, cols, stepLat, stepLng, scale);
+            }
+            scale *= 2;
+        }
+    }
+
+    private static final class GridCells {
+        final double south;
+        final double west;
+        final int rows;
+        final int cols;
+        final double stepLat;
+        final double stepLng;
+        final int scale;
+
+        GridCells(double south, double west, int rows, int cols,
+                  double stepLat, double stepLng, int scale) {
+            this.south = south;
+            this.west = west;
+            this.rows = rows;
+            this.cols = cols;
+            this.stepLat = stepLat;
+            this.stepLng = stepLng;
+            this.scale = scale;
+        }
     }
 
     private static String viewportKey(double[][] corners, int maxResults) {
