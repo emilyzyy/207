@@ -42,10 +42,8 @@ public final class HeaderPanel extends JPanel {
         this.viewModel = viewModel;
         this.dayPlanViewModel = dayPlanViewModel;
         setLayout(new BorderLayout(24, 0));
-        setBackground(SwingTheme.PANEL);
-        setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, SwingTheme.LINE),
-                BorderFactory.createEmptyBorder(13, 22, 13, 22)));
+        setBackground(SwingTheme.BACKGROUND);
+        setBorder(BorderFactory.createEmptyBorder(13, 22, 13, 22));
 
         JLabel brand = new JLabel("Trippy");
         brand.setFont(SwingTheme.TITLE);

@@ -5,6 +5,10 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Cursor;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListCellRenderer;
@@ -51,16 +55,27 @@ public final class SwingTheme {
     private static final Object LIGHT_TABBED_PANE_UI = UIManager.get("TabbedPaneUI");
     private static boolean darkMode;
     private static java.util.Map<ActivityCategory, Color> categorySurfaces = lightCategories();
-    public static final Font TITLE = new Font("SansSerif", Font.BOLD, 24);
-    public static final Font HEADING = new Font("SansSerif", Font.BOLD, 17);
-    public static final Font BODY = new Font("SansSerif", Font.PLAIN, 13);
-    public static final Font SMALL = new Font("SansSerif", Font.PLAIN, 11);
+    private static final String FONT_FAMILY = availableFont("Inter") ? "Inter" : "SansSerif";
+    public static final Font TITLE = new Font(FONT_FAMILY, Font.BOLD, 24);
+    public static final Font HEADING = new Font(FONT_FAMILY, Font.BOLD, 17);
+    public static final Font BODY = new Font(FONT_FAMILY, Font.PLAIN, 13);
+    public static final Font SMALL = new Font(FONT_FAMILY, Font.PLAIN, 11);
 
     static {
         installDefaults();
     }
 
     private SwingTheme() {
+    }
+
+    public static boolean isInterAvailable() { return "Inter".equals(FONT_FAMILY); }
+
+    private static boolean availableFont(String family) {
+        for (String installed : java.awt.GraphicsEnvironment
+                .getLocalGraphicsEnvironment().getAvailableFontFamilyNames()) {
+            if (family.equalsIgnoreCase(installed)) return true;
+        }
+        return false;
     }
 
     public static Color categorySurface(ActivityCategory category) {
@@ -74,6 +89,8 @@ public final class SwingTheme {
         comboBox.setUI(new ThemedComboBoxUI());
         comboBox.setBackground(PANEL);
         comboBox.setForeground(NAVY);
+        comboBox.setFont(BODY);
+        comboBox.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
     public static void setDarkMode(boolean enabled) {
@@ -141,9 +158,7 @@ public final class SwingTheme {
         } else if (component instanceof JComboBox) {
             styleComboBox((JComboBox<?>) component);
         } else if (component instanceof JTabbedPane) {
-            if (darkMode) {
-                ((JTabbedPane) component).setUI(new BasicTabbedPaneUI());
-            }
+            ((JTabbedPane) component).setUI(new MinimalTabbedPaneUI());
             component.setBackground(PANEL);
             component.setForeground(NAVY);
         }
@@ -151,7 +166,9 @@ public final class SwingTheme {
             themeButton((JButton) component);
         }
         if (component instanceof JScrollPane) {
-            ((JScrollPane) component).getViewport().setBackground(PANEL);
+            JScrollPane pane = (JScrollPane) component;
+            pane.getViewport().setBackground(pane.getViewport().getView() == null
+                    ? PANEL : pane.getViewport().getView().getBackground());
         }
         if (component instanceof JScrollBar) {
             ((JScrollBar) component).setUI(new ThemedScrollBarUI());
@@ -183,10 +200,8 @@ public final class SwingTheme {
         // WindowsButtonUI ignores custom dark backgrounds. BasicButtonUI paints the
         // component colours we assign, and updateComponentTreeUI restores the native
         // delegate automatically when the application returns to light mode.
-        if (darkMode) {
-            button.setUI(new BasicButtonUI());
-        }
-        button.setOpaque(true);
+        button.setUI(new RoundedButtonUI());
+        button.setOpaque(false);
         button.setContentAreaFilled(true);
         Object role = button.getClientProperty("trippy.buttonRole");
         if ("primary".equals(role)) {
@@ -202,8 +217,7 @@ public final class SwingTheme {
     }
 
     private static void installDefaults() {
-        UIManager.put("ButtonUI", darkMode
-                ? BasicButtonUI.class.getName() : LIGHT_BUTTON_UI);
+        UIManager.put("ButtonUI", RoundedButtonUI.class.getName());
         // Use one predictable renderer for the closed field and popup in both themes.
         // WindowsComboBoxUI otherwise retains native white fields and stale popup colours.
         UIManager.put("ComboBoxUI", ThemedComboBoxUI.class.getName());
@@ -214,6 +228,9 @@ public final class SwingTheme {
         UIManager.put("TextField.background", PANEL);
         UIManager.put("TextField.foreground", NAVY);
         UIManager.put("TextField.caretForeground", NAVY);
+        UIManager.put("TextField.border", BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(LINE, 1, true),
+                BorderFactory.createEmptyBorder(4, 7, 4, 7)));
         UIManager.put("TextField.inactiveBackground", BACKGROUND);
         UIManager.put("FormattedTextField.background", PANEL);
         UIManager.put("FormattedTextField.foreground", NAVY);
@@ -221,8 +238,19 @@ public final class SwingTheme {
         UIManager.put("ComboBox.foreground", NAVY);
         UIManager.put("ComboBox.selectionBackground", BLUE_SOFT);
         UIManager.put("ComboBox.selectionForeground", NAVY);
+        UIManager.put("ComboBox.border", BorderFactory.createLineBorder(LINE, 1, true));
         UIManager.put("Button.background", PANEL);
         UIManager.put("Button.foreground", NAVY);
+        Cursor pointer = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR);
+        UIManager.put("Button.cursor", pointer);
+        UIManager.put("ComboBox.cursor", pointer);
+        UIManager.put("CheckBox.cursor", pointer);
+        UIManager.put("TabbedPane.cursor", pointer);
+        UIManager.put("Spinner.cursor", pointer);
+        UIManager.put("Button.font", BODY);
+        UIManager.put("Label.font", BODY);
+        UIManager.put("ComboBox.font", BODY);
+        UIManager.put("TextField.font", BODY);
         UIManager.put("Button.disabledText", MUTED);
         UIManager.put("ScrollPane.background", PANEL);
         UIManager.put("Viewport.background", PANEL);
@@ -232,7 +260,7 @@ public final class SwingTheme {
         UIManager.put("TabbedPane.background", PANEL);
         UIManager.put("TabbedPane.foreground", NAVY);
         UIManager.put("TabbedPane.selected", BACKGROUND);
-        UIManager.put("TabbedPane.contentAreaColor", LINE);
+        UIManager.put("TabbedPane.contentAreaColor", PANEL);
         UIManager.put("TabbedPane.highlight", LINE);
         UIManager.put("TabbedPane.light", LINE);
         UIManager.put("TabbedPane.shadow", LINE);
@@ -257,8 +285,38 @@ public final class SwingTheme {
             button.setFont(SMALL);
             button.setMargin(new java.awt.Insets(0, 6, 0, 6));
             button.setFocusable(false);
+            button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             themeButton(button);
             return button;
+        }
+    }
+
+    /** Removes the heavy native content frame around the planner tabs. */
+    public static final class MinimalTabbedPaneUI extends BasicTabbedPaneUI {
+        @Override protected void paintContentBorder(Graphics g, int placement, int selected) { }
+    }
+
+    /** Paints every themed button as one quiet rounded control in both themes. */
+    public static final class RoundedButtonUI extends BasicButtonUI {
+        public static ComponentUI createUI(JComponent component) {
+            return new RoundedButtonUI();
+        }
+        @Override public void paint(Graphics graphics, JComponent component) {
+            JButton button = (JButton) component;
+            Graphics2D g2 = (Graphics2D) graphics.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
+            Color fill = button.isEnabled() ? button.getBackground() : LINE;
+            g2.setColor(fill);
+            g2.fillRoundRect(0, 0, component.getWidth(), component.getHeight(), 14, 14);
+            if (!"primary".equals(button.getClientProperty("trippy.buttonRole"))) {
+                g2.setColor(LINE);
+                g2.drawRoundRect(0, 0, component.getWidth() - 1,
+                        component.getHeight() - 1, 14, 14);
+            }
+            g2.dispose();
+            button.setContentAreaFilled(false);
+            super.paint(graphics, component);
         }
     }
 
@@ -340,7 +398,7 @@ public final class SwingTheme {
 
     public static Border cardBorder() {
         return BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(LINE),
+                BorderFactory.createLineBorder(LINE, 1, true),
                 BorderFactory.createEmptyBorder(12, 14, 12, 14));
     }
 
@@ -360,6 +418,8 @@ public final class SwingTheme {
         button.setContentAreaFilled(true);
         button.setBorderPainted(false);
         button.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setUI(new RoundedButtonUI());
         return button;
     }
 
@@ -370,6 +430,8 @@ public final class SwingTheme {
         button.setForeground(NAVY);
         button.setBackground(PANEL);
         button.setFocusPainted(false);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setUI(new RoundedButtonUI());
         button.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(LINE),
                 BorderFactory.createEmptyBorder(7, 12, 7, 12)));
@@ -404,15 +466,6 @@ public final class SwingTheme {
         label.setFont(SMALL.deriveFont(Font.BOLD));
         label.setForeground(accent);
         header.add(label, BorderLayout.WEST);
-
-        JPanel rule = new JPanel();
-        rule.setBackground(LINE);
-        rule.setPreferredSize(new Dimension(10, 1));
-        JPanel ruleHolder = new JPanel(new BorderLayout());
-        ruleHolder.setOpaque(false);
-        ruleHolder.setBorder(BorderFactory.createEmptyBorder(7, 0, 0, 0));
-        ruleHolder.add(rule, BorderLayout.CENTER);
-        header.add(ruleHolder, BorderLayout.CENTER);
 
         if (trailing != null && !trailing.isEmpty()) {
             JLabel note = new JLabel(trailing);

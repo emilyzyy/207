@@ -64,7 +64,7 @@ public final class BookmarksPanel extends JPanel {
         this.dayPlan = dayPlan;
         this.tripOptions = tripOptions;
         setLayout(new BorderLayout(0, 12));
-        setBackground(SwingTheme.PANEL);
+        setBackground(SwingTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
 
         JPanel heading = new JPanel();
@@ -81,9 +81,11 @@ public final class BookmarksPanel extends JPanel {
         add(heading, BorderLayout.NORTH);
 
         list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
-        list.setBackground(SwingTheme.PANEL);
+        list.setBackground(SwingTheme.BACKGROUND);
         JScrollPane scroll = new JScrollPane(list);
         scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getViewport().setBackground(SwingTheme.BACKGROUND);
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         add(scroll, BorderLayout.CENTER);
         render(viewModel.getState());
         viewModel.addPropertyChangeListener(event -> render(viewModel.getState()));
@@ -145,7 +147,7 @@ public final class BookmarksPanel extends JPanel {
         card.setToolTipText("Show " + activity.getName() + " on the map");
         if (activity.getId().equals(selection.getSelectedActivityId())) {
             card.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(SwingTheme.BLUE, 2),
+                    BorderFactory.createLineBorder(SwingTheme.BLUE, 2, true),
                     BorderFactory.createEmptyBorder(11, 13, 11, 13)));
         }
         card.addMouseListener(new MouseAdapter() {

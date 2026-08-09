@@ -117,23 +117,24 @@ public final class DayPlanPanel extends JPanel {
         this.selection = selection;
 
         setLayout(new BorderLayout(0, 12));
-        setBackground(SwingTheme.PANEL);
+        setBackground(SwingTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
         add(header(), BorderLayout.NORTH);
 
         eventList.setLayout(new BorderLayout(0, 8));
-        eventList.setBackground(SwingTheme.PANEL);
+        eventList.setBackground(SwingTheme.BACKGROUND);
         previewArea.setLayout(new BoxLayout(previewArea, BoxLayout.Y_AXIS));
-        previewArea.setBackground(SwingTheme.PANEL);
+        previewArea.setBackground(SwingTheme.BACKGROUND);
 
         JPanel centre = new JPanel();
         centre.setLayout(new BoxLayout(centre, BoxLayout.Y_AXIS));
-        centre.setBackground(SwingTheme.PANEL);
+        centre.setBackground(SwingTheme.BACKGROUND);
         centre.add(eventList);
         centre.add(previewArea);
 
         JScrollPane scroll = new JScrollPane(centre);
         scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getViewport().setBackground(SwingTheme.BACKGROUND);
         scroll.getVerticalScrollBar().setUnitIncrement(14);
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
@@ -236,9 +237,7 @@ public final class DayPlanPanel extends JPanel {
         JPanel wrapper = new JPanel();
         wrapper.setOpaque(false);
         wrapper.setLayout(new BoxLayout(wrapper, BoxLayout.Y_AXIS));
-        wrapper.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, SwingTheme.LINE),
-                BorderFactory.createEmptyBorder(10, 0, 0, 0)));
+        wrapper.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
 
         // The spinner rides beside the status line rather than replacing it: the words
         // say what is happening, the motion says it is still happening.
@@ -686,7 +685,7 @@ public final class DayPlanPanel extends JPanel {
             setName("Day schedule timeline");
             getAccessibleContext().setAccessibleName("Day schedule timeline");
             setBackground(SwingTheme.PANEL);
-            setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
+            setBorder(BorderFactory.createLineBorder(SwingTheme.LINE, 1, true));
         }
 
         private void setSchedule(DayPlanState updatedState) {
@@ -741,7 +740,7 @@ public final class DayPlanPanel extends JPanel {
                 LocalTime time = tripStart.plusMinutes(minute);
                 String label = TimeDisplay.format(time);
                 g2.setColor(SwingTheme.MUTED);
-                g2.drawString(label, 8, Math.min(y + 5, getHeight() - 4));
+                g2.drawString(label, 8, Math.min(y + 14, getHeight() - 4));
                 g2.setColor(SwingTheme.LINE);
                 g2.drawLine(TIME_GUTTER, y, getWidth(), y);
             }
@@ -899,7 +898,7 @@ public final class DayPlanPanel extends JPanel {
         card.setToolTipText("Show " + event.getActivity().getName() + " on the map");
         if (event.getActivity().getId().equals(selection.getSelectedActivityId())) {
             card.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(SwingTheme.BLUE, 2),
+                    BorderFactory.createLineBorder(SwingTheme.BLUE, 2, true),
                     BorderFactory.createEmptyBorder(11, 13, 11, 13)));
         }
         card.addMouseListener(new MouseAdapter() {

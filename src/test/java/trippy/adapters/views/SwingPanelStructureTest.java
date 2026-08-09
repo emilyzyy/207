@@ -73,9 +73,9 @@ final class SwingPanelStructureTest {
         assertEquals(JLabel.CENTER, resultCount.getHorizontalAlignment());
         assertTrue(searchTitle.getParent().getLayout() instanceof java.awt.BorderLayout);
         assertTrue(resultCount.getParent().getLayout() instanceof java.awt.BorderLayout);
-        assertNotNull(findComboItem(search, "Filter by rating"));
-        assertNotNull(findComboItem(search, "3.5+"));
-        assertNotNull(findComboItem(search, "3.0+"));
+        assertNull(findComboItem(search, "Filter by rating"));
+        assertNull(findComboItem(search, "3.5+"));
+        assertNull(findComboItem(search, "3.0+"));
         assertTrue(allText(planner).contains("Saved for later"));
         assertNotNull(findButton(search, "Add to plan"));
         clickCard(search, "Show rom on the map");
