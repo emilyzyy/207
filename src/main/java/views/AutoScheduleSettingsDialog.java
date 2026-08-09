@@ -379,7 +379,7 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         AutoScheduleSettings settings = read();
         if (settings == null) {
             JOptionPane.showMessageDialog(this,
-                    "Times need to look like 9:00 AM or 1:15 PM.", "Check the times",
+                    "Times need to look like 09:00 or 13:15.", "Check the times",
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -430,8 +430,8 @@ public final class AutoScheduleSettingsDialog extends JDialog {
      *
      * <p>The fields speak the same 12-hour clock as the availability inputs above: they are
      * prefilled with a readable example rather than left blank, they show the format they
-     * want, and whatever is typed is normalised back to AM/PM when focus leaves. A field
-     * that silently keeps "13:30" after everything else on the screen says "1:30 PM" is how
+     * want, and whatever is typed is normalized to 24-hour time when focus leaves. A field
+     * that silently uses a different clock from the rest of the screen is how
      * two clocks end up in one dialog.</p>
      *
      * <p>Only the presentation changed. Adding, removing and validating a period behave
@@ -458,13 +458,13 @@ public final class AutoScheduleSettingsDialog extends JDialog {
             start.setText(TimeDisplay.format(defaultStart));
             end.setText(TimeDisplay.format(defaultEnd));
             start.getAccessibleContext().setAccessibleName(
-                    "Unavailable from, for example 1:00 PM");
+                    "Unavailable from, for example 13:00");
             end.getAccessibleContext().setAccessibleName(
-                    "Unavailable until, for example 2:00 PM");
+                    "Unavailable until, for example 14:00");
             normaliseOnFocusLoss(start);
             normaliseOnFocusLoss(end);
 
-            JLabel hint = new JLabel("e.g. 1:00 PM");
+            JLabel hint = new JLabel("e.g. 13:00");
             hint.setFont(SwingTheme.SMALL);
             hint.setForeground(SwingTheme.MUTED);
 
@@ -479,7 +479,7 @@ public final class AutoScheduleSettingsDialog extends JDialog {
 
         /**
          * Rewrites whatever was typed as the clock the rest of the dialog shows, so "13:30"
-         * becomes "1:30 PM". Unreadable text is left exactly as typed: overwriting it would
+         * becomes "13:30". Unreadable text is left exactly as typed: overwriting it would
          * destroy what the traveller entered before they could see what was wrong with it.
          */
         private static void normaliseOnFocusLoss(JTextField field) {

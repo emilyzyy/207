@@ -168,8 +168,7 @@ class AutoScheduleSettingsDialogTest {
                 LocalTime.of(9, 0), LocalTime.of(21, 0));
 
         assertEquals(1, problems.size());
-        assertTrue(problems.get(0).contains("9:00 AM to 9:00 PM"), problems.get(0));
-        assertFalse(problems.get(0).contains("09:00"), problems.get(0));
+        assertTrue(problems.get(0).contains("09:00 to 21:00"), problems.get(0));
     }
 
     // --- unavailable periods speak the same clock -------------------------------------
@@ -211,10 +210,10 @@ class AutoScheduleSettingsDialogTest {
         List<JTextField> period = periodFields(dialog);
 
         assertEquals(2, period.size(), "one period contributes two time fields");
-        assertEquals("12:00 PM", period.get(0).getText(),
+        assertEquals("12:00", period.get(0).getText(),
                 "a new period is prefilled in the same clock as everything else");
-        assertEquals("1:00 PM", period.get(1).getText());
-        assertTrue(allText(dialog.getRootPane()).contains("e.g. 1:00 PM"),
+        assertEquals("13:00", period.get(1).getText());
+        assertTrue(allText(dialog.getRootPane()).contains("e.g. 13:00"),
                 "the row should show the format it wants");
     }
 
@@ -262,7 +261,7 @@ class AutoScheduleSettingsDialogTest {
             loseFocus(period.get(0));
         });
 
-        assertEquals("1:30 PM", period.get(0).getText(),
+        assertEquals("13:30", period.get(0).getText(),
                 "an older habit still works, and is shown back in the dialog's own clock");
         assertEquals(LocalTime.of(13, 30),
                 dialog.read().getUnavailableWindows().get(0).getStart(),

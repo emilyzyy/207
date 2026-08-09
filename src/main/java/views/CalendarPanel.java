@@ -32,7 +32,7 @@ public final class CalendarPanel extends JPanel {
     private static final DateTimeFormatter SHORT_DAY =
             DateTimeFormatter.ofPattern("EEE d", Locale.ENGLISH);
     private static final DateTimeFormatter TIME =
-            DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH);
+            DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH);
 
     private final CalendarViewModel viewModel;
     private final JLabel title = new JLabel();

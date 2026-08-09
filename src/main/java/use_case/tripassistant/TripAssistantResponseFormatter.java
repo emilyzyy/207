@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 /** Builds conversational text exclusively from validated application entities. */
 public final class TripAssistantResponseFormatter {
     private static final DateTimeFormatter TIME =
-            DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH);
+            DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH);
     private static final Pattern CONTEXTUAL_REFERENCE = Pattern.compile(
             "\\b(it|its|they|them|their|this|that|these|those)\\b");
 

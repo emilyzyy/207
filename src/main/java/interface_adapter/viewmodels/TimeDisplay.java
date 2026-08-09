@@ -20,20 +20,15 @@ public final class TimeDisplay {
     private TimeDisplay() {
     }
 
-    /** {@code 09:00 -> "9:00 AM"}, {@code 13:15 -> "1:15 PM"}. Empty for null. */
+    /** Formats using the app-wide 24-hour clock, for example {@code "09:00"}. */
     public static String format(LocalTime time) {
         if (time == null) {
             return "";
         }
-        int hour = time.getHour() % 12;
-        if (hour == 0) {
-            hour = 12;
-        }
-        String meridiem = time.getHour() < 12 ? "AM" : "PM";
-        return String.format(Locale.ROOT, "%d:%02d %s", hour, time.getMinute(), meridiem);
+        return String.format(Locale.ROOT, "%02d:%02d", time.getHour(), time.getMinute());
     }
 
-    /** A start-to-end range, as {@code "9:00 AM – 10:00 AM"}. */
+    /** A start-to-end range, as {@code "09:00 – 10:00"}. */
     public static String range(LocalTime start, LocalTime end) {
         return format(start) + " – " + format(end);
     }

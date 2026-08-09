@@ -56,7 +56,7 @@ final class TripAssistantResponseFormatterTest {
         assertFact(TripAssistantDecision.RequestedFact.RATING,
                 "Kó-Café has a 4.7 rating in Trippy.");
         assertFact(TripAssistantDecision.RequestedFact.HOURS,
-                "Kó-Café is recorded as open from 8:30 AM to 5:00 PM.");
+                "Kó-Café is recorded as open from 08:30 to 17:00.");
         assertFact(TripAssistantDecision.RequestedFact.DURATION,
                 "Trippy estimates 45 minutes for Kó-Café.");
         assertFact(TripAssistantDecision.RequestedFact.CATEGORY,
@@ -105,7 +105,7 @@ final class TripAssistantResponseFormatterTest {
         assertTrue(output.getAnswer().contains("Which activity do you mean"));
         assertTrue(output.getAnswer().contains("Kó-Café"));
         assertTrue(output.getAnswer().contains("Actual Park"));
-        assertFalse(output.getAnswer().contains("8:30 AM"));
+        assertFalse(output.getAnswer().contains("08:30"));
     }
 
     @Test

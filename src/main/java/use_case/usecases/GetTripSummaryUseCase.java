@@ -20,7 +20,7 @@ public final class GetTripSummaryUseCase {
                 .append("Transportation: ")
                 .append(trip.getTransportationMode()).append("\n\n")
                 .append("Itinerary\n");
-        DateTimeFormatter time = DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH);
+        DateTimeFormatter time = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH);
         if (trip.getScheduledEvents().isEmpty()) {
             summary.append("No activities scheduled yet.\n");
         } else {
