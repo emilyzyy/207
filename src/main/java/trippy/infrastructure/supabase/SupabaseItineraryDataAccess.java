@@ -81,9 +81,8 @@ public final class SupabaseItineraryDataAccess
             throw new IllegalArgumentException("Itinerary is required");
         }
         AuthSession session = requireSession();
+        Optional<String> existingOwner = lookupTripOwner(itinerary.getId());
         ObjectNode tripRow = mapper.createObjectNode();
-        tripRow.put("id", itinerary.getId());
-        tripRow.put("user_id", session.getUserId());
         tripRow.put("destination", itinerary.getDestination());
         tripRow.put("trip_date", itinerary.getDay(0).getDate().toString());
         tripRow.put("start_time", itinerary.getDay(0).getStartTime().toString());
@@ -92,8 +91,15 @@ public final class SupabaseItineraryDataAccess
         tripRow.put("created_at", java.time.Instant.now().toString());
         tripRow.put("updated_at", java.time.Instant.now().toString());
 
-        request("DELETE", "/rest/v1/trips?id=eq." + enc(itinerary.getId()), null, null);
-        request("POST", "/rest/v1/trips", tripRow.toString(), "return=minimal");
+        if (existingOwner.isPresent()) {
+            // PATCH omits user_id so collaborators cannot steal ownership, and avoids upsert RLS.
+            request("PATCH", "/rest/v1/trips?id=eq." + enc(itinerary.getId()),
+                    tripRow.toString(), "return=minimal");
+        } else {
+            tripRow.put("id", itinerary.getId());
+            tripRow.put("user_id", session.getUserId());
+            request("POST", "/rest/v1/trips", tripRow.toString(), "return=minimal");
+        }
 
         request("DELETE", "/rest/v1/trip_days?trip_id=eq." + enc(itinerary.getId()),
                 null, null);
@@ -360,6 +366,25 @@ public final class SupabaseItineraryDataAccess
                 new IllegalStateException("Sign in before saving or loading itineraries"));
     }
 
+    private Optional<String> lookupTripOwner(String tripId) {
+        if (tripId == null || tripId.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            String body = request("GET",
+                    "/rest/v1/trips?id=eq." + enc(tripId) + "&select=user_id&limit=1",
+                    null, null);
+            JsonNode array = readArray(body);
+            if (!array.isArray() || array.size() == 0) {
+                return Optional.empty();
+            }
+            String owner = text(array.get(0), "user_id");
+            return owner == null || owner.isEmpty() ? Optional.empty() : Optional.of(owner);
+        } catch (RuntimeException exception) {
+            return Optional.empty();
+        }
+    }
+
     private String request(String method, String path, String jsonBody, String prefer) {
         try {
             AuthSession session = requireSession();
@@ -377,6 +402,9 @@ public final class SupabaseItineraryDataAccess
                 builder.DELETE();
             } else if ("POST".equals(method)) {
                 builder.POST(HttpRequest.BodyPublishers.ofString(jsonBody == null ? "" : jsonBody));
+            } else if ("PATCH".equals(method)) {
+                builder.method("PATCH",
+                        HttpRequest.BodyPublishers.ofString(jsonBody == null ? "" : jsonBody));
             } else {
                 throw new IllegalArgumentException("Unsupported method: " + method);
             }

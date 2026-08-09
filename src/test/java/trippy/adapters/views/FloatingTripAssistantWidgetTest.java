@@ -80,6 +80,8 @@ final class FloatingTripAssistantWidgetTest {
         assertWithin(panel, width, height);
         assertEquals(width - FloatingTripAssistantWidget.EDGE_GAP,
                 avatar.x + avatar.width);
+        assertEquals(height - FloatingTripAssistantWidget.AVATAR_BOTTOM_GAP,
+                avatar.y + avatar.height);
         assertEquals(width - FloatingTripAssistantWidget.EDGE_GAP,
                 panel.x + panel.width);
         assertTrue(panel.y + panel.height

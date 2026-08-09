@@ -1,17 +1,22 @@
 package trippy;
 
 import trippy.adapters.controllers.ApiController;
-import trippy.adapters.views.TrippyFrame;
+import trippy.adapters.views.FriendsDialog;
 import trippy.adapters.views.GalleryPanel;
 import trippy.adapters.views.LoginDialog;
 import trippy.adapters.views.NewItineraryDialog;
+import trippy.adapters.views.ProfileDialog;
+import trippy.adapters.views.TrippyFrame;
 import trippy.application.AppContainer;
+import trippy.application.ports.AccountService;
 import trippy.application.ports.AuthService;
-import trippy.application.ports.DestinationGeocoder;
 import trippy.application.ports.AuthSession;
+import trippy.application.ports.DestinationGeocoder;
 import trippy.application.usecases.CreateTripInputData;
 import trippy.domain.entities.Activity;
+import trippy.domain.entities.ScheduledEvent;
 import trippy.domain.entities.Trip;
+import trippy.domain.entities.User;
 import trippy.domain.valueobjects.TransportationMode;
 import trippy.infrastructure.config.DotEnv;
 import trippy.infrastructure.persistence.DualModeItineraryDataAccess;
@@ -23,7 +28,10 @@ import java.awt.Dimension;
 import java.net.InetSocketAddress;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
@@ -96,7 +104,7 @@ public final class Main {
         return new SupabaseAuthClient(url, anonKey);
     }
 
-    private static boolean promptSignIn(AuthService auth, JFrame owner) {
+    private static boolean promptSignIn(AuthService auth, AccountService account, JFrame owner) {
         while (true) {
             LoginDialog dialog = new LoginDialog(owner);
             dialog.setVisible(true);
@@ -107,7 +115,14 @@ public final class Main {
                 AuthSession session = dialog.isSignUp()
                         ? auth.signUp(dialog.getEmail(), dialog.getPassword())
                         : auth.signIn(dialog.getEmail(), dialog.getPassword());
-                System.out.println("Signed in as " + session.getEmail());
+                if (account != null) {
+                    String preferred = dialog.isSignUp() ? dialog.getUsername() : null;
+                    User profile = account.ensureProfile(preferred);
+                    System.out.println("Signed in as @" + profile.getUsername()
+                            + " (" + session.getEmail() + ")");
+                } else {
+                    System.out.println("Signed in as " + session.getEmail());
+                }
                 return true;
             } catch (RuntimeException exception) {
                 JOptionPane.showMessageDialog(owner,
@@ -121,38 +136,64 @@ public final class Main {
     private static void showGallery(AppBuilder builder, AppContainer app, AuthService auth) {
         List<Trip> trips = app.listTrips.execute();
         boolean signedIn = auth != null && auth.currentSession().isPresent();
+        User profile = signedIn ? loadProfile(app) : null;
+        int incomingRequests = signedIn ? countIncomingFriendRequests(app) : 0;
+        Map<String, List<String>> companions = loadTripCompanions(app, trips);
 
         JFrame galleryFrame = new JFrame("Trippy - My Trips");
         galleryFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         galleryFrame.setMinimumSize(new Dimension(800, 600));
         galleryFrame.setPreferredSize(new Dimension(960, 700));
 
+        GalleryPanel[] galleryHolder = new GalleryPanel[1];
         Runnable onAuth = auth == null ? null : () -> {
-            if (auth.currentSession().isPresent()) {
-                signOut(app, auth);
-                galleryFrame.dispose();
-                showGallery(builder, app, auth);
-            } else if (promptSignIn(auth, galleryFrame)) {
+            if (promptSignIn(auth, app.account, galleryFrame)) {
                 galleryFrame.dispose();
                 showGallery(builder, app, auth);
             }
         };
+        Runnable onProfile = !signedIn ? null : () -> {
+            User updated = openProfile(app, auth, galleryFrame);
+            if (auth.currentSession().isEmpty()) {
+                galleryFrame.dispose();
+                showGallery(builder, app, auth);
+            } else if (updated != null && galleryHolder[0] != null) {
+                galleryHolder[0].setProfileUser(updated);
+            } else if (galleryHolder[0] != null) {
+                galleryHolder[0].setProfileUser(loadProfile(app));
+            }
+        };
+        Runnable onFriends = !signedIn || app.account == null ? null : () -> {
+            new FriendsDialog(galleryFrame, app.account).setVisible(true);
+            if (galleryHolder[0] != null) {
+                galleryHolder[0].setIncomingFriendRequestCount(countIncomingFriendRequests(app));
+            }
+        };
 
-        galleryFrame.add(new GalleryPanel(
+        galleryHolder[0] = new GalleryPanel(
                 trips,
                 trip -> openTripFrame(builder, app, trip, galleryFrame, auth),
                 () -> {
-                    NewItineraryDialog dialog = new NewItineraryDialog(galleryFrame);
+                    List<User> friends = loadFriends(app);
+                    NewItineraryDialog dialog = new NewItineraryDialog(galleryFrame, friends);
                     dialog.setVisible(true);
                     if (!dialog.isConfirmed()) return;
                     String dest = dialog.getDestination();
                     LocalDate date = dialog.getDate();
+                    List<User> selectedFriends = dialog.getSelectedFriends();
                     galleryFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                     new Thread(() -> {
                         try {
-                    Trip created = app.createTrip.execute(dest, date,
-                            LocalTime.of(9, 0), LocalTime.of(18, 0),
-                            TransportationMode.WALKING, dialog.getDayCount());
+                            Trip created = app.createTrip.execute(dest, date,
+                                    LocalTime.of(9, 0), LocalTime.of(18, 0),
+                                    TransportationMode.WALKING, dialog.getDayCount());
+                            if (app.account != null && !selectedFriends.isEmpty()) {
+                                List<String> memberIds = new ArrayList<>();
+                                for (User friend : selectedFriends) {
+                                    memberIds.add(friend.getId());
+                                }
+                                app.account.setTripMembers(created.getId(), memberIds);
+                            }
                             SwingUtilities.invokeLater(() -> {
                                 TrippyFrame tripFrame =
                                         openTripFrame(builder, app, created, galleryFrame, auth);
@@ -177,7 +218,13 @@ public final class Main {
                 app.places instanceof DestinationGeocoder
                         ? (DestinationGeocoder) app.places : null,
                 onAuth,
-                signedIn));
+                onProfile,
+                onFriends,
+                profile,
+                signedIn,
+                incomingRequests,
+                companions);
+        galleryFrame.add(galleryHolder[0]);
         galleryFrame.pack();
         galleryFrame.setLocationRelativeTo(null);
         galleryFrame.setVisible(true);
@@ -195,8 +242,24 @@ public final class Main {
             showGallery(builder, app, auth);
         });
         if (auth != null) {
+            boolean signedIn = auth.currentSession().isPresent();
             tripFrame.setAuthAction(() -> handleTripAuth(builder, app, auth, tripFrame, trip.getId()),
-                    auth.currentSession().isPresent());
+                    signedIn);
+            tripFrame.setProfileAction(() -> {
+                User updated = openProfile(app, auth, tripFrame);
+                if (auth.currentSession().isEmpty()) {
+                    tripFrame.dispose();
+                    showGallery(builder, app, auth);
+                } else if (updated != null) {
+                    tripFrame.setProfileUser(updated);
+                } else {
+                    tripFrame.setProfileUser(loadProfile(app));
+                }
+            });
+            wireTripFriends(app, tripFrame);
+            tripFrame.setProfileUser(loadProfile(app));
+            tripFrame.setIncomingFriendRequestCount(countIncomingFriendRequests(app));
+            startSharedTripSync(builder, app, tripFrame, trip.getId());
         }
         tripFrame.setVisible(true);
         return tripFrame;
@@ -206,12 +269,9 @@ public final class Main {
             AppBuilder builder, AppContainer app, AuthService auth,
             TrippyFrame tripFrame, String tripId) {
         if (auth.currentSession().isPresent()) {
-            signOut(app, auth);
-            tripFrame.dispose();
-            showGallery(builder, app, auth);
             return;
         }
-        if (!promptSignIn(auth, tripFrame)) {
+        if (!promptSignIn(auth, app.account, tripFrame)) {
             return;
         }
         try {
@@ -223,6 +283,20 @@ public final class Main {
             }
             tripFrame.setAuthAction(
                     () -> handleTripAuth(builder, app, auth, tripFrame, tripId), true);
+            tripFrame.setProfileAction(() -> {
+                User updated = openProfile(app, auth, tripFrame);
+                if (auth.currentSession().isEmpty()) {
+                    tripFrame.dispose();
+                    showGallery(builder, app, auth);
+                } else if (updated != null) {
+                    tripFrame.setProfileUser(updated);
+                } else {
+                    tripFrame.setProfileUser(loadProfile(app));
+                }
+            });
+            wireTripFriends(app, tripFrame);
+            tripFrame.setProfileUser(loadProfile(app));
+            tripFrame.setIncomingFriendRequestCount(countIncomingFriendRequests(app));
             JOptionPane.showMessageDialog(tripFrame,
                     "Signed in. This itinerary was saved to your account.",
                     "Signed in",
@@ -233,6 +307,169 @@ public final class Main {
                     "Save failed",
                     JOptionPane.WARNING_MESSAGE);
         }
+    }
+
+    private static void wireTripFriends(AppContainer app, TrippyFrame tripFrame) {
+        tripFrame.setFriendsAction(() -> {
+            if (app.account == null) {
+                return;
+            }
+            new FriendsDialog(tripFrame, app.account).setVisible(true);
+            tripFrame.setIncomingFriendRequestCount(countIncomingFriendRequests(app));
+        });
+    }
+
+    /**
+     * Opens the profile editor.
+     * @return the saved profile when Save succeeds; {@code null} if cancelled or signed out
+     */
+    private static User openProfile(AppContainer app, AuthService auth, JFrame owner) {
+        if (app.account == null || auth == null) {
+            return null;
+        }
+        User profile;
+        try {
+            profile = app.account.ensureProfile(null);
+        } catch (RuntimeException exception) {
+            JOptionPane.showMessageDialog(owner,
+                    exception.getMessage(),
+                    "Profile",
+                    JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+        ProfileDialog dialog = new ProfileDialog(owner, profile,
+                auth.currentSession().map(AuthSession::getPassword).orElse(""),
+                request ->
+                app.account.updateProfile(
+                        request.getUsername(),
+                        request.getEmail(),
+                        request.getPassword(),
+                        request.getAvatarColor(),
+                        request.getAvatarImage()));
+        dialog.setVisible(true);
+        if (dialog.isSignOutRequested()) {
+            signOut(app, auth);
+            return null;
+        }
+        return dialog.isSaved() ? dialog.getSavedProfile() : null;
+    }
+
+    private static User loadProfile(AppContainer app) {
+        if (app.account == null) {
+            return null;
+        }
+        try {
+            return app.account.currentProfile().orElseGet(() -> app.account.ensureProfile(null));
+        } catch (RuntimeException exception) {
+            System.err.println("[Main] Could not load profile: " + exception.getMessage());
+            return null;
+        }
+    }
+
+    private static int countIncomingFriendRequests(AppContainer app) {
+        if (app.account == null) {
+            return 0;
+        }
+        try {
+            return app.account.listIncomingRequests().size();
+        } catch (RuntimeException exception) {
+            System.err.println("[Main] Could not load friend requests: " + exception.getMessage());
+            return 0;
+        }
+    }
+
+    private static List<User> loadFriends(AppContainer app) {
+        if (app.account == null) {
+            return java.util.Collections.emptyList();
+        }
+        try {
+            return app.account.listFriends();
+        } catch (RuntimeException exception) {
+            System.err.println("[Main] Could not load friends: " + exception.getMessage());
+            return java.util.Collections.emptyList();
+        }
+    }
+
+    private static Map<String, List<String>> loadTripCompanions(AppContainer app, List<Trip> trips) {
+        Map<String, List<String>> companions = new HashMap<>();
+        if (app.account == null || trips == null) {
+            return companions;
+        }
+        for (Trip trip : trips) {
+            try {
+                List<String> names = app.account.listTripCompanionUsernames(trip.getId());
+                if (!names.isEmpty()) {
+                    companions.put(trip.getId(), names);
+                }
+            } catch (RuntimeException exception) {
+                System.err.println("[Main] Could not load companions for trip "
+                        + trip.getId() + ": " + exception.getMessage());
+            }
+        }
+        return companions;
+    }
+
+    /**
+     * Periodically reloads a shared trip from the cloud so collaborator edits appear live.
+     */
+    private static void startSharedTripSync(
+            AppBuilder builder, AppContainer app, TrippyFrame tripFrame, String tripId) {
+        final String[] fingerprint = {""};
+        app.trips.findById(tripId).ifPresent(loaded -> fingerprint[0] = tripFingerprint(loaded));
+
+        javax.swing.Timer syncTimer = new javax.swing.Timer(8000, event -> {
+            if (!tripFrame.isDisplayable()) {
+                ((javax.swing.Timer) event.getSource()).stop();
+                return;
+            }
+            new Thread(() -> {
+                try {
+                    java.util.Optional<Trip> fresh = app.trips.findById(tripId);
+                    if (!fresh.isPresent()) {
+                        return;
+                    }
+                    String next = tripFingerprint(fresh.get());
+                    if (!next.equals(fingerprint[0])) {
+                        fingerprint[0] = next;
+                        SwingUtilities.invokeLater(() ->
+                                builder.refreshFrameForTrip(fresh.get(), tripFrame));
+                    }
+                } catch (RuntimeException exception) {
+                    System.err.println("[Main] Shared trip sync failed: " + exception.getMessage());
+                }
+            }, "Shared-Trip-Sync").start();
+        });
+        syncTimer.setInitialDelay(8000);
+        syncTimer.start();
+        tripFrame.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                syncTimer.stop();
+            }
+        });
+    }
+
+    private static String tripFingerprint(Trip trip) {
+        if (trip == null) {
+            return "";
+        }
+        StringBuilder fingerprint = new StringBuilder();
+        fingerprint.append(trip.getDestination()).append('|')
+                .append(trip.getDate()).append('|')
+                .append(trip.getStartTime()).append('|')
+                .append(trip.getEndTime()).append('|')
+                .append(trip.getTransportationMode()).append('|')
+                .append(trip.getBookmarkedActivities().size()).append('|')
+                .append(trip.getScheduledEvents().size());
+        for (Activity activity : trip.getBookmarkedActivities()) {
+            fingerprint.append('#').append(activity.getId());
+        }
+        for (ScheduledEvent event : trip.getScheduledEvents()) {
+            fingerprint.append('#').append(event.getId())
+                    .append('@').append(event.getStartTime())
+                    .append('-').append(event.getEndTime());
+        }
+        return fingerprint.toString();
     }
 
     private static void signOut(AppContainer app, AuthService auth) {

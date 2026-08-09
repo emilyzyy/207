@@ -4,6 +4,7 @@ import trippy.adapters.controllers.ShareTripController;
 import trippy.adapters.viewmodels.DashboardState;
 import trippy.adapters.viewmodels.DashboardViewModel;
 import trippy.adapters.viewmodels.DayPlanViewModel;
+import trippy.domain.entities.User;
 import java.awt.BorderLayout;
 import java.awt.Cursor;
 import java.awt.FlowLayout;
@@ -20,6 +21,7 @@ import javax.swing.JPanel;
 /** Persistent application header for identity and active-trip context. */
 public final class HeaderPanel extends JPanel {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("EEEE, MMMM d");
+    private static final int AVATAR_SIZE = 34;
 
     private final DashboardViewModel viewModel;
     private final DayPlanViewModel dayPlanViewModel;
@@ -27,10 +29,14 @@ public final class HeaderPanel extends JPanel {
     private final JLabel dateLabel = new JLabel();
     private final JButton shareButton = SwingTheme.primaryButton("Share");
     private final ThemeToggleButton themeToggle = new ThemeToggleButton();
+    private final BadgedButton friendsButton = new BadgedButton("Friends");
     private final JButton authButton = new JButton("Sign in");
+    private final JButton avatarButton = AvatarSupport.avatarButton(null, AVATAR_SIZE);
     private Runnable openShareAction = () -> { };
     private Runnable onHomeAction = () -> { };
     private Runnable onAuthAction = () -> { };
+    private Runnable onProfileAction = () -> { };
+    private Runnable onFriendsAction = () -> { };
 
     public HeaderPanel(
             DashboardViewModel viewModel,
@@ -42,10 +48,8 @@ public final class HeaderPanel extends JPanel {
         this.viewModel = viewModel;
         this.dayPlanViewModel = dayPlanViewModel;
         setLayout(new BorderLayout(24, 0));
-        setBackground(SwingTheme.PANEL);
-        setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, SwingTheme.LINE),
-                BorderFactory.createEmptyBorder(13, 22, 13, 22)));
+        setBackground(SwingTheme.BACKGROUND);
+        setBorder(BorderFactory.createEmptyBorder(13, 22, 13, 22));
 
         JLabel brand = new JLabel("Trippy");
         brand.setFont(SwingTheme.TITLE);
@@ -93,6 +97,12 @@ public final class HeaderPanel extends JPanel {
         });
         actions.add(themeToggle);
         actions.add(shareButton);
+        friendsButton.setVisible(false);
+        friendsButton.addActionListener(event -> onFriendsAction.run());
+        actions.add(friendsButton);
+        avatarButton.setVisible(false);
+        avatarButton.addActionListener(event -> onProfileAction.run());
+        actions.add(avatarButton);
         authButton.setFont(SwingTheme.BODY);
         authButton.setVisible(false);
         authButton.addActionListener(event -> onAuthAction.run());
@@ -115,8 +125,32 @@ public final class HeaderPanel extends JPanel {
 
     public void setAuthAction(Runnable action, boolean signedIn) {
         this.onAuthAction = action == null ? () -> { } : action;
-        authButton.setVisible(action != null);
-        authButton.setText(signedIn ? "Sign out" : "Sign in");
+        authButton.setVisible(action != null && !signedIn);
+        authButton.setText("Sign in");
+        friendsButton.setVisible(action != null && signedIn);
+        avatarButton.setVisible(action != null && signedIn);
+    }
+
+    public void setProfileAction(Runnable action) {
+        this.onProfileAction = action == null ? () -> { } : action;
+    }
+
+    public void setFriendsAction(Runnable action) {
+        this.onFriendsAction = action == null ? () -> { } : action;
+    }
+
+    public void setIncomingFriendRequestCount(int count) {
+        friendsButton.setBadgeCount(count);
+        friendsButton.setToolTipText(count <= 0
+                ? "Friends"
+                : count + " incoming friend request" + (count == 1 ? "" : "s"));
+    }
+
+    public void setProfileUser(User user) {
+        avatarButton.setIcon(AvatarSupport.iconFor(user, AVATAR_SIZE));
+        avatarButton.setToolTipText(user == null ? "Profile" : "@" + user.getUsername());
+        avatarButton.revalidate();
+        avatarButton.repaint();
     }
 
     private void refresh(DashboardState state) {

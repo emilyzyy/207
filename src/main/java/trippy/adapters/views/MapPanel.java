@@ -125,7 +125,7 @@ public final class MapPanel extends JPanel {
         setPreferredSize(new Dimension(width, height));
         setOpaque(true);
         setBackground(new Color(232, 239, 244));
-        setBorder(BorderFactory.createLineBorder(new Color(180, 200, 215)));
+        setBorder(BorderFactory.createLineBorder(new Color(180, 200, 215), 1, true));
         setToolTipText(tileLoadingEnabled
                 ? "OpenStreetMap tiles enabled"
                 : "Offline map: markers are shown without network tiles");
@@ -300,6 +300,9 @@ public final class MapPanel extends JPanel {
     /** Sets the map viewport's place loader, enabling live load-as-you-navigate. */
     public void setViewportLoader(ViewportPlacesLoader loader) {
         this.viewportLoader = loader;
+        // The initial city focus can happen before AppBuilder installs the live loader.
+        // Request that already-visible viewport now instead of waiting for a pan or zoom.
+        if (loader != null) SwingUtilities.invokeLater(this::scheduleViewportReload);
     }
 
     /** Registers a callback invoked when the user clicks a marker on the map. */
