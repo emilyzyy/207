@@ -17,6 +17,11 @@ import java.util.Collections;
 import java.util.List;
 
 /**
+ * <p><b>Test fixture only.</b> This lived in the production {@code app} package, where its
+ * hardcoded venues, fixed coordinates and frozen forecast were compiled into the shipped
+ * application even though nothing in the application ever called it. Presentation scaffolding
+ * does not belong in production code, so it now sits with the test that uses it.</p>
+ *
  * A deterministic day built to exercise what Autoschedule can actually do.
  *
  * <p>Separate from {@code DemoSeeding}, which is Raashid's and drives the running

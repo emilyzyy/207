@@ -38,6 +38,29 @@ public final class SchedulePlan {
         return total;
     }
 
+    /**
+     * All the waiting in the day, including waiting nothing could have avoided.
+     *
+     * <p>This is what the Preview reports, because it is what the timeline draws. The
+     * ranking uses {@link #totalAvoidableIdleMinutes()} instead, which is the right measure
+     * for choosing between orders and the wrong one for describing a day: reporting it made
+     * the Preview claim zero waiting while an eighty-three minute hole sat on screen, and
+     * announce "289 min of waiting removed" against a figure that had never counted the same
+     * thing.</p>
+     */
+    public int totalIdleMinutes() {
+        int total = 0;
+        // From the second activity onwards. Time before the day's first activity is not
+        // waiting, it is a day that starts later, and the "before" figure has never counted
+        // it either — including it here reported three hours of waiting for a day whose
+        // timeline had no gap in it at all.
+        for (int position = 1; position < placements.size(); position++) {
+            total += placements.get(position).getIdleMinutesBefore();
+        }
+        return total;
+    }
+
+    /** Waiting a different order could in principle have reclaimed. Used for ranking. */
     public int totalAvoidableIdleMinutes() {
         int total = 0;
         for (PlacedActivity placement : placements) {

@@ -117,7 +117,10 @@ class AutoscheduleDemoImprovementsTest {
         List<String> shown = headlines(state);
 
         // Six, and each is a before/after comparison the Interactor computed.
-        assertTrue(shown.contains("63 min of waiting removed"), shown.toString());
+        // Waiting is now reported as all of it, so the saving is measured against the
+        // waiting the timeline still shows rather than against the smaller "avoidable"
+        // figure the ranking uses. Most of this day's waiting was never reclaimable.
+        assertTrue(shown.contains("3 min of waiting removed"), shown.toString());
         assertTrue(shown.contains("8 min less travel"), shown.toString());
         assertTrue(shown.contains("Pinned activity kept at its time"), shown.toString());
         assertTrue(shown.contains("Meal moved to a better time"), shown.toString());

@@ -323,6 +323,8 @@ class BruteForceCrossCheckTest {
 
             int idle = Math.max(0,
                     (start.toSecondOfDay() - cursor.toSecondOfDay()) / 60 - travel);
+            // avoidable waiting is still measured from the earliest arrival: departing later
+            // relocates dead time, it does not remove it.
             LocalTime avoidableFrom = arrival.isBefore(task.getOpeningTime())
                     ? task.getOpeningTime() : arrival;
             int avoidable = 0;
@@ -330,6 +332,33 @@ class BruteForceCrossCheckTest {
                 avoidable = (start.toSecondOfDay() - avoidableFrom.toSecondOfDay()) / 60
                         - blockedMinutes(avoidableFrom, start, blocked);
                 avoidable = Math.max(0, avoidable);
+            }
+
+            // The journey is then slid as late as it will go while still arriving by the
+            // start, worked out here from scratch rather than by calling the planner, so the
+            // two sides of this comparison stay genuinely independent.
+            if (previous != null) {
+                for (DeparturePeriod period : DeparturePeriod.values()) {
+                    int minutes = problem.getTravel().estimateAt(previous.getEventId(),
+                            task.getEventId(), period.getStart()).getMinutes();
+                    LocalTime candidate = start.minusMinutes(minutes);
+                    boolean sameCost = problem.getTravel().estimateAt(previous.getEventId(),
+                            task.getEventId(), candidate).getMinutes() == minutes;
+                    if (minutes > 0 && !candidate.isBefore(start)) {
+                        continue;
+                    }
+                    if (candidate.isBefore(cursor) || !candidate.isAfter(departure) || !sameCost) {
+                        continue;
+                    }
+                    if (minutes > 0 && overlapsAny(candidate, candidate.plusMinutes(minutes),
+                            blocked)) {
+                        continue;
+                    }
+                    departure = candidate;
+                    travel = minutes;
+                }
+                idle = Math.max(0,
+                        (start.toSecondOfDay() - cursor.toSecondOfDay()) / 60 - travel);
             }
 
             placements.add(new PlacedActivity(task, start, end, departure, travel, idle, avoidable));

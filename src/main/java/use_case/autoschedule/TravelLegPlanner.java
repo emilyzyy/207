@@ -53,6 +53,56 @@ public final class TravelLegPlanner {
     }
 
     /**
+     * The latest departure that still reaches {@code arriveBy}, given the traveller is free
+     * from {@code cursor}.
+     *
+     * <p>{@link #plan} answers "how early could I get there?", which is the question
+     * feasibility turns on. It is the wrong question for the journey the traveller actually
+     * makes. When a venue opens at 11:30 and the hop takes seven minutes, leaving at 10:00
+     * buys nothing: it converts an hour and a half of free time near the previous activity
+     * into an hour and a half of standing outside a shut door, and the schedule showed
+     * exactly that — a journey drawn at 10:00 for an activity starting at 11:30.</p>
+     *
+     * <p>So the arrival is fixed by {@link #plan} and the departure is then slid as late as
+     * it will go. Travel time is itself departure-dependent, so a later departure can take
+     * longer and miss the arrival; each period offers one candidate departure, the one that
+     * lands exactly on {@code arriveBy} at that period's cost, and only candidates that
+     * really fall inside their own period are eligible. Unavailable windows are re-checked,
+     * because sliding a journey later can push it into one.</p>
+     *
+     * @param earliest the feasibility leg, returned unchanged when nothing later works
+     * @return the leg to actually travel; never null when {@code earliest} is non-null
+     */
+    public TravelLeg latestArrivingBy(TravelMatrix travel, String fromId, String toId,
+                                      LocalTime cursor, BlockedPeriods blocked,
+                                      LocalTime arriveBy, TravelLeg earliest) {
+        if (earliest == null || fromId == null || arriveBy == null) {
+            return earliest;
+        }
+        TravelLeg best = earliest;
+        for (DeparturePeriod period : DeparturePeriod.values()) {
+            int minutes = travel.estimateAt(fromId, toId, period.getStart()).getMinutes();
+            LocalTime departure = arriveBy.minusMinutes(minutes);
+            if (minutes > 0 && !departure.isBefore(arriveBy)) {
+                continue;
+            }
+            if (departure.isBefore(cursor) || !departure.isAfter(best.getDeparture())) {
+                continue;
+            }
+            // The cost used to place this departure has to be the cost of departing then,
+            // or the leg would be priced from one period and travelled in another.
+            if (travel.estimateAt(fromId, toId, departure).getMinutes() != minutes) {
+                continue;
+            }
+            if (minutes > 0 && blocked.blocks(departure, departure.plusMinutes(minutes))) {
+                continue;
+            }
+            best = TravelLeg.of(departure, minutes);
+        }
+        return best;
+    }
+
+    /**
      * Minutes of waiting between arriving and starting that the schedule could have
      * avoided. Waiting for the venue to open, and time inside a period the user is
      * unavailable, are both excluded because no ordering of the day could reclaim them.

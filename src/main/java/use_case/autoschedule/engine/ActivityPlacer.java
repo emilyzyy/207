@@ -87,7 +87,7 @@ public final class ActivityPlacer {
         if (!allowedByRules(problem, task, start, end, leg.getMinutes())) {
             return null;
         }
-        return build(task, start, end, cursor, leg, blocked);
+        return build(problem, task, start, end, cursor, previous, leg, blocked);
     }
 
     /** Confirms the traveller can still reach a locked activity by its fixed start. */
@@ -105,7 +105,8 @@ public final class ActivityPlacer {
         if (!allowedByRules(problem, task, window.getStart(), window.getEnd(), leg.getMinutes())) {
             return null;
         }
-        return build(task, window.getStart(), window.getEnd(), cursor, leg, blocked);
+        return build(problem, task, window.getStart(), window.getEnd(), cursor, previous,
+                leg, blocked);
     }
 
     /**
@@ -134,16 +135,26 @@ public final class ActivityPlacer {
         return best;
     }
 
-    private PlacedActivity build(ScheduleTask task, LocalTime start, LocalTime end,
-                                 LocalTime cursor, TravelLeg leg, BlockedPeriods blocked) {
-        int idle = minutesBetween(cursor, start) - leg.getMinutes();
+    private PlacedActivity build(ScheduleProblem problem, ScheduleTask task, LocalTime start,
+                                 LocalTime end, LocalTime cursor, ScheduleTask previous,
+                                 TravelLeg leg, BlockedPeriods blocked) {
         // Waiting for the doors to open is not avoidable, so the opening time that matters
         // is the one for the window this visit is actually in.
         TimeWindow window = task.openingWindowFor(start, end);
+        // Measured from the earliest possible arrival, and deliberately not from the journey
+        // actually travelled. Setting out later does not reclaim dead time; it only moves it
+        // to the near side of the journey. Scoring the just-in-time leg instead would report
+        // no avoidable waiting anywhere and quietly delete "minimize gaps" from the
+        // objective.
         int avoidable = legPlanner.avoidableIdleMinutes(leg.getArrival(), start,
                 window == null ? task.getOpeningTime() : window.getStart(), blocked);
-        return new PlacedActivity(task, start, end, leg.getDeparture(), leg.getMinutes(),
-                Math.max(0, idle), avoidable);
+
+        String fromId = previous == null ? null : previous.getEventId();
+        TravelLeg travelled = legPlanner.latestArrivingBy(problem.getTravel(), fromId,
+                task.getEventId(), cursor, blocked, start, leg);
+        int idle = minutesBetween(cursor, start) - travelled.getMinutes();
+        return new PlacedActivity(task, start, end, travelled.getDeparture(),
+                travelled.getMinutes(), Math.max(0, idle), avoidable);
     }
 
     private boolean allowedByRules(ScheduleProblem problem, ScheduleTask task,
