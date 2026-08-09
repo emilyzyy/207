@@ -231,7 +231,25 @@ public final class DayPlanState {
         return new DayPlanState(tripId, events, newMessage, false, hourlyWeather, AutoScheduleStatus.IDLE,
                 Collections.<PreviewRowView>emptyList(), null, Collections.<String>emptyList(),
                 "", keptCurrentOrder, true, "", "", lockedEventIds,
-                improvements, tripDates, activeDayIndex);
+                // Improvements are claims about a proposal. Carrying them past the proposal
+                // they describe leaves the screen holding cards for a schedule that no longer
+                // exists, so they go with the rows and the figures.
+                Collections.<ImprovementView>emptyList(), tripDates, activeDayIndex);
+    }
+
+    /**
+     * The same state with a fresh hourly forecast and nothing else touched.
+     *
+     * <p>The forecast arrives on a background worker whenever it happens to arrive. Rebuilding
+     * the state from the short constructor instead reset the status to IDLE and emptied the
+     * rows, so a forecast landing while a Preview was open silently threw the proposal away,
+     * along with the traveller's pins.</p>
+     */
+    public DayPlanState withHourlyWeather(List<WeatherWarning> updatedWeather) {
+        return new DayPlanState(tripId, events, message, error, updatedWeather, status,
+                previewRows, metrics, warnings, objectiveSummary, keptCurrentOrder,
+                searchCompletedWithinLimit, travelQualityNote, previewFingerprint,
+                lockedEventIds, improvements, tripDates, activeDayIndex);
     }
 
     /** Same state with a different set of pinned activities. */

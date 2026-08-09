@@ -543,11 +543,8 @@ public final class AppBuilder {
                     result.getMessage());
             SwingUtilities.invokeLater(() -> {
                 dashboardViewModel.setState(state);
-                DayPlanState current = dayPlanViewModel.getState();
-                dayPlanViewModel.setState(new DayPlanState(
-                        current.getTripId(), current.getEvents(), current.getMessage(),
-                        current.isError(), hourlyWeather, current.getTripDates(),
-                        current.getActiveDayIndex()));
+                dayPlanViewModel.setState(
+                        dayPlanViewModel.getState().withHourlyWeather(hourlyWeather));
             });
         }, "Weather-" + trip.getDestination());
         worker.setDaemon(true);
