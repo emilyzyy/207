@@ -220,7 +220,9 @@ public final class AddToPlanDialog extends JDialog {
             ordered.sort(Comparator.comparing(ScheduledEvent::getStartTime));
             for (ScheduledEvent event : ordered) {
                 String name = event.getActivity() == null ? event.getNotes()
-                        : event.getActivity().getName();
+                        : ActivityCategoryPresentation.decorate(
+                                event.getActivity().getCategory(),
+                                event.getActivity().getName());
                 JPanel existingCard = card(name + "  " + TimeDisplay.range(
                         event.getStartTime(), event.getEndTime()), false);
                 if (event.getActivity() != null) {
@@ -229,7 +231,8 @@ public final class AddToPlanDialog extends JDialog {
                 }
                 add(existingCard);
             }
-            proposedCard = card(activity.getName() + "  "
+            proposedCard = card(ActivityCategoryPresentation.decorate(
+                    activity.getCategory(), activity.getName()) + "  "
                     + TimeDisplay.range(start.getTime(), end.getTime()), true);
             proposedCard.setBackground(SwingTheme.categorySurface(activity.getCategory()));
             installDrag(proposedCard);

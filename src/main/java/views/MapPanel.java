@@ -43,6 +43,11 @@ public final class MapPanel extends JPanel {
     private static final int TILE_SIZE = 256;
     private static final int MIN_ZOOM = 2;
     private static final int MAX_ZOOM = 18;
+    private static final int MAX_VIEWPORT_RESULTS = 75;
+    private static final int MAX_GENERIC_MARKERS = 65;
+    private static final int GENERIC_MARKER_RADIUS = 11;
+    private static final int HIGHLIGHTED_MARKER_RADIUS = 14;
+    private static final int SELECTED_MARKER_RADIUS = 18;
     private static final double DEFAULT_LAT = 43.6532;
     private static final double DEFAULT_LNG = -79.3832;
     private static final Color COLOR_PLAIN = new Color(0x1a, 0x56, 0xdb);
@@ -481,7 +486,7 @@ public final class MapPanel extends JPanel {
 
     /** Count scales with zoom: wider views (fewer places) vs. zoomed-in detail (more places). */
     private int maxResultsForZoom(int z) {
-        return Math.max(10, Math.min(300, 6 + z * 3));
+        return Math.max(20, Math.min(MAX_VIEWPORT_RESULTS, 8 + z * 4));
     }
 
     /** Clamps pixel-coordinate to keep the later inverse projection within valid latitude. */
@@ -661,11 +666,15 @@ public final class MapPanel extends JPanel {
             markerHitboxesY.add(sy);
             markerIds.add(a.getId());
             drawMarker(g2, a.getId(), sx, sy);
-            g2.setColor(new Color(0x1a, 0x1f, 0x36));
-            g2.setFont(SwingTheme.SMALL);
-            String name = a.getName();
-            if (name.length() > 25) name = name.substring(0, 22) + "...";
-            g2.drawString(name, sx + 18, sy + 4);
+            // At city-level zoom, generic labels recreate the same clutter as oversized pins.
+            // Important markers remain labelled; zooming in reveals ordinary place names.
+            if (markerLayer(a.getId()) > 0 || zoom >= 16) {
+                g2.setColor(new Color(0x1a, 0x1f, 0x36));
+                g2.setFont(SwingTheme.SMALL);
+                String name = a.getName();
+                if (name.length() > 25) name = name.substring(0, 22) + "...";
+                g2.drawString(name, sx + markerRadius(a.getId()) + 4, sy + 4);
+            }
         }
     }
 
@@ -674,7 +683,16 @@ public final class MapPanel extends JPanel {
         List<Activity> ordered = new ArrayList<>(visibleActivities());
         ordered.sort((left, right) -> Integer.compare(
                 markerLayer(left.getId()), markerLayer(right.getId())));
-        return ordered;
+        List<Activity> limited = new ArrayList<>();
+        int genericCount = 0;
+        for (Activity activity : ordered) {
+            if (markerLayer(activity.getId()) == 0
+                    && genericCount++ >= MAX_GENERIC_MARKERS) {
+                continue;
+            }
+            limited.add(activity);
+        }
+        return limited;
     }
 
     private int markerLayer(String activityId) {
@@ -688,7 +706,7 @@ public final class MapPanel extends JPanel {
         boolean selected = activityId.equals(selectedActivityId);
         boolean bookmarked = bookmarkedIds.contains(activityId);
         int scheduleIndex = scheduledActivityIds.indexOf(activityId);
-        int radius = selected ? 18 : 14;
+        int radius = markerRadius(activityId);
 
         if (selected) {
             g2.setColor(new Color(255, 255, 255, 225));
@@ -722,6 +740,13 @@ public final class MapPanel extends JPanel {
             g2.setColor(Color.WHITE);
             g2.fillOval(sx - 4, sy - 4, 8, 8);
         }
+    }
+
+    /** Ordinary discovery pins are deliberately quieter than user-selected map content. */
+    int markerRadius(String activityId) {
+        if (activityId.equals(selectedActivityId)) return SELECTED_MARKER_RADIUS;
+        if (isHighlighted(activityId)) return HIGHLIGHTED_MARKER_RADIUS;
+        return GENERIC_MARKER_RADIUS;
     }
 
     private void drawBookmarkGlyph(Graphics2D g2, int sx, int sy, int radius) {

@@ -36,6 +36,8 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
     private final DestinationGeocoder geocoder;
     private final List<URI> endpoints;
     private final Map<String, List<Activity>> cache = new ConcurrentHashMap<>();
+    /** Prevents trip enrichment, map loading, and Search from flooding Overpass in parallel. */
+    private final Object discoveryLock = new Object();
 
     public OverpassNearbyActivityDiscovery(DestinationGeocoder geocoder) {
         this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build(),
@@ -59,7 +61,7 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
         GeoPoint center = geocoder.geocode(destination);
         String area = "around:" + center.getDiscoveryRadiusMeters() + ","
                 + center.getLatitude() + "," + center.getLongitude();
-        return loadAndCache(key, query(area, limit), limit);
+        return coordinatedLoad(key, query(area, limit), limit);
     }
 
     @Override
@@ -69,7 +71,20 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
         List<Activity> cached = cache.get(key);
         if (cached != null) return new ArrayList<>(cached);
         String area = "bbox:" + south + "," + west + "," + north + "," + east;
-        return loadAndCache(key, query(area, limit), limit);
+        return coordinatedLoad(key, query(area, limit), limit);
+    }
+
+    /**
+     * Serializes public Overpass access and repeats the cache check after waiting. A trip opening
+     * starts enrichment and viewport discovery almost together; without this boundary, a Search
+     * click can launch a duplicate request before the first call has populated the cache.
+     */
+    private List<Activity> coordinatedLoad(String key, String query, int limit) {
+        synchronized (discoveryLock) {
+            List<Activity> cached = cache.get(key);
+            if (cached != null) return new ArrayList<>(cached);
+            return loadAndCache(key, query, limit);
+        }
     }
 
     private List<Activity> loadAndCache(String key, String query, int limit) {

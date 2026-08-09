@@ -12,6 +12,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
@@ -76,6 +79,44 @@ final class OverpassNearbyActivityDiscoveryTest {
         assertTrue(discovery.around("Toronto", 25).isEmpty());
 
         assertEquals(2, requests.get());
+    }
+
+    @Test
+    void concurrentInitialSearchesShareTheCompletedDiscovery() throws Exception {
+        AtomicInteger requests = new AtomicInteger();
+        CountDownLatch requestStarted = new CountDownLatch(1);
+        CountDownLatch releaseResponse = new CountDownLatch(1);
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/interpreter", exchange -> {
+            requests.incrementAndGet();
+            exchange.getRequestBody().readAllBytes();
+            requestStarted.countDown();
+            try {
+                releaseResponse.await(2, TimeUnit.SECONDS);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+            }
+            byte[] bytes = ("{\"elements\":[{\"type\":\"node\",\"id\":9,"
+                    + "\"lat\":43.65,\"lon\":-79.38,"
+                    + "\"tags\":{\"name\":\"Toronto Cafe\",\"amenity\":\"cafe\"}}]}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+        });
+        server.start();
+
+        OverpassNearbyActivityDiscovery discovery = service();
+        CompletableFuture<List<Activity>> opening = CompletableFuture.supplyAsync(
+                () -> discovery.around("Toronto", 25));
+        assertTrue(requestStarted.await(2, TimeUnit.SECONDS));
+        CompletableFuture<List<Activity>> firstClick = CompletableFuture.supplyAsync(
+                () -> discovery.around("Toronto", 25));
+        releaseResponse.countDown();
+
+        assertEquals(1, opening.get(3, TimeUnit.SECONDS).size());
+        assertEquals(1, firstClick.get(3, TimeUnit.SECONDS).size());
+        assertEquals(1, requests.get());
     }
 
     private OverpassNearbyActivityDiscovery service() {

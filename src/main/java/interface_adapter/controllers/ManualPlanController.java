@@ -92,7 +92,7 @@ public final class ManualPlanController {
     private static LocalTime requiredTime(String value, String label) {
         LocalTime parsed = TimeDisplay.parse(value);
         if (parsed == null) {
-            throw new IllegalArgumentException(label + " must look like 9:00 AM");
+            throw new IllegalArgumentException(label + " must look like 09:00 or 13:15");
         }
         return parsed;
     }

@@ -641,15 +641,21 @@ public final class DayPlanPanel extends JPanel {
         card.setAlignmentX(Component.LEFT_ALIGNMENT);
         makeSelectable(card, event);
 
-        String name = event.getActivity() == null
+        final String name = event.getActivity() == null
                 ? (event.getNotes().isEmpty() ? event.getEventType().toString() : event.getNotes())
                 : event.getActivity().getName();
+        String displayedName = name;
+        if (event.getActivity() != null) {
+            displayedName = ActivityCategoryPresentation.decorate(
+                    event.getActivity().getCategory(), name);
+        }
+        final String visibleName = displayedName;
 
         JPanel details = new JPanel();
         details.setLayout(new BoxLayout(details, BoxLayout.Y_AXIS));
         details.setOpaque(false);
 
-        JLabel title = new JLabel("<html><b>" + escape(name) + "</b> &nbsp; "
+        JLabel title = new JLabel("<html><b>" + escape(visibleName) + "</b> &nbsp; "
                 + escape(TimeDisplay.range(event.getStartTime(), event.getEndTime())) + "</html>");
         title.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         title.setForeground(SwingTheme.NAVY);
@@ -701,7 +707,10 @@ public final class DayPlanPanel extends JPanel {
                 }
             });
             remove.addActionListener(action -> {
-                if (canEditItinerary()) {
+                if (canEditItinerary() && RemovalDialogs.confirm(
+                        this,
+                        "Remove from Day Plan",
+                        "Remove \"" + name + "\" from your Day Plan?")) {
                     manualPlanController.remove(event.getId());
                 }
             });

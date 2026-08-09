@@ -5,7 +5,6 @@ import use_case.usecases.FilterActivitiesUseCase;
 import use_case.usecases.SearchActivitiesUseCase;
 import use_case.search.ActivitySearchRequest;
 import use_case.search.ActivitySearchResult;
-import use_case.search.SearchFailure;
 import entity.entities.Activity;
 import entity.valueobjects.ActivityCategory;
 import entity.valueobjects.IndoorOutdoorType;
@@ -43,33 +42,16 @@ public final class ActivityDiscoveryController {
             ActivitySearchResult result = search.execute(new ActivitySearchRequest(
                     currentDestination, normalizedQuery, category, type, 100));
             List<Activity> matches = result.getActivities();
-            presenter.presentResults(
+            presenter.presentSearchResult(
                     filter.execute(matches, category, minimumRating, type),
                     normalizedQuery, category, minimumRating, type,
-                    feedback(result.getFailure(), result.isPartial()));
+                    result.getFailure(), result.isPartial(), currentDestination);
         } catch (IllegalArgumentException exception) {
             presenter.presentFailure(exception.getMessage());
         } catch (RuntimeException exception) {
-            presenter.presentFailure("Activity search is temporarily unavailable");
+            presenter.presentFailure(
+                    "Something went wrong while searching. Your existing activities are still "
+                            + "available.");
         }
-    }
-
-    private static String feedback(SearchFailure failure, boolean partial) {
-        if (failure == null || failure == SearchFailure.NONE || failure == SearchFailure.NO_MATCH) {
-            return "";
-        }
-        String message;
-        switch (failure) {
-            case INVALID_DESTINATION:
-                message = "The trip destination could not be located.";
-                break;
-            case RATE_LIMITED:
-                message = "OpenStreetMap is busy. Please try again shortly.";
-                break;
-            default:
-                message = "OpenStreetMap is temporarily unavailable.";
-                break;
-        }
-        return partial ? "Showing cached results. " + message : message;
     }
 }

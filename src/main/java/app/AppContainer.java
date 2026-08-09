@@ -110,7 +110,8 @@ public final class AppContainer implements ApiTripService {
 
     @Override
     public List<Activity> searchActivities(String destination, String query) {
-        return searchActivities.execute(destination, query);
+        return searchActivities.execute(new use_case.search.ActivitySearchRequest(
+                destination, query, null, null, 100)).getActivities();
     }
 
     @Override

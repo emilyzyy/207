@@ -405,16 +405,17 @@ public final class GalleryPanel extends JPanel {
         }
 
         private void confirmDelete() {
-            int answer = JOptionPane.showConfirmDialog(
+            boolean confirmed = RemovalDialogs.confirm(
                     GalleryPanel.this,
-                    "Delete the trip to " + trip.getDestination()
-                            + "? This cannot be undone.",
                     "Delete Trip",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.WARNING_MESSAGE);
-            if (answer != JOptionPane.YES_OPTION) return;
+                    "Delete the trip to " + trip.getDestination()
+                            + "? This cannot be undone.");
+            if (!confirmed) return;
             try {
                 onDeleteTrip.accept(trip);
+                RemovalDialogs.notifyRemoved(
+                        GalleryPanel.this,
+                        "Trip to " + trip.getDestination() + " was deleted.");
             } catch (RuntimeException exception) {
                 JOptionPane.showMessageDialog(
                         GalleryPanel.this,

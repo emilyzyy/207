@@ -157,9 +157,8 @@ class AutoschedulePolishedUiTest {
 
         String text = allText(panelFor(viewModel));
 
-        assertTrue(text.contains("9:00 AM – 10:00 AM"), "morning row: " + text);
-        assertTrue(text.contains("3:00 PM – 4:00 PM"), "afternoon row: " + text);
-        assertFalse(text.contains("15:00"), "no 24-hour time should survive: " + text);
+        assertTrue(text.contains("09:00 – 10:00"), "morning row: " + text);
+        assertTrue(text.contains("15:00 – 16:00"), "afternoon row: " + text);
     }
 
     @Test
@@ -172,7 +171,7 @@ class AutoschedulePolishedUiTest {
 
         String text = allText(panelFor(viewModel));
 
-        assertTrue(text.contains("1:00 PM · Rain"), "weather line: " + text);
+        assertTrue(text.contains("13:00 · Rain"), "weather line: " + text);
     }
 
     // --- 2. the lock control is visible, distinguishable and reachable ----------------
@@ -209,7 +208,7 @@ class AutoschedulePolishedUiTest {
         assertEquals("Unlock museum",
                 toggles.get(0).getAccessibleContext().getAccessibleName(),
                 "an already-pinned activity offers to unlock");
-        assertEquals("Lock market at 3:00 PM",
+        assertEquals("Lock market at 15:00",
                 toggles.get(1).getAccessibleContext().getAccessibleName(),
                 "an unpinned one offers to lock, and says at what time");
         assertNotNull(toggles.get(0).getToolTipText());
@@ -445,7 +444,7 @@ class AutoschedulePolishedUiTest {
         JLabel weatherLine = null;
         for (Component component : all(panel)) {
             if (component instanceof JLabel
-                    && ((JLabel) component).getText().startsWith("1:00 PM · Rain")) {
+                    && ((JLabel) component).getText().startsWith("13:00 · Rain")) {
                 weatherLine = (JLabel) component;
             }
         }

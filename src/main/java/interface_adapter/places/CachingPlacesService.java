@@ -2,7 +2,6 @@ package interface_adapter.places;
 
 import use_case.ports.PlacesService;
 import use_case.ports.PlacesWriter;
-import use_case.ports.ActivitySearchGateway;
 import use_case.ports.DestinationGeocoder;
 import entity.valueobjects.GeoPoint;
 import use_case.search.ActivitySearchRequest;
@@ -12,7 +11,7 @@ import java.util.List;
 
 /** Decorates discovered-place lookup by copying successful results into a repository. */
 public final class CachingPlacesService
-        implements PlacesService, ActivitySearchGateway, DestinationGeocoder {
+        implements PlacesService, DestinationGeocoder {
     private final PlacesService delegate;
     private final PlacesWriter cache;
 
@@ -33,16 +32,9 @@ public final class CachingPlacesService
 
     @Override
     public ActivitySearchResult search(ActivitySearchRequest request) {
-        if (delegate instanceof ActivitySearchGateway) {
-            ActivitySearchResult result = ((ActivitySearchGateway) delegate).search(request);
-            cache.addAll(result.getActivities());
-            return result;
-        }
-        List<Activity> activities = search(request.getDestination(), request.getQuery());
-        return new ActivitySearchResult(activities,
-                use_case.search.SearchSource.LOCAL, false,
-                activities.isEmpty() ? use_case.search.SearchFailure.NO_MATCH
-                        : use_case.search.SearchFailure.NONE);
+        ActivitySearchResult result = delegate.search(request);
+        cache.addAll(result.getActivities());
+        return result;
     }
 
     @Override

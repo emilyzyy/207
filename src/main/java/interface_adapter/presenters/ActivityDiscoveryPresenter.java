@@ -9,6 +9,7 @@ import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
 import entity.valueobjects.ActivityCategory;
 import entity.valueobjects.IndoorOutdoorType;
+import use_case.search.SearchFailure;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -40,6 +41,26 @@ public final class ActivityDiscoveryPresenter {
             SearchState current = search.getState();
             search.setState(new SearchState(
                     activities, query, current.getBookmarkedIds(), current.getScheduledIds(),
+                    category, minimumRating, type, feedback));
+        });
+    }
+
+    /** Presents a complete search outcome while retaining useful cards during transient outages. */
+    public void presentSearchResult(List<Activity> activities, String query,
+                                    ActivityCategory category, double minimumRating,
+                                    IndoorOutdoorType type, SearchFailure failure,
+                                    boolean partial, String destination) {
+        String feedback = ActivitySearchFeedback.format(
+                failure, partial, query, destination);
+        runOnEventThread(() -> {
+            SearchState current = search.getState();
+            boolean transientFailure = failure == SearchFailure.RATE_LIMITED
+                    || failure == SearchFailure.SERVICE_UNAVAILABLE;
+            List<Activity> displayed = transientFailure
+                    && (activities == null || activities.isEmpty())
+                    ? current.getActivities() : activities;
+            search.setState(new SearchState(
+                    displayed, query, current.getBookmarkedIds(), current.getScheduledIds(),
                     category, minimumRating, type, feedback));
         });
     }
