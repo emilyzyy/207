@@ -78,11 +78,13 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         availableUntil = new TimeSelectorPanel(
                 tripEnd == null ? LocalTime.of(21, 0) : tripEnd);
 
-        setLayout(new BorderLayout(0, 12));
-        getContentPane().setBackground(SwingTheme.PANEL);
-        add(form(), BorderLayout.CENTER);
-        add(buttons(), BorderLayout.SOUTH);
-        getRootPane().setBorder(BorderFactory.createEmptyBorder(20, 22, 18, 22));
+        JPanel content = new JPanel(new BorderLayout(0, 12));
+        content.setBackground(SwingTheme.PANEL);
+        content.setBorder(BorderFactory.createEmptyBorder(20, 22, 18, 22));
+        content.add(form(), BorderLayout.CENTER);
+        content.add(buttons(), BorderLayout.SOUTH);
+        setContentPane(content);
+        getRootPane().setBorder(null);
         bindEscapeToCancel();
         pack();
         setLocationRelativeTo(parent);
@@ -352,9 +354,7 @@ public final class AutoScheduleSettingsDialog extends JDialog {
     private JPanel buttons() {
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         buttons.setOpaque(false);
-        buttons.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, SwingTheme.LINE),
-                BorderFactory.createEmptyBorder(12, 0, 0, 0)));
+        buttons.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
         JButton cancel = SwingTheme.secondaryButton("Cancel");
         cancel.addActionListener(event -> {
             result = null;

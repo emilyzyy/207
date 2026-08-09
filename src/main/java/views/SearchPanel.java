@@ -37,6 +37,9 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
+import javax.swing.Scrollable;
+import javax.swing.SwingConstants;
+import java.awt.Rectangle;
 
 /** Activity discovery view backed by application-layer search, filter, and bookmark use cases. */
 public final class SearchPanel extends JPanel {
@@ -54,10 +57,6 @@ public final class SearchPanel extends JPanel {
     private final JComboBox<String> category = new JComboBox<>(new String[]{
         "All categories", "Food", "Museum", "Shopping", "Coffee", "Attraction",
         "Entertainment", "Parks/Nature", "Historic", "Sports/Recreation", "Arts/Culture"
-    });
-    private final JComboBox<String> rating = new JComboBox<>(new String[]{
-        "Filter by rating", "4.5+", "4.0+", "3.5+", "3.0+",
-        "2.5+", "2.0+", "1.5+", "1.0+"
     });
     private final JComboBox<String> type = new JComboBox<>(new String[]{
         "Any setting", "Indoor", "Outdoor"
@@ -115,18 +114,19 @@ public final class SearchPanel extends JPanel {
         this.tripOptions = tripOptions;
         this.tripAccess = tripAccess;
         SwingTheme.styleComboBox(category);
-        SwingTheme.styleComboBox(rating);
         SwingTheme.styleComboBox(type);
         category.setRenderer(new CategoryFilterRenderer());
         setLayout(new BorderLayout(0, 12));
-        setBackground(SwingTheme.PANEL);
+        setBackground(SwingTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
 
         add(searchControls(), BorderLayout.NORTH);
         results.setLayout(new BoxLayout(results, BoxLayout.Y_AXIS));
-        results.setBackground(SwingTheme.PANEL);
+        results.setBackground(SwingTheme.BACKGROUND);
         scroll = new JScrollPane(results);
         scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getViewport().setBackground(SwingTheme.BACKGROUND);
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.getVerticalScrollBar().setUnitIncrement(14);
         add(scroll, BorderLayout.CENTER);
 
@@ -192,11 +192,9 @@ public final class SearchPanel extends JPanel {
         JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         filters.setOpaque(false);
         filters.add(category);
-        filters.add(rating);
         filters.add(type);
         searchButton.addActionListener(event -> runDiscovery());
         category.addActionListener(event -> runDiscovery());
-        rating.addActionListener(event -> runDiscovery());
         type.addActionListener(event -> runDiscovery());
         filters.setAlignmentX(LEFT_ALIGNMENT);
         controls.add(filters);
@@ -213,7 +211,7 @@ public final class SearchPanel extends JPanel {
         new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() {
-                discovery.execute(search.getText(), selectedCategory(), selectedRating(), selectedType());
+                discovery.execute(search.getText(), selectedCategory(), 0.0, selectedType());
                 return null;
             }
 
@@ -258,12 +256,6 @@ public final class SearchPanel extends JPanel {
         }
     }
 
-    private double selectedRating() {
-        if (rating.getSelectedIndex() == 0) return 0.0;
-        String selected = (String) rating.getSelectedItem();
-        return Double.parseDouble(selected.substring(0, selected.length() - 1));
-    }
-
     private IndoorOutdoorType selectedType() {
         return type.getSelectedIndex() == 0 ? null
                 : IndoorOutdoorType.valueOf(((String) type.getSelectedItem()).toUpperCase());
@@ -272,7 +264,6 @@ public final class SearchPanel extends JPanel {
     private void setControlsEnabled(boolean enabled) {
         search.setEnabled(enabled);
         category.setEnabled(enabled);
-        rating.setEnabled(enabled);
         type.setEnabled(enabled);
         searchButton.setEnabled(enabled);
     }
@@ -345,8 +336,8 @@ public final class SearchPanel extends JPanel {
         String hoursLine = "<br><font color='#1f68e1'>Hours:</font> "
                 + (hasHours ? htmlEscape(hoursText) : "Not on record");
         JLabel details = new JLabel(String.format(
-                "<html><font color='#1f68e1'>%s</font> - &#9733; %.1f<br>%s - %d min - %s%s</html>",
-                categoryLabel(activity.getCategory()), activity.getRating(),
+                "<html><font color='#1f68e1'>%s</font><br>%s - %d min - %s%s</html>",
+                categoryLabel(activity.getCategory()),
                 activity.getLocation().getAddress(),
                 activity.getEstimatedDurationMinutes(), activity.getIndoorOutdoorType(),
                 hoursLine));
@@ -390,11 +381,24 @@ public final class SearchPanel extends JPanel {
         return card;
     }
 
+    /** BoxLayout content that always tracks the viewport width, preventing lateral growth. */
+    private static final class WidthTrackingPanel extends JPanel implements Scrollable {
+        @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
+        @Override public int getScrollableUnitIncrement(Rectangle visible, int orientation,
+                                                         int direction) { return 16; }
+        @Override public int getScrollableBlockIncrement(Rectangle visible, int orientation,
+                                                          int direction) {
+            return orientation == SwingConstants.VERTICAL ? visible.height : visible.width;
+        }
+        @Override public boolean getScrollableTracksViewportWidth() { return true; }
+        @Override public boolean getScrollableTracksViewportHeight() { return false; }
+    }
+
     private void makeSelectable(JPanel card, Activity activity, boolean focused) {
         card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         card.setToolTipText("Show " + activity.getName() + " on the map");
         card.setBorder(BorderFactory.createLineBorder(
-                focused ? SwingTheme.BLUE : new java.awt.Color(0, 0, 0, 0), 2));
+                focused ? SwingTheme.BLUE : new java.awt.Color(0, 0, 0, 0), 2, true));
         card.setBackground(SwingTheme.categorySurface(activity.getCategory()));
         card.addMouseListener(new MouseAdapter() {
             @Override

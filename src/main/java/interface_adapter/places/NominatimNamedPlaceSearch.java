@@ -24,6 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** Nominatim is used only for geocoding and user-triggered named-place searches. */
 public final class NominatimNamedPlaceSearch implements NamedPlaceSearch, DestinationGeocoder {
+    private static final int DEFAULT_DISCOVERY_RADIUS_METERS = 1_500;
+    private static final int MAX_DISCOVERY_RADIUS_METERS = 3_000;
     private static final String DEFAULT_ENDPOINT = "https://nominatim.openstreetmap.org/search";
     private static final String USER_AGENT =
             "Trippy-CSC207/1.0 (academic project; github.com/emilyzyy/207)";
@@ -134,14 +136,18 @@ public final class NominatimNamedPlaceSearch implements NamedPlaceSearch, Destin
     }
 
     private static int discoveryRadius(JsonNode bounds, double latitude) {
-        if (!bounds.isArray() || bounds.size() < 4) return 1500;
+        if (!bounds.isArray() || bounds.size() < 4) return DEFAULT_DISCOVERY_RADIUS_METERS;
         double northSouth = Math.abs(bounds.get(1).asDouble() - bounds.get(0).asDouble())
                 * 111_320.0;
         double eastWest = Math.abs(bounds.get(3).asDouble() - bounds.get(2).asDouble())
                 * 111_320.0 * Math.cos(Math.toRadians(latitude));
         double smallerSpan = Math.min(northSouth, eastWest);
-        if (!Double.isFinite(smallerSpan) || smallerSpan <= 0) return 1500;
-        return (int) Math.round(smallerSpan / 2.0);
+        if (!Double.isFinite(smallerSpan) || smallerSpan <= 0) {
+            return DEFAULT_DISCOVERY_RADIUS_METERS;
+        }
+        return Math.min(MAX_DISCOVERY_RADIUS_METERS,
+                Math.max(DEFAULT_DISCOVERY_RADIUS_METERS,
+                        (int) Math.round(smallerSpan / 2.0)));
     }
     private static boolean blank(String value) { return value == null || value.trim().isEmpty(); }
     private static String encode(String value) {

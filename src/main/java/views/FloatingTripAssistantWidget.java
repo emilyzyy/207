@@ -14,6 +14,8 @@ import javax.swing.JLayeredPane;
 public final class FloatingTripAssistantWidget extends JLayeredPane {
     static final int AVATAR_SIZE = 64;
     static final int EDGE_GAP = 20;
+    /** Clears the planner's bottom action row, including Calendar View. */
+    static final int AVATAR_BOTTOM_GAP = 76;
     static final int PANEL_GAP = 10;
     static final int PREFERRED_PANEL_WIDTH = 400;
     static final int PREFERRED_PANEL_HEIGHT = 500;
@@ -49,7 +51,7 @@ public final class FloatingTripAssistantWidget extends JLayeredPane {
         int avatarWidth = Math.min(AVATAR_SIZE, Math.max(0, getWidth()));
         int avatarHeight = Math.min(AVATAR_SIZE, Math.max(0, getHeight()));
         int avatarX = Math.max(0, getWidth() - EDGE_GAP - avatarWidth);
-        int avatarY = Math.max(0, getHeight() - EDGE_GAP - avatarHeight);
+        int avatarY = Math.max(0, getHeight() - AVATAR_BOTTOM_GAP - avatarHeight);
         avatarButton.setBounds(avatarX, avatarY, avatarWidth, avatarHeight);
 
         int availableWidth = Math.max(0, getWidth() - 2 * EDGE_GAP);

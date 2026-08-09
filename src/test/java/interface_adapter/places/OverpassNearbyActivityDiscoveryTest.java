@@ -13,6 +13,7 @@ import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -54,6 +55,27 @@ final class OverpassNearbyActivityDiscoveryTest {
                 () -> service().around("Toronto", 25));
 
         assertEquals(SearchFailure.SERVICE_UNAVAILABLE, failure.getFailure());
+    }
+
+    @Test
+    void emptyResponseIsRetriedInsteadOfBeingCachedForTheSession() throws Exception {
+        AtomicInteger requests = new AtomicInteger();
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/interpreter", exchange -> {
+            requests.incrementAndGet();
+            exchange.getRequestBody().readAllBytes();
+            byte[] bytes = "{\"elements\":[]}".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.close();
+        });
+        server.start();
+
+        OverpassNearbyActivityDiscovery discovery = service();
+        assertTrue(discovery.around("Toronto", 25).isEmpty());
+        assertTrue(discovery.around("Toronto", 25).isEmpty());
+
+        assertEquals(2, requests.get());
     }
 
     private OverpassNearbyActivityDiscovery service() {

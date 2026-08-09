@@ -85,18 +85,25 @@ public final class AddToPlanDialog extends JDialog {
         start = new TimeSelectorPanel(initial.getStart());
         end = new TimeSelectorPanel(initial.getEnd());
 
-        JPanel left = new JPanel(new GridBagLayout());
+        JPanel left = new JPanel(new BorderLayout(0, 8));
         left.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 18));
         left.setBackground(SwingTheme.PANEL);
-        addField(left, 0, "Start", start);
-        addField(left, 1, "End", end);
+        JLabel manualInstruction = new JLabel("enter manually", JLabel.CENTER);
+        manualInstruction.setFont(SwingTheme.HEADING);
+        manualInstruction.setForeground(SwingTheme.NAVY);
+        left.add(manualInstruction, BorderLayout.NORTH);
+        JPanel manualFields = new JPanel(new GridBagLayout());
+        manualFields.setOpaque(false);
+        addField(manualFields, 0, "Start", start);
+        addField(manualFields, 1, "End", end);
         error.setForeground(SwingTheme.ERROR);
         error.setFont(SwingTheme.SMALL);
         GridBagConstraints errorAt = new GridBagConstraints();
         errorAt.gridx = 0; errorAt.gridy = 2; errorAt.gridwidth = 2;
         errorAt.anchor = GridBagConstraints.WEST;
         errorAt.insets = new Insets(10, 0, 0, 0);
-        left.add(error, errorAt);
+        manualFields.add(error, errorAt);
+        left.add(manualFields, BorderLayout.CENTER);
 
         JLabel instruction = new JLabel("or drag and drop!", JLabel.CENTER);
         instruction.setFont(SwingTheme.HEADING);
@@ -110,10 +117,16 @@ public final class AddToPlanDialog extends JDialog {
         scroll.getVerticalScrollBar().setUnitIncrement(24);
         right.add(scroll, BorderLayout.CENTER);
 
-        JPanel body = new JPanel(new java.awt.GridLayout(1, 2, 8, 0));
+        JPanel body = new JPanel(new GridBagLayout());
         body.setBackground(SwingTheme.PANEL);
-        body.add(left);
-        body.add(right);
+        GridBagConstraints leftAt = new GridBagConstraints();
+        leftAt.gridx = 0; leftAt.gridy = 0; leftAt.weightx = 0.24; leftAt.weighty = 1;
+        leftAt.fill = GridBagConstraints.BOTH;
+        body.add(left, leftAt);
+        GridBagConstraints rightAt = new GridBagConstraints();
+        rightAt.gridx = 1; rightAt.gridy = 0; rightAt.weightx = 0.76; rightAt.weighty = 1;
+        rightAt.fill = GridBagConstraints.BOTH;
+        body.add(right, rightAt);
 
         JButton cancel = SwingTheme.secondaryButton("Cancel");
         cancel.addActionListener(event -> dispose());
@@ -131,7 +144,7 @@ public final class AddToPlanDialog extends JDialog {
         start.addChangeListener(this::timesChanged);
         end.addChangeListener(this::timesChanged);
         timeline.rebuild();
-        setPreferredSize(new Dimension(840, 620));
+        setPreferredSize(new Dimension(720, 620));
         pack();
         setLocationRelativeTo(parent);
     }
@@ -196,7 +209,7 @@ public final class AddToPlanDialog extends JDialog {
         private PreviewTimeline() {
             setLayout(null);
             setBackground(SwingTheme.PANEL);
-            setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
+            setBorder(BorderFactory.createLineBorder(SwingTheme.LINE, 1, true));
             int minutes = (int) Duration.between(dayStart, dayEnd).toMinutes();
             setPreferredSize(new Dimension(450, Math.max(360, minutes * HOUR_HEIGHT / 60)));
         }
@@ -229,7 +242,7 @@ public final class AddToPlanDialog extends JDialog {
             JPanel card = new JPanel(new BorderLayout());
             card.setBackground(proposed ? SwingTheme.BLUE_SOFT : SwingTheme.PANEL);
             card.setBorder(BorderFactory.createLineBorder(
-                    proposed ? SwingTheme.BLUE : SwingTheme.LINE, proposed ? 2 : 1));
+                    proposed ? SwingTheme.BLUE : SwingTheme.LINE, proposed ? 2 : 1, true));
             JLabel text = new JLabel(name);
             text.setFont(SwingTheme.BODY.deriveFont(proposed ? Font.BOLD : Font.PLAIN));
             text.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));

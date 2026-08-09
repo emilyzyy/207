@@ -2,6 +2,7 @@ package interface_adapter.places;
 
 import use_case.search.PlaceSearchException;
 import use_case.search.SearchFailure;
+import use_case.search.GeoPoint;
 import entity.entities.Activity;
 import entity.valueobjects.ActivityCategory;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -72,6 +73,19 @@ final class NominatimNamedPlaceSearchTest {
     void simplifiesDuplicatedIslandDestinationLabels() {
         assertEquals("Sicily, Italy", NominatimNamedPlaceSearch.simplifyDestination(
                 "Sicily island, Sicily, Italy"));
+    }
+
+    @Test
+    void largeMunicipalBoundsAreCappedForNearbyDiscovery() throws Exception {
+        AtomicInteger requests = new AtomicInteger();
+        start(200, "[{\"lat\":\"43.6534817\",\"lon\":\"-79.3839347\","
+                + "\"boundingbox\":[\"43.5796082\",\"43.8554425\","
+                + "\"-79.6392832\",\"-79.1132193\"]}]", requests);
+
+        GeoPoint point = service().geocode("Toronto");
+
+        assertEquals(3_000, point.getDiscoveryRadiusMeters());
+        assertEquals(1, requests.get());
     }
 
     private NominatimNamedPlaceSearch service() {

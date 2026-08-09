@@ -80,12 +80,15 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
             if (unique.size() >= limit) break;
         }
         List<Activity> result = new ArrayList<>(unique.values());
-        cache.put(key, new ArrayList<>(result));
+        // A transient empty Overpass response must not poison this destination for the
+        // remainder of the session. Successful results are stable enough to cache.
+        if (!result.isEmpty()) cache.put(key, new ArrayList<>(result));
         return result;
     }
 
     private JsonNode request(String query) {
         PlaceSearchException last = null;
+        JsonNode validEmptyResponse = null;
         for (URI endpoint : endpoints) {
             try {
                 String body = "data=" + URLEncoder.encode(query, StandardCharsets.UTF_8);
@@ -113,7 +116,15 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
                     continue;
                 }
                 JsonNode root = json.readTree(text);
-                return root.has("elements") ? root.path("elements") : json.createArrayNode();
+                JsonNode elements = root.has("elements")
+                        ? root.path("elements") : json.createArrayNode();
+                if (elements.isArray() && elements.isEmpty()) {
+                    // Public replicas occasionally return an empty successful response while
+                    // under load. Confirm it with the next configured replica before accepting it.
+                    validEmptyResponse = elements;
+                    continue;
+                }
+                return elements;
             } catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
                 throw new PlaceSearchException(SearchFailure.SERVICE_UNAVAILABLE,
@@ -127,6 +138,7 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
                 }
             }
         }
+        if (validEmptyResponse != null) return validEmptyResponse;
         throw last == null ? new PlaceSearchException(SearchFailure.SERVICE_UNAVAILABLE,
                 "No Overpass endpoint is configured") : last;
     }
