@@ -35,7 +35,7 @@ import interface_adapter.viewmodels.ImprovementView;
 class ImprovementTileLayoutTest {
 
     private static List<ImprovementView> improvements(int count) {
-        List<ImprovementView> all = new ArrayList<>();
+        final List<ImprovementView> all = new ArrayList<>();
         for (int i = 1; i <= count; i++) {
             all.add(new ImprovementView("☀", "Improvement " + i, "Detail " + i));
         }
@@ -58,7 +58,7 @@ class ImprovementTileLayoutTest {
                 return (JPanel) child;
             }
             if (child instanceof Container) {
-                JPanel found = grid((Container) child);
+                final JPanel found = grid((Container) child);
                 if (found != null) {
                     return found;
                 }
@@ -68,7 +68,7 @@ class ImprovementTileLayoutTest {
     }
 
     private static String textOf(Component component) {
-        StringBuilder text = new StringBuilder();
+        final StringBuilder text = new StringBuilder();
         collect(component, text);
         return text.toString();
     }
@@ -86,13 +86,13 @@ class ImprovementTileLayoutTest {
 
     /** Rows the grid actually lays out, and the columns it lays them out in. */
     private static int[] shape(ScheduleImprovementsPanel panel) {
-        GridLayout layout = (GridLayout) grid(panel).getLayout();
+        final GridLayout layout = (GridLayout) grid(panel).getLayout();
         return new int[] {layout.getRows(), layout.getColumns()};
     }
 
     /** Tiles, ignoring the spacer that keeps an odd last tile from stretching. */
     private static List<Component> tiles(ScheduleImprovementsPanel panel) {
-        List<Component> tiles = new ArrayList<>();
+        final List<Component> tiles = new ArrayList<>();
         for (Component cell : grid(panel).getComponents()) {
             if (!textOf(cell).isEmpty()) {
                 tiles.add(cell);
@@ -103,7 +103,7 @@ class ImprovementTileLayoutTest {
 
     @Test
     void oneImprovementIsOneTileAloneOnItsRow() throws Exception {
-        ScheduleImprovementsPanel panel = panelOf(improvements(1));
+        final ScheduleImprovementsPanel panel = panelOf(improvements(1));
 
         assertEquals(1, shape(panel)[0], "one row");
         assertEquals(2, shape(panel)[1], "still a two-column grid");
@@ -115,7 +115,7 @@ class ImprovementTileLayoutTest {
 
     @Test
     void twoImprovementsFillOneRow() throws Exception {
-        ScheduleImprovementsPanel panel = panelOf(improvements(2));
+        final ScheduleImprovementsPanel panel = panelOf(improvements(2));
 
         assertEquals(1, shape(panel)[0]);
         assertEquals(2, tiles(panel).size());
@@ -124,7 +124,7 @@ class ImprovementTileLayoutTest {
 
     @Test
     void threeImprovementsStartASecondRow() throws Exception {
-        ScheduleImprovementsPanel panel = panelOf(improvements(3));
+        final ScheduleImprovementsPanel panel = panelOf(improvements(3));
 
         assertEquals(2, shape(panel)[0]);
         assertEquals(3, tiles(panel).size());
@@ -134,7 +134,7 @@ class ImprovementTileLayoutTest {
     /** The hero Preview: still exactly the 2x2 block it was. */
     @Test
     void fourImprovementsAreTwoRowsOfTwo() throws Exception {
-        ScheduleImprovementsPanel panel = panelOf(improvements(4));
+        final ScheduleImprovementsPanel panel = panelOf(improvements(4));
 
         assertEquals(2, shape(panel)[0]);
         assertEquals(2, shape(panel)[1]);
@@ -145,8 +145,8 @@ class ImprovementTileLayoutTest {
     /** The fifth is a tile like any other, and it changes nothing above it. */
     @Test
     void fiveImprovementsAddAThirdRowWithoutDisturbingTheFirstFour() throws Exception {
-        ScheduleImprovementsPanel four = panelOf(improvements(4));
-        ScheduleImprovementsPanel five = panelOf(improvements(5));
+        final ScheduleImprovementsPanel four = panelOf(improvements(4));
+        final ScheduleImprovementsPanel five = panelOf(improvements(5));
 
         assertEquals(3, shape(five)[0], "a third row");
         assertEquals(2, shape(five)[1], "never four across");
@@ -162,7 +162,7 @@ class ImprovementTileLayoutTest {
 
     @Test
     void sixImprovementsAreThreeRowsOfTwo() throws Exception {
-        ScheduleImprovementsPanel panel = panelOf(improvements(6));
+        final ScheduleImprovementsPanel panel = panelOf(improvements(6));
 
         assertEquals(3, shape(panel)[0]);
         assertEquals(2, shape(panel)[1]);
@@ -173,14 +173,14 @@ class ImprovementTileLayoutTest {
     @Test
     void everyImprovementAppearsOnceInTheOrderGiven() throws Exception {
         for (int count : new int[] {1, 2, 3, 4, 5, 6, 7}) {
-            ScheduleImprovementsPanel panel = panelOf(improvements(count));
-            List<Component> tiles = tiles(panel);
+            final ScheduleImprovementsPanel panel = panelOf(improvements(count));
+            final List<Component> tiles = tiles(panel);
             assertEquals(count, tiles.size(), "every earned improvement gets a tile");
             for (int i = 0; i < count; i++) {
                 assertTrue(textOf(tiles.get(i)).contains("Improvement " + (i + 1)),
                         "tile " + i + " is out of order for a list of " + count);
             }
-            String text = textOf(panel);
+            final String text = textOf(panel);
             for (int i = 1; i <= count; i++) {
                 assertEquals(1, occurrences(text, "Improvement " + i + "<"),
                         "Improvement " + i + " is duplicated");
@@ -191,7 +191,7 @@ class ImprovementTileLayoutTest {
     @Test
     void noOverflowCopyOrRemovedDisclosureSurvivesAnywhere() throws Exception {
         for (int count : new int[] {1, 4, 5, 6, 9}) {
-            String text = textOf(panelOf(improvements(count)));
+            final String text = textOf(panelOf(improvements(count)));
             assertFalse(text.contains("Plus"), text);
             assertFalse(text.contains("additional improvement"), text);
             assertFalse(text.contains("Why these changes?"), text);
@@ -209,11 +209,11 @@ class ImprovementTileLayoutTest {
      */
     @Test
     void extraTilesAddHeightAndNeverWidth() throws Exception {
-        int fourWide = grid(panelOf(improvements(4))).getPreferredSize().width;
-        int fourHigh = panelOf(improvements(4)).getPreferredSize().height;
+        final int fourWide = grid(panelOf(improvements(4))).getPreferredSize().width;
+        final int fourHigh = panelOf(improvements(4)).getPreferredSize().height;
 
         for (int count : new int[] {1, 2, 3, 4, 5, 6, 9}) {
-            ScheduleImprovementsPanel panel = panelOf(improvements(count));
+            final ScheduleImprovementsPanel panel = panelOf(improvements(count));
             assertEquals(ScheduleImprovementsPanel.PREFERRED_WIDTH,
                     panel.getPreferredSize().width,
                     "the sidebar width is fixed however many tiles there are");

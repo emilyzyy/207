@@ -22,12 +22,12 @@ final class ShareTripControllerTest {
 
     @Test
     void sendsActiveTripIdToUseCase() {
-        InMemoryItineraryDataAccessObject trips = new InMemoryItineraryDataAccessObject();
+        final InMemoryItineraryDataAccessObject trips = new InMemoryItineraryDataAccessObject();
         trips.save(new Trip(
                 "trip-42", "Toronto", LocalDate.of(2026, 8, 12),
                 LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING));
-        RecordingOutput output = new RecordingOutput();
-        ShareTripController controller = new ShareTripController(
+        final RecordingOutput output = new RecordingOutput();
+        final ShareTripController controller = new ShareTripController(
                 new ShareTripUseCase(new GetTripSummaryUseCase(trips), trips, output),
                 () -> "trip-42");
 
@@ -40,9 +40,9 @@ final class ShareTripControllerTest {
 
     @Test
     void convertsUseCaseValidationIntoFailureOutput() {
-        InMemoryItineraryDataAccessObject trips = new InMemoryItineraryDataAccessObject();
-        RecordingOutput output = new RecordingOutput();
-        ShareTripController controller = new ShareTripController(
+        final InMemoryItineraryDataAccessObject trips = new InMemoryItineraryDataAccessObject();
+        final RecordingOutput output = new RecordingOutput();
+        final ShareTripController controller = new ShareTripController(
                 new ShareTripUseCase(new GetTripSummaryUseCase(trips), trips, output),
                 () -> "");
 

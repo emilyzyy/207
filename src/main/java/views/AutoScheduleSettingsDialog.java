@@ -81,7 +81,7 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         availableUntil = new TimeSelectorPanel(
                 tripEnd == null ? LocalTime.of(21, 0) : tripEnd);
 
-        JPanel content = new JPanel(new BorderLayout(0, 12));
+        final JPanel content = new JPanel(new BorderLayout(0, 12));
         content.setBackground(SwingTheme.PANEL);
         content.setBorder(BorderFactory.createEmptyBorder(20, 22, 18, 22));
         content.add(form(), BorderLayout.CENTER);
@@ -100,12 +100,12 @@ public final class AutoScheduleSettingsDialog extends JDialog {
     }
 
     private JPanel form() {
-        JPanel form = new JPanel();
+        final JPanel form = new JPanel();
         form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
         form.setBackground(SwingTheme.PANEL);
 
         form.add(group("WHEN YOU ARE FREE"));
-        JPanel hours = new JPanel(new GridBagLayout());
+        final JPanel hours = new JPanel(new GridBagLayout());
         hours.setOpaque(false);
         hours.setAlignmentX(Component.LEFT_ALIGNMENT);
         addField(hours, 0, "Available from", availableFrom, "");
@@ -133,7 +133,7 @@ public final class AutoScheduleSettingsDialog extends JDialog {
 
         form.add(Box.createVerticalStrut(18));
         form.add(group("TIMES YOU ARE NOT AVAILABLE"));
-        JLabel hint = new JLabel("Nothing is scheduled in these times, including travel.");
+        final JLabel hint = new JLabel("Nothing is scheduled in these times, including travel.");
         hint.setFont(SwingTheme.SMALL);
         hint.setForeground(SwingTheme.MUTED);
         hint.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -145,7 +145,7 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         unavailableRows.setAlignmentX(Component.LEFT_ALIGNMENT);
         form.add(unavailableRows);
 
-        JButton addRow = SwingTheme.secondaryButton("Add unavailable time");
+        final JButton addRow = SwingTheme.secondaryButton("Add unavailable time");
         addRow.setFont(SwingTheme.SMALL);
         addRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         addRow.addActionListener(event -> addUnavailableRow());
@@ -207,25 +207,25 @@ public final class AutoScheduleSettingsDialog extends JDialog {
 
     /** A small capitalised group heading, matching the Day Plan's section rules. */
     private static JPanel group(String title) {
-        JPanel header = SwingTheme.sectionHeader(title, "", SwingTheme.NAVY);
+        final JPanel header = SwingTheme.sectionHeader(title, "", SwingTheme.NAVY);
         header.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
         return header;
     }
 
     /** One right-aligned label, its field, and an optional format hint beneath. */
     private void addField(JPanel grid, int row, String label, Component field, String hint) {
-        GridBagConstraints labelAt = new GridBagConstraints();
+        final GridBagConstraints labelAt = new GridBagConstraints();
         labelAt.gridx = 0;
         labelAt.gridy = row;
         labelAt.anchor = GridBagConstraints.LINE_END;
         labelAt.insets = new Insets(4, 0, 4, 10);
-        JLabel text = new JLabel(label);
+        final JLabel text = new JLabel(label);
         text.setFont(SwingTheme.BODY);
         text.setForeground(SwingTheme.NAVY);
         text.setLabelFor(field);
         grid.add(text, labelAt);
 
-        GridBagConstraints fieldAt = new GridBagConstraints();
+        final GridBagConstraints fieldAt = new GridBagConstraints();
         fieldAt.gridx = 1;
         fieldAt.gridy = row;
         fieldAt.anchor = GridBagConstraints.LINE_START;
@@ -233,12 +233,12 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         grid.add(field, fieldAt);
 
         if (!hint.isEmpty()) {
-            GridBagConstraints hintAt = new GridBagConstraints();
+            final GridBagConstraints hintAt = new GridBagConstraints();
             hintAt.gridx = 2;
             hintAt.gridy = row;
             hintAt.anchor = GridBagConstraints.LINE_START;
             hintAt.insets = new Insets(4, 10, 4, 0);
-            JLabel example = new JLabel(hint);
+            final JLabel example = new JLabel(hint);
             example.setFont(SwingTheme.SMALL);
             example.setForeground(SwingTheme.MUTED);
             grid.add(example, hintAt);
@@ -261,7 +261,7 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         }
         considerWeather.setEnabled(option.isAvailable());
         considerWeather.setSelected(option.isSelectedByDefault());
-        String note = option.isAvailable() ? "" : option.getUnavailableReason();
+        final String note = option.isAvailable() ? "" : option.getUnavailableReason();
         weatherNote.setText(note);
         weatherNote.setVisible(!note.isEmpty());
         considerWeather.getAccessibleContext().setAccessibleDescription(
@@ -298,20 +298,20 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         control.setSelected(true);
         control.setToolTipText(explanation);
         control.getAccessibleContext().setAccessibleDescription(explanation);
-        JPanel row = switchRow(control, text);
+        final JPanel row = switchRow(control, text);
         row.setToolTipText(explanation);
         return row;
     }
 
     private JPanel switchRow(ToggleSwitch control, String text) {
-        JPanel row = new JPanel();
+        final JPanel row = new JPanel();
         row.setLayout(new javax.swing.BoxLayout(row, javax.swing.BoxLayout.X_AXIS));
         row.setOpaque(false);
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
         // Not greyed to match a disabled switch: only weather can be disabled, that
         // happens after this row is built, and a label dimmed at construction stayed dim
         // once the forecast arrived. The sentence under the switch already explains it.
-        JLabel label = new JLabel(text);
+        final JLabel label = new JLabel(text);
         label.setFont(SwingTheme.BODY);
         label.setLabelFor(control);
         label.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -331,7 +331,7 @@ public final class AutoScheduleSettingsDialog extends JDialog {
     }
 
     private JLabel labelFor(String text, Component field) {
-        JLabel label = new JLabel(text);
+        final JLabel label = new JLabel(text);
         label.setFont(SwingTheme.BODY);
         label.setLabelFor(field);
         return label;
@@ -391,7 +391,7 @@ public final class AutoScheduleSettingsDialog extends JDialog {
     private void addUnavailableRow(LocalTime start, LocalTime end) {
         // A readable example beats an empty box: it shows the expected clock before the
         // traveller types, rather than correcting them afterwards.
-        TimeRangeRow row = new TimeRangeRow(start, end);
+        final TimeRangeRow row = new TimeRangeRow(start, end);
         rows.add(row);
         unavailableRows.add(row.panel);
         row.remove.addActionListener(event -> {
@@ -406,16 +406,16 @@ public final class AutoScheduleSettingsDialog extends JDialog {
     }
 
     private JPanel buttons() {
-        JPanel buttons = new JPanel(new java.awt.BorderLayout());
+        final JPanel buttons = new JPanel(new java.awt.BorderLayout());
         buttons.setOpaque(false);
         buttons.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        final JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         right.setOpaque(false);
         // Reset is on the left, away from the two buttons that close the dialog: it clears
         // the form rather than the plan, and confusing it with Cancel would be expensive.
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        final JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         left.setOpaque(false);
-        JButton reset = SwingTheme.secondaryButton("Reset to defaults");
+        final JButton reset = SwingTheme.secondaryButton("Reset to defaults");
         reset.setToolTipText("Clear every remembered setting for this day");
         reset.addActionListener(event -> {
             resetRequested = true;
@@ -423,12 +423,12 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         });
         left.add(reset);
 
-        JButton cancel = SwingTheme.secondaryButton("Cancel");
+        final JButton cancel = SwingTheme.secondaryButton("Cancel");
         cancel.addActionListener(event -> {
             result = null;
             dispose();
         });
-        JButton generate = SwingTheme.primaryButton("Generate Preview");
+        final JButton generate = SwingTheme.primaryButton("Generate Preview");
         generate.addActionListener(event -> submit());
         right.add(cancel);
         right.add(generate);
@@ -446,14 +446,14 @@ public final class AutoScheduleSettingsDialog extends JDialog {
     }
 
     private void submit() {
-        AutoScheduleSettings settings = read();
+        final AutoScheduleSettings settings = read();
         if (settings == null) {
             JOptionPane.showMessageDialog(this,
                     "Times need to look like 9:00 AM or 1:15 PM.", "Check the times",
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
-        List<String> problems = validator.validate(settings, tripStart, tripEnd);
+        final List<String> problems = validator.validate(settings, tripStart, tripEnd);
         if (!problems.isEmpty()) {
             JOptionPane.showMessageDialog(this, String.join("\n", problems),
                     "Check the settings", JOptionPane.WARNING_MESSAGE);
@@ -465,12 +465,12 @@ public final class AutoScheduleSettingsDialog extends JDialog {
 
     /** Reads the fields, or null when a time cannot be understood. */
     AutoScheduleSettings read() {
-        LocalTime from = availableFrom.getTime();
-        LocalTime until = availableUntil.getTime();
-        List<AutoScheduleSettings.Window> windows = new ArrayList<>();
+        final LocalTime from = availableFrom.getTime();
+        final LocalTime until = availableUntil.getTime();
+        final List<AutoScheduleSettings.Window> windows = new ArrayList<>();
         for (TimeRangeRow row : rows) {
-            LocalTime start = parse(row.start.getText());
-            LocalTime end = parse(row.end.getText());
+            final LocalTime start = parse(row.start.getText());
+            final LocalTime end = parse(row.end.getText());
             if (start == null || end == null) {
                 return null;
             }
@@ -478,7 +478,7 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         }
         // A disabled checkbox is never ticked, so an unusable forecast can only ever read
         // as "do not consider weather".
-        boolean weather = considerWeather.isEnabled() && considerWeather.isSelected();
+        final boolean weather = considerWeather.isEnabled() && considerWeather.isSelected();
         return new AutoScheduleSettings(from, until,
                 (TransportationMode) mode.getSelectedItem(), windows, keepOrder.isSelected(),
                 weather, minimizeTravel.isSelected(), minimizeGaps.isSelected(),
@@ -516,11 +516,11 @@ public final class AutoScheduleSettingsDialog extends JDialog {
 
         TimeRangeRow(LocalTime defaultStart, LocalTime defaultEnd) {
             panel.setOpaque(false);
-            JLabel fromLabel = new JLabel("From");
+            final JLabel fromLabel = new JLabel("From");
             fromLabel.setFont(SwingTheme.BODY);
             fromLabel.setForeground(SwingTheme.NAVY);
             fromLabel.setLabelFor(start);
-            JLabel toLabel = new JLabel("to");
+            final JLabel toLabel = new JLabel("to");
             toLabel.setFont(SwingTheme.BODY);
             toLabel.setForeground(SwingTheme.NAVY);
             toLabel.setLabelFor(end);
@@ -534,7 +534,7 @@ public final class AutoScheduleSettingsDialog extends JDialog {
             normaliseOnFocusLoss(start);
             normaliseOnFocusLoss(end);
 
-            JLabel hint = new JLabel("e.g. 1:00 PM");
+            final JLabel hint = new JLabel("e.g. 1:00 PM");
             hint.setFont(SwingTheme.SMALL);
             hint.setForeground(SwingTheme.MUTED);
 
@@ -556,7 +556,7 @@ public final class AutoScheduleSettingsDialog extends JDialog {
             field.addFocusListener(new java.awt.event.FocusAdapter() {
                 @Override
                 public void focusLost(java.awt.event.FocusEvent event) {
-                    LocalTime parsed = TimeDisplay.parse(field.getText());
+                    final LocalTime parsed = TimeDisplay.parse(field.getText());
                     if (parsed != null) {
                         field.setText(TimeDisplay.format(parsed));
                     }

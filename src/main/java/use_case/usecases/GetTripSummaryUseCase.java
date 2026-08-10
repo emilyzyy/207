@@ -13,9 +13,9 @@ public final class GetTripSummaryUseCase {
     private final TripRepository trips;
     public GetTripSummaryUseCase(TripRepository trips) { this.trips = trips; }
     public String execute(String tripId) {
-        Trip trip = trips.findById(tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
-        DateTimeFormatter time = DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH);
-        StringBuilder summary = new StringBuilder("Trippy trip to ")
+        final Trip trip = trips.findById(tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
+        final DateTimeFormatter time = DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH);
+        final StringBuilder summary = new StringBuilder("Trippy trip to ")
                 .append(trip.getDestination()).append("\n")
                 .append("Transportation: ")
                 .append(trip.getTransportationMode()).append("\n");
@@ -28,7 +28,7 @@ public final class GetTripSummaryUseCase {
         } else {
             summary.append("Days: ").append(trip.getDayCount()).append("\n\n");
             for (int i = 0; i < trip.getDayCount(); i++) {
-                TripDay day = trip.getDay(i);
+                final TripDay day = trip.getDay(i);
                 summary.append("Day ").append(i + 1).append(" · ").append(day.getDate())
                         .append(" (").append(day.getStartTime()).append(" – ")
                         .append(day.getEndTime()).append(")\n");

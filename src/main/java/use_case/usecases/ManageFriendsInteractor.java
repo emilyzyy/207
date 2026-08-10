@@ -66,10 +66,10 @@ public final class ManageFriendsInteractor implements ManageFriendsInputBoundary
         if (username == null || username.trim().isEmpty()) {
             throw new IllegalArgumentException("Enter a username to send a request.");
         }
-        String targetUsername = username.trim();
-        User me = account.currentProfile()
+        final String targetUsername = username.trim();
+        final User me = account.currentProfile()
                 .orElseGet(() -> account.ensureProfile(null));
-        User target = account.findByUsername(targetUsername).orElseThrow(
+        final User target = account.findByUsername(targetUsername).orElseThrow(
                 () -> new IllegalStateException("No user found with that username."));
         if (target.getId().equals(me.getId())) {
             throw new IllegalStateException("You cannot friend yourself.");
@@ -81,24 +81,24 @@ public final class ManageFriendsInteractor implements ManageFriendsInputBoundary
             throw new IllegalStateException(
                     "You already have a request or friendship with that user.");
         }
-        Friendship created = account.sendFriendRequest(targetUsername);
+        final Friendship created = account.sendFriendRequest(targetUsername);
         return "Request sent to @" + created.getOtherUser().getUsername() + ".";
     }
 
     private String accept(String friendshipId) {
-        Friendship request = requireFriendshipId(friendshipId, account.listIncomingRequests());
+        final Friendship request = requireFriendshipId(friendshipId, account.listIncomingRequests());
         account.acceptFriendRequest(friendshipId);
         return "You are now friends with @" + request.getOtherUser().getUsername() + ".";
     }
 
     private String cancel(String friendshipId) {
-        Friendship request = requireFriendshipId(friendshipId, account.listOutgoingRequests());
+        final Friendship request = requireFriendshipId(friendshipId, account.listOutgoingRequests());
         account.cancelFriendRequest(friendshipId);
         return "Cancelled request to @" + request.getOtherUser().getUsername() + ".";
     }
 
     private String remove(String friendshipId) {
-        Friendship friendship = requireFriendshipId(friendshipId, account.listAcceptedFriendships());
+        final Friendship friendship = requireFriendshipId(friendshipId, account.listAcceptedFriendships());
         account.removeFriend(friendshipId);
         return "Removed @" + friendship.getOtherUser().getUsername()
                 + ". You can send them a new request anytime.";

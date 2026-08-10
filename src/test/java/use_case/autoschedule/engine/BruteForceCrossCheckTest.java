@@ -41,19 +41,19 @@ class BruteForceCrossCheckTest {
 
     @Test
     void prunedSearchMatchesExhaustiveSearchOnRandomBucketedProblems() {
-        Random random = new Random(20260805L);
+        final Random random = new Random(20260805L);
         int compared = 0;
 
         for (int trial = 0; trial < 60; trial++) {
-            int taskCount = 3 + random.nextInt(3);
-            TimeWindow availability = window(9, 21);
-            List<ScheduleTask> items = randomTasks(taskCount, random);
-            TravelMatrix matrix = randomBucketedMatrix(items, availability, random);
-            ScheduleProblem problem = new ScheduleProblem(availability, items,
+            final int taskCount = 3 + random.nextInt(3);
+            final TimeWindow availability = window(9, 21);
+            final List<ScheduleTask> items = randomTasks(taskCount, random);
+            final TravelMatrix matrix = randomBucketedMatrix(items, availability, random);
+            final ScheduleProblem problem = new ScheduleProblem(availability, items,
                     noBlockedWindows(), matrix);
 
-            ScheduleSearchResult searched = engine.search(problem, SearchBudget.defaultBudget());
-            ScheduleScore exhaustive = bestByExhaustiveEnumeration(problem);
+            final ScheduleSearchResult searched = engine.search(problem, SearchBudget.defaultBudget());
+            final ScheduleScore exhaustive = bestByExhaustiveEnumeration(problem);
 
             if (exhaustive == null) {
                 assertTrue(!searched.isFound(),
@@ -72,20 +72,20 @@ class BruteForceCrossCheckTest {
 
     @Test
     void prunedSearchMatchesExhaustiveSearchWithUnavailablePeriods() {
-        Random random = new Random(90210L);
+        final Random random = new Random(90210L);
         int feasible = 0;
 
         for (int trial = 0; trial < 50; trial++) {
-            TimeWindow availability = window(9, 21);
-            List<ScheduleTask> items = randomTasks(3 + random.nextInt(2), random);
-            TravelMatrix matrix = randomBucketedMatrix(items, availability, random);
-            int blockStart = 11 + random.nextInt(5);
-            List<TimeWindow> blocked = java.util.Arrays.asList(
+            final TimeWindow availability = window(9, 21);
+            final List<ScheduleTask> items = randomTasks(3 + random.nextInt(2), random);
+            final TravelMatrix matrix = randomBucketedMatrix(items, availability, random);
+            final int blockStart = 11 + random.nextInt(5);
+            final List<TimeWindow> blocked = java.util.Arrays.asList(
                     new TimeWindow(at(blockStart, 0), at(blockStart + 1, 0)));
-            ScheduleProblem problem = new ScheduleProblem(availability, items, blocked, matrix);
+            final ScheduleProblem problem = new ScheduleProblem(availability, items, blocked, matrix);
 
-            ScheduleSearchResult searched = engine.search(problem, SearchBudget.defaultBudget());
-            ScheduleScore exhaustive = bestByExhaustiveEnumeration(problem);
+            final ScheduleSearchResult searched = engine.search(problem, SearchBudget.defaultBudget());
+            final ScheduleScore exhaustive = bestByExhaustiveEnumeration(problem);
 
             if (exhaustive == null) {
                 assertTrue(!searched.isFound(),
@@ -113,16 +113,16 @@ class BruteForceCrossCheckTest {
 
     @Test
     void prunedSearchMatchesExhaustiveSearchWithTightWindows() {
-        Random random = new Random(4242L);
+        final Random random = new Random(4242L);
         for (int trial = 0; trial < 40; trial++) {
-            TimeWindow availability = window(9, 15);
-            List<ScheduleTask> items = randomTightTasks(4, random);
-            TravelMatrix matrix = randomBucketedMatrix(items, availability, random);
-            ScheduleProblem problem = new ScheduleProblem(availability, items,
+            final TimeWindow availability = window(9, 15);
+            final List<ScheduleTask> items = randomTightTasks(4, random);
+            final TravelMatrix matrix = randomBucketedMatrix(items, availability, random);
+            final ScheduleProblem problem = new ScheduleProblem(availability, items,
                     noBlockedWindows(), matrix);
 
-            ScheduleSearchResult searched = engine.search(problem, SearchBudget.defaultBudget());
-            ScheduleScore exhaustive = bestByExhaustiveEnumeration(problem);
+            final ScheduleSearchResult searched = engine.search(problem, SearchBudget.defaultBudget());
+            final ScheduleScore exhaustive = bestByExhaustiveEnumeration(problem);
 
             if (exhaustive == null) {
                 assertTrue(!searched.isFound());
@@ -145,22 +145,22 @@ class BruteForceCrossCheckTest {
      */
     @Test
     void prunedSearchStillMatchesExhaustiveSearchWhenTravelIsNotBeingMinimised() {
-        Random random = new Random(20260808L);
+        final Random random = new Random(20260808L);
         int compared = 0;
 
         for (int trial = 0; trial < 60; trial++) {
-            TimeWindow availability = window(9, 21);
-            List<ScheduleTask> items = randomTasks(3 + random.nextInt(3), random);
-            TravelMatrix matrix = randomBucketedMatrix(items, availability, random);
+            final TimeWindow availability = window(9, 21);
+            final List<ScheduleTask> items = randomTasks(3 + random.nextInt(3), random);
+            final TravelMatrix matrix = randomBucketedMatrix(items, availability, random);
             // Travel and gaps both switched off: only the tie-break separates the days.
-            SchedulingPreferences ignoringTravel = new SchedulingPreferences(
+            final SchedulingPreferences ignoringTravel = new SchedulingPreferences(
                     java.util.Collections.emptyList(), false,
                     use_case.autoschedule.PolicyContext.empty(), false, false);
-            ScheduleProblem problem = new ScheduleProblem(availability, items,
+            final ScheduleProblem problem = new ScheduleProblem(availability, items,
                     noBlockedWindows(), matrix, ignoringTravel);
 
-            ScheduleSearchResult searched = engine.search(problem, SearchBudget.defaultBudget());
-            ScheduleScore exhaustive = bestByExhaustiveEnumeration(problem);
+            final ScheduleSearchResult searched = engine.search(problem, SearchBudget.defaultBudget());
+            final ScheduleScore exhaustive = bestByExhaustiveEnumeration(problem);
 
             if (exhaustive == null) {
                 assertTrue(!searched.isFound());
@@ -178,11 +178,11 @@ class BruteForceCrossCheckTest {
     }
 
     private List<ScheduleTask> randomTasks(int count, Random random) {
-        List<ScheduleTask> items = new ArrayList<>();
+        final List<ScheduleTask> items = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            int duration = 30 + random.nextInt(4) * 30;
-            int openHour = 9 + random.nextInt(3);
-            int closeHour = 17 + random.nextInt(5);
+            final int duration = 30 + random.nextInt(4) * 30;
+            final int openHour = 9 + random.nextInt(3);
+            final int closeHour = 17 + random.nextInt(5);
             items.add(task(String.valueOf((char) ('a' + i)), duration, i,
                     at(openHour, 0), at(closeHour, 0)));
         }
@@ -190,11 +190,11 @@ class BruteForceCrossCheckTest {
     }
 
     private List<ScheduleTask> randomTightTasks(int count, Random random) {
-        List<ScheduleTask> items = new ArrayList<>();
+        final List<ScheduleTask> items = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            int duration = 45 + random.nextInt(3) * 15;
-            int openHour = 9 + random.nextInt(2);
-            int closeHour = 13 + random.nextInt(3);
+            final int duration = 45 + random.nextInt(3) * 15;
+            final int openHour = 9 + random.nextInt(2);
+            final int closeHour = 13 + random.nextInt(3);
             items.add(task(String.valueOf((char) ('a' + i)), duration, i,
                     at(openHour, 0), at(closeHour, 0)));
         }
@@ -204,16 +204,16 @@ class BruteForceCrossCheckTest {
     /** A matrix where each route genuinely differs between departure periods. */
     private TravelMatrix randomBucketedMatrix(List<ScheduleTask> items, TimeWindow availability,
                                               Random random) {
-        PeriodPlan plan = PeriodPlan.forRun(availability, true,
+        final PeriodPlan plan = PeriodPlan.forRun(availability, true,
                 items.size() * (items.size() - 1));
-        TravelMatrix.Builder builder = TravelMatrix.builder(plan);
+        final TravelMatrix.Builder builder = TravelMatrix.builder(plan);
         for (ScheduleTask from : items) {
             for (ScheduleTask to : items) {
                 if (from.getEventId().equals(to.getEventId())) {
                     continue;
                 }
                 for (DeparturePeriod period : plan.activePeriods()) {
-                    int minutes = 5 + random.nextInt(40);
+                    final int minutes = 5 + random.nextInt(40);
                     builder.put(from.getEventId(), to.getEventId(), period,
                             TravelEstimate.routed(minutes));
                 }
@@ -227,17 +227,17 @@ class BruteForceCrossCheckTest {
      * with the same rules the engine uses, and returns the best score found.
      */
     private ScheduleScore bestByExhaustiveEnumeration(ScheduleProblem problem) {
-        List<ScheduleTask> items = new ArrayList<>(problem.getMovableTasks());
-        List<List<ScheduleTask>> permutations = new ArrayList<>();
+        final List<ScheduleTask> items = new ArrayList<>(problem.getMovableTasks());
+        final List<List<ScheduleTask>> permutations = new ArrayList<>();
         permute(items, new ArrayList<>(), permutations);
 
         ScheduleScore best = null;
         for (List<ScheduleTask> order : permutations) {
-            List<PlacedActivity> placements = placeInOrder(problem, order);
+            final List<PlacedActivity> placements = placeInOrder(problem, order);
             if (placements == null) {
                 continue;
             }
-            ScheduleScore score = ScheduleEngine.score(placements, problem.getPreferences());
+            final ScheduleScore score = ScheduleEngine.score(placements, problem.getPreferences());
             if (best == null || score.compareTo(best) < 0) {
                 best = score;
             }
@@ -252,8 +252,8 @@ class BruteForceCrossCheckTest {
             return;
         }
         for (int i = 0; i < remaining.size(); i++) {
-            List<ScheduleTask> rest = new ArrayList<>(remaining);
-            ScheduleTask chosen = rest.remove(i);
+            final List<ScheduleTask> rest = new ArrayList<>(remaining);
+            final ScheduleTask chosen = rest.remove(i);
             prefix.add(chosen);
             permute(rest, prefix, out);
             prefix.remove(prefix.size() - 1);
@@ -266,10 +266,10 @@ class BruteForceCrossCheckTest {
      * hide by being made identically on both sides of the comparison.
      */
     private List<PlacedActivity> placeInOrder(ScheduleProblem problem, List<ScheduleTask> order) {
-        List<PlacedActivity> placements = new ArrayList<>();
+        final List<PlacedActivity> placements = new ArrayList<>();
         LocalTime cursor = problem.getAvailability().getStart();
         ScheduleTask previous = null;
-        List<TimeWindow> blocked = problem.getUnavailableWindows();
+        final List<TimeWindow> blocked = problem.getUnavailableWindows();
 
         for (ScheduleTask task : order) {
             IndependentLeg leg = previous == null
@@ -289,7 +289,7 @@ class BruteForceCrossCheckTest {
             // destination with that journey, independently mirroring the public rule.
             if (previous != null) {
                 for (int guard = 0; guard <= blocked.size(); guard++) {
-                    LocalTime resume = blockedWaitEnd(arrival, start, blocked);
+                    final LocalTime resume = blockedWaitEnd(arrival, start, blocked);
                     if (resume == null) {
                         break;
                     }
@@ -304,7 +304,7 @@ class BruteForceCrossCheckTest {
                     }
                 }
             }
-            LocalTime end = start.plusMinutes(task.getDurationMinutes());
+            final LocalTime end = start.plusMinutes(task.getDurationMinutes());
 
             if (end.isAfter(task.getClosingTime()) || end.isAfter(problem.getAvailability().getEnd())
                     || !end.isAfter(start) || overlapsAny(start, end, blocked)) {
@@ -315,7 +315,7 @@ class BruteForceCrossCheckTest {
                     (start.toSecondOfDay() - cursor.toSecondOfDay()) / 60 - leg.minutes);
             // avoidable waiting is still measured from the earliest arrival: departing later
             // relocates dead time, it does not remove it.
-            LocalTime avoidableFrom = arrival.isBefore(task.getOpeningTime())
+            final LocalTime avoidableFrom = arrival.isBefore(task.getOpeningTime())
                     ? task.getOpeningTime() : arrival;
             int avoidable = 0;
             if (start.isAfter(avoidableFrom)) {
@@ -329,10 +329,10 @@ class BruteForceCrossCheckTest {
             // two sides of this comparison stay genuinely independent.
             if (previous != null) {
                 for (DeparturePeriod period : DeparturePeriod.values()) {
-                    int minutes = problem.getTravel().estimateAt(previous.getEventId(),
+                    final int minutes = problem.getTravel().estimateAt(previous.getEventId(),
                             task.getEventId(), period.getStart()).getMinutes();
-                    LocalTime candidate = start.minusMinutes(minutes);
-                    boolean sameCost = problem.getTravel().estimateAt(previous.getEventId(),
+                    final LocalTime candidate = start.minusMinutes(minutes);
+                    final boolean sameCost = problem.getTravel().estimateAt(previous.getEventId(),
                             task.getEventId(), candidate).getMinutes() == minutes;
                     if (minutes > 0 && !candidate.isBefore(start)) {
                         continue;
@@ -364,9 +364,9 @@ class BruteForceCrossCheckTest {
                                        List<TimeWindow> blocked) {
         IndependentLeg best = null;
         for (LocalTime option : departureOptions(cursor, blocked)) {
-            int minutes = problem.getTravel()
+            final int minutes = problem.getTravel()
                     .estimateAt(previous.getEventId(), task.getEventId(), option).getMinutes();
-            LocalTime landed = option.plusMinutes(minutes);
+            final LocalTime landed = option.plusMinutes(minutes);
             if (minutes > 0 && overlapsAny(option, landed, blocked)) {
                 continue;
             }
@@ -410,7 +410,7 @@ class BruteForceCrossCheckTest {
             return null;
         }
         LocalTime resume = null;
-        TimeWindow wait = new TimeWindow(arrival, start);
+        final TimeWindow wait = new TimeWindow(arrival, start);
         for (TimeWindow window : blocked) {
             if (window.overlaps(wait) && (resume == null || window.getEnd().isAfter(resume))) {
                 resume = window.getEnd();
@@ -432,7 +432,7 @@ class BruteForceCrossCheckTest {
     }
 
     private List<LocalTime> departureOptions(LocalTime cursor, List<TimeWindow> blocked) {
-        List<LocalTime> options = new ArrayList<>();
+        final List<LocalTime> options = new ArrayList<>();
         options.add(cursor);
         for (TimeWindow window : blocked) {
             if (window.getEnd().isAfter(cursor) && !options.contains(window.getEnd())) {
@@ -447,7 +447,7 @@ class BruteForceCrossCheckTest {
         if (!end.isAfter(start)) {
             return false;
         }
-        TimeWindow candidate = new TimeWindow(start, end);
+        final TimeWindow candidate = new TimeWindow(start, end);
         for (TimeWindow window : blocked) {
             if (window.overlaps(candidate)) {
                 return true;
@@ -459,11 +459,11 @@ class BruteForceCrossCheckTest {
     private int blockedMinutes(LocalTime from, LocalTime to, List<TimeWindow> blocked) {
         int total = 0;
         LocalTime covered = from;
-        List<TimeWindow> sorted = new ArrayList<>(blocked);
+        final List<TimeWindow> sorted = new ArrayList<>(blocked);
         java.util.Collections.sort(sorted, (l, r) -> l.getStart().compareTo(r.getStart()));
         for (TimeWindow window : sorted) {
-            LocalTime overlapStart = window.getStart().isAfter(covered) ? window.getStart() : covered;
-            LocalTime overlapEnd = window.getEnd().isBefore(to) ? window.getEnd() : to;
+            final LocalTime overlapStart = window.getStart().isAfter(covered) ? window.getStart() : covered;
+            final LocalTime overlapEnd = window.getEnd().isBefore(to) ? window.getEnd() : to;
             if (overlapEnd.isAfter(overlapStart)) {
                 total += (overlapEnd.toSecondOfDay() - overlapStart.toSecondOfDay()) / 60;
                 covered = overlapEnd;
@@ -473,7 +473,7 @@ class BruteForceCrossCheckTest {
     }
 
     private String describe(ScheduleProblem problem, ScheduleSearchResult result) {
-        StringBuilder text = new StringBuilder("\nblocked=")
+        final StringBuilder text = new StringBuilder("\nblocked=")
                 .append(problem.getUnavailableWindows()).append('\n');
         for (ScheduleTask task : problem.allTasks()) {
             text.append(task.getEventId()).append(" duration=")

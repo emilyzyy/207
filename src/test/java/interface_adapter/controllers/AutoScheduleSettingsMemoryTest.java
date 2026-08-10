@@ -39,10 +39,10 @@ class AutoScheduleSettingsMemoryTest {
 
     @Test
     void everySettingComesBackForTheNextAttemptOnTheSameDay() {
-        AutoScheduleSettingsMemory memory = new AutoScheduleSettingsMemory();
+        final AutoScheduleSettingsMemory memory = new AutoScheduleSettingsMemory();
         memory.remember("trip-1", 0, settingsWith(Collections.singletonList(window(10, 13))));
 
-        AutoScheduleSettings back = memory.remembered("trip-1", 0);
+        final AutoScheduleSettings back = memory.remembered("trip-1", 0);
 
         assertNotNull(back);
         assertEquals(LocalTime.of(9, 0), back.getAvailableStart());
@@ -60,7 +60,7 @@ class AutoScheduleSettingsMemoryTest {
     /** A multi-day trip is several separate plans, and they must not borrow each other's. */
     @Test
     void eachDayOfATripRemembersItsOwn() {
-        AutoScheduleSettingsMemory memory = new AutoScheduleSettingsMemory();
+        final AutoScheduleSettingsMemory memory = new AutoScheduleSettingsMemory();
         memory.remember("trip-1", 0, settingsWith(Collections.singletonList(window(10, 13))));
 
         assertNull(memory.remembered("trip-1", 1),
@@ -70,7 +70,7 @@ class AutoScheduleSettingsMemoryTest {
 
     @Test
     void aLaterAttemptReplacesWhatWasRememberedRatherThanAddingToIt() {
-        AutoScheduleSettingsMemory memory = new AutoScheduleSettingsMemory();
+        final AutoScheduleSettingsMemory memory = new AutoScheduleSettingsMemory();
         memory.remember("trip-1", 0, settingsWith(Collections.singletonList(window(10, 13))));
         memory.remember("trip-1", 0, settingsWith(Collections.emptyList()));
 
@@ -80,7 +80,7 @@ class AutoScheduleSettingsMemoryTest {
 
     @Test
     void anExplicitResetForgetsTheDayEntirely() {
-        AutoScheduleSettingsMemory memory = new AutoScheduleSettingsMemory();
+        final AutoScheduleSettingsMemory memory = new AutoScheduleSettingsMemory();
         memory.remember("trip-1", 0, settingsWith(Collections.singletonList(window(10, 13))));
 
         memory.forget("trip-1", 0);

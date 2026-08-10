@@ -88,7 +88,7 @@ class ApplySurvivesRoutingDriftTest {
 
     /** Two real, separated venues, in the shape the report described. */
     private static Trip twoPlaceDay() {
-        Trip trip = new Trip("t", "Toronto", DATE, at(9, 0), at(21, 0),
+        final Trip trip = new Trip("t", "Toronto", DATE, at(9, 0), at(21, 0),
                 TransportationMode.WALKING);
         trip.replaceSchedule(Arrays.asList(
                 new ScheduledEvent("coffee", place("coffee", "Mofer Coffee Front St",
@@ -102,15 +102,15 @@ class ApplySurvivesRoutingDriftTest {
     /** Preview, then Apply, through the real controller exactly as the button does. */
     @Test
     void approvingAPreviewSavesItEvenWhenRoutingDriftsUpwardsAfterwards() {
-        Trip trip = twoPlaceDay();
-        FakeTripRepository trips = new FakeTripRepository(trip);
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("t",
+        final Trip trip = twoPlaceDay();
+        final FakeTripRepository trips = new FakeTripRepository(trip);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("t",
                 trip.getScheduledEvents(), "", false, Collections.emptyList()));
-        DriftingUpwards routing = new DriftingUpwards();
-        AutoScheduleInteractor interactor = new AutoScheduleInteractor(trips,
+        final DriftingUpwards routing = new DriftingUpwards();
+        final AutoScheduleInteractor interactor = new AutoScheduleInteractor(trips,
                 routing, new use_case.autoschedule.testdoubles.FakeWeatherContextGateway(),
                 new AutoSchedulePresenter(viewModel), POLICIES, new ScheduleEngine());
-        AutoScheduleController controller =
+        final AutoScheduleController controller =
                 new AutoScheduleController(interactor, viewModel, TaskRunner.immediate());
 
         interactor.preview(new AutoScheduleInputData("t", at(9, 0), at(21, 0),
@@ -124,7 +124,7 @@ class ApplySurvivesRoutingDriftTest {
         routing.trafficWorsens();
         controller.apply();
 
-        DayPlanState after = viewModel.getState();
+        final DayPlanState after = viewModel.getState();
         assertFalse(after.isError(),
                 "approving a valid Preview must save it: " + after.getMessage());
         assertFalse(after.getMessage().contains("no longer fits"),
@@ -136,12 +136,12 @@ class ApplySurvivesRoutingDriftTest {
     /** The message must never send the traveller round a loop that cannot help them. */
     @Test
     void applyDoesNotAskTheTravellerToRerunAgainstTheSameRandomness() {
-        Trip trip = twoPlaceDay();
-        FakeTripRepository trips = new FakeTripRepository(trip);
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("t",
+        final Trip trip = twoPlaceDay();
+        final FakeTripRepository trips = new FakeTripRepository(trip);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("t",
                 trip.getScheduledEvents(), "", false, Collections.emptyList()));
-        DriftingUpwards routing = new DriftingUpwards();
-        AutoScheduleInteractor interactor = new AutoScheduleInteractor(trips,
+        final DriftingUpwards routing = new DriftingUpwards();
+        final AutoScheduleInteractor interactor = new AutoScheduleInteractor(trips,
                 routing, new use_case.autoschedule.testdoubles.FakeWeatherContextGateway(),
                 new AutoSchedulePresenter(viewModel), POLICIES, new ScheduleEngine());
         new AutoScheduleController(interactor, viewModel, TaskRunner.immediate());
@@ -150,7 +150,7 @@ class ApplySurvivesRoutingDriftTest {
                 TransportationMode.WALKING, Collections.emptySet(),
                 Collections.emptyList(), false, true));
         routing.trafficWorsens();
-        int activitiesBefore = trips.findById("t").get().getScheduledEvents().size();
+        final int activitiesBefore = trips.findById("t").get().getScheduledEvents().size();
 
         interactor.apply(new AutoScheduleApplyInputData("t",
                 viewModel.getState().getPreviewFingerprint(),
@@ -165,11 +165,11 @@ class ApplySurvivesRoutingDriftTest {
     /** The structural guarantees the gate exists for are still enforced. */
     @Test
     void aProposalMissingAJourneyBetweenTwoDifferentPlacesIsStillRefused() {
-        Trip trip = twoPlaceDay();
-        FakeTripRepository trips = new FakeTripRepository(trip);
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("t",
+        final Trip trip = twoPlaceDay();
+        final FakeTripRepository trips = new FakeTripRepository(trip);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("t",
                 trip.getScheduledEvents(), "", false, Collections.emptyList()));
-        AutoScheduleInteractor interactor = new AutoScheduleInteractor(trips,
+        final AutoScheduleInteractor interactor = new AutoScheduleInteractor(trips,
                 new DriftingUpwards(), new use_case.autoschedule.testdoubles
                         .FakeWeatherContextGateway(),
                 new AutoSchedulePresenter(viewModel), POLICIES, new ScheduleEngine());
@@ -177,10 +177,10 @@ class ApplySurvivesRoutingDriftTest {
         interactor.preview(new AutoScheduleInputData("t", at(9, 0), at(21, 0),
                 TransportationMode.WALKING, Collections.emptySet(),
                 Collections.emptyList(), false, true));
-        String fingerprint = viewModel.getState().getPreviewFingerprint();
+        final String fingerprint = viewModel.getState().getPreviewFingerprint();
 
         // Two separated venues back to back with the journey stripped out.
-        List<ProposedEventData> tampered = Arrays.asList(
+        final List<ProposedEventData> tampered = Arrays.asList(
                 new ProposedEventData("coffee", "coffee", "Mofer Coffee Front St",
                         ProposedEventData.Kind.ACTIVITY, at(9, 0), at(10, 0), false, false),
                 new ProposedEventData("cinema", "cinema",
@@ -201,11 +201,11 @@ class ApplySurvivesRoutingDriftTest {
     /** A journey longer than the gap it sits in is arithmetic, not a provider opinion. */
     @Test
     void aJourneyThatCannotFitBetweenItsNeighboursIsStillRefused() {
-        Trip trip = twoPlaceDay();
-        FakeTripRepository trips = new FakeTripRepository(trip);
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("t",
+        final Trip trip = twoPlaceDay();
+        final FakeTripRepository trips = new FakeTripRepository(trip);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("t",
                 trip.getScheduledEvents(), "", false, Collections.emptyList()));
-        AutoScheduleInteractor interactor = new AutoScheduleInteractor(trips,
+        final AutoScheduleInteractor interactor = new AutoScheduleInteractor(trips,
                 new DriftingUpwards(), new use_case.autoschedule.testdoubles
                         .FakeWeatherContextGateway(),
                 new AutoSchedulePresenter(viewModel), POLICIES, new ScheduleEngine());
@@ -213,10 +213,10 @@ class ApplySurvivesRoutingDriftTest {
         interactor.preview(new AutoScheduleInputData("t", at(9, 0), at(21, 0),
                 TransportationMode.WALKING, Collections.emptySet(),
                 Collections.emptyList(), false, true));
-        String fingerprint = viewModel.getState().getPreviewFingerprint();
+        final String fingerprint = viewModel.getState().getPreviewFingerprint();
 
         // A 40-minute journey wedged into a 10-minute gap.
-        List<ProposedEventData> tampered = Arrays.asList(
+        final List<ProposedEventData> tampered = Arrays.asList(
                 new ProposedEventData("coffee", "coffee", "Mofer Coffee Front St",
                         ProposedEventData.Kind.ACTIVITY, at(9, 0), at(10, 0), false, false),
                 new ProposedEventData("travel-cinema", "", "Travel",
@@ -234,7 +234,7 @@ class ApplySurvivesRoutingDriftTest {
     }
 
     private static List<ProposedEventData> proposedRows(DayPlanState state) {
-        List<ProposedEventData> rows = new java.util.ArrayList<>();
+        final List<ProposedEventData> rows = new java.util.ArrayList<>();
         for (interface_adapter.viewmodels.PreviewRowView row : state.getPreviewRows()) {
             rows.add(new ProposedEventData(row.getEventId(), "", row.getTitle(),
                     row.getKind() == interface_adapter.viewmodels.PreviewRowView.Kind.TRAVEL

@@ -21,10 +21,10 @@ final class ShareTripPresenterTest {
 
     @Test
     void exposesCopyableSuccessAndNonCopyableFailure() {
-        ShareViewModel viewModel = new ShareViewModel(
+        final ShareViewModel viewModel = new ShareViewModel(
                 new ShareState("", "", false));
-        ShareTripPresenter presenter = new ShareTripPresenter(viewModel);
-        Trip trip = new Trip(
+        final ShareTripPresenter presenter = new ShareTripPresenter(viewModel);
+        final Trip trip = new Trip(
                 "t1", "Toronto", LocalDate.of(2026, 8, 10),
                 LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING);
 
@@ -42,10 +42,10 @@ final class ShareTripPresenterTest {
 
     @Test
     void storesDayImagesForMultiDayShare() {
-        ShareViewModel viewModel = new ShareViewModel(
+        final ShareViewModel viewModel = new ShareViewModel(
                 new ShareState("", "", false));
-        ShareTripPresenter presenter = new ShareTripPresenter(viewModel);
-        Trip trip = new Trip(
+        final ShareTripPresenter presenter = new ShareTripPresenter(viewModel);
+        final Trip trip = new Trip(
                 "trip-md",
                 "Toronto",
                 TransportationMode.WALKING,

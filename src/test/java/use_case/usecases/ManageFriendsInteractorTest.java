@@ -24,12 +24,12 @@ final class ManageFriendsInteractorTest {
 
     @Test
     void rejectsSelfFriendAndAlreadyFriends() {
-        FakeAccount account = new FakeAccount();
+        final FakeAccount account = new FakeAccount();
         account.me = new User("me", "bianca", "b@example.com");
         account.users.put("bianca", account.me);
         account.users.put("alex", new User("alex-id", "alex", "a@example.com"));
-        RecordingOutput output = new RecordingOutput();
-        ManageFriendsInteractor interactor = new ManageFriendsInteractor(account, output);
+        final RecordingOutput output = new RecordingOutput();
+        final ManageFriendsInteractor interactor = new ManageFriendsInteractor(account, output);
 
         interactor.execute(ManageFriendsInputData.sendRequest("bianca"));
         assertTrue(output.last.isError());
@@ -44,19 +44,19 @@ final class ManageFriendsInteractorTest {
 
     @Test
     void sendsRequestAndAcceptsIncoming() {
-        FakeAccount account = new FakeAccount();
+        final FakeAccount account = new FakeAccount();
         account.me = new User("me", "bianca", "b@example.com");
         account.users.put("bianca", account.me);
         account.users.put("alex", new User("alex-id", "alex", "a@example.com"));
-        RecordingOutput output = new RecordingOutput();
-        ManageFriendsInteractor interactor = new ManageFriendsInteractor(account, output);
+        final RecordingOutput output = new RecordingOutput();
+        final ManageFriendsInteractor interactor = new ManageFriendsInteractor(account, output);
 
         interactor.execute(ManageFriendsInputData.sendRequest("alex"));
         assertFalse(output.last.isError());
         assertTrue(output.last.getMessage().contains("Request sent"));
         assertEquals(1, output.last.getOutgoing().size());
 
-        Friendship pending = output.last.getOutgoing().get(0);
+        final Friendship pending = output.last.getOutgoing().get(0);
         // Flip perspective: make it incoming for accept path by swapping lists.
         account.outgoing.clear();
         account.incoming.add(pending);
@@ -105,8 +105,8 @@ final class ManageFriendsInteractorTest {
 
         @Override
         public Friendship sendFriendRequest(String username) {
-            User target = users.get(username);
-            Friendship created = new Friendship(
+            final User target = users.get(username);
+            final Friendship created = new Friendship(
                     UUID.randomUUID().toString(), me.getId(), target.getId(),
                     Friendship.Status.PENDING, target);
             outgoing.add(created);

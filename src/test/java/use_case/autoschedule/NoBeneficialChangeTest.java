@@ -70,7 +70,7 @@ class NoBeneficialChangeTest {
     }
 
     private static Trip tripWith(List<ScheduledEvent> events) {
-        Trip trip = new Trip("t", "Toronto", DATE, at(9, 0), at(21, 0),
+        final Trip trip = new Trip("t", "Toronto", DATE, at(9, 0), at(21, 0),
                 TransportationMode.WALKING);
         trip.replaceSchedule(events);
         return trip;
@@ -79,7 +79,7 @@ class NoBeneficialChangeTest {
     private static DayPlanState run(Trip trip, FakeTravelTimeEstimator estimator,
                                     java.util.Set<String> locks,
                                     List<TimeWindow> unavailable) {
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("t",
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("t",
                 trip.getScheduledEvents(), "", false, Collections.emptyList()));
         new AutoScheduleInteractor(new FakeTripRepository(trip), estimator,
                 new FakeWeatherContextGateway(), new AutoSchedulePresenter(viewModel),
@@ -104,7 +104,7 @@ class NoBeneficialChangeTest {
 
     @Test
     void aDayThatCannotBeImprovedIsNotOfferedAsAProposal() {
-        DayPlanState state = run(alreadyOptimalDay(),
+        final DayPlanState state = run(alreadyOptimalDay(),
                 new FakeTravelTimeEstimator().timeSensitive(false).defaultMinutes(5),
                 Collections.emptySet(), Collections.emptyList());
 
@@ -123,7 +123,7 @@ class NoBeneficialChangeTest {
     /** Neither figure may worsen in the arrangement the search settles on. */
     @Test
     void theSearchNeverSettlesOnSomethingWorseThanTheDayItWasGiven() {
-        DayPlanState state = run(alreadyOptimalDay(),
+        final DayPlanState state = run(alreadyOptimalDay(),
                 new FakeTravelTimeEstimator().timeSensitive(false).defaultMinutes(5),
                 Collections.emptySet(), Collections.emptyList());
 
@@ -138,9 +138,9 @@ class NoBeneficialChangeTest {
     /** The saved day is untouched either way; declining changes nothing at all. */
     @Test
     void decliningLeavesTheSavedDayExactlyWhereItWas() {
-        Trip trip = alreadyOptimalDay();
-        FakeTripRepository trips = new FakeTripRepository(trip);
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("t",
+        final Trip trip = alreadyOptimalDay();
+        final FakeTripRepository trips = new FakeTripRepository(trip);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("t",
                 trip.getScheduledEvents(), "", false, Collections.emptyList()));
 
         new AutoScheduleInteractor(trips,
@@ -151,7 +151,7 @@ class NoBeneficialChangeTest {
                         TransportationMode.WALKING, Collections.emptySet(),
                         Collections.emptyList(), false, true));
 
-        List<ScheduledEvent> saved = trips.findById("t").get().getScheduledEvents();
+        final List<ScheduledEvent> saved = trips.findById("t").get().getScheduledEvents();
         assertEquals(3, saved.size(), "no travel rows were written either");
         assertEquals(at(9, 0), saved.get(0).getStartTime());
         assertEquals(at(10, 5), saved.get(1).getStartTime());
@@ -166,13 +166,13 @@ class NoBeneficialChangeTest {
      */
     @Test
     void aProposalThatFixesAHardConstraintIsOfferedEvenWhenItCostsMore() {
-        Trip trip = alreadyOptimalDay();
-        FakeTravelTimeEstimator estimator =
+        final Trip trip = alreadyOptimalDay();
+        final FakeTravelTimeEstimator estimator =
                 new FakeTravelTimeEstimator().timeSensitive(false).defaultMinutes(5);
-        List<TimeWindow> busy = Collections.singletonList(
+        final List<TimeWindow> busy = Collections.singletonList(
                 new TimeWindow(at(9, 30), at(12, 0)));
 
-        DayPlanState state = run(trip, estimator, Collections.emptySet(), busy);
+        final DayPlanState state = run(trip, estimator, Collections.emptySet(), busy);
 
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(),
                 "a day that must be rearranged is worth offering: " + state.getMessage());
@@ -189,14 +189,14 @@ class NoBeneficialChangeTest {
     /** Whatever got worse is stated in the figures rather than hidden. */
     @Test
     void aWorseFigureIsReportedRatherThanSuppressed() {
-        DayPlanState state = run(alreadyOptimalDay(),
+        final DayPlanState state = run(alreadyOptimalDay(),
                 new FakeTravelTimeEstimator().timeSensitive(false).defaultMinutes(5),
                 Collections.emptySet(),
                 Collections.singletonList(new TimeWindow(at(9, 30), at(12, 0))));
 
-        boolean waitingWorse = state.getMetrics().getIdleAfterMinutes()
+        final boolean waitingWorse = state.getMetrics().getIdleAfterMinutes()
                 > state.getMetrics().getIdleBeforeMinutes();
-        boolean travelWorse = state.getMetrics().getTravelAfterMinutes()
+        final boolean travelWorse = state.getMetrics().getTravelAfterMinutes()
                 > state.getMetrics().getTravelBeforeMinutes();
 
         if (waitingWorse || travelWorse) {
@@ -220,13 +220,13 @@ class NoBeneficialChangeTest {
      */
     @Test
     void honouringALockTheDayAlreadyHonouredIsNotCountedAsAnImprovement() {
-        Trip trip = alreadyOptimalDay();
+        final Trip trip = alreadyOptimalDay();
 
-        DayPlanState state = run(trip,
+        final DayPlanState state = run(trip,
                 new FakeTravelTimeEstimator().timeSensitive(false).defaultMinutes(5),
                 Collections.singleton("b"), Collections.emptyList());
 
-        List<String> tilePrimaries = new ArrayList<>();
+        final List<String> tilePrimaries = new ArrayList<>();
         for (ImprovementView tile : state.getImprovements()) {
             tilePrimaries.add(tile.getPrimary());
         }
@@ -246,10 +246,10 @@ class NoBeneficialChangeTest {
     void theDecisionIsMadeOnThePlanThatSurvivedExactRefinement() {
         // Bucketed estimates say 5 minutes; the exact re-check says 25. If the decision were
         // taken before refinement the reported travel would not match the drawn rows.
-        FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false);
+        final FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false);
         estimator.defaultMinutes(5);
 
-        DayPlanState state = run(alreadyOptimalDay(), estimator,
+        final DayPlanState state = run(alreadyOptimalDay(), estimator,
                 Collections.emptySet(),
                 Collections.singletonList(new TimeWindow(at(9, 30), at(12, 0))));
 

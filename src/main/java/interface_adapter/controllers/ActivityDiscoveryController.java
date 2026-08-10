@@ -35,14 +35,14 @@ public final class ActivityDiscoveryController {
     public void execute(String query, ActivityCategory category, double minimumRating,
                         IndoorOutdoorType type) {
         try {
-            String currentDestination = destination.get();
+            final String currentDestination = destination.get();
             if (currentDestination == null || currentDestination.trim().isEmpty()) {
                 throw new IllegalArgumentException("Create a trip before searching for activities");
             }
-            String normalizedQuery = query == null ? "" : query.trim();
-            ActivitySearchResult result = search.execute(new ActivitySearchRequest(
+            final String normalizedQuery = query == null ? "" : query.trim();
+            final ActivitySearchResult result = search.execute(new ActivitySearchRequest(
                     currentDestination, normalizedQuery, category, type, 100));
-            List<Activity> matches = result.getActivities();
+            final List<Activity> matches = result.getActivities();
             presenter.presentSearchResult(
                     filter.execute(matches, category, minimumRating, type),
                     normalizedQuery, category, minimumRating, type,

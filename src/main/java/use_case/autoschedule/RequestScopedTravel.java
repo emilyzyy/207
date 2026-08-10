@@ -42,12 +42,12 @@ public final class RequestScopedTravel implements TravelTimeEstimator {
     @Override
     public TravelEstimate estimate(Location from, Location to, TransportationMode mode,
                                    LocalDateTime departure) {
-        String key = keyFor(from, to, mode, departure);
-        TravelEstimate remembered = answered.get(key);
+        final String key = keyFor(from, to, mode, departure);
+        final TravelEstimate remembered = answered.get(key);
         if (remembered != null) {
             return remembered;
         }
-        TravelEstimate answer = source.estimate(from, to, mode, departure);
+        final TravelEstimate answer = source.estimate(from, to, mode, departure);
         if (answer != null) {
             answered.put(key, answer);
         }
@@ -71,7 +71,7 @@ public final class RequestScopedTravel implements TravelTimeEstimator {
      * schedules differ, these lines say whether the provider did.</p>
      */
     public List<String> getDiagnostics() {
-        List<String> lines = new ArrayList<>();
+        final List<String> lines = new ArrayList<>();
         for (Map.Entry<String, TravelEstimate> entry : answered.entrySet()) {
             lines.add(entry.getKey() + " = " + entry.getValue().getMinutes() + " min ("
                     + entry.getValue().getQuality() + ")");

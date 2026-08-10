@@ -34,8 +34,8 @@ public final class ActivityPlacer {
     public PlacedActivity placeMovable(ScheduleProblem problem, ScheduleTask task,
                                        LocalTime cursor, ScheduleTask previous,
                                        BlockedPeriods blocked) {
-        TimeWindow availability = problem.getAvailability();
-        String fromId = previous == null ? null : previous.getEventId();
+        final TimeWindow availability = problem.getAvailability();
+        final String fromId = previous == null ? null : previous.getEventId();
 
         TravelLeg leg = legPlanner.plan(problem.getTravel(), fromId, task.getEventId(),
                 cursor, blocked, availability.getEnd());
@@ -57,9 +57,9 @@ public final class ActivityPlacer {
         // blocked/opening windows settle without a backwards cycle.
         if (previous != null) {
             for (int attempt = 0; attempt <= blocked.getWindows().size(); attempt++) {
-                TravelLeg travelled = legPlanner.latestArrivingBy(problem.getTravel(), fromId,
+                final TravelLeg travelled = legPlanner.latestArrivingBy(problem.getTravel(), fromId,
                         task.getEventId(), cursor, blocked, placed.getStart(), leg);
-                LocalTime resume = resumeAfterBlockedWait(
+                final LocalTime resume = resumeAfterBlockedWait(
                         travelled.getArrival(), placed.getStart(), blocked);
                 if (resume == null) {
                     break;
@@ -77,8 +77,8 @@ public final class ActivityPlacer {
             }
         }
 
-        LocalTime start = placed.getStart();
-        LocalTime end = placed.getEnd();
+        final LocalTime start = placed.getStart();
+        final LocalTime end = placed.getEnd();
 
         if (blocked.blocks(new TimeWindow(start, end))) {
             return null;
@@ -138,7 +138,7 @@ public final class ActivityPlacer {
         if (!start.isAfter(arrival)) {
             return null;
         }
-        TimeWindow wait = new TimeWindow(arrival, start);
+        final TimeWindow wait = new TimeWindow(arrival, start);
         LocalTime resume = null;
         for (TimeWindow window : blocked.getWindows()) {
             if (window.overlaps(wait)
@@ -153,15 +153,15 @@ public final class ActivityPlacer {
     public PlacedActivity placeLocked(ScheduleProblem problem, ScheduleTask task,
                                       LocalTime cursor, ScheduleTask previous,
                                       BlockedPeriods blocked) {
-        TimeWindow window = task.getLockedAt();
-        String fromId = previous == null ? null : previous.getEventId();
+        final TimeWindow window = task.getLockedAt();
+        final String fromId = previous == null ? null : previous.getEventId();
 
-        TravelLeg leg = legPlanner.plan(problem.getTravel(), fromId, task.getEventId(),
+        final TravelLeg leg = legPlanner.plan(problem.getTravel(), fromId, task.getEventId(),
                 cursor, blocked, window.getStart());
         if (leg == null || leg.getArrival().isAfter(window.getStart())) {
             return null;
         }
-        TravelLeg travelled = legPlanner.latestArrivingBy(problem.getTravel(), fromId,
+        final TravelLeg travelled = legPlanner.latestArrivingBy(problem.getTravel(), fromId,
                 task.getEventId(), cursor, blocked, window.getStart(), leg);
         if (travelled.getMinutes() > 0 && resumeAfterBlockedWait(
                 travelled.getArrival(), window.getStart(), blocked) != null) {
@@ -188,8 +188,8 @@ public final class ActivityPlacer {
     private static LocalTime intoOpeningHours(ScheduleTask task, LocalTime earliest) {
         LocalTime best = null;
         for (TimeWindow window : task.getOpeningWindows()) {
-            LocalTime candidate = later(earliest, window.getStart());
-            LocalTime finish = plusMinutes(candidate, task.getDurationMinutes());
+            final LocalTime candidate = later(earliest, window.getStart());
+            final LocalTime finish = plusMinutes(candidate, task.getDurationMinutes());
             if (finish == null || finish.isAfter(window.getEnd())) {
                 continue;
             }
@@ -205,19 +205,19 @@ public final class ActivityPlacer {
                                  TravelLeg leg, BlockedPeriods blocked) {
         // Waiting for the doors to open is not avoidable, so the opening time that matters
         // is the one for the window this visit is actually in.
-        TimeWindow window = task.openingWindowFor(start, end);
+        final TimeWindow window = task.openingWindowFor(start, end);
         // Measured from the earliest possible arrival, and deliberately not from the journey
         // actually travelled. Setting out later does not reclaim dead time; it only moves it
         // to the near side of the journey. Scoring the just-in-time leg instead would report
         // no avoidable waiting anywhere and quietly delete "minimize gaps" from the
         // objective.
-        int avoidable = legPlanner.avoidableIdleMinutes(leg.getArrival(), start,
+        final int avoidable = legPlanner.avoidableIdleMinutes(leg.getArrival(), start,
                 window == null ? task.getOpeningTime() : window.getStart(), blocked);
 
-        String fromId = previous == null ? null : previous.getEventId();
-        TravelLeg travelled = legPlanner.latestArrivingBy(problem.getTravel(), fromId,
+        final String fromId = previous == null ? null : previous.getEventId();
+        final TravelLeg travelled = legPlanner.latestArrivingBy(problem.getTravel(), fromId,
                 task.getEventId(), cursor, blocked, start, leg);
-        int idle = minutesBetween(cursor, start) - travelled.getMinutes();
+        final int idle = minutesBetween(cursor, start) - travelled.getMinutes();
         return new PlacedActivity(task, start, end, travelled.getDeparture(),
                 travelled.getMinutes(), Math.max(0, idle), avoidable);
     }
@@ -233,7 +233,7 @@ public final class ActivityPlacer {
     }
 
     static LocalTime plusMinutes(LocalTime time, int minutes) {
-        LocalTime result = time.plusMinutes(minutes);
+        final LocalTime result = time.plusMinutes(minutes);
         if (minutes > 0 && !result.isAfter(time)) {
             return null;
         }

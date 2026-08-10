@@ -42,25 +42,25 @@ final class SwingPanelStructureTest {
 
     @Test
     void plannerContainsFourFocusedTabsAndDayPlanObservesSharedState() throws Exception {
-        DayPlanViewModel dayPlanViewModel = new DayPlanViewModel(
+        final DayPlanViewModel dayPlanViewModel = new DayPlanViewModel(
                 new DayPlanState("trip-1", Collections.emptyList(), "", false));
-        ActivitySelectionViewModel selection = new ActivitySelectionViewModel();
-        SearchPanel search = new SearchPanel(new SearchViewModel(
+        final ActivitySelectionViewModel selection = new ActivitySelectionViewModel();
+        final SearchPanel search = new SearchPanel(new SearchViewModel(
                 new SearchState(Collections.singletonList(activity("rom")), "")),
                 null, null, null, selection);
-        BookmarksPanel bookmarks = new BookmarksPanel(new BookmarksViewModel(
+        final BookmarksPanel bookmarks = new BookmarksPanel(new BookmarksViewModel(
                 new BookmarksState(Collections.singletonList(activity("saved")))),
                 null, null, selection);
-        DayPlanPanel dayPlan = new DayPlanPanel(
+        final DayPlanPanel dayPlan = new DayPlanPanel(
                 dayPlanViewModel,
                 new interface_adapter.controllers.AutoScheduleController(
                         new RecordingAutoSchedule(), dayPlanViewModel,
                         interface_adapter.controllers.TaskRunner.immediate()),
                 null, selection);
-        PlannerPanel planner = new PlannerPanel(
+        final PlannerPanel planner = new PlannerPanel(
                 search, bookmarks, dayPlan);
 
-        JTabbedPane tabs = (JTabbedPane) planner.getComponent(0);
+        final JTabbedPane tabs = (JTabbedPane) planner.getComponent(0);
         assertEquals(3, tabs.getTabCount());
         assertEquals("Search", tabs.getTitleAt(0));
         assertEquals("Bookmarks", tabs.getTitleAt(1));
@@ -68,8 +68,8 @@ final class SwingPanelStructureTest {
         assertFalse(allText(planner).contains("Trip Options"));
         assertFalse(allText(planner).contains("Trip Assistant"));
         assertTrue(allText(planner).contains("Discover activities"));
-        JLabel searchTitle = findLabel(search, "Discover activities");
-        JLabel resultCount = findLabel(search, "1 nearby activities");
+        final JLabel searchTitle = findLabel(search, "Discover activities");
+        final JLabel resultCount = findLabel(search, "1 nearby activities");
         assertNotNull(searchTitle);
         assertNotNull(resultCount);
         assertEquals(JLabel.CENTER, searchTitle.getHorizontalAlignment());
@@ -86,7 +86,7 @@ final class SwingPanelStructureTest {
         clickCard(bookmarks, "Show saved on the map");
         assertEquals("saved", selection.getSelectedActivityId());
 
-        AbstractButton autoschedule = findButton(dayPlan, "Autoschedule");
+        final AbstractButton autoschedule = findButton(dayPlan, "Autoschedule");
         assertNotNull(autoschedule, "the Day Plan should offer Autoschedule");
         assertTrue(autoschedule.isEnabled());
         assertTrue(autoschedule.isVisible());
@@ -94,7 +94,7 @@ final class SwingPanelStructureTest {
         assertNull(findButton(dayPlan, "Optimize Itinerary"),
                 "the old mockup button should be gone");
 
-        ScheduledEvent event = new ScheduledEvent(
+        final ScheduledEvent event = new ScheduledEvent(
                 "event-rom", activity("rom"), LocalTime.of(10, 0),
                 LocalTime.of(11, 0), EventType.ACTIVITY, "Visit");
         SwingUtilities.invokeAndWait(() -> dayPlanViewModel.setState(
@@ -119,10 +119,10 @@ final class SwingPanelStructureTest {
         clickCard(dayPlan, "Show rom on the map");
         assertEquals("rom", selection.getSelectedActivityId());
         SwingUtilities.invokeAndWait(() -> { });
-        Component timeline = findByName(dayPlan, "Day schedule timeline");
+        final Component timeline = findByName(dayPlan, "Day schedule timeline");
         assertNotNull(timeline);
         assertEquals(1, ((Container) timeline).getComponentCount());
-        JScrollPane dayPlanScroll = (JScrollPane) SwingUtilities.getAncestorOfClass(
+        final JScrollPane dayPlanScroll = (JScrollPane) SwingUtilities.getAncestorOfClass(
                 JScrollPane.class, timeline);
         assertNotNull(dayPlanScroll);
         assertEquals(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER,
@@ -143,7 +143,7 @@ final class SwingPanelStructureTest {
     }
 
     private String allText(Component component) {
-        StringBuilder text = new StringBuilder();
+        final StringBuilder text = new StringBuilder();
         collectText(component, text);
         return text.toString();
     }
@@ -169,7 +169,7 @@ final class SwingPanelStructureTest {
         }
         if (component instanceof Container) {
             for (Component child : ((Container) component).getComponents()) {
-                AbstractButton found = findButton(child, text);
+                final AbstractButton found = findButton(child, text);
                 if (found != null) {
                     return found;
                 }
@@ -184,7 +184,7 @@ final class SwingPanelStructureTest {
         }
         if (component instanceof Container) {
             for (Component child : ((Container) component).getComponents()) {
-                JLabel found = findLabel(child, text);
+                final JLabel found = findLabel(child, text);
                 if (found != null) return found;
             }
         }
@@ -193,14 +193,14 @@ final class SwingPanelStructureTest {
 
     private JComboBox<?> findComboItem(Component component, String item) {
         if (component instanceof JComboBox) {
-            JComboBox<?> combo = (JComboBox<?>) component;
+            final JComboBox<?> combo = (JComboBox<?>) component;
             for (int i = 0; i < combo.getItemCount(); i++) {
                 if (item.equals(combo.getItemAt(i))) return combo;
             }
         }
         if (component instanceof Container) {
             for (Component child : ((Container) component).getComponents()) {
-                JComboBox<?> found = findComboItem(child, item);
+                final JComboBox<?> found = findComboItem(child, item);
                 if (found != null) return found;
             }
         }
@@ -208,9 +208,9 @@ final class SwingPanelStructureTest {
     }
 
     private void clickCard(Component component, String tooltip) {
-        Component card = findByTooltip(component, tooltip);
+        final Component card = findByTooltip(component, tooltip);
         assertNotNull(card);
-        MouseEvent click = new MouseEvent(
+        final MouseEvent click = new MouseEvent(
                 card, MouseEvent.MOUSE_CLICKED, System.currentTimeMillis(),
                 0, 5, 5, 1, false);
         for (java.awt.event.MouseListener listener : card.getMouseListeners()) {
@@ -225,7 +225,7 @@ final class SwingPanelStructureTest {
         }
         if (component instanceof Container) {
             for (Component child : ((Container) component).getComponents()) {
-                Component found = findByTooltip(child, tooltip);
+                final Component found = findByTooltip(child, tooltip);
                 if (found != null) return found;
             }
         }
@@ -236,7 +236,7 @@ final class SwingPanelStructureTest {
         if (name.equals(component.getName())) return component;
         if (component instanceof Container) {
             for (Component child : ((Container) component).getComponents()) {
-                Component found = findByName(child, name);
+                final Component found = findByName(child, name);
                 if (found != null) return found;
             }
         }

@@ -58,7 +58,7 @@ public final class ManageFriendsOutputData {
     }
 
     public List<User> getFriendProfiles() {
-        List<User> profiles = new ArrayList<User>();
+        final List<User> profiles = new ArrayList<User>();
         for (Friendship friendship : accepted) {
             profiles.add(friendship.getOtherUser());
         }

@@ -12,7 +12,7 @@ import use_case.usecases.CreateTripInputData;
 
 public final class TestRunner {
     public static void main(String[] args) {
-        AppContainer app = new AppBuilder().buildOffline();
+        final AppContainer app = new AppBuilder().buildOffline();
         Trip trip = app.createTrip.executeAndReturn(new CreateTripInputData(
                 "Toronto", LocalDate.of(2026, 7, 18),
                 LocalTime.of(9, 0), LocalTime.of(19, 0),
@@ -23,9 +23,9 @@ public final class TestRunner {
         require(trip.getBookmarkedActivities().size() == 2, "bookmark use case");
         require(!trip.getScheduledEvents().isEmpty(), "auto schedule use case");
         require(app.summary.execute(trip.getId()).contains("Royal Ontario Museum"), "summary use case");
-        LocalDateTime departure = LocalDateTime.of(LocalDate.of(2026, 7, 18), LocalTime.NOON);
-        Location rom = app.activities.findById("rom").get().getLocation();
-        Location pai = app.activities.findById("pai").get().getLocation();
+        final LocalDateTime departure = LocalDateTime.of(LocalDate.of(2026, 7, 18), LocalTime.NOON);
+        final Location rom = app.activities.findById("rom").get().getLocation();
+        final Location pai = app.activities.findById("pai").get().getLocation();
         require(app.distances.estimateTravelMinutes(rom, pai, TransportationMode.WALKING, departure)
                 > app.distances.estimateTravelMinutes(rom, pai, TransportationMode.DRIVING, departure),
                 "transport mode timing");

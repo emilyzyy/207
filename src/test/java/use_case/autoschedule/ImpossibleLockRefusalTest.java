@@ -48,13 +48,13 @@ class ImpossibleLockRefusalTest {
     private static final LocalDate DATE = LocalDate.of(2026, 8, 12);
 
     private static OpeningHours hours(String... spans) {
-        List<OpeningHours.TimeInterval> intervals = new ArrayList<>();
+        final List<OpeningHours.TimeInterval> intervals = new ArrayList<>();
         for (String span : spans) {
-            String[] halves = span.split("-");
+            final String[] halves = span.split("-");
             intervals.add(new OpeningHours.TimeInterval(
                     LocalTime.parse(halves[0]), LocalTime.parse(halves[1])));
         }
-        Map<DayOfWeek, List<OpeningHours.TimeInterval>> week = new EnumMap<>(DayOfWeek.class);
+        final Map<DayOfWeek, List<OpeningHours.TimeInterval>> week = new EnumMap<>(DayOfWeek.class);
         for (DayOfWeek day : DayOfWeek.values()) {
             week.put(day, intervals);
         }
@@ -62,14 +62,14 @@ class ImpossibleLockRefusalTest {
     }
 
     private static Trip tripWith(OpeningHours pinnedHours, LocalTime pinnedStart) {
-        Activity pinned = new Activity("pin", "Split Hours Bistro", ActivityCategory.FOOD,
+        final Activity pinned = new Activity("pin", "Split Hours Bistro", ActivityCategory.FOOD,
                 new Location(43.65, -79.38, "pin"), 4.5, 60, at(9, 0), at(20, 0),
                 IndoorOutdoorType.INDOOR, "none", "hours", pinnedHours);
-        Activity other = new Activity("other", "Museum", ActivityCategory.MUSEUM,
+        final Activity other = new Activity("other", "Museum", ActivityCategory.MUSEUM,
                 new Location(43.66, -79.39, "other"), 4.5, 60, at(8, 0), at(20, 0),
                 IndoorOutdoorType.INDOOR, "none", "hours", hours("08:00-20:00"));
 
-        Trip trip = new Trip("trip-1", "Toronto", DATE, at(9, 0), at(21, 0),
+        final Trip trip = new Trip("trip-1", "Toronto", DATE, at(9, 0), at(21, 0),
                 TransportationMode.WALKING);
         trip.replaceSchedule(Arrays.asList(
                 new ScheduledEvent("pin", pinned, pinnedStart, pinnedStart.plusMinutes(60),
@@ -80,7 +80,7 @@ class ImpossibleLockRefusalTest {
     }
 
     private static RecordingPresenter run(Trip trip, List<TimeWindow> unavailable) {
-        RecordingPresenter presenter = new RecordingPresenter();
+        final RecordingPresenter presenter = new RecordingPresenter();
         new AutoScheduleInteractor(new FakeTripRepository(trip),
                 new FakeTravelTimeEstimator().timeSensitive(false).defaultMinutes(10),
                 new FakeWeatherContextGateway(), presenter,
@@ -94,13 +94,13 @@ class ImpossibleLockRefusalTest {
     /** Pinned into the gap between a venue's two opening windows. */
     @Test
     void aPinInsideAVenuesMiddayClosureIsRefusedByName() {
-        RecordingPresenter presenter = run(
+        final RecordingPresenter presenter = run(
                 tripWith(hours("09:00-12:00", "15:00-20:00"), at(12, 30)),
                 Collections.emptyList());
 
         assertNull(presenter.getPreview(),
                 "a pin the venue is shut for cannot quietly be scheduled anyway");
-        AutoScheduleConflictOutputData conflict = presenter.getConflict();
+        final AutoScheduleConflictOutputData conflict = presenter.getConflict();
         assertNotNull(conflict);
         assertEquals(ScheduleConflict.Kind.LOCK_OUTSIDE_OPENING_HOURS, conflict.getKind(),
                 "starting and ending while open is not the same as being open throughout");
@@ -111,12 +111,12 @@ class ImpossibleLockRefusalTest {
     /** Pinned to a time the traveller already said they were busy. */
     @Test
     void aPinInsideAnUnavailablePeriodIsRefusedByName() {
-        RecordingPresenter presenter = run(
+        final RecordingPresenter presenter = run(
                 tripWith(hours("08:00-20:00"), at(13, 0)),
                 Collections.singletonList(new TimeWindow(at(13, 0), at(14, 0))));
 
         assertNull(presenter.getPreview());
-        AutoScheduleConflictOutputData conflict = presenter.getConflict();
+        final AutoScheduleConflictOutputData conflict = presenter.getConflict();
         assertNotNull(conflict);
         assertEquals(ScheduleConflict.Kind.LOCK_INSIDE_UNAVAILABLE_PERIOD, conflict.getKind());
         assertEquals("Split Hours Bistro", conflict.getSubject());
@@ -125,7 +125,7 @@ class ImpossibleLockRefusalTest {
     /** A pin that is genuinely possible still works, so the guard is not simply refusing. */
     @Test
     void aPinTheDayCanHonourStillProducesASchedule() {
-        RecordingPresenter presenter = run(
+        final RecordingPresenter presenter = run(
                 tripWith(hours("09:00-12:00", "15:00-20:00"), at(10, 0)),
                 Collections.emptyList());
 
@@ -144,9 +144,9 @@ class ImpossibleLockRefusalTest {
     /** Nothing is saved either way: a refusal leaves the day untouched. */
     @Test
     void aRefusedPinLeavesTheSavedDayAlone() {
-        Trip trip = tripWith(hours("09:00-12:00", "15:00-20:00"), at(12, 30));
-        FakeTripRepository trips = new FakeTripRepository(trip);
-        RecordingPresenter presenter = new RecordingPresenter();
+        final Trip trip = tripWith(hours("09:00-12:00", "15:00-20:00"), at(12, 30));
+        final FakeTripRepository trips = new FakeTripRepository(trip);
+        final RecordingPresenter presenter = new RecordingPresenter();
         new AutoScheduleInteractor(trips,
                 new FakeTravelTimeEstimator().timeSensitive(false).defaultMinutes(10),
                 new FakeWeatherContextGateway(), presenter,

@@ -79,15 +79,15 @@ class AutoSchedulePresenterTest {
 
     @Test
     void aPreviewNeverTouchesTheRealItinerary() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9), existingEvent("b", 14));
-        List<ScheduledEvent> before = viewModel.getState().getEvents();
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9), existingEvent("b", 14));
+        final List<ScheduledEvent> before = viewModel.getState().getEvents();
 
         new AutoSchedulePresenter(viewModel).presentPreview(preview(
                 Arrays.asList(activityRow("a", 10, true), activityRow("b", 12, true)),
                 Collections.emptyList(), Collections.emptyList(), true, true,
                 TravelEstimateQuality.ROUTED));
 
-        DayPlanState state = viewModel.getState();
+        final DayPlanState state = viewModel.getState();
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus());
         assertEquals(before, state.getEvents(),
                 "the Calendar must keep showing the agreed itinerary during a preview");
@@ -96,13 +96,13 @@ class AutoSchedulePresenterTest {
 
     @Test
     void previewCarriesMetricsAndFingerprint() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
 
         new AutoSchedulePresenter(viewModel).presentPreview(preview(
                 Arrays.asList(activityRow("a", 10, true)), Collections.emptyList(),
                 Collections.emptyList(), true, true, TravelEstimateQuality.ROUTED));
 
-        DayPlanState state = viewModel.getState();
+        final DayPlanState state = viewModel.getState();
         assertNotNull(state.getMetrics());
         assertEquals(40, state.getMetrics().getTravelSavedMinutes());
         assertEquals(40, state.getMetrics().getIdleSavedMinutes());
@@ -111,8 +111,8 @@ class AutoSchedulePresenterTest {
 
     @Test
     void reasonCodesBecomeSentences() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
-        List<Reason> reasons = Arrays.asList(
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final List<Reason> reasons = Arrays.asList(
                 new Reason("a", ReasonCode.CLOSING_SOON, "17:00"),
                 new Reason("a", ReasonCode.IN_MEAL_WINDOW, ""));
 
@@ -120,7 +120,7 @@ class AutoSchedulePresenterTest {
                 Arrays.asList(activityRow("a", 10, true)), reasons, Collections.emptyList(),
                 true, true, TravelEstimateQuality.ROUTED));
 
-        PreviewRowView row = viewModel.getState().getPreviewRows().get(0);
+        final PreviewRowView row = viewModel.getState().getPreviewRows().get(0);
         assertEquals("closes at 5:00 PM", row.getReason(),
                 "the constraint the traveller cannot change should be shown first");
         assertEquals(Arrays.asList("closes at 5:00 PM", "a usual mealtime"), row.getAllReasons());
@@ -128,8 +128,8 @@ class AutoSchedulePresenterTest {
 
     @Test
     void aLockIsTheMostImportantThingToSayAboutARow() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
-        List<Reason> reasons = Arrays.asList(
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final List<Reason> reasons = Arrays.asList(
                 new Reason("a", ReasonCode.IN_DAYLIGHT, ""),
                 new Reason("a", ReasonCode.LOCKED_BY_USER, ""));
 
@@ -143,7 +143,7 @@ class AutoSchedulePresenterTest {
 
     @Test
     void rowsWithoutReasonsSayNothingRatherThanPadding() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
 
         new AutoSchedulePresenter(viewModel).presentPreview(preview(
                 Arrays.asList(activityRow("a", 10, true)), Collections.emptyList(),
@@ -154,7 +154,7 @@ class AutoSchedulePresenterTest {
 
     @Test
     void travelRowsAreMarkedAsTravel() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
 
         new AutoSchedulePresenter(viewModel).presentPreview(preview(
                 Arrays.asList(travelRow("a", 9, 20), activityRow("a", 10, true)),
@@ -169,20 +169,20 @@ class AutoSchedulePresenterTest {
 
     @Test
     void anIncompleteSearchIsNotPresentedAsTheBestPossible() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
 
         new AutoSchedulePresenter(viewModel).presentPreview(preview(
                 Arrays.asList(activityRow("a", 10, true)), Collections.emptyList(),
                 Collections.emptyList(), true, false, TravelEstimateQuality.ROUTED));
 
-        DayPlanState state = viewModel.getState();
+        final DayPlanState state = viewModel.getState();
         assertFalse(state.isSearchCompletedWithinLimit());
         assertTrue(state.getMessage().contains("within the search limit"));
     }
 
     @Test
     void unknownTravelQualityIsDisclosedRatherThanHidden() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
 
         new AutoSchedulePresenter(viewModel).presentPreview(preview(
                 Arrays.asList(activityRow("a", 10, true)), Collections.emptyList(),
@@ -193,7 +193,7 @@ class AutoSchedulePresenterTest {
 
     @Test
     void routedTravelNeedsNoCaveat() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
 
         new AutoSchedulePresenter(viewModel).presentPreview(preview(
                 Arrays.asList(activityRow("a", 10, true)), Collections.emptyList(),
@@ -212,14 +212,14 @@ class AutoSchedulePresenterTest {
      */
     @Test
     void theObjectiveSummaryNamesWhatWasActuallyAchieved() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
 
         new AutoSchedulePresenter(viewModel).presentPreview(preview(
                 Arrays.asList(activityRow("a", 10, true)), Collections.emptyList(),
                 Collections.emptyList(), true, true, TravelEstimateQuality.ROUTED));
 
-        DayPlanState state = viewModel.getState();
-        String summary = state.getObjectiveSummary();
+        final DayPlanState state = viewModel.getState();
+        final String summary = state.getObjectiveSummary();
         // Every clause has to be backed by the figures printed above it.
         assertEquals(state.getMetrics().getTravelBeforeMinutes()
                         > state.getMetrics().getTravelAfterMinutes(),
@@ -237,7 +237,7 @@ class AutoSchedulePresenterTest {
 
     @Test
     void warningsSurviveIntoTheState() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
 
         new AutoSchedulePresenter(viewModel).presentPreview(preview(
                 Arrays.asList(activityRow("a", 10, true)), Collections.emptyList(),
@@ -249,15 +249,15 @@ class AutoSchedulePresenterTest {
 
     @Test
     void applyingReplacesTheItineraryAndKeepsActivityDetails() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9), existingEvent("b", 14));
-        AutoSchedulePresenter presenter = new AutoSchedulePresenter(viewModel);
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9), existingEvent("b", 14));
+        final AutoSchedulePresenter presenter = new AutoSchedulePresenter(viewModel);
 
         presenter.presentApplied(new AutoScheduleAppliedOutputData("trip-1",
                 Arrays.asList(activityRow("a", 10, true), travelRow("b", 11, 15),
                         activityRow("b", 12, true)),
                 "fingerprint-2"));
 
-        DayPlanState state = viewModel.getState();
+        final DayPlanState state = viewModel.getState();
         assertEquals(AutoScheduleStatus.APPLIED, state.getStatus());
         assertEquals(3, state.getEvents().size());
         assertEquals(LocalTime.of(10, 0), state.getEvents().get(0).getStartTime());
@@ -270,13 +270,13 @@ class AutoSchedulePresenterTest {
 
     @Test
     void aConflictExplainsItselfAndLeavesTheItineraryAlone() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
-        List<ScheduledEvent> before = viewModel.getState().getEvents();
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final List<ScheduledEvent> before = viewModel.getState().getEvents();
 
         new AutoSchedulePresenter(viewModel).presentConflict(new AutoScheduleConflictOutputData(
                 ScheduleConflict.activityCannotFit("a", "Royal Ontario Museum", 90, 45)));
 
-        DayPlanState state = viewModel.getState();
+        final DayPlanState state = viewModel.getState();
         assertEquals(AutoScheduleStatus.CONFLICT, state.getStatus());
         assertTrue(state.isError());
         assertTrue(state.getMessage().contains("Royal Ontario Museum"));
@@ -287,8 +287,8 @@ class AutoSchedulePresenterTest {
 
     @Test
     void aLockedUnavailableConflictNamesBothExactWindowsAndValidRemedies() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
-        AutoSchedulePresenter presenter = new AutoSchedulePresenter(viewModel);
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final AutoSchedulePresenter presenter = new AutoSchedulePresenter(viewModel);
 
         presenter.presentConflict(new AutoScheduleConflictOutputData(
                 ScheduleConflict.lockedInsideUnavailable("a",
@@ -305,9 +305,9 @@ class AutoSchedulePresenterTest {
 
     @Test
     void eachConflictKindGetsItsOwnExplanation() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
-        AutoSchedulePresenter presenter = new AutoSchedulePresenter(viewModel);
-        List<String> messages = new ArrayList<>();
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final AutoSchedulePresenter presenter = new AutoSchedulePresenter(viewModel);
+        final List<String> messages = new ArrayList<>();
 
         for (ScheduleConflict.Kind kind : ScheduleConflict.Kind.values()) {
             presenter.presentConflict(new AutoScheduleConflictOutputData(
@@ -322,12 +322,12 @@ class AutoSchedulePresenterTest {
 
     @Test
     void aFailureIsShownAsAnErrorWithoutLosingTheItinerary() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
-        List<ScheduledEvent> before = viewModel.getState().getEvents();
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final List<ScheduledEvent> before = viewModel.getState().getEvents();
 
         new AutoSchedulePresenter(viewModel).presentFailure("Trip not found");
 
-        DayPlanState state = viewModel.getState();
+        final DayPlanState state = viewModel.getState();
         assertEquals(AutoScheduleStatus.FAILURE, state.getStatus());
         assertTrue(state.isError());
         assertEquals("Trip not found", state.getMessage());
@@ -336,10 +336,10 @@ class AutoSchedulePresenterTest {
 
     @Test
     void locksSurviveEveryOutcome() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
         viewModel.setState(viewModel.getState().withLocks(
                 new java.util.LinkedHashSet<>(Arrays.asList("a"))));
-        AutoSchedulePresenter presenter = new AutoSchedulePresenter(viewModel);
+        final AutoSchedulePresenter presenter = new AutoSchedulePresenter(viewModel);
 
         presenter.presentPreview(preview(Arrays.asList(activityRow("a", 10, true)),
                 Collections.emptyList(), Collections.emptyList(), true, true,
@@ -356,10 +356,10 @@ class AutoSchedulePresenterTest {
 
     @Test
     void observersAreNotifiedOfEveryOutcome() {
-        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
-        List<String> notifications = new ArrayList<>();
+        final DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        final List<String> notifications = new ArrayList<>();
         viewModel.addPropertyChangeListener(event -> notifications.add(event.getPropertyName()));
-        AutoSchedulePresenter presenter = new AutoSchedulePresenter(viewModel);
+        final AutoSchedulePresenter presenter = new AutoSchedulePresenter(viewModel);
 
         presenter.presentPreview(preview(Arrays.asList(activityRow("a", 10, true)),
                 Collections.emptyList(), Collections.emptyList(), true, true,

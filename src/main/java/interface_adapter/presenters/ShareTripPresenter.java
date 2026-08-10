@@ -23,9 +23,9 @@ public final class ShareTripPresenter implements ShareTripOutputBoundary {
 
     @Override
     public void presentSuccess(ShareTripOutputData outputData) {
-        List<BufferedImage> dayImages = DayPlanShareImageRenderer.renderTrip(outputData.getTrip());
-        int days = dayImages.size();
-        String ready = days <= 1
+        final List<BufferedImage> dayImages = DayPlanShareImageRenderer.renderTrip(outputData.getTrip());
+        final int days = dayImages.size();
+        final String ready = days <= 1
                 ? "Day plan image ready — scroll, save, or copy the text."
                 : days + " day-plan images ready — scroll to see each day, then save or share.";
         viewModel.setState(new ShareState(

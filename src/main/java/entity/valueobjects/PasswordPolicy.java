@@ -24,7 +24,7 @@ public final class PasswordPolicy {
      * @return an error message, or {@code null} if both passwords match and the new one is valid
      */
     public static String validateNewPasswordPair(String password, String confirm) {
-        String error = validateNewPassword(password);
+        final String error = validateNewPassword(password);
         if (error != null) {
             return error;
         }

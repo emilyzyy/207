@@ -18,7 +18,7 @@ public final class ProblemValidator {
      */
     public ScheduleConflict validate(TimeWindow availability, List<ScheduleTask> tasks,
                                      List<TimeWindow> unavailableWindows) {
-        ScheduleConflict windowProblem = validateUnavailableWindows(availability, unavailableWindows);
+        final ScheduleConflict windowProblem = validateUnavailableWindows(availability, unavailableWindows);
         if (windowProblem != null) {
             return windowProblem;
         }
@@ -31,7 +31,7 @@ public final class ProblemValidator {
             return null;
         }
         for (int i = 0; i < windows.size(); i++) {
-            TimeWindow window = windows.get(i);
+            final TimeWindow window = windows.get(i);
             if (!availability.encloses(window)) {
                 return ScheduleConflict.of(ScheduleConflict.Kind.LOCK_OUTSIDE_AVAILABILITY,
                         "", window.toString());
@@ -49,12 +49,12 @@ public final class ProblemValidator {
     private ScheduleConflict validateLocks(TimeWindow availability, List<ScheduleTask> tasks,
                                            List<TimeWindow> unavailableWindows) {
         for (int i = 0; i < tasks.size(); i++) {
-            ScheduleTask task = tasks.get(i);
+            final ScheduleTask task = tasks.get(i);
             if (!task.isLocked()) {
                 continue;
             }
-            TimeWindow lock = task.getLockedAt();
-            String name = task.getActivity().getName();
+            final TimeWindow lock = task.getLockedAt();
+            final String name = task.getActivity().getName();
 
             if (!availability.encloses(lock)) {
                 return ScheduleConflict.of(ScheduleConflict.Kind.LOCK_OUTSIDE_AVAILABILITY,
@@ -75,7 +75,7 @@ public final class ProblemValidator {
                 }
             }
             for (int j = i + 1; j < tasks.size(); j++) {
-                ScheduleTask other = tasks.get(j);
+                final ScheduleTask other = tasks.get(j);
                 if (other.isLocked() && lock.overlaps(other.getLockedAt())) {
                     return ScheduleConflict.of(ScheduleConflict.Kind.LOCKS_OVERLAP,
                             task.getEventId(), name + " and " + other.getActivity().getName());

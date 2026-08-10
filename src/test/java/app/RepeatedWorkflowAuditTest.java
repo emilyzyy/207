@@ -66,7 +66,7 @@ class RepeatedWorkflowAuditTest {
         Trip trip = app.trips.save(new Trip("t", "Toronto", LocalDate.of(2026, 8, 12),
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING));
         tripId = trip.getId();
-        List<Activity> pool = app.activities.findAll();
+        final List<Activity> pool = app.activities.findAll();
         for (int i = 0; i < 4; i++) {
             trip = app.addActivityToPlan.execute(tripId, pool.get(i).getId(),
                     LocalTime.of(9 + i * 3, 0));
@@ -74,9 +74,9 @@ class RepeatedWorkflowAuditTest {
 
         dayPlan = new DayPlanViewModel(new DayPlanState(tripId, trip.getScheduledEvents(),
                 "", false, Collections.emptyList()));
-        SearchViewModel search = new SearchViewModel(
+        final SearchViewModel search = new SearchViewModel(
                 new SearchState(Collections.emptyList(), ""));
-        AutoSchedulePresenter presenter = new AutoSchedulePresenter(dayPlan);
+        final AutoSchedulePresenter presenter = new AutoSchedulePresenter(dayPlan);
         autoschedule = new AutoScheduleController(new AutoScheduleInteractor(app.trips,
                 new DistanceServiceTravelTimeEstimator(app.distances, false),
                 new WeatherServiceContextGateway(app.weather), presenter,
@@ -94,7 +94,7 @@ class RepeatedWorkflowAuditTest {
     }
 
     private List<String> proposedActivities() {
-        List<String> ids = new ArrayList<>();
+        final List<String> ids = new ArrayList<>();
         for (PreviewRowView row : dayPlan.getState().getPreviewRows()) {
             if (row.getKind() == PreviewRowView.Kind.ACTIVITY) {
                 ids.add(row.getEventId());
@@ -108,7 +108,7 @@ class RepeatedWorkflowAuditTest {
     }
 
     private List<String> savedActivityIds() {
-        List<String> ids = new ArrayList<>();
+        final List<String> ids = new ArrayList<>();
         for (ScheduledEvent event : saved()) {
             if (event.getEventType() == EventType.ACTIVITY) {
                 ids.add(event.getId());
@@ -118,7 +118,7 @@ class RepeatedWorkflowAuditTest {
     }
 
     private String describe() {
-        StringBuilder text = new StringBuilder("\nsaved:\n");
+        final StringBuilder text = new StringBuilder("\nsaved:\n");
         for (ScheduledEvent event : saved()) {
             text.append("  ").append(event.getEventType()).append(' ')
                     .append(event.getStartTime()).append('-').append(event.getEndTime())
@@ -130,15 +130,15 @@ class RepeatedWorkflowAuditTest {
 
     /** No activity twice, no journey twice, no journey to somewhere that has gone. */
     private void assertCoherent() {
-        List<String> activities = savedActivityIds();
+        final List<String> activities = savedActivityIds();
         assertEquals(new HashSet<>(activities).size(), activities.size(),
                 "an activity appears twice" + describe());
-        Set<String> destinations = new HashSet<>();
+        final Set<String> destinations = new HashSet<>();
         for (ScheduledEvent event : saved()) {
             if (event.getEventType() != EventType.TRAVEL) {
                 continue;
             }
-            String destination = event.getId().replaceFirst("^travel-", "");
+            final String destination = event.getId().replaceFirst("^travel-", "");
             assertTrue(activities.contains(destination),
                     "orphaned journey " + event.getId() + describe());
             assertTrue(destinations.add(destination),
@@ -167,9 +167,9 @@ class RepeatedWorkflowAuditTest {
 
         // Preview -> draft removal -> Apply: exactly the edited proposal is saved.
         preview();
-        String dropped = proposedActivities().get(1);
+        final String dropped = proposedActivities().get(1);
         autoschedule.removeFromProposal(dropped);
-        List<String> intended = proposedActivities();
+        final List<String> intended = proposedActivities();
         autoschedule.apply();
         assertEquals(AutoScheduleStatus.APPLIED, dayPlan.getState().getStatus(), describe());
         assertEquals(new HashSet<>(intended), new HashSet<>(savedActivityIds()),
@@ -179,7 +179,7 @@ class RepeatedWorkflowAuditTest {
         assertCoherent();
 
         // Add one back, and schedule again. Generated travel must not become a task.
-        Activity extra = app.activities.findAll().get(5);
+        final Activity extra = app.activities.findAll().get(5);
         app.addActivityToPlan.execute(tripId, extra.getId(), LocalTime.of(19, 0));
         dayPlan.setState(new DayPlanState(tripId, saved(), "", false, Collections.emptyList()));
         preview();
@@ -194,7 +194,7 @@ class RepeatedWorkflowAuditTest {
         assertCoherent();
 
         // Editing a saved activity, then scheduling again.
-        String toEdit = savedActivityIds().get(0);
+        final String toEdit = savedActivityIds().get(0);
         manual.edit(toEdit, "09:00", "10:00", "");
         assertCoherent();
         preview();
@@ -216,7 +216,7 @@ class RepeatedWorkflowAuditTest {
     void applyingTheSameProposalTwiceChangesNothingTheSecondTime() {
         preview();
         autoschedule.apply();
-        List<String> afterFirst = savedActivityIds();
+        final List<String> afterFirst = savedActivityIds();
         int travelAfterFirst = 0;
         for (ScheduledEvent event : saved()) {
             if (event.getEventType() == EventType.TRAVEL) {
@@ -245,7 +245,7 @@ class RepeatedWorkflowAuditTest {
         autoschedule.removeFromProposal(proposedActivities().get(0));
         autoschedule.cancel();
 
-        DayPlanState cancelled = dayPlan.getState();
+        final DayPlanState cancelled = dayPlan.getState();
         assertEquals(AutoScheduleStatus.IDLE, cancelled.getStatus());
         assertTrue(cancelled.getPreviewRows().isEmpty(), "no proposed rows survive");
         assertTrue(cancelled.getImprovements().isEmpty(), "no tiles survive");
@@ -265,12 +265,12 @@ class RepeatedWorkflowAuditTest {
         preview();
         assertEquals(AutoScheduleStatus.PREVIEW, dayPlan.getState().getStatus());
 
-        Trip other = app.trips.save(new Trip("t2", "Montreal", LocalDate.of(2026, 8, 13),
+        final Trip other = app.trips.save(new Trip("t2", "Montreal", LocalDate.of(2026, 8, 13),
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING));
         dayPlan.setState(new DayPlanState(other.getId(), other.getScheduledEvents(), "", false,
                 Collections.emptyList()));
 
-        DayPlanState now = dayPlan.getState();
+        final DayPlanState now = dayPlan.getState();
         assertEquals(AutoScheduleStatus.IDLE, now.getStatus());
         assertTrue(now.getPreviewRows().isEmpty());
         assertTrue(now.getImprovements().isEmpty());
@@ -284,7 +284,7 @@ class RepeatedWorkflowAuditTest {
     /** Remembered settings belong to one day, not to the app. */
     @Test
     void rememberedSettingsAreKeptPerDayAndStayVisible() {
-        AutoScheduleSettings withWindow = new AutoScheduleSettings(LocalTime.of(9, 0),
+        final AutoScheduleSettings withWindow = new AutoScheduleSettings(LocalTime.of(9, 0),
                 LocalTime.of(18, 0), TransportationMode.WALKING,
                 Collections.singletonList(new AutoScheduleSettings.Window(
                         LocalTime.of(10, 0), LocalTime.of(13, 0))),
@@ -292,7 +292,7 @@ class RepeatedWorkflowAuditTest {
 
         autoschedule.preview(withWindow);
 
-        AutoScheduleSettings back = autoschedule.rememberedSettings();
+        final AutoScheduleSettings back = autoschedule.rememberedSettings();
         assertNotNull(back, "the next attempt should open on what was just used");
         assertEquals(1, back.getUnavailableWindows().size());
         assertEquals(LocalTime.of(10, 0), back.getUnavailableWindows().get(0).getStart());

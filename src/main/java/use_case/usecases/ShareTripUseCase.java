@@ -30,10 +30,10 @@ public final class ShareTripUseCase implements ShareTripInputBoundary {
             if (tripId == null || tripId.trim().isEmpty()) {
                 throw new IllegalArgumentException("Create a trip before sharing");
             }
-            String id = tripId.trim();
-            Trip trip = trips.findById(id).orElseThrow(
+            final String id = tripId.trim();
+            final Trip trip = trips.findById(id).orElseThrow(
                     () -> new IllegalArgumentException("Trip not found"));
-            String shareText = summaries.execute(id);
+            final String shareText = summaries.execute(id);
             output.presentSuccess(new ShareTripOutputData(shareText, trip));
         } catch (IllegalArgumentException | IllegalStateException exception) {
             output.presentFailure(exception.getMessage());

@@ -62,13 +62,13 @@ class ProposalDraftRemovalTest {
 
     /** A saved day of four activities, well spread out so a proposal has room to move. */
     private static Trip savedDay() {
-        List<ScheduledEvent> events = new ArrayList<>();
+        final List<ScheduledEvent> events = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
-            String id = "e" + i;
+            final String id = "e" + i;
             events.add(new ScheduledEvent(id, place(id, 43.6 + i * 0.01, -79.4 + i * 0.01),
                     at(9 + i * 3, 0), at(10 + i * 3, 0), EventType.ACTIVITY, ""));
         }
-        Trip trip = new Trip("trip-1", "Toronto", DATE, at(9, 0), at(21, 0),
+        final Trip trip = new Trip("trip-1", "Toronto", DATE, at(9, 0), at(21, 0),
                 TransportationMode.WALKING);
         trip.replaceSchedule(events);
         return trip;
@@ -101,7 +101,7 @@ class ProposalDraftRemovalTest {
         }
 
         private List<ProposedEventData> proposedRows() {
-            List<ProposedEventData> rows = new ArrayList<>();
+            final List<ProposedEventData> rows = new ArrayList<>();
             for (PreviewRowView row : viewModel.getState().getPreviewRows()) {
                 rows.add(new ProposedEventData(row.getEventId(), "", row.getTitle(),
                         row.getKind() == PreviewRowView.Kind.TRAVEL
@@ -128,7 +128,7 @@ class ProposalDraftRemovalTest {
     }
 
     private static List<String> activityIds(DayPlanState state) {
-        List<String> ids = new ArrayList<>();
+        final List<String> ids = new ArrayList<>();
         for (PreviewRowView row : state.getPreviewRows()) {
             if (row.getKind() == PreviewRowView.Kind.ACTIVITY) {
                 ids.add(row.getEventId());
@@ -138,7 +138,7 @@ class ProposalDraftRemovalTest {
     }
 
     private static List<String> travelIds(DayPlanState state) {
-        List<String> ids = new ArrayList<>();
+        final List<String> ids = new ArrayList<>();
         for (PreviewRowView row : state.getPreviewRows()) {
             if (row.getKind() == PreviewRowView.Kind.TRAVEL) {
                 ids.add(row.getEventId());
@@ -157,7 +157,7 @@ class ProposalDraftRemovalTest {
     }
 
     private static String describe(DayPlanState state) {
-        StringBuilder text = new StringBuilder("\n");
+        final StringBuilder text = new StringBuilder("\n");
         for (PreviewRowView row : state.getPreviewRows()) {
             text.append("  ").append(row.getKind()).append(' ').append(row.getStart())
                     .append('-').append(row.getEnd()).append(' ').append(row.getEventId())
@@ -169,7 +169,7 @@ class ProposalDraftRemovalTest {
     // 2, 3
     @Test
     void removingFromTheProposalSavesNothingAndStaysInPreview() {
-        Session session = new Session().preview();
+        final Session session = new Session().preview();
         assertEquals(AutoScheduleStatus.PREVIEW, session.state().getStatus());
 
         session.removeFromProposal("e1");
@@ -183,10 +183,10 @@ class ProposalDraftRemovalTest {
     // 4: the remaining activities keep the times the search gave them.
     @Test
     void theRemainingActivitiesKeepTheirProposedTimesAndOrder() {
-        Session session = new Session().preview();
-        List<String> before = activityIds(session.state());
-        LocalTime firstStart = startOf(session.state(), before.get(0));
-        LocalTime lastStart = startOf(session.state(), before.get(before.size() - 1));
+        final Session session = new Session().preview();
+        final List<String> before = activityIds(session.state());
+        final LocalTime firstStart = startOf(session.state(), before.get(0));
+        final LocalTime lastStart = startOf(session.state(), before.get(before.size() - 1));
 
         session.removeFromProposal(before.get(1));
 
@@ -200,13 +200,13 @@ class ProposalDraftRemovalTest {
     // 5, 6, 8
     @Test
     void removingAMiddleActivityKeepsUnaffectedLegsAndReplacesTheAdjacentPair() {
-        Session session = new Session().preview();
-        List<String> ids = activityIds(session.state());
-        String removed = ids.get(1);
+        final Session session = new Session().preview();
+        final List<String> ids = activityIds(session.state());
+        final String removed = ids.get(1);
 
         session.removeFromProposal(removed);
 
-        List<String> remaining = activityIds(session.state());
+        final List<String> remaining = activityIds(session.state());
         assertEquals(3, remaining.size(), describe(session.state()));
         assertFalse(remaining.contains(removed));
         assertFalse(travelIds(session.state()).contains("travel-" + removed),
@@ -218,8 +218,8 @@ class ProposalDraftRemovalTest {
     // 7
     @Test
     void removingTheFirstProposedActivityDropsOnlyItsOutgoingLeg() {
-        Session session = new Session().preview();
-        List<String> ids = activityIds(session.state());
+        final Session session = new Session().preview();
+        final List<String> ids = activityIds(session.state());
 
         session.removeFromProposal(ids.get(0));
 
@@ -230,8 +230,8 @@ class ProposalDraftRemovalTest {
     // 9
     @Test
     void removingTheFinalProposedActivityDropsOnlyItsIncomingLeg() {
-        Session session = new Session().preview();
-        List<String> ids = activityIds(session.state());
+        final Session session = new Session().preview();
+        final List<String> ids = activityIds(session.state());
 
         session.removeFromProposal(ids.get(ids.size() - 1));
 
@@ -242,8 +242,8 @@ class ProposalDraftRemovalTest {
     // 10, 11
     @Test
     void removingDownToOneAndThenNoneLeavesNoJourneys() {
-        Session session = new Session().preview();
-        List<String> ids = new ArrayList<>(activityIds(session.state()));
+        final Session session = new Session().preview();
+        final List<String> ids = new ArrayList<>(activityIds(session.state()));
 
         session.removeFromProposal(ids.get(0)).removeFromProposal(ids.get(1))
                 .removeFromProposal(ids.get(2));
@@ -260,12 +260,12 @@ class ProposalDraftRemovalTest {
     // 14
     @Test
     void theFiguresAreRecomputedFromTheEditedDraft() {
-        Session session = new Session().preview();
-        int travelBefore = session.state().getMetrics().getTravelAfterMinutes();
+        final Session session = new Session().preview();
+        final int travelBefore = session.state().getMetrics().getTravelAfterMinutes();
 
         session.removeFromProposal(activityIds(session.state()).get(1));
 
-        int travelAfter = session.state().getMetrics().getTravelAfterMinutes();
+        final int travelAfter = session.state().getMetrics().getTravelAfterMinutes();
         assertEquals(3, session.state().getMetrics().getActivityCount(),
                 "the figures must describe the edited proposal, not the original one");
         assertTrue(travelAfter <= travelBefore,
@@ -285,15 +285,15 @@ class ProposalDraftRemovalTest {
     // 17
     @Test
     void repeatedRemovalsDoNotDuplicateRows() {
-        Session session = new Session().preview();
-        List<String> ids = new ArrayList<>(activityIds(session.state()));
+        final Session session = new Session().preview();
+        final List<String> ids = new ArrayList<>(activityIds(session.state()));
 
         session.removeFromProposal(ids.get(1)).removeFromProposal(ids.get(1));
 
-        List<String> remaining = activityIds(session.state());
+        final List<String> remaining = activityIds(session.state());
         assertEquals(remaining.size(), new java.util.HashSet<>(remaining).size(),
                 "no duplicates" + describe(session.state()));
-        List<String> legs = travelIds(session.state());
+        final List<String> legs = travelIds(session.state());
         assertEquals(legs.size(), new java.util.HashSet<>(legs).size(),
                 "no duplicate journeys" + describe(session.state()));
     }
@@ -301,10 +301,10 @@ class ProposalDraftRemovalTest {
     // 12
     @Test
     void cancellingAfterADraftRemovalRestoresTheOriginalSavedDay() {
-        Session session = new Session().preview();
+        final Session session = new Session().preview();
         session.removeFromProposal(activityIds(session.state()).get(1));
 
-        DayPlanState cancelled = session.state().clearedPreview("Autoschedule cancelled.");
+        final DayPlanState cancelled = session.state().clearedPreview("Autoschedule cancelled.");
 
         assertEquals(AutoScheduleStatus.IDLE, cancelled.getStatus());
         assertEquals(4, session.savedActivityCount(),
@@ -321,11 +321,11 @@ class ProposalDraftRemovalTest {
     // 16
     @Test
     void aReplacementJourneyThatWillNotFitRefusesRatherThanInventingOne() {
-        Session session = new Session().preview();
+        final Session session = new Session().preview();
         // Far enough apart that no gap in a fixed proposal could hold the journey.
         session.estimator.defaultMinutes(600);
-        List<String> ids = activityIds(session.state());
-        List<String> rowsBefore = activityIds(session.state());
+        final List<String> ids = activityIds(session.state());
+        final List<String> rowsBefore = activityIds(session.state());
 
         session.removeFromProposal(ids.get(1));
 

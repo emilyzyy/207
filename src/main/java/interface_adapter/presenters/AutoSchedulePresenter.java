@@ -72,12 +72,12 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
 
     @Override
     public void presentPreview(AutoSchedulePreviewOutputData outputData) {
-        DayPlanState current = viewModel.getState();
-        Map<String, List<String>> reasonsByEvent = translateReasons(outputData.getReasons());
+        final DayPlanState current = viewModel.getState();
+        final Map<String, List<String>> reasonsByEvent = translateReasons(outputData.getReasons());
 
-        List<PreviewRowView> rows = new ArrayList<>();
+        final List<PreviewRowView> rows = new ArrayList<>();
         for (ProposedEventData row : outputData.getRows()) {
-            List<String> reasons = reasonsByEvent.getOrDefault(row.getEventId(),
+            final List<String> reasons = reasonsByEvent.getOrDefault(row.getEventId(),
                     new ArrayList<String>());
             rows.add(new PreviewRowView(row.getEventId(), row.getTitle(),
                     row.getKind() == ProposedEventData.Kind.TRAVEL
@@ -86,7 +86,7 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
                     reasons.isEmpty() ? "" : reasons.get(0), reasons));
         }
 
-        PreviewMetricsView metrics = new PreviewMetricsView(
+        final PreviewMetricsView metrics = new PreviewMetricsView(
                 outputData.getTravelBeforeMinutes(), outputData.getTravelAfterMinutes(),
                 outputData.getIdleBeforeMinutes(), outputData.getIdleAfterMinutes(),
                 outputData.getMovedActivityCount(), outputData.getActivityCount(),
@@ -132,9 +132,9 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
      */
     private static List<ConstraintChipView> constraintChips(
             AutoSchedulePreviewOutputData outputData) {
-        java.util.LinkedHashMap<String, ConstraintChipView> chips = new java.util.LinkedHashMap<>();
+        final java.util.LinkedHashMap<String, ConstraintChipView> chips = new java.util.LinkedHashMap<>();
         for (Reason reason : outputData.getReasons()) {
-            String subject = subjectFor(reason, outputData);
+            final String subject = subjectFor(reason, outputData);
             switch (reason.getCode()) {
                 case LOCKED_BY_USER:
                     chips.put("lock:" + subject,
@@ -185,8 +185,8 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
      */
     private static String tradeOff(AutoSchedulePreviewOutputData outputData,
                                    PreviewMetricsView metrics) {
-        int extraTravel = -metrics.getTravelSavedMinutes();
-        int waitingRemoved = metrics.getIdleSavedMinutes();
+        final int extraTravel = -metrics.getTravelSavedMinutes();
+        final int waitingRemoved = metrics.getIdleSavedMinutes();
         if (extraTravel <= 0 || waitingRemoved <= 0) {
             return "";
         }
@@ -218,15 +218,15 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
      */
     private static List<ImprovementView> improvementViews(
             List<ScheduleImprovement> improvements) {
-        List<ScheduleImprovement> ordered = new ArrayList<>(improvements);
+        final List<ScheduleImprovement> ordered = new ArrayList<>(improvements);
         java.util.Collections.sort(ordered, (left, right) -> {
-            int byRank = Integer.compare(rank(left.getType()), rank(right.getType()));
+            final int byRank = Integer.compare(rank(left.getType()), rank(right.getType()));
             return byRank != 0 ? byRank : Integer.compare(right.getAmount(), left.getAmount());
         });
 
-        List<ImprovementView> views = new ArrayList<>();
+        final List<ImprovementView> views = new ArrayList<>();
         for (ScheduleImprovement improvement : ordered) {
-            ImprovementView view = tileFor(improvement);
+            final ImprovementView view = tileFor(improvement);
             if (view != null) {
                 views.add(view);
             }
@@ -284,8 +284,8 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
 
     @Override
     public void presentApplied(AutoScheduleAppliedOutputData outputData) {
-        DayPlanState current = viewModel.getState();
-        List<ScheduledEvent> saved = rebuildEvents(current.getEvents(), outputData);
+        final DayPlanState current = viewModel.getState();
+        final List<ScheduledEvent> saved = rebuildEvents(current.getEvents(), outputData);
 
         viewModel.setState(new DayPlanState(outputData.getTripId(), saved,
                 "Autoschedule applied. Your Day Plan has been updated.", false,
@@ -298,7 +298,7 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
 
     @Override
     public void presentConflict(AutoScheduleConflictOutputData outputData) {
-        DayPlanState current = viewModel.getState();
+        final DayPlanState current = viewModel.getState();
         viewModel.setState(new DayPlanState(current.getTripId(), current.getEvents(),
                 describe(outputData), true, current.getHourlyWeather(),
                 AutoScheduleStatus.CONFLICT,
@@ -320,16 +320,16 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
     @Override
     public void presentEditedPreview(AutoSchedulePreviewOutputData outputData,
                                      String removedEventId) {
-        DayPlanState current = viewModel.getState();
-        Map<String, PreviewRowView> priorRows = new HashMap<>();
+        final DayPlanState current = viewModel.getState();
+        final Map<String, PreviewRowView> priorRows = new HashMap<>();
         for (PreviewRowView row : current.getPreviewRows()) {
             priorRows.put(row.getEventId(), row);
         }
 
-        List<PreviewRowView> rows = new ArrayList<>();
+        final List<PreviewRowView> rows = new ArrayList<>();
         for (ProposedEventData row : outputData.getRows()) {
-            PreviewRowView prior = priorRows.get(row.getEventId());
-            boolean isActivity = row.getKind() != ProposedEventData.Kind.TRAVEL;
+            final PreviewRowView prior = priorRows.get(row.getEventId());
+            final boolean isActivity = row.getKind() != ProposedEventData.Kind.TRAVEL;
             rows.add(new PreviewRowView(row.getEventId(), row.getTitle(),
                     isActivity ? PreviewRowView.Kind.ACTIVITY : PreviewRowView.Kind.TRAVEL,
                     row.getStart(), row.getEnd(), row.isLocked(), row.isMoved(),
@@ -338,16 +338,16 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
                             : prior.getAllReasons()));
         }
 
-        PreviewMetricsView metrics = new PreviewMetricsView(
+        final PreviewMetricsView metrics = new PreviewMetricsView(
                 outputData.getTravelBeforeMinutes(), outputData.getTravelAfterMinutes(),
                 outputData.getIdleBeforeMinutes(), outputData.getIdleAfterMinutes(),
                 outputData.getMovedActivityCount(), outputData.getActivityCount(),
                 outputData.getPracticalCostMinutes());
 
-        String removedName = priorRows.containsKey(removedEventId)
+        final String removedName = priorRows.containsKey(removedEventId)
                 ? priorRows.get(removedEventId).getTitle() : "";
-        List<ImprovementView> tiles = carriedTiles(current.getImprovements(), metrics, removedName);
-        List<ConstraintChipView> chips = carriedChips(current.getConstraintChips(), removedName,
+        final List<ImprovementView> tiles = carriedTiles(current.getImprovements(), metrics, removedName);
+        final List<ConstraintChipView> chips = carriedChips(current.getConstraintChips(), removedName,
                 outputData.getActivityCount());
 
         viewModel.setState(new DayPlanState(current.getTripId(), current.getEvents(),
@@ -373,8 +373,8 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
      */
     private static String tradeOffFor(PreviewMetricsView metrics,
                                       List<ConstraintChipView> chips) {
-        int extraTravel = -metrics.getTravelSavedMinutes();
-        int waitingRemoved = metrics.getIdleSavedMinutes();
+        final int extraTravel = -metrics.getTravelSavedMinutes();
+        final int waitingRemoved = metrics.getIdleSavedMinutes();
         if (extraTravel <= 0 || waitingRemoved <= 0) {
             return "";
         }
@@ -393,7 +393,7 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
     private static List<ImprovementView> carriedTiles(List<ImprovementView> prior,
                                                       PreviewMetricsView metrics,
                                                       String removedName) {
-        List<ImprovementView> tiles = new ArrayList<>();
+        final List<ImprovementView> tiles = new ArrayList<>();
         if (metrics.getIdleSavedMinutes() > 0) {
             tiles.add(new ImprovementView("\u25f4",
                     metrics.getIdleSavedMinutes() + " MIN", "waiting removed"));
@@ -403,9 +403,9 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
                     metrics.getTravelSavedMinutes() + " MIN", "less travel"));
         }
         for (ImprovementView tile : prior) {
-            boolean measurable = "waiting removed".equals(tile.getSecondary())
+            final boolean measurable = "waiting removed".equals(tile.getSecondary())
                     || "less travel".equals(tile.getSecondary());
-            boolean aboutTheRemoved = !removedName.isEmpty()
+            final boolean aboutTheRemoved = !removedName.isEmpty()
                     && tile.getSecondary().contains(removedName);
             if (!measurable && !aboutTheRemoved) {
                 tiles.add(tile);
@@ -416,11 +416,11 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
 
     private static List<ConstraintChipView> carriedChips(List<ConstraintChipView> prior,
                                                          String removedName, int activityCount) {
-        List<ConstraintChipView> chips = new ArrayList<>();
+        final List<ConstraintChipView> chips = new ArrayList<>();
         for (ConstraintChipView chip : prior) {
-            boolean aboutTheRemoved = !removedName.isEmpty()
+            final boolean aboutTheRemoved = !removedName.isEmpty()
                     && chip.getLabel().contains(removedName);
-            boolean isTheCountChip = chip.getLabel().startsWith("All ");
+            final boolean isTheCountChip = chip.getLabel().startsWith("All ");
             if (!aboutTheRemoved && !isTheCountChip) {
                 chips.add(chip);
             }
@@ -438,7 +438,7 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
      */
     @Override
     public void presentDraftEditRefused(String reason) {
-        DayPlanState current = viewModel.getState();
+        final DayPlanState current = viewModel.getState();
         viewModel.setState(new DayPlanState(current.getTripId(), current.getEvents(),
                 reason, true, current.getHourlyWeather(), AutoScheduleStatus.PREVIEW,
                 current.getPreviewRows(), current.getMetrics(), current.getWarnings(),
@@ -450,7 +450,7 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
 
     @Override
     public void presentFailure(String message) {
-        DayPlanState current = viewModel.getState();
+        final DayPlanState current = viewModel.getState();
         viewModel.setState(new DayPlanState(current.getTripId(), current.getEvents(),
                 message == null || message.trim().isEmpty()
                         ? "Autoschedule could not run." : message,
@@ -471,16 +471,16 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
      */
     private List<ScheduledEvent> rebuildEvents(List<ScheduledEvent> existing,
                                                AutoScheduleAppliedOutputData outputData) {
-        Map<String, Activity> activitiesById = new HashMap<>();
+        final Map<String, Activity> activitiesById = new HashMap<>();
         for (ScheduledEvent event : existing) {
             if (event.getActivity() != null) {
                 activitiesById.put(event.getId(), event.getActivity());
             }
         }
 
-        List<ScheduledEvent> rebuilt = new ArrayList<>();
+        final List<ScheduledEvent> rebuilt = new ArrayList<>();
         for (ProposedEventData row : outputData.getSavedEvents()) {
-            boolean travel = row.getKind() == ProposedEventData.Kind.TRAVEL;
+            final boolean travel = row.getKind() == ProposedEventData.Kind.TRAVEL;
             rebuilt.add(new ScheduledEvent(row.getEventId(),
                     travel ? null : activitiesById.get(row.getEventId()),
                     row.getStart(), row.getEnd(),
@@ -491,18 +491,18 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
     }
 
     private Map<String, List<String>> translateReasons(List<Reason> reasons) {
-        Map<String, List<Reason>> byEvent = new LinkedHashMap<>();
+        final Map<String, List<Reason>> byEvent = new LinkedHashMap<>();
         for (Reason reason : reasons) {
             byEvent.computeIfAbsent(reason.getEventId(), key -> new ArrayList<>()).add(reason);
         }
 
-        Map<String, List<String>> sentences = new LinkedHashMap<>();
+        final Map<String, List<String>> sentences = new LinkedHashMap<>();
         for (Map.Entry<String, List<Reason>> entry : byEvent.entrySet()) {
-            List<Reason> ordered = new ArrayList<>(entry.getValue());
+            final List<Reason> ordered = new ArrayList<>(entry.getValue());
             ordered.sort((left, right) -> Integer.compare(
                     REASON_PRIORITY.indexOf(left.getCode()),
                     REASON_PRIORITY.indexOf(right.getCode())));
-            List<String> worded = new ArrayList<>();
+            final List<String> worded = new ArrayList<>();
             for (Reason reason : ordered) {
                 worded.add(describe(reason));
             }
@@ -522,7 +522,7 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
      */
     static String clock(String detail) {
         if (detail.contains("-")) {
-            int dash = detail.indexOf('-');
+            final int dash = detail.indexOf('-');
             return clock(detail.substring(0, dash).trim())
                     + " to " + clock(detail.substring(dash + 1).trim());
         }
@@ -535,7 +535,7 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
 
     /** Turns one reason code into a short phrase. This is the only place they get words. */
     String describe(Reason reason) {
-        String detail = reason.getDetail();
+        final String detail = reason.getDetail();
         switch (reason.getCode()) {
             case LOCKED_BY_USER:
                 return "you locked this time";
@@ -562,13 +562,13 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
 
     /** Turns a conflict into a sentence that names what actually blocked the day. */
     String describe(AutoScheduleConflictOutputData conflict) {
-        String subject = conflict.getSubject().isEmpty() ? "An activity" : conflict.getSubject();
-        String unchanged = " Your Day Plan was not changed.";
+        final String subject = conflict.getSubject().isEmpty() ? "An activity" : conflict.getSubject();
+        final String unchanged = " Your Day Plan was not changed.";
         // Closed all day is its own sentence. Reported as "only 0 minutes fit" it read as a
         // window that was merely too narrow, so the traveller kept moving the activity around
         // a date it could never sit on and got the same answer every time.
         if (conflict.getKind() == ScheduleConflict.Kind.ACTIVITY_CLOSED_ON_DATE) {
-            String day = conflict.getDetail().isEmpty() ? "this day" : "on " + conflict.getDetail();
+            final String day = conflict.getDetail().isEmpty() ? "this day" : "on " + conflict.getDetail();
             return subject + " is closed " + day + ", so it cannot be scheduled on this date "
                     + "at any time. Remove it from the day, or choose a date it is open."
                     + unchanged;
@@ -665,7 +665,7 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
      * nothing measurable says so rather than reaching for the same words.</p>
      */
     String objectiveSummary(AutoSchedulePreviewOutputData data) {
-        List<String> achieved = new ArrayList<>();
+        final List<String> achieved = new ArrayList<>();
         if (data.getTravelBeforeMinutes() > data.getTravelAfterMinutes()) {
             achieved.add("less travel");
         }
@@ -688,7 +688,7 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
             }
         }
 
-        StringBuilder summary = new StringBuilder();
+        final StringBuilder summary = new StringBuilder();
         if (achieved.isEmpty()) {
             // The honest empty case. A day can be worth proposing for the constraints it
             // respects even when no figure improves, and saying that is better than
@@ -715,7 +715,7 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
         if (parts.size() == 1) {
             return parts.get(0);
         }
-        StringBuilder text = new StringBuilder();
+        final StringBuilder text = new StringBuilder();
         for (int i = 0; i < parts.size(); i++) {
             if (i > 0) {
                 text.append(i == parts.size() - 1 ? " and " : ", ");

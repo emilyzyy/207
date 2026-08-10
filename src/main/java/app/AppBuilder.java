@@ -119,9 +119,9 @@ public final class AppBuilder {
 
     /** Builds the app; pass a signed-in {@link AuthService} when using Supabase persistence. */
     public AppContainer build(AuthService authSession) {
-        String weatherMode = System.getProperty("trippy.weather.mode", "mock");
-        String placesMode = System.getProperty("trippy.places.mode", "mock");
-        WeatherService weather = "open-meteo".equalsIgnoreCase(weatherMode)
+        final String weatherMode = System.getProperty("trippy.weather.mode", "mock");
+        final String placesMode = System.getProperty("trippy.places.mode", "mock");
+        final WeatherService weather = "open-meteo".equalsIgnoreCase(weatherMode)
                 ? new OpenMeteoWeatherService() : new MockWeatherService();
         return buildWithServices(
                 weather, "nominatim".equalsIgnoreCase(placesMode), authSession);
@@ -148,20 +148,20 @@ public final class AppBuilder {
      * never blocks on the network.</p>
      */
     public TrippyFrame buildFrameForTrip(AppContainer app, Trip trip) {
-        WeatherWarning warning = placeholderWarning(trip);
+        final WeatherWarning warning = placeholderWarning(trip);
 
-        DashboardViewModel dashboardViewModel = new DashboardViewModel(
+        final DashboardViewModel dashboardViewModel = new DashboardViewModel(
                 new DashboardState(
                         trip.getDestination(),
                         trip.getDate(),
                         warning.getWeatherCondition(),
                         warning.getMessage()));
-        SearchViewModel searchViewModel = new SearchViewModel(searchStateFor(trip));
-        BookmarksViewModel bookmarksViewModel = new BookmarksViewModel(
+        final SearchViewModel searchViewModel = new SearchViewModel(searchStateFor(trip));
+        final BookmarksViewModel bookmarksViewModel = new BookmarksViewModel(
                 new BookmarksState(trip.getBookmarkedActivities()));
-        ActivitySelectionViewModel activitySelectionViewModel =
+        final ActivitySelectionViewModel activitySelectionViewModel =
                 new ActivitySelectionViewModel();
-        DayPlanViewModel dayPlanViewModel = new DayPlanViewModel(
+        final DayPlanViewModel dayPlanViewModel = new DayPlanViewModel(
                 new DayPlanState(
                         trip.getId(),
                         trip.getScheduledEvents(),
@@ -170,42 +170,42 @@ public final class AppBuilder {
                         Collections.emptyList(),
                         trip.getTripDates(),
                         trip.getActiveDayIndex()));
-        TripOptionsViewModel tripOptionsViewModel = new TripOptionsViewModel(
+        final TripOptionsViewModel tripOptionsViewModel = new TripOptionsViewModel(
                 TripOptionsState.fromTrip(trip, "", false));
-        TripAccessViewModel tripAccessViewModel = new TripAccessViewModel();
-        CalendarViewModel calendarViewModel = new CalendarViewModel(
+        final TripAccessViewModel tripAccessViewModel = new TripAccessViewModel();
+        final CalendarViewModel calendarViewModel = new CalendarViewModel(
                 dashboardViewModel, dayPlanViewModel);
-        ShareViewModel shareViewModel = new ShareViewModel(
+        final ShareViewModel shareViewModel = new ShareViewModel(
                 new ShareState("", "", false));
 
-        AutoScheduleController autoScheduleController =
+        final AutoScheduleController autoScheduleController =
                 buildAutoSchedule(app, dayPlanViewModel);
-        ShareTripPresenter sharePresenter = new ShareTripPresenter(shareViewModel);
-        ShareTripUseCase shareUseCase = new ShareTripUseCase(
+        final ShareTripPresenter sharePresenter = new ShareTripPresenter(shareViewModel);
+        final ShareTripUseCase shareUseCase = new ShareTripUseCase(
                 app.summary, app.trips, sharePresenter);
-        ShareTripController shareController = new ShareTripController(
+        final ShareTripController shareController = new ShareTripController(
                 shareUseCase,
                 () -> dayPlanViewModel.getState().getTripId());
-        ActivityDiscoveryPresenter discoveryPresenter = new ActivityDiscoveryPresenter(
+        final ActivityDiscoveryPresenter discoveryPresenter = new ActivityDiscoveryPresenter(
                 searchViewModel, bookmarksViewModel);
-        ActivityDiscoveryController discoveryController = new ActivityDiscoveryController(
+        final ActivityDiscoveryController discoveryController = new ActivityDiscoveryController(
                 app.searchActivities, app.filterActivities,
                 () -> dashboardViewModel.getState().getDestination(), discoveryPresenter);
-        BookmarkController bookmarkController = new BookmarkController(
+        final BookmarkController bookmarkController = new BookmarkController(
                 app.bookmarkActivity, app.removeBookmark,
                 () -> dayPlanViewModel.getState().getTripId(), searchViewModel, discoveryPresenter);
-        ManualPlanPresenter manualPlanPresenter = new ManualPlanPresenter(
+        final ManualPlanPresenter manualPlanPresenter = new ManualPlanPresenter(
                 dayPlanViewModel, searchViewModel);
-        ManualPlanController manualPlanController = new ManualPlanController(
+        final ManualPlanController manualPlanController = new ManualPlanController(
                 app.addActivityToPlan, app.editEvent, app.removeEvent,
                 () -> dayPlanViewModel.getState().getTripId(), manualPlanPresenter);
-        TripDayController tripDayController = new TripDayController(
+        final TripDayController tripDayController = new TripDayController(
                 app.trips, () -> dayPlanViewModel.getState().getTripId(),
                 manualPlanPresenter);
 
-        HeaderPanel headerPanel = new HeaderPanel(
+        final HeaderPanel headerPanel = new HeaderPanel(
                 dashboardViewModel, dayPlanViewModel, shareController);
-        OverviewPanel overviewPanel = new OverviewPanel(
+        final OverviewPanel overviewPanel = new OverviewPanel(
                 dashboardViewModel, searchViewModel, bookmarksViewModel,
                 dayPlanViewModel, activitySelectionViewModel);
         overviewPanel.setViewportPlacesLoader(
@@ -213,22 +213,22 @@ public final class AppBuilder {
         if (app.places instanceof DestinationGeocoder) {
             overviewPanel.setDestinationGeocoder((DestinationGeocoder) app.places);
         }
-        SearchPanel searchPanel = new SearchPanel(
+        final SearchPanel searchPanel = new SearchPanel(
                 searchViewModel, discoveryController, bookmarkController,
                 manualPlanController, activitySelectionViewModel,
                 dayPlanViewModel, tripOptionsViewModel, tripAccessViewModel);
-        BookmarksPanel bookmarksPanel = new BookmarksPanel(
+        final BookmarksPanel bookmarksPanel = new BookmarksPanel(
                 bookmarksViewModel, bookmarkController,
                 manualPlanController, activitySelectionViewModel,
                 dayPlanViewModel, tripOptionsViewModel, tripAccessViewModel);
-        DayPlanPanel dayPlanPanel =
+        final DayPlanPanel dayPlanPanel =
                 new DayPlanPanel(dayPlanViewModel, autoScheduleController,
                         manualPlanController, activitySelectionViewModel,
                         tripAccessViewModel);
         dayPlanPanel.setTripDefaults(trip.getStartTime(), trip.getEndTime());
-        TripOptionsPresenter tripOptionsPresenter = new TripOptionsPresenter(
+        final TripOptionsPresenter tripOptionsPresenter = new TripOptionsPresenter(
                 dashboardViewModel, dayPlanViewModel, tripOptionsViewModel);
-        TripOptionsController tripOptionsController = new TripOptionsController(
+        final TripOptionsController tripOptionsController = new TripOptionsController(
                 app.editItinerary,
                 () -> app.trips.findById(dayPlanViewModel.getState().getTripId())
                         .orElse(null),
@@ -237,18 +237,18 @@ public final class AppBuilder {
                 dayPlanPanel, tripOptionsViewModel, tripOptionsController,
                 app.account, tripAccessViewModel).showDialog());
         tripOptionsViewModel.addPropertyChangeListener(event -> {
-            TripOptionsState options = tripOptionsViewModel.getState();
+            final TripOptionsState options = tripOptionsViewModel.getState();
             dayPlanPanel.setTripDefaults(options.getStartTime(), options.getEndTime());
         });
-        TripAssistantPanel tripAssistantPanel = buildTripAssistant(
+        final TripAssistantPanel tripAssistantPanel = buildTripAssistant(
                 app, dayPlanViewModel,
                 "Hi, I'm George. Ask me what to visit, what works in rain, or what fits your day.");
-        DaySwitcherPanel daySwitcherPanel =
+        final DaySwitcherPanel daySwitcherPanel =
                 new DaySwitcherPanel(dayPlanViewModel, tripDayController);
-        PlannerPanel plannerPanel = new PlannerPanel(
+        final PlannerPanel plannerPanel = new PlannerPanel(
                 searchPanel, bookmarksPanel, dayPlanPanel,
                 daySwitcherPanel);
-        TrippyFrame frame = new TrippyFrame(
+        final TrippyFrame frame = new TrippyFrame(
                 headerPanel,
                 overviewPanel,
                 plannerPanel,
@@ -273,60 +273,60 @@ public final class AppBuilder {
         if (app == null) {
             throw new IllegalArgumentException("Application container is required");
         }
-        DashboardViewModel dashboardViewModel = new DashboardViewModel(
+        final DashboardViewModel dashboardViewModel = new DashboardViewModel(
                 new DashboardState(
                         "", null, "Offline ready",
                         "Create a trip to load weather for its destination."));
-        SearchViewModel searchViewModel = new SearchViewModel(
+        final SearchViewModel searchViewModel = new SearchViewModel(
                 new SearchState(app.activities.findAll(), ""));
-        BookmarksViewModel bookmarksViewModel = new BookmarksViewModel(
+        final BookmarksViewModel bookmarksViewModel = new BookmarksViewModel(
                 new BookmarksState(Collections.emptyList()));
-        ActivitySelectionViewModel activitySelectionViewModel =
+        final ActivitySelectionViewModel activitySelectionViewModel =
                 new ActivitySelectionViewModel();
-        DayPlanViewModel dayPlanViewModel = new DayPlanViewModel(
+        final DayPlanViewModel dayPlanViewModel = new DayPlanViewModel(
                 new DayPlanState(
                         "", Collections.emptyList(),
                         "Create a trip before planning or autoscheduling.", false));
-        CalendarViewModel calendarViewModel = new CalendarViewModel(
+        final CalendarViewModel calendarViewModel = new CalendarViewModel(
                 dashboardViewModel, dayPlanViewModel);
-        ShareViewModel shareViewModel = new ShareViewModel(
+        final ShareViewModel shareViewModel = new ShareViewModel(
                 new ShareState("", "Create a trip before sharing.", false));
-        TripOptionsViewModel tripOptionsViewModel = new TripOptionsViewModel(
+        final TripOptionsViewModel tripOptionsViewModel = new TripOptionsViewModel(
                 new TripOptionsState(
                         "",
                         LocalDate.now().plusDays(1),
                         LocalTime.of(9, 0),
                         LocalTime.of(18, 0)));
-        TripAccessViewModel tripAccessViewModel = new TripAccessViewModel();
+        final TripAccessViewModel tripAccessViewModel = new TripAccessViewModel();
 
-        AutoScheduleController autoScheduleController =
+        final AutoScheduleController autoScheduleController =
                 buildAutoSchedule(app, dayPlanViewModel);
-        ShareTripPresenter sharePresenter = new ShareTripPresenter(shareViewModel);
-        ShareTripUseCase shareUseCase = new ShareTripUseCase(
+        final ShareTripPresenter sharePresenter = new ShareTripPresenter(shareViewModel);
+        final ShareTripUseCase shareUseCase = new ShareTripUseCase(
                 app.summary, app.trips, sharePresenter);
-        ShareTripController shareController = new ShareTripController(
+        final ShareTripController shareController = new ShareTripController(
                 shareUseCase,
                 () -> dayPlanViewModel.getState().getTripId());
-        ActivityDiscoveryPresenter discoveryPresenter = new ActivityDiscoveryPresenter(
+        final ActivityDiscoveryPresenter discoveryPresenter = new ActivityDiscoveryPresenter(
                 searchViewModel, bookmarksViewModel);
-        ActivityDiscoveryController discoveryController = new ActivityDiscoveryController(
+        final ActivityDiscoveryController discoveryController = new ActivityDiscoveryController(
                 app.searchActivities, app.filterActivities,
                 () -> dashboardViewModel.getState().getDestination(), discoveryPresenter);
-        BookmarkController bookmarkController = new BookmarkController(
+        final BookmarkController bookmarkController = new BookmarkController(
                 app.bookmarkActivity, app.removeBookmark,
                 () -> dayPlanViewModel.getState().getTripId(), searchViewModel, discoveryPresenter);
-        ManualPlanPresenter manualPlanPresenter = new ManualPlanPresenter(
+        final ManualPlanPresenter manualPlanPresenter = new ManualPlanPresenter(
                 dayPlanViewModel, searchViewModel);
-        ManualPlanController manualPlanController = new ManualPlanController(
+        final ManualPlanController manualPlanController = new ManualPlanController(
                 app.addActivityToPlan, app.editEvent, app.removeEvent,
                 () -> dayPlanViewModel.getState().getTripId(), manualPlanPresenter);
-        TripDayController tripDayController = new TripDayController(
+        final TripDayController tripDayController = new TripDayController(
                 app.trips, () -> dayPlanViewModel.getState().getTripId(),
                 manualPlanPresenter);
 
-        HeaderPanel headerPanel = new HeaderPanel(
+        final HeaderPanel headerPanel = new HeaderPanel(
                 dashboardViewModel, dayPlanViewModel, shareController);
-        OverviewPanel overviewPanel = new OverviewPanel(
+        final OverviewPanel overviewPanel = new OverviewPanel(
                 dashboardViewModel, searchViewModel, bookmarksViewModel,
                 dayPlanViewModel, activitySelectionViewModel);
         overviewPanel.setViewportPlacesLoader(
@@ -335,27 +335,27 @@ public final class AppBuilder {
         if (app.places instanceof DestinationGeocoder) {
             overviewPanel.setDestinationGeocoder((DestinationGeocoder) app.places);
         }
-        SearchPanel searchPanel = new SearchPanel(
+        final SearchPanel searchPanel = new SearchPanel(
                 searchViewModel, discoveryController, bookmarkController,
                 manualPlanController, activitySelectionViewModel,
                 dayPlanViewModel, tripOptionsViewModel, tripAccessViewModel);
-        BookmarksPanel bookmarksPanel = new BookmarksPanel(
+        final BookmarksPanel bookmarksPanel = new BookmarksPanel(
                 bookmarksViewModel, bookmarkController,
                 manualPlanController, activitySelectionViewModel,
                 dayPlanViewModel, tripOptionsViewModel, tripAccessViewModel);
-        DayPlanPanel dayPlanPanel =
+        final DayPlanPanel dayPlanPanel =
                 new DayPlanPanel(dayPlanViewModel, autoScheduleController,
                         manualPlanController, activitySelectionViewModel,
                         tripAccessViewModel);
-        TripAssistantPanel tripAssistantPanel = buildTripAssistant(
+        final TripAssistantPanel tripAssistantPanel = buildTripAssistant(
                 app, dayPlanViewModel,
                 "Hi, I'm George. Create a trip, then ask me for activity recommendations.");
-        DaySwitcherPanel daySwitcherPanel =
+        final DaySwitcherPanel daySwitcherPanel =
                 new DaySwitcherPanel(dayPlanViewModel, tripDayController);
-        PlannerPanel plannerPanel = new PlannerPanel(
+        final PlannerPanel plannerPanel = new PlannerPanel(
                 searchPanel, bookmarksPanel, dayPlanPanel,
                 daySwitcherPanel);
-        TrippyFrame frame = new TrippyFrame(
+        final TrippyFrame frame = new TrippyFrame(
                 headerPanel,
                 overviewPanel,
                 plannerPanel,
@@ -367,7 +367,7 @@ public final class AppBuilder {
                 searchViewModel,
                 bookmarksViewModel);
         if (seedDemo) {
-            Trip demo = app.createTrip.executeAndReturn(new CreateTripInputData(
+            final Trip demo = app.createTrip.executeAndReturn(new CreateTripInputData(
                     "Toronto",
                     LocalDate.now().plusDays(5),
                     LocalTime.of(9, 0),
@@ -385,21 +385,21 @@ public final class AppBuilder {
 
     private TripAssistantPanel buildTripAssistant(
             AppContainer app, DayPlanViewModel dayPlanViewModel, String greeting) {
-        TripAssistantViewModel viewModel = new TripAssistantViewModel(
+        final TripAssistantViewModel viewModel = new TripAssistantViewModel(
                 new TripAssistantState(Collections.singletonList(new TripAssistantMessage(
                         TripAssistantMessage.Role.ASSISTANT, greeting)), false, ""));
-        TripAssistantPresenter presenter = new TripAssistantPresenter(viewModel);
-        TripAssistantInteractor interactor = new TripAssistantInteractor(
+        final TripAssistantPresenter presenter = new TripAssistantPresenter(viewModel);
+        final TripAssistantInteractor interactor = new TripAssistantInteractor(
                 app.trips, app.activities, app.weather, tripAssistantGateway(), presenter);
-        TripAssistantController controller = new TripAssistantController(
+        final TripAssistantController controller = new TripAssistantController(
                 interactor, () -> dayPlanViewModel.getState().getTripId(),
                 presenter, viewModel, new SwingTaskRunner());
         return new TripAssistantPanel(viewModel, controller);
     }
 
     private TripAssistantGateway tripAssistantGateway() {
-        TripAssistantGateway offline = new OfflineTripAssistantGateway();
-        String mode = System.getProperty("trippy.chatbot.mode", "proxy");
+        final TripAssistantGateway offline = new OfflineTripAssistantGateway();
+        final String mode = System.getProperty("trippy.chatbot.mode", "proxy");
         if ("offline".equalsIgnoreCase(mode)) {
             return offline;
         }
@@ -413,10 +413,10 @@ public final class AppBuilder {
         if (!"openai".equalsIgnoreCase(mode)) {
             return offline;
         }
-        String apiKey = DotEnv.get("OPENAI_API_KEY", "openai.api.key");
+        final String apiKey = DotEnv.get("OPENAI_API_KEY", "openai.api.key");
         if (apiKey == null) {
             return request -> {
-                TripAssistantDecision decision = offline.answer(request);
+                final TripAssistantDecision decision = offline.answer(request);
                 return new TripAssistantDecision(
                         decision.getIntent(), decision.getActivityIds(),
                         decision.getAnswer(),
@@ -436,7 +436,7 @@ public final class AppBuilder {
         }
         if (endpoint.trim().isEmpty()) {
             return request -> {
-                TripAssistantDecision decision = offline.answer(request);
+                final TripAssistantDecision decision = offline.answer(request);
                 return new TripAssistantDecision(
                         decision.getIntent(), decision.getActivityIds(),
                         decision.getAnswer(),
@@ -457,12 +457,12 @@ public final class AppBuilder {
      * flow to populate a newly created trip after its real activities finish loading.
      */
     public void refreshFrameForTrip(Trip trip, TrippyFrame frame) {
-        SearchState searchCurrent = frame.getSearchViewModel().getState();
-        SearchState refreshed = searchStateFor(trip);
+        final SearchState searchCurrent = frame.getSearchViewModel().getState();
+        final SearchState refreshed = searchStateFor(trip);
         // Merge the refreshed pool into whatever the map has already accumulated (viewport cells,
         // prior enrichment). Replacing wholesale lets a late or empty enrichment answer wipe the
         // markers the user can already see.
-        Map<String, Activity> merged = new LinkedHashMap<>();
+        final Map<String, Activity> merged = new LinkedHashMap<>();
         for (Activity activity : searchCurrent.getActivities()) merged.put(activity.getId(), activity);
         for (Activity activity : refreshed.getActivities()) merged.put(activity.getId(), activity);
         frame.getSearchViewModel().setState(new SearchState(
@@ -475,7 +475,7 @@ public final class AppBuilder {
                 searchCurrent.getCategory(), searchCurrent.getMinimumRating(),
                 searchCurrent.getType(), searchCurrent.getFeedback()));
         frame.getBookmarksViewModel().setState(new BookmarksState(trip.getBookmarkedActivities()));
-        DayPlanState dayPlanCurrent = frame.getDayPlanViewModel().getState();
+        final DayPlanState dayPlanCurrent = frame.getDayPlanViewModel().getState();
         frame.getDayPlanViewModel().setState(new DayPlanState(
                 trip.getId(),
                 trip.getScheduledEvents(),
@@ -496,10 +496,10 @@ public final class AppBuilder {
      */
     private AutoScheduleController buildAutoSchedule(AppContainer app,
                                                      DayPlanViewModel dayPlanViewModel) {
-        AutoSchedulePresenter presenter = new AutoSchedulePresenter(dayPlanViewModel);
-        List<SoftPolicy> builtInPolicies = Arrays.asList(
+        final AutoSchedulePresenter presenter = new AutoSchedulePresenter(dayPlanViewModel);
+        final List<SoftPolicy> builtInPolicies = Arrays.asList(
                 new WeatherSuitabilityPolicy(), new MealWindowPolicy(), new DaylightPolicy());
-        AutoScheduleInteractor interactor = new AutoScheduleInteractor(
+        final AutoScheduleInteractor interactor = new AutoScheduleInteractor(
                 new DayScopedTripRepository(app.trips,
                         () -> dayPlanViewModel.getState().getActiveDayIndex()),
                 new DistanceServiceTravelTimeEstimator(app.distances, tomtomConfigured()),
@@ -512,11 +512,11 @@ public final class AppBuilder {
 
     /** Search and map view for a trip: every discovered place, tagged with its bookmark/schedule status. */
     private SearchState searchStateFor(Trip trip) {
-        Set<String> bookmarkedIds = new HashSet<>();
+        final Set<String> bookmarkedIds = new HashSet<>();
         for (Activity activity : trip.getBookmarkedActivities()) {
             bookmarkedIds.add(activity.getId());
         }
-        Set<String> scheduledIds = new HashSet<>();
+        final Set<String> scheduledIds = new HashSet<>();
         for (ScheduledEvent event : trip.getScheduledEvents()) {
             if (event.getActivity() != null) {
                 scheduledIds.add(event.getActivity().getId());
@@ -540,9 +540,9 @@ public final class AppBuilder {
                 || tripAccessViewModel == null) {
             return;
         }
-        Thread worker = new Thread(() -> {
+        final Thread worker = new Thread(() -> {
             try {
-                TripAccessLevel access = app.account.getMyTripAccess(tripId);
+                final TripAccessLevel access = app.account.getMyTripAccess(tripId);
                 SwingUtilities.invokeLater(() ->
                         tripAccessViewModel.setAccess(
                                 access.canEditItinerary(), access.canManagePeople()));
@@ -557,10 +557,10 @@ public final class AppBuilder {
     private void refreshWeatherAsync(AppContainer app, Trip trip,
                                      DashboardViewModel dashboardViewModel,
                                      DayPlanViewModel dayPlanViewModel) {
-        Thread worker = new Thread(() -> {
-            List<WeatherWarning> hourlyWeather = weatherWarningsFor(app, trip);
-            WeatherWarning result = closestToTripStart(hourlyWeather, trip);
-            DashboardState state = new DashboardState(
+        final Thread worker = new Thread(() -> {
+            final List<WeatherWarning> hourlyWeather = weatherWarningsFor(app, trip);
+            final WeatherWarning result = closestToTripStart(hourlyWeather, trip);
+            final DashboardState state = new DashboardState(
                     trip.getDestination(),
                     trip.getDate(),
                     result.getWeatherCondition(),
@@ -598,7 +598,7 @@ public final class AppBuilder {
         long closestMinutes = Long.MAX_VALUE;
         for (WeatherWarning warning : hourlyWeather) {
             if (warning == null || warning.getTime() == null) continue;
-            long difference = Math.abs(Duration.between(
+            final long difference = Math.abs(Duration.between(
                     trip.getStartTime(), warning.getTime()).toMinutes());
             if (difference < closestMinutes) {
                 closest = warning;
@@ -610,32 +610,32 @@ public final class AppBuilder {
 
     private AppContainer buildWithServices(
             WeatherService weather, boolean useLivePlaces, AuthService authSession) {
-        MockPlacesService mockPlaces = new MockPlacesService();
-        CachedPlacesRepository cachedPlaces = new CachedPlacesRepository();
+        final MockPlacesService mockPlaces = new MockPlacesService();
+        final CachedPlacesRepository cachedPlaces = new CachedPlacesRepository();
         cachedPlaces.addAll(mockPlaces.findAll());
-        PlacesService places = useLivePlaces
+        final PlacesService places = useLivePlaces
                 ? new CachingPlacesService(
                         new OpenStreetMapPlacesService(), cachedPlaces)
                 : mockPlaces;
 
-        String persistence = System.getProperty("trippy.persistence.mode", "memory");
-        TripRepository trips;
+        final String persistence = System.getProperty("trippy.persistence.mode", "memory");
+        final TripRepository trips;
         AccountService account = null;
         if ("supabase".equalsIgnoreCase(persistence)) {
-            AuthService auth = authSession;
+            final AuthService auth = authSession;
             if (auth == null) {
                 throw new IllegalStateException(
                         "Supabase persistence requires an AuthService instance");
             }
-            String url = DotEnv.get("TRIPPY_SUPABASE_URL", "trippy.supabase.url");
-            String anonKey = DotEnv.get("TRIPPY_SUPABASE_ANON_KEY", "trippy.supabase.anonKey");
+            final String url = DotEnv.get("TRIPPY_SUPABASE_URL", "trippy.supabase.url");
+            final String anonKey = DotEnv.get("TRIPPY_SUPABASE_ANON_KEY", "trippy.supabase.anonKey");
             if (url == null || anonKey == null) {
                 throw new IllegalStateException(
                         "Set TRIPPY_SUPABASE_URL and TRIPPY_SUPABASE_ANON_KEY in .env");
             }
-            PlaceHydrator hydrator = new PlaceHydrator(cachedPlaces, places, cachedPlaces);
-            InMemoryItineraryDataAccessObject local = new InMemoryItineraryDataAccessObject();
-            SupabaseItineraryDataAccess remote =
+            final PlaceHydrator hydrator = new PlaceHydrator(cachedPlaces, places, cachedPlaces);
+            final InMemoryItineraryDataAccessObject local = new InMemoryItineraryDataAccessObject();
+            final SupabaseItineraryDataAccess remote =
                     new SupabaseItineraryDataAccess(url, anonKey, auth, hydrator);
             trips = new DualModeItineraryDataAccess(local, remote, auth);
             account = new SupabaseAccountClient(url, anonKey, auth);

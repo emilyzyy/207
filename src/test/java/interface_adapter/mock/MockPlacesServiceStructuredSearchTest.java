@@ -16,12 +16,12 @@ final class MockPlacesServiceStructuredSearchTest {
 
     @Test
     void offlineSearchReturnsACompleteStructuredLocalResult() {
-        SearchActivitiesUseCase interactor = new SearchActivitiesUseCase(
+        final SearchActivitiesUseCase interactor = new SearchActivitiesUseCase(
                 new MockPlacesService());
-        ActivitySearchRequest request = new ActivitySearchRequest(
+        final ActivitySearchRequest request = new ActivitySearchRequest(
                 "Toronto", "Royal Ontario Museum", null, null, 25);
 
-        ActivitySearchResult result = interactor.execute(request);
+        final ActivitySearchResult result = interactor.execute(request);
 
         assertEquals(1, result.getActivities().size());
         assertEquals("rom", result.getActivities().get(0).getId());
@@ -32,12 +32,12 @@ final class MockPlacesServiceStructuredSearchTest {
 
     @Test
     void offlineNoMatchIsNotMisreportedAsAServiceFailure() {
-        SearchActivitiesUseCase interactor = new SearchActivitiesUseCase(
+        final SearchActivitiesUseCase interactor = new SearchActivitiesUseCase(
                 new MockPlacesService());
-        ActivitySearchRequest request = new ActivitySearchRequest(
+        final ActivitySearchRequest request = new ActivitySearchRequest(
                 "Toronto", "Place That Does Not Exist", null, null, 25);
 
-        ActivitySearchResult result = interactor.execute(request);
+        final ActivitySearchResult result = interactor.execute(request);
 
         assertTrue(result.getActivities().isEmpty());
         assertEquals(SearchSource.LOCAL, result.getSource());

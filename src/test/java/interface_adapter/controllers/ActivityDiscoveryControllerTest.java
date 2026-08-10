@@ -27,13 +27,13 @@ import use_case.usecases.SearchActivitiesUseCase;
 final class ActivityDiscoveryControllerTest {
     @Test
     void searchesCurrentDestinationAndAppliesAllFilters() {
-        Activity museum = activity("museum", ActivityCategory.MUSEUM, 4.8,
+        final Activity museum = activity("museum", ActivityCategory.MUSEUM, 4.8,
                 IndoorOutdoorType.INDOOR);
-        Activity food = activity("food", ActivityCategory.FOOD, 4.2,
+        final Activity food = activity("food", ActivityCategory.FOOD, 4.2,
                 IndoorOutdoorType.INDOOR);
-        SearchViewModel search = new SearchViewModel(
+        final SearchViewModel search = new SearchViewModel(
                 new SearchState(Collections.emptyList(), ""));
-        ActivityDiscoveryController controller = new ActivityDiscoveryController(
+        final ActivityDiscoveryController controller = new ActivityDiscoveryController(
                 new SearchActivitiesUseCase(request -> {
                     assertEquals("Montreal", request.getDestination());
                     assertEquals("m", request.getQuery());
@@ -56,9 +56,9 @@ final class ActivityDiscoveryControllerTest {
 
     @Test
     void reportsThatTripIsRequiredWithoutCallingTheService() {
-        SearchViewModel search = new SearchViewModel(
+        final SearchViewModel search = new SearchViewModel(
                 new SearchState(Collections.emptyList(), ""));
-        ActivityDiscoveryController controller = new ActivityDiscoveryController(
+        final ActivityDiscoveryController controller = new ActivityDiscoveryController(
                 new SearchActivitiesUseCase(request -> {
                     throw new AssertionError("service must not be called");
                 }),
@@ -73,11 +73,11 @@ final class ActivityDiscoveryControllerTest {
 
     @Test
     void presentsCachedMatchesWhenRemoteSearchIsRateLimited() {
-        Activity cachedMuseum = activity("cached-museum", ActivityCategory.MUSEUM,
+        final Activity cachedMuseum = activity("cached-museum", ActivityCategory.MUSEUM,
                 0.0, IndoorOutdoorType.INDOOR);
-        SearchViewModel search = new SearchViewModel(
+        final SearchViewModel search = new SearchViewModel(
                 new SearchState(Collections.emptyList(), ""));
-        ActivityDiscoveryController controller = new ActivityDiscoveryController(
+        final ActivityDiscoveryController controller = new ActivityDiscoveryController(
                 new SearchActivitiesUseCase(request -> new ActivitySearchResult(
                         Collections.singletonList(cachedMuseum),
                         SearchSource.LOCAL, true, SearchFailure.RATE_LIMITED)),

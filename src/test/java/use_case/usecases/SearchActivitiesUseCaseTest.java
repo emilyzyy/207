@@ -23,19 +23,19 @@ final class SearchActivitiesUseCaseTest {
 
     @Test
     void delegatesTheCompleteRequestAndReturnsTheGatewayResult() {
-        ActivitySearchRequest request = new ActivitySearchRequest(
+        final ActivitySearchRequest request = new ActivitySearchRequest(
                 "Toronto", "museum", ActivityCategory.MUSEUM,
                 IndoorOutdoorType.INDOOR, 25);
-        ActivitySearchResult expected = new ActivitySearchResult(
+        final ActivitySearchResult expected = new ActivitySearchResult(
                 Collections.singletonList(museum()), SearchSource.NOMINATIM,
                 false, SearchFailure.NONE);
-        AtomicReference<ActivitySearchRequest> received = new AtomicReference<>();
-        SearchActivitiesUseCase interactor = new SearchActivitiesUseCase(input -> {
+        final AtomicReference<ActivitySearchRequest> received = new AtomicReference<>();
+        final SearchActivitiesUseCase interactor = new SearchActivitiesUseCase(input -> {
             received.set(input);
             return expected;
         });
 
-        ActivitySearchResult actual = interactor.execute(request);
+        final ActivitySearchResult actual = interactor.execute(request);
 
         assertSame(request, received.get());
         assertSame(expected, actual);
@@ -44,7 +44,7 @@ final class SearchActivitiesUseCaseTest {
 
     @Test
     void requiresAnActivitySearchGateway() {
-        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+        final IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                 () -> new SearchActivitiesUseCase(null));
 
         assertEquals("Activity search gateway is required", failure.getMessage());
@@ -52,11 +52,11 @@ final class SearchActivitiesUseCaseTest {
 
     @Test
     void rejectsAMissingSearchRequestWithoutCallingTheGateway() {
-        SearchActivitiesUseCase interactor = new SearchActivitiesUseCase(input -> {
+        final SearchActivitiesUseCase interactor = new SearchActivitiesUseCase(input -> {
             throw new AssertionError("Gateway must not be called");
         });
 
-        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+        final IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                 () -> interactor.execute(null));
 
         assertEquals("Activity search request is required", failure.getMessage());

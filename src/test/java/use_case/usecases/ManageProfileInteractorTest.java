@@ -23,11 +23,11 @@ final class ManageProfileInteractorTest {
 
     @Test
     void updatesProfileAndValidatesPasswordChange() {
-        FakeAccount account = new FakeAccount();
+        final FakeAccount account = new FakeAccount();
         account.profile = new User("me", "bianca", "b@example.com");
-        FakeAuth auth = new FakeAuth();
-        RecordingOutput output = new RecordingOutput();
-        ManageProfileInteractor interactor = new ManageProfileInteractor(account, auth, output);
+        final FakeAuth auth = new FakeAuth();
+        final RecordingOutput output = new RecordingOutput();
+        final ManageProfileInteractor interactor = new ManageProfileInteractor(account, auth, output);
 
         interactor.execute(ManageProfileInputData.update(
                 "bianca2", "b2@example.com", "#FFFFFF", null,
@@ -46,11 +46,11 @@ final class ManageProfileInteractorTest {
 
     @Test
     void signsOutThroughAuthPort() {
-        FakeAccount account = new FakeAccount();
+        final FakeAccount account = new FakeAccount();
         account.profile = new User("me", "bianca", "b@example.com");
-        FakeAuth auth = new FakeAuth();
-        RecordingOutput output = new RecordingOutput();
-        ManageProfileInteractor interactor = new ManageProfileInteractor(account, auth, output);
+        final FakeAuth auth = new FakeAuth();
+        final RecordingOutput output = new RecordingOutput();
+        final ManageProfileInteractor interactor = new ManageProfileInteractor(account, auth, output);
 
         interactor.execute(ManageProfileInputData.signOut());
 

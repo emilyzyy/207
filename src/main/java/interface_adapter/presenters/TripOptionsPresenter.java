@@ -28,7 +28,7 @@ public final class TripOptionsPresenter implements TripOptionsOutputBoundary {
 
     @Override
     public void presentSuccess(Trip trip, String message) {
-        DashboardState currentDashboard = dashboard.getState();
+        final DashboardState currentDashboard = dashboard.getState();
         dashboard.setState(new DashboardState(
                 trip.getDestination(), trip.getDate(),
                 currentDashboard.getWeatherCondition(), currentDashboard.getWeatherMessage()));
@@ -37,7 +37,7 @@ public final class TripOptionsPresenter implements TripOptionsOutputBoundary {
         // announcing the schedule first repaints the day against hours that have not arrived
         // yet — and nothing repaints it again afterwards.
         options.setState(TripOptionsState.fromTrip(trip, message, false));
-        DayPlanState currentPlan = dayPlan.getState();
+        final DayPlanState currentPlan = dayPlan.getState();
         dayPlan.setState(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), message, false,
                 currentPlan.getHourlyWeather(), trip.getTripDates(), trip.getActiveDayIndex()));

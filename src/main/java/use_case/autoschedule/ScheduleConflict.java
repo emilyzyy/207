@@ -107,7 +107,7 @@ public final class ScheduleConflict {
     public static ScheduleConflict lockedInsideUnavailable(String eventId, String activityName,
                                                            TimeWindow lock,
                                                            TimeWindow unavailable) {
-        String windows = lock == null || unavailable == null ? ""
+        final String windows = lock == null || unavailable == null ? ""
                 : "lock " + lock + "; unavailable " + unavailable;
         return new ScheduleConflict(Kind.LOCK_INSIDE_UNAVAILABLE_PERIOD, eventId, activityName,
                 0, 0, windows, lock, unavailable);
@@ -155,7 +155,7 @@ public final class ScheduleConflict {
         if (!(other instanceof ScheduleConflict)) {
             return false;
         }
-        ScheduleConflict that = (ScheduleConflict) other;
+        final ScheduleConflict that = (ScheduleConflict) other;
         return kind == that.kind && blockingEventId.equals(that.blockingEventId)
                 && subject.equals(that.subject) && requiredMinutes == that.requiredMinutes
                 && availableMinutes == that.availableMinutes && detail.equals(that.detail)

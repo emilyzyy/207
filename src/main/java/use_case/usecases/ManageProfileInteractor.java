@@ -75,7 +75,7 @@ public final class ManageProfileInteractor implements ManageProfileInputBoundary
             if (!input.getCurrentPassword().equals(input.getSessionPassword())) {
                 throw new IllegalArgumentException("Current password is incorrect.");
             }
-            String passwordError = PasswordPolicy.validateNewPasswordPair(
+            final String passwordError = PasswordPolicy.validateNewPasswordPair(
                     input.getNewPassword(), input.getConfirmPassword());
             if (passwordError != null) {
                 throw new IllegalArgumentException(passwordError);

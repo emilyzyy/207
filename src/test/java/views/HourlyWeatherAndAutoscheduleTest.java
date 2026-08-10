@@ -85,7 +85,7 @@ class HourlyWeatherAndAutoscheduleTest {
     }
 
     private static ScheduledEvent event(String id, int startHour) {
-        Activity activity = new Activity(id, id, ActivityCategory.ATTRACTION,
+        final Activity activity = new Activity(id, id, ActivityCategory.ATTRACTION,
                 new Location(43.65, -79.38, id), 4.5, 60,
                 LocalTime.of(9, 0), LocalTime.of(20, 0), IndoorOutdoorType.OUTDOOR, "Low");
         return new ScheduledEvent(id, activity, LocalTime.of(startHour, 0),
@@ -100,7 +100,7 @@ class HourlyWeatherAndAutoscheduleTest {
     }
 
     private static List<Component> all(Component root) {
-        List<Component> found = new ArrayList<>();
+        final List<Component> found = new ArrayList<>();
         collect(root, found);
         return found;
     }
@@ -115,7 +115,7 @@ class HourlyWeatherAndAutoscheduleTest {
     }
 
     private static String allText(Component root) {
-        StringBuilder text = new StringBuilder();
+        final StringBuilder text = new StringBuilder();
         for (Component component : all(root)) {
             if (component instanceof JLabel) {
                 text.append(((JLabel) component).getText()).append(' ');
@@ -145,13 +145,13 @@ class HourlyWeatherAndAutoscheduleTest {
 
     @Test
     void bothPanelsReadTheSameForecastFromTheSameViewModel() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(Arrays.asList(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(Arrays.asList(
                 hour(9, "Clear sky", WeatherSeverity.LOW),
                 hour(19, "Heavy rain", WeatherSeverity.HIGH))));
 
-        Pair panels = bothPanels(viewModel);
+        final Pair panels = bothPanels(viewModel);
 
-        String forecast = allText(panels.forecast);
+        final String forecast = allText(panels.forecast);
         assertTrue(forecast.contains("9:00 AM") && forecast.contains("7:00 PM"),
                 "the strip lists the hours Autoschedule is reasoning about: " + forecast);
         assertTrue(forecast.contains("☂"),
@@ -167,21 +167,21 @@ class HourlyWeatherAndAutoscheduleTest {
      */
     @Test
     void theTwoPanelsShowTimesOnTheSameClock() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(Collections.singletonList(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(Collections.singletonList(
                 hour(14, "Light rain", WeatherSeverity.MEDIUM))));
 
-        Pair panels = bothPanels(viewModel);
+        final Pair panels = bothPanels(viewModel);
 
-        String forecast = allText(panels.forecast);
+        final String forecast = allText(panels.forecast);
         assertTrue(forecast.contains("2:00 PM"), forecast);
         assertTrue(allText(panels.dayPlan).contains("10:00 AM"), allText(panels.dayPlan));
     }
 
     @Test
     void anAutoschedulePreviewLeavesTheForecastPanelIntact() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(Collections.singletonList(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(Collections.singletonList(
                 hour(9, "Clear sky", WeatherSeverity.LOW))));
-        Pair panels = bothPanels(viewModel);
+        final Pair panels = bothPanels(viewModel);
 
         // A new state carrying the same forecast, as a preview run produces.
         SwingUtilities.invokeAndWait(() -> viewModel.setState(new DayPlanState(
@@ -198,9 +198,9 @@ class HourlyWeatherAndAutoscheduleTest {
 
     @Test
     void aRefreshedForecastReachesBothPanels() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(Collections.singletonList(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(Collections.singletonList(
                 hour(9, "Clear sky", WeatherSeverity.LOW))));
-        Pair panels = bothPanels(viewModel);
+        final Pair panels = bothPanels(viewModel);
 
         SwingUtilities.invokeAndWait(() -> viewModel.setState(planWith(Arrays.asList(
                 hour(9, "Clear sky", WeatherSeverity.LOW),
@@ -220,14 +220,14 @@ class HourlyWeatherAndAutoscheduleTest {
      */
     @Test
     void thePolishedAutoscheduleControlsAreStillPresentAlongsideTheForecast() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(Collections.singletonList(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(Collections.singletonList(
                 hour(9, "Clear sky", WeatherSeverity.LOW))));
 
-        Pair panels = bothPanels(viewModel);
+        final Pair panels = bothPanels(viewModel);
 
         boolean lockToggle = false;
         for (Component component : all(panels.dayPlan)) {
-            String name = component.getAccessibleContext() == null ? null
+            final String name = component.getAccessibleContext() == null ? null
                     : component.getAccessibleContext().getAccessibleName();
             if (name != null && (name.startsWith("Lock ") || name.startsWith("Unlock "))) {
                 lockToggle = true;
