@@ -1,23 +1,11 @@
 package use_case.autoschedule;
 
+import static use_case.autoschedule.ProblemFixtures.at;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static use_case.autoschedule.ProblemFixtures.at;
-
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-
-import org.junit.jupiter.api.Test;
 
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
@@ -44,6 +32,16 @@ import use_case.autoschedule.testdoubles.FakeTravelTimeEstimator;
 import use_case.autoschedule.testdoubles.FakeTripRepository;
 import use_case.autoschedule.testdoubles.FakeWeatherContextGateway;
 import use_case.usecases.EditScheduledEventUseCase;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
 
 /**
  * Editing an activity and running Autoschedule again.
@@ -71,7 +69,7 @@ class EditThenRetryTest {
     private int interactorRuns;
 
     private static OpeningHours except(DayOfWeek closed, LocalTime open, LocalTime close) {
-        final Map<DayOfWeek, List<OpeningHours.TimeInterval>> week = new EnumMap<>(DayOfWeek.class);
+        Map<DayOfWeek, List<OpeningHours.TimeInterval>> week = new EnumMap<>(DayOfWeek.class);
         for (DayOfWeek day : DayOfWeek.values()) {
             if (day != closed) {
                 week.put(day, Collections.singletonList(
@@ -82,7 +80,7 @@ class EditThenRetryTest {
     }
 
     private static OpeningHours everyDay(LocalTime open, LocalTime close) {
-        final Map<DayOfWeek, List<OpeningHours.TimeInterval>> week = new EnumMap<>(DayOfWeek.class);
+        Map<DayOfWeek, List<OpeningHours.TimeInterval>> week = new EnumMap<>(DayOfWeek.class);
         for (DayOfWeek day : DayOfWeek.values()) {
             week.put(day, Collections.singletonList(new OpeningHours.TimeInterval(open, close)));
         }
@@ -97,14 +95,14 @@ class EditThenRetryTest {
 
     /** The reported day: one venue shut on Sundays, two open. */
     private static Trip veniceSunday() {
-        final Activity shutOnSunday = place("shop", "40/60 Food Shop Take Away",
+        Activity shutOnSunday = place("shop", "40/60 Food Shop Take Away",
                 except(DayOfWeek.SUNDAY, at(7, 45), at(16, 0)), at(7, 45), at(16, 0));
-        final Activity anice = place("anice", "Anice Stellato",
+        Activity anice = place("anice", "Anice Stellato",
                 everyDay(at(10, 30), at(15, 0)), at(10, 30), at(15, 0));
-        final Activity macana = place("macana", "Ca Macana",
+        Activity macana = place("macana", "Ca Macana",
                 everyDay(at(10, 0), at(19, 0)), at(10, 0), at(19, 0));
 
-        final Trip trip = new Trip("trip-venice", "Venice", SUNDAY, at(9, 0), at(18, 0),
+        Trip trip = new Trip("trip-venice", "Venice", SUNDAY, at(9, 0), at(18, 0),
                 TransportationMode.WALKING);
         trip.replaceSchedule(Arrays.asList(
                 new ScheduledEvent("e-shop", shutOnSunday, at(9, 0), at(10, 0),
@@ -118,11 +116,11 @@ class EditThenRetryTest {
 
     /** A day everything is open for, so scheduling can succeed. */
     private static Trip openDay() {
-        final Activity one = place("a", "Anice Stellato", everyDay(at(9, 0), at(20, 0)),
+        Activity one = place("a", "Anice Stellato", everyDay(at(9, 0), at(20, 0)),
                 at(9, 0), at(20, 0));
-        final Activity two = place("b", "Ca Macana", everyDay(at(9, 0), at(20, 0)),
+        Activity two = place("b", "Ca Macana", everyDay(at(9, 0), at(20, 0)),
                 at(9, 0), at(20, 0));
-        final Trip trip = new Trip("trip-venice", "Venice", SUNDAY, at(9, 0), at(18, 0),
+        Trip trip = new Trip("trip-venice", "Venice", SUNDAY, at(9, 0), at(18, 0),
                 TransportationMode.WALKING);
         trip.replaceSchedule(Arrays.asList(
                 new ScheduledEvent("e-a", one, at(9, 0), at(10, 0), EventType.ACTIVITY, ""),
@@ -168,7 +166,7 @@ class EditThenRetryTest {
     // 1
     @Test
     void editingAnUnlockedActivityUpdatesTheRepository() {
-        final FakeTripRepository trips = new FakeTripRepository(veniceSunday());
+        FakeTripRepository trips = new FakeTripRepository(veniceSunday());
 
         new EditScheduledEventUseCase(trips)
                 .execute("trip-venice", "e-shop", at(14, 0), at(15, 0), "");
@@ -180,8 +178,8 @@ class EditThenRetryTest {
     // 2
     @Test
     void theNextAutoscheduleRequestSeesTheEditedEvent() {
-        final FakeTripRepository trips = new FakeTripRepository(openDay());
-        final Trip edited = new EditScheduledEventUseCase(trips)
+        FakeTripRepository trips = new FakeTripRepository(openDay());
+        Trip edited = new EditScheduledEventUseCase(trips)
                 .execute("trip-venice", "e-b", at(16, 0), at(17, 0), "");
         refreshAfterEdit(edited);
 
@@ -197,11 +195,11 @@ class EditThenRetryTest {
     // 3
     @Test
     void aPreviousConflictIsClearedBeforeTheNextAttempt() {
-        final FakeTripRepository trips = new FakeTripRepository(veniceSunday());
+        FakeTripRepository trips = new FakeTripRepository(veniceSunday());
         autoschedule(trips, true);
         assertTrue(viewModel.getState().hasBlockingNotice(), "the fixture should conflict");
 
-        final Trip edited = new EditScheduledEventUseCase(trips)
+        Trip edited = new EditScheduledEventUseCase(trips)
                 .execute("trip-venice", "e-shop", at(14, 0), at(15, 0), "");
         refreshAfterEdit(edited);
 
@@ -213,11 +211,11 @@ class EditThenRetryTest {
     // 4
     @Test
     void retryingAfterAnEditRunsTheUseCaseAgain() {
-        final FakeTripRepository trips = new FakeTripRepository(openDay());
+        FakeTripRepository trips = new FakeTripRepository(openDay());
         autoschedule(trips, true);
-        final String firstMessage = viewModel.getState().getMessage();
+        String firstMessage = viewModel.getState().getMessage();
 
-        final Trip edited = new EditScheduledEventUseCase(trips)
+        Trip edited = new EditScheduledEventUseCase(trips)
                 .execute("trip-venice", "e-b", at(11, 0), at(12, 0), "");
         refreshAfterEdit(edited);
         assertNotEquals(firstMessage, viewModel.getState().getMessage());
@@ -233,13 +231,13 @@ class EditThenRetryTest {
     // 5
     @Test
     void anUnlockedActivityOriginalTimeIsNotTreatedAsFixed() {
-        final FakeTripRepository trips = new FakeTripRepository(openDay());
+        FakeTripRepository trips = new FakeTripRepository(openDay());
 
         autoschedule(trips, false);
 
-        final DayPlanState state = viewModel.getState();
+        DayPlanState state = viewModel.getState();
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(), state.getMessage());
-        final PreviewRowView moved = row(state, "e-b");
+        PreviewRowView moved = row(state, "e-b");
         assertNotNull(moved);
         assertNotEquals(at(14, 0), moved.getStart(),
                 "an unlocked activity may be retimed; its current time is only the starting "
@@ -251,18 +249,24 @@ class EditThenRetryTest {
     // 6
     @Test
     void anActivityPlacedTooEarlyCanBeMovedLater() {
-        final Activity opensLate = place("late", "Opens at noon", everyDay(at(12, 0), at(20, 0)),
+        Activity opensLate = place("late", "Opens at noon", everyDay(at(12, 0), at(20, 0)),
                 at(12, 0), at(20, 0));
-        final Trip trip = new Trip("trip-venice", "Venice", SUNDAY, at(9, 0), at(18, 0),
+        // A second activity so the day has something to arrange; with only the late venue
+        // nothing can move and Autoschedule now declines rather than proposing a copy.
+        Activity openAllDay = place("early", "Open all day", everyDay(at(8, 0), at(20, 0)),
+                at(8, 0), at(20, 0));
+        Trip trip = new Trip("trip-venice", "Venice", SUNDAY, at(9, 0), at(18, 0),
                 TransportationMode.WALKING);
-        trip.replaceSchedule(Collections.singletonList(
-                new ScheduledEvent("e-late", opensLate, at(12, 0), at(13, 0),
+        trip.replaceSchedule(Arrays.asList(
+                new ScheduledEvent("e-early", openAllDay, at(14, 0), at(15, 0),
+                        EventType.ACTIVITY, ""),
+                new ScheduledEvent("e-late", opensLate, at(16, 0), at(17, 0),
                         EventType.ACTIVITY, "")));
-        final FakeTripRepository trips = new FakeTripRepository(trip);
+        FakeTripRepository trips = new FakeTripRepository(trip);
 
         autoschedule(trips, false);
 
-        final PreviewRowView placed = row(viewModel.getState(), "e-late");
+        PreviewRowView placed = row(viewModel.getState(), "e-late");
         assertNotNull(placed, viewModel.getState().getMessage());
         assertTrue(!placed.getStart().isBefore(at(12, 0)),
                 "it cannot be scheduled before it opens");
@@ -271,18 +275,18 @@ class EditThenRetryTest {
     // 7
     @Test
     void anActivityPlacedTooLateCanBeMovedEarlier() {
-        final Activity closesEarly = place("early", "Shuts at noon", everyDay(at(9, 0), at(12, 0)),
+        Activity closesEarly = place("early", "Shuts at noon", everyDay(at(9, 0), at(12, 0)),
                 at(9, 0), at(12, 0));
-        final Trip trip = new Trip("trip-venice", "Venice", SUNDAY, at(9, 0), at(18, 0),
+        Trip trip = new Trip("trip-venice", "Venice", SUNDAY, at(9, 0), at(18, 0),
                 TransportationMode.WALKING);
         trip.replaceSchedule(Collections.singletonList(
                 new ScheduledEvent("e-early", closesEarly, at(11, 0), at(12, 0),
                         EventType.ACTIVITY, "")));
-        final FakeTripRepository trips = new FakeTripRepository(trip);
+        FakeTripRepository trips = new FakeTripRepository(trip);
 
         autoschedule(trips, false);
 
-        final PreviewRowView placed = row(viewModel.getState(), "e-early");
+        PreviewRowView placed = row(viewModel.getState(), "e-early");
         assertNotNull(placed, viewModel.getState().getMessage());
         assertTrue(!placed.getEnd().isAfter(at(12, 0)), "it must finish before it shuts");
         assertEquals(at(9, 0), placed.getStart(), "and it is free to move earlier to do it");
@@ -291,13 +295,13 @@ class EditThenRetryTest {
     // 8
     @Test
     void preserveOrderKeepsTheSequenceButNotTheExactStartTimes() {
-        final FakeTripRepository trips = new FakeTripRepository(openDay());
+        FakeTripRepository trips = new FakeTripRepository(openDay());
 
         autoschedule(trips, true);
 
-        final DayPlanState state = viewModel.getState();
+        DayPlanState state = viewModel.getState();
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(), state.getMessage());
-        final List<String> order = new ArrayList<>();
+        List<String> order = new ArrayList<>();
         for (PreviewRowView candidate : state.getPreviewRows()) {
             if (candidate.getKind() == PreviewRowView.Kind.ACTIVITY) {
                 order.add(candidate.getEventId());
@@ -311,11 +315,11 @@ class EditThenRetryTest {
     // 9
     @Test
     void aVenueClosedOnTheTripDateStillRefusesAndSaysWhy() {
-        final FakeTripRepository trips = new FakeTripRepository(veniceSunday());
+        FakeTripRepository trips = new FakeTripRepository(veniceSunday());
 
         autoschedule(trips, true);
 
-        final DayPlanState state = viewModel.getState();
+        DayPlanState state = viewModel.getState();
         assertEquals(AutoScheduleStatus.CONFLICT, state.getStatus());
         assertTrue(state.getMessage().contains("40/60 Food Shop Take Away"),
                 "the message names the venue: " + state.getMessage());
@@ -330,13 +334,13 @@ class EditThenRetryTest {
     // 10
     @Test
     void aSuccessfulRetryRemovesThePreviousErrorMessage() {
-        final FakeTripRepository trips = new FakeTripRepository(veniceSunday());
+        FakeTripRepository trips = new FakeTripRepository(veniceSunday());
         autoschedule(trips, true);
         assertTrue(viewModel.getState().hasBlockingNotice());
 
         // Remove the venue that cannot be scheduled, which is what the message advises.
-        final Trip trip = trips.findById("trip-venice").get();
-        final List<ScheduledEvent> remaining = new ArrayList<>();
+        Trip trip = trips.findById("trip-venice").get();
+        List<ScheduledEvent> remaining = new ArrayList<>();
         for (ScheduledEvent event : trip.getScheduledEvents()) {
             if (!event.getId().equals("e-shop")) {
                 remaining.add(event);
@@ -347,7 +351,7 @@ class EditThenRetryTest {
 
         autoschedule(trips, true);
 
-        final DayPlanState state = viewModel.getState();
+        DayPlanState state = viewModel.getState();
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(), state.getMessage());
         assertFalse(state.hasBlockingNotice(), "a working proposal clears the old refusal");
         assertFalse(state.isError());
@@ -356,12 +360,12 @@ class EditThenRetryTest {
     // 11
     @Test
     void repeatedFailuresReplaceTheMessageRatherThanStackingIt() {
-        final FakeTripRepository trips = new FakeTripRepository(veniceSunday());
+        FakeTripRepository trips = new FakeTripRepository(veniceSunday());
 
         autoschedule(trips, true);
-        final String first = viewModel.getState().getMessage();
+        String first = viewModel.getState().getMessage();
         autoschedule(trips, true);
-        final String second = viewModel.getState().getMessage();
+        String second = viewModel.getState().getMessage();
 
         assertEquals(first, second, "the same real conflict says the same thing");
         assertEquals(1, countOccurrences(second, "40/60 Food Shop Take Away"),
@@ -371,13 +375,13 @@ class EditThenRetryTest {
     // 12
     @Test
     void dismissingTheNoticeLeavesTheDayAloneAndAllowsAnotherAttempt() {
-        final FakeTripRepository trips = new FakeTripRepository(veniceSunday());
+        FakeTripRepository trips = new FakeTripRepository(veniceSunday());
         autoschedule(trips, true);
-        final List<ScheduledEvent> dayBefore = viewModel.getState().getEvents();
+        List<ScheduledEvent> dayBefore = viewModel.getState().getEvents();
 
         viewModel.setState(viewModel.getState().withoutNotice());
 
-        final DayPlanState dismissed = viewModel.getState();
+        DayPlanState dismissed = viewModel.getState();
         assertFalse(dismissed.hasBlockingNotice(), "OK takes the message away");
         assertEquals("", dismissed.getMessage());
         assertFalse(dismissed.isError());

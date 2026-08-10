@@ -7,6 +7,24 @@ import use_case.autoschedule.AutoSchedulePreviewOutputData;
 
 /** Captures whatever the use case presented, so tests can assert on it directly. */
 public final class RecordingPresenter implements AutoScheduleOutputBoundary {
+    private String draftEditRefusal = "";
+
+    @Override
+    public void presentEditedPreview(use_case.autoschedule.AutoSchedulePreviewOutputData outputData,
+                                     String removedEventId) {
+        presentPreview(outputData);
+    }
+
+    @Override
+    public void presentDraftEditRefused(String reason) {
+        draftEditRefusal = reason == null ? "" : reason;
+    }
+
+    /** The reason a draft edit was refused, or empty when none was. */
+    public String getDraftEditRefusal() {
+        return draftEditRefusal;
+    }
+
 
     private AutoSchedulePreviewOutputData preview;
     private AutoScheduleAppliedOutputData applied;

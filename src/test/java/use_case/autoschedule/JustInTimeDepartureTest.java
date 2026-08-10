@@ -1,19 +1,9 @@
 package use_case.autoschedule;
 
+import static use_case.autoschedule.ProblemFixtures.at;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static use_case.autoschedule.ProblemFixtures.at;
-
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
-
-import org.junit.jupiter.api.Test;
 
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
@@ -35,6 +25,14 @@ import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
 import use_case.autoschedule.testdoubles.FakeTravelTimeEstimator;
 import use_case.autoschedule.testdoubles.FakeTripRepository;
 import use_case.autoschedule.testdoubles.FakeWeatherContextGateway;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
+import org.junit.jupiter.api.Test;
 
 /**
  * When the traveller sets out, and whether the Preview's figures describe the day it draws.
@@ -62,14 +60,14 @@ class JustInTimeDepartureTest {
 
     /** The reported day: something open all day, then a place that does not open until 11:30. */
     private static Trip reportedTrip() {
-        final Activity opensEarly = place("early", "Galleria The Kitchen Express",
+        Activity opensEarly = place("early", "Galleria The Kitchen Express",
                 ActivityCategory.SHOPPING, 43.65, -79.38, at(9, 0), at(21, 0));
-        final Activity opensLate = place("late", "Four Brothers Pizza",
+        Activity opensLate = place("late", "Four Brothers Pizza",
                 ActivityCategory.FOOD, 43.66, -79.39, at(11, 30), at(22, 0));
-        final Activity nearby = place("near", "Farm Boy",
+        Activity nearby = place("near", "Farm Boy",
                 ActivityCategory.SHOPPING, 43.66, -79.39, at(8, 0), at(22, 0));
 
-        final Trip trip = new Trip("trip-1", "Toronto", DATE, at(9, 0), at(21, 0),
+        Trip trip = new Trip("trip-1", "Toronto", DATE, at(9, 0), at(21, 0),
                 TransportationMode.WALKING);
         trip.replaceSchedule(Arrays.asList(
                 scheduled("early", opensEarly, at(9, 0)),
@@ -80,7 +78,7 @@ class JustInTimeDepartureTest {
 
     private static DayPlanState previewOf(Trip trip, FakeTravelTimeEstimator estimator,
                                           boolean keepCurrentOrder) {
-        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(trip.getId(),
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(trip.getId(),
                 trip.getScheduledEvents(), "", false, Collections.emptyList()));
         new AutoScheduleInteractor(new FakeTripRepository(trip), estimator,
                 new FakeWeatherContextGateway(), new AutoSchedulePresenter(viewModel),
@@ -109,16 +107,16 @@ class JustInTimeDepartureTest {
      */
     @Test
     void travelToALateOpeningVenueIsScheduledToArriveAsItOpens() {
-        final FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false);
+        FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false);
         estimator.route("early", "late", 7).route("late", "early", 7)
                 .route("late", "near", 4).route("near", "late", 4)
                 .route("early", "near", 9).route("near", "early", 9);
 
-        final DayPlanState state = previewOf(reportedTrip(), estimator, true);
+        DayPlanState state = previewOf(reportedTrip(), estimator, true);
 
-        final PreviewRowView activity = rowTitled(state, PreviewRowView.Kind.ACTIVITY,
+        PreviewRowView activity = rowTitled(state, PreviewRowView.Kind.ACTIVITY,
                 "Four Brothers Pizza");
-        final PreviewRowView travel = rowTitled(state, PreviewRowView.Kind.TRAVEL,
+        PreviewRowView travel = rowTitled(state, PreviewRowView.Kind.TRAVEL,
                 "Travel to Four Brothers Pizza");
         assertNotNull(activity, "the late-opening activity should be scheduled");
         assertNotNull(travel, "its journey should be drawn");
@@ -130,18 +128,56 @@ class JustInTimeDepartureTest {
                 "seven minutes before, so the waiting sits where the traveller actually is");
     }
 
+    @Test
+    void preserveOrderStillMovesAManuallyTimedButUnlockedDestination() {
+        Activity first = place("first", "First stop", ActivityCategory.MUSEUM,
+                43.65, -79.38, at(9, 0), at(21, 0));
+        Activity second = place("second", "Second stop", ActivityCategory.MUSEUM,
+                43.66, -79.39, at(9, 0), at(21, 0));
+        Trip trip = new Trip("trip-preserved", "Toronto", DATE, at(9, 0), at(21, 0),
+                TransportationMode.WALKING);
+        // The 1:00 PM manual time is only an input to Autoschedule. Only "first" is pinned.
+        trip.replaceSchedule(Arrays.asList(
+                scheduled("first", first, at(9, 0)),
+                scheduled("second", second, at(13, 0))));
+        FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false)
+                .route("first", "second", 20).route("second", "first", 20);
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(trip.getId(),
+                trip.getScheduledEvents(), "", false, Collections.emptyList()));
+
+        new AutoScheduleInteractor(new FakeTripRepository(trip), estimator,
+                new FakeWeatherContextGateway(), new AutoSchedulePresenter(viewModel),
+                Collections.emptyList(), new ScheduleEngine())
+                .preview(new AutoScheduleInputData(trip.getId(), at(9, 0), at(21, 0),
+                        TransportationMode.WALKING, Collections.singleton("first"),
+                        Collections.singletonList(new TimeWindow(at(10, 30), at(13, 0))),
+                        true, true));
+
+        DayPlanState state = viewModel.getState();
+        PreviewRowView travel = rowTitled(state, PreviewRowView.Kind.TRAVEL,
+                "Travel to Second stop");
+        PreviewRowView destination = rowTitled(state, PreviewRowView.Kind.ACTIVITY,
+                "Second stop");
+        assertNotNull(travel);
+        assertNotNull(destination);
+        assertEquals(at(13, 0), travel.getStart());
+        assertEquals(at(13, 20), destination.getStart(),
+                "preserving order does not freeze an unlocked activity's manual time");
+        assertEquals(travel.getEnd(), destination.getStart());
+    }
+
     /**
      * The waiting has not disappeared — it moved to the near side of the journey — so the
      * figures must still own up to it.
      */
     @Test
     void reportedFiguresDescribeTheTimelineThatIsDrawn() {
-        final FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false);
+        FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false);
         estimator.route("early", "late", 7).route("late", "early", 7)
                 .route("late", "near", 4).route("near", "late", 4)
                 .route("early", "near", 9).route("near", "early", 9);
 
-        final DayPlanState state = previewOf(reportedTrip(), estimator, true);
+        DayPlanState state = previewOf(reportedTrip(), estimator, true);
 
         assertEquals(travelDrawn(state), state.getMetrics().getTravelAfterMinutes(),
                 "reported travel must be the travel on the timeline");
@@ -157,32 +193,32 @@ class JustInTimeDepartureTest {
      */
     @Test
     void reportedFiguresDescribeTheTimelineAcrossManyRandomDays() {
-        final Random random = new Random(4820253L);
+        Random random = new Random(4820253L);
         int checked = 0;
 
         for (int trial = 0; trial < 120; trial++) {
-            final int count = 2 + random.nextInt(4);
-            final List<Activity> places = new ArrayList<>();
-            final List<ScheduledEvent> events = new ArrayList<>();
+            int count = 2 + random.nextInt(4);
+            List<Activity> places = new ArrayList<>();
+            List<ScheduledEvent> events = new ArrayList<>();
             LocalTime cursor = at(9, 0);
             for (int i = 0; i < count; i++) {
-                final String id = "p" + i;
-                final int opensAt = 8 + random.nextInt(5);
-                final Activity activity = place(id, "Place " + i,
+                String id = "p" + i;
+                int opensAt = 8 + random.nextInt(5);
+                Activity activity = place(id, "Place " + i,
                         random.nextBoolean() ? ActivityCategory.FOOD : ActivityCategory.MUSEUM,
                         43.6 + i * 0.01, -79.4 + i * 0.01,
                         at(opensAt, 0), at(20, 0));
                 places.add(activity);
-                final LocalTime start = cursor.isBefore(at(opensAt, 0)) ? at(opensAt, 0) : cursor;
+                LocalTime start = cursor.isBefore(at(opensAt, 0)) ? at(opensAt, 0) : cursor;
                 events.add(scheduled(id, activity, start));
                 cursor = start.plusMinutes(90);
             }
 
-            final Trip trip = new Trip("trip-" + trial, "Toronto", DATE, at(9, 0), at(21, 0),
+            Trip trip = new Trip("trip-" + trial, "Toronto", DATE, at(9, 0), at(21, 0),
                     TransportationMode.WALKING);
             trip.replaceSchedule(events);
 
-            final FakeTravelTimeEstimator estimator =
+            FakeTravelTimeEstimator estimator =
                     new FakeTravelTimeEstimator().timeSensitive(random.nextBoolean());
             for (Activity from : places) {
                 for (Activity to : places) {
@@ -192,11 +228,11 @@ class JustInTimeDepartureTest {
                 }
             }
 
-            final DayPlanState state = previewOf(trip, estimator, random.nextBoolean());
+            DayPlanState state = previewOf(trip, estimator, random.nextBoolean());
             if (state.getPreviewRows().isEmpty()) {
                 continue;
             }
-            final String scenario = "trial " + trial + " rows " + rowsOf(state);
+            String scenario = "trial " + trial + " rows " + rowsOf(state);
             assertEquals(travelDrawn(state), state.getMetrics().getTravelAfterMinutes(),
                     "travel figure disagrees with the timeline on " + scenario);
             assertEquals(gapsDrawn(state), state.getMetrics().getIdleAfterMinutes(),
@@ -212,28 +248,28 @@ class JustInTimeDepartureTest {
      */
     @Test
     void everyJourneyLandsWhenItIsNeededAndNotBeforeTheTravellerIsFree() {
-        final Random random = new Random(99117L);
+        Random random = new Random(99117L);
 
         for (int trial = 0; trial < 80; trial++) {
-            final int count = 2 + random.nextInt(3);
-            final List<Activity> places = new ArrayList<>();
-            final List<ScheduledEvent> events = new ArrayList<>();
+            int count = 2 + random.nextInt(3);
+            List<Activity> places = new ArrayList<>();
+            List<ScheduledEvent> events = new ArrayList<>();
             LocalTime cursor = at(9, 0);
             for (int i = 0; i < count; i++) {
-                final String id = "q" + i;
-                final int opensAt = 8 + random.nextInt(4);
-                final Activity activity = place(id, "Q" + i, ActivityCategory.MUSEUM,
+                String id = "q" + i;
+                int opensAt = 8 + random.nextInt(4);
+                Activity activity = place(id, "Q" + i, ActivityCategory.MUSEUM,
                         43.6 + i * 0.02, -79.4 + i * 0.02, at(opensAt, 0), at(21, 0));
                 places.add(activity);
-                final LocalTime start = cursor.isBefore(at(opensAt, 0)) ? at(opensAt, 0) : cursor;
+                LocalTime start = cursor.isBefore(at(opensAt, 0)) ? at(opensAt, 0) : cursor;
                 events.add(scheduled(id, activity, start));
                 cursor = start.plusMinutes(90);
             }
-            final Trip trip = new Trip("t" + trial, "Toronto", DATE, at(9, 0), at(21, 0),
+            Trip trip = new Trip("t" + trial, "Toronto", DATE, at(9, 0), at(21, 0),
                     TransportationMode.WALKING);
             trip.replaceSchedule(events);
 
-            final FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false);
+            FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false);
             for (Activity from : places) {
                 for (Activity to : places) {
                     if (!from.getId().equals(to.getId())) {
@@ -242,10 +278,10 @@ class JustInTimeDepartureTest {
                 }
             }
 
-            final DayPlanState state = previewOf(trip, estimator, random.nextBoolean());
-            final List<PreviewRowView> rows = state.getPreviewRows();
+            DayPlanState state = previewOf(trip, estimator, random.nextBoolean());
+            List<PreviewRowView> rows = state.getPreviewRows();
             for (int i = 0; i < rows.size(); i++) {
-                final PreviewRowView row = rows.get(i);
+                PreviewRowView row = rows.get(i);
                 if (row.getKind() != PreviewRowView.Kind.TRAVEL) {
                     continue;
                 }
@@ -284,12 +320,12 @@ class JustInTimeDepartureTest {
     }
 
     private static String rowsOf(DayPlanState state) {
-        final StringBuilder text = new StringBuilder();
+        StringBuilder text = new StringBuilder();
         for (PreviewRowView row : state.getPreviewRows()) {
             text.append('\n').append("  ").append(row.getStart()).append('-').append(row.getEnd())
                     .append(' ').append(row.getTitle());
         }
-        final PreviewMetricsView metrics = state.getMetrics();
+        PreviewMetricsView metrics = state.getMetrics();
         if (metrics != null) {
             text.append("\n  reported travel=").append(metrics.getTravelAfterMinutes())
                     .append(" waiting=").append(metrics.getIdleAfterMinutes());

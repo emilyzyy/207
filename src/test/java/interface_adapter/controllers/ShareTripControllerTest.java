@@ -1,37 +1,48 @@
 package interface_adapter.controllers;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-
-import org.junit.jupiter.api.Test;
-
 import use_case.usecases.ShareTripInputBoundary;
 import use_case.usecases.ShareTripOutputBoundary;
+import use_case.usecases.ShareTripOutputData;
+import use_case.usecases.ShareTripUseCase;
+import use_case.usecases.GetTripSummaryUseCase;
+import database.persistence.InMemoryItineraryDataAccessObject;
+import entity.entities.Trip;
+import entity.valueobjects.TransportationMode;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 final class ShareTripControllerTest {
 
     @Test
-    void sendsActiveTripShareTextToOutput() {
-        final RecordingOutput output = new RecordingOutput();
-        final ShareTripController controller = new ShareTripController(
-                tripId -> "Share " + tripId,
-                () -> "trip-42",
-                output);
+    void sendsActiveTripIdToUseCase() {
+        InMemoryItineraryDataAccessObject trips = new InMemoryItineraryDataAccessObject();
+        trips.save(new Trip(
+                "trip-42", "Toronto", LocalDate.of(2026, 8, 12),
+                LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING));
+        RecordingOutput output = new RecordingOutput();
+        ShareTripController controller = new ShareTripController(
+                new ShareTripUseCase(new GetTripSummaryUseCase(trips), trips, output),
+                () -> "trip-42");
 
         controller.execute();
 
-        assertEquals("Share trip-42", output.success);
+        assertNotNull(output.success);
+        assertEquals("trip-42", output.success.getTrip().getId());
         assertNull(output.failure);
     }
 
     @Test
     void convertsUseCaseValidationIntoFailureOutput() {
-        final RecordingOutput output = new RecordingOutput();
-        final ShareTripInputBoundary failing = tripId -> {
-            throw new IllegalArgumentException("Create a trip before sharing");
-        };
-        final ShareTripController controller = new ShareTripController(
-                failing, () -> "", output);
+        InMemoryItineraryDataAccessObject trips = new InMemoryItineraryDataAccessObject();
+        RecordingOutput output = new RecordingOutput();
+        ShareTripController controller = new ShareTripController(
+                new ShareTripUseCase(new GetTripSummaryUseCase(trips), trips, output),
+                () -> "");
 
         controller.execute();
 
@@ -40,12 +51,12 @@ final class ShareTripControllerTest {
     }
 
     private static final class RecordingOutput implements ShareTripOutputBoundary {
-        private String success;
+        private ShareTripOutputData success;
         private String failure;
 
         @Override
-        public void presentSuccess(String shareText) {
-            success = shareText;
+        public void presentSuccess(ShareTripOutputData outputData) {
+            success = outputData;
         }
 
         @Override

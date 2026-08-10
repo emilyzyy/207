@@ -1,20 +1,20 @@
 package interface_adapter.controllers;
 
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.function.Consumer;
-
-import entity.valueobjects.WeatherOption;
 import interface_adapter.viewmodels.DayPlanState;
 import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.PreviewRowView;
 import use_case.autoschedule.AutoScheduleApplyInputData;
 import use_case.autoschedule.AutoScheduleInputBoundary;
 import use_case.autoschedule.AutoScheduleInputData;
+import use_case.autoschedule.ProposalEditInputData;
 import use_case.autoschedule.ProposedEventData;
 import use_case.autoschedule.TimeWindow;
+import entity.valueobjects.WeatherOption;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * Turns what the traveller did into a request the use case understands.
@@ -41,22 +41,22 @@ public final class AutoScheduleController {
         this.taskRunner = taskRunner;
     }
 
-    /**
-     * Asks for a proposal. Nothing in the itinerary changes as a result of this.
-     * @param settings the s et ti ng s value
-     */
+    /** Asks for a proposal. Nothing in the itinerary changes as a result of this. */
     public void preview(AutoScheduleSettings settings) {
-        final DayPlanState state = viewModel.getState();
+        DayPlanState state = viewModel.getState();
         if (state.getTripId().isEmpty()) {
             return;
         }
+        // Remembered for this session so the next attempt on the same day opens with what was
+        // used last time, visible in the dialog and editable there.
+        settingsMemory.remember(state.getTripId(), state.getActiveDayIndex(), settings);
 
-        final List<TimeWindow> unavailable = new ArrayList<>();
+        List<TimeWindow> unavailable = new ArrayList<>();
         for (AutoScheduleSettings.Window window : settings.getUnavailableWindows()) {
             unavailable.add(new TimeWindow(window.getStart(), window.getEnd()));
         }
 
-        final AutoScheduleInputData input = new AutoScheduleInputData(state.getTripId(),
+        AutoScheduleInputData input = new AutoScheduleInputData(state.getTripId(),
                 settings.getAvailableStart(), settings.getAvailableEnd(),
                 settings.getTransportationMode(), state.getLockedEventIds(), unavailable,
                 settings.isKeepCurrentOrder(), settings.isConsiderWeather(),
@@ -77,13 +77,12 @@ public final class AutoScheduleController {
      *
      * <p>The callback is invoked on the background thread. Marshalling back to the event
      * thread is the view's business, since it is the view that knows it is Swing.</p>
-      * @param onAnswered the o na ns we re d value
      */
     public void loadWeatherOption(Consumer<WeatherOption> onAnswered) {
         if (onAnswered == null) {
             return;
         }
-        final String tripId = viewModel.getState().getTripId();
+        String tripId = viewModel.getState().getTripId();
         if (tripId.isEmpty()) {
             onAnswered.accept(WeatherOption.unavailable(WeatherOption.NO_FORECAST));
             return;
@@ -91,26 +90,68 @@ public final class AutoScheduleController {
         taskRunner.run(() -> onAnswered.accept(autoSchedule.weatherOptionFor(tripId)));
     }
 
-    /** Saves the proposal currently on screen, if the Day Plan has not moved on. */
-    public void apply() {
-        final DayPlanState state = viewModel.getState();
-        if (state.getPreviewRows().isEmpty()) {
-            return;
-        }
+    private final AutoScheduleSettingsMemory settingsMemory = new AutoScheduleSettingsMemory();
 
-        final List<ProposedEventData> proposed = new ArrayList<>();
+    /**
+     * What this day was last scheduled with, so the dialog can show it again.
+     *
+     * <p>Handed out rather than applied: the next run uses whatever the dialog is showing when
+     * it is confirmed, which is the only way a remembered constraint stays honest.</p>
+     */
+    public AutoScheduleSettings rememberedSettings() {
+        DayPlanState state = viewModel.getState();
+        return settingsMemory.remembered(state.getTripId(), state.getActiveDayIndex());
+    }
+
+    /** Forgets this day's remembered settings, for an explicit Reset. */
+    public void forgetRememberedSettings() {
+        DayPlanState state = viewModel.getState();
+        settingsMemory.forget(state.getTripId(), state.getActiveDayIndex());
+    }
+
+    /** The proposal on screen, in the form the use case speaks. */
+    private static List<ProposedEventData> proposedRowsOf(DayPlanState state) {
+        List<ProposedEventData> proposed = new ArrayList<>();
         for (PreviewRowView row : state.getPreviewRows()) {
             proposed.add(new ProposedEventData(row.getEventId(), "", row.getTitle(),
                     row.getKind() == PreviewRowView.Kind.TRAVEL
                             ? ProposedEventData.Kind.TRAVEL : ProposedEventData.Kind.ACTIVITY,
                     row.getStart(), row.getEnd(), row.isLocked(), row.isMoved()));
         }
+        return proposed;
+    }
 
-        final AutoScheduleApplyInputData input = new AutoScheduleApplyInputData(state.getTripId(),
+    /** Saves the proposal currently on screen, if the Day Plan has not moved on. */
+    public void apply() {
+        DayPlanState state = viewModel.getState();
+        if (state.getPreviewRows().isEmpty()) {
+            return;
+        }
+
+        List<ProposedEventData> proposed = proposedRowsOf(state);
+
+        AutoScheduleApplyInputData input = new AutoScheduleApplyInputData(state.getTripId(),
                 state.getPreviewFingerprint(), proposed);
 
         viewModel.setState(state.loading("Applying..."));
         taskRunner.run(() -> autoSchedule.apply(input));
+    }
+
+    /**
+     * Removes one activity from the proposal on screen, saving nothing.
+     *
+     * <p>The rows in the view model <em>are</em> the draft — Apply already builds its input
+     * from them — so editing them is editing the proposal, and Apply afterwards saves exactly
+     * what is on screen.</p>
+     */
+    public void removeFromProposal(String eventId) {
+        DayPlanState state = viewModel.getState();
+        if (eventId == null || state.getPreviewRows().isEmpty()) {
+            return;
+        }
+        ProposalEditInputData input = new ProposalEditInputData(state.getTripId(),
+                proposedRowsOf(state), eventId, null, state.getPreviewFingerprint());
+        taskRunner.run(() -> autoSchedule.removeFromProposal(input));
     }
 
     /** Discards the proposal. The itinerary was never touched, so nothing is undone. */
@@ -122,25 +163,19 @@ public final class AutoScheduleController {
     /**
      * Pins or unpins an activity. Pins live with the view for as long as the app is open,
      * so re-running Autoschedule keeps honouring them without changing anything saved.
-      * @param eventId the e ve nt id value
      */
     public void toggleLock(String eventId) {
         if (eventId == null || eventId.trim().isEmpty()) {
             return;
         }
-        final DayPlanState state = viewModel.getState();
-        final Set<String> locks = new LinkedHashSet<>(state.getLockedEventIds());
+        DayPlanState state = viewModel.getState();
+        Set<String> locks = new LinkedHashSet<>(state.getLockedEventIds());
         if (!locks.remove(eventId)) {
             locks.add(eventId);
         }
         viewModel.setState(state.withLocks(locks));
     }
 
-    /**
-     * Performs the i sl oc ke d operation.
-     * @param eventId the e ve nt id value
-     * @return the result of the operation
-     */
     public boolean isLocked(String eventId) {
         return viewModel.getState().getLockedEventIds().contains(eventId);
     }

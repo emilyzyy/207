@@ -5,6 +5,38 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import interface_adapter.controllers.AutoScheduleController;
+import interface_adapter.controllers.AutoScheduleSettings;
+import interface_adapter.controllers.TaskRunner;
+import interface_adapter.gateways.DistanceServiceTravelTimeEstimator;
+import interface_adapter.gateways.WeatherServiceContextGateway;
+import interface_adapter.presenters.AutoSchedulePresenter;
+import interface_adapter.viewmodels.AutoScheduleStatus;
+import interface_adapter.viewmodels.CalendarViewModel;
+import interface_adapter.viewmodels.DashboardState;
+import interface_adapter.viewmodels.DashboardViewModel;
+import interface_adapter.viewmodels.DayPlanState;
+import interface_adapter.viewmodels.DayPlanViewModel;
+import interface_adapter.viewmodels.PreviewRowView;
+import app.AppContainer;
+import use_case.autoschedule.AutoScheduleInteractor;
+import use_case.autoschedule.WeatherContext;
+import entity.valueobjects.WeatherOption;
+import use_case.autoschedule.engine.ScheduleEngine;
+import use_case.autoschedule.policy.DaylightPolicy;
+import use_case.autoschedule.policy.MealWindowPolicy;
+import use_case.autoschedule.policy.SoftPolicy;
+import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.EventType;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.Location;
+import entity.valueobjects.TransportationMode;
+import entity.valueobjects.WeatherSeverity;
+import interface_adapter.mock.MockDistanceService;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -14,40 +46,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
-
 import org.junit.jupiter.api.Test;
-
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.EventType;
-import entity.valueobjects.IndoorOutdoorType;
-import entity.valueobjects.Location;
-import entity.valueobjects.TransportationMode;
-import entity.valueobjects.WeatherOption;
-import entity.valueobjects.WeatherSeverity;
-import interface_adapter.controllers.AutoScheduleController;
-import interface_adapter.controllers.AutoScheduleSettings;
-import interface_adapter.controllers.TaskRunner;
-import interface_adapter.gateways.DistanceServiceTravelTimeEstimator;
-import interface_adapter.gateways.WeatherServiceContextGateway;
-import interface_adapter.mock.MockDistanceService;
-import interface_adapter.presenters.AutoSchedulePresenter;
-import interface_adapter.viewmodels.AutoScheduleStatus;
-import interface_adapter.viewmodels.CalendarViewModel;
-import interface_adapter.viewmodels.DashboardState;
-import interface_adapter.viewmodels.DashboardViewModel;
-import interface_adapter.viewmodels.DayPlanState;
-import interface_adapter.viewmodels.DayPlanViewModel;
-import interface_adapter.viewmodels.PreviewRowView;
-import use_case.autoschedule.AutoScheduleInteractor;
-import use_case.autoschedule.WeatherContext;
-import use_case.autoschedule.engine.ScheduleEngine;
-import use_case.autoschedule.policy.DaylightPolicy;
-import use_case.autoschedule.policy.MealWindowPolicy;
-import use_case.autoschedule.policy.SoftPolicy;
-import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
 
 /**
  * The demo, executed as a test.
@@ -73,9 +72,9 @@ class AutoScheduleWalkthroughTest {
      * places sit next to each other, and lunch is at half past three.
      */
     private static Trip inefficientDay() {
-        final Trip trip = new Trip("demo-trip", "Toronto", TRIP_DATE,
+        Trip trip = new Trip("demo-trip", "Toronto", TRIP_DATE,
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING);
-        final List<ScheduledEvent> events = new ArrayList<>();
+        List<ScheduledEvent> events = new ArrayList<>();
         events.add(new ScheduledEvent("event-park",
                 activity("park", "High Park", ActivityCategory.PARKS_NATURE,
                         IndoorOutdoorType.OUTDOOR, 43.6465, -79.4637, 6, 22),
@@ -93,9 +92,9 @@ class AutoScheduleWalkthroughTest {
     }
 
     private static AutoScheduleController wire(AppContainer app, DayPlanViewModel viewModel) {
-        final List<SoftPolicy> builtIn = Arrays.asList(new WeatherSuitabilityPolicy(),
+        List<SoftPolicy> builtIn = Arrays.asList(new WeatherSuitabilityPolicy(),
                 new MealWindowPolicy(), new DaylightPolicy());
-        final AutoScheduleInteractor interactor = new AutoScheduleInteractor(app.trips,
+        AutoScheduleInteractor interactor = new AutoScheduleInteractor(app.trips,
                 new DistanceServiceTravelTimeEstimator(new MockDistanceService()),
                 new WeatherServiceContextGateway(app.weather),
                 new AutoSchedulePresenter(viewModel), builtIn, new ScheduleEngine());
@@ -110,17 +109,17 @@ class AutoScheduleWalkthroughTest {
 
     @Test
     void theWholeDemoRunsThroughTheProductionWiring() {
-        final AppBuilder builder = new AppBuilder();
-        final AppContainer app = builder.buildOffline();
-        final Trip trip = app.trips.save(inefficientDay());
+        AppBuilder builder = new AppBuilder();
+        AppContainer app = builder.buildOffline();
+        Trip trip = app.trips.save(inefficientDay());
 
         // 1. A populated Day Plan opens.
-        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
-        final CalendarViewModel calendar = new CalendarViewModel(
+        CalendarViewModel calendar = new CalendarViewModel(
                 new DashboardViewModel(new DashboardState("Toronto", TRIP_DATE, "", "")),
                 viewModel, () -> TRIP_DATE);
-        final AutoScheduleController controller = wire(app, viewModel);
+        AutoScheduleController controller = wire(app, viewModel);
         assertEquals(3, viewModel.getState().getEvents().size());
         assertEquals(AutoScheduleStatus.IDLE, viewModel.getState().getStatus());
 
@@ -131,7 +130,7 @@ class AutoScheduleWalkthroughTest {
         // 4-5. Preview runs, and the real itinerary is untouched while it is on screen.
         controller.preview(settings(true,
                 new AutoScheduleSettings.Window(LocalTime.of(13, 0), LocalTime.of(14, 0))));
-        final DayPlanState previewing = viewModel.getState();
+        DayPlanState previewing = viewModel.getState();
         assertEquals(AutoScheduleStatus.PREVIEW, previewing.getStatus());
         assertEquals(LocalTime.of(9, 0),
                 app.trips.findById("demo-trip").orElseThrow()
@@ -144,19 +143,26 @@ class AutoScheduleWalkthroughTest {
         // 6. Metrics, an objective summary and reasons are all present.
         assertNotNull(previewing.getMetrics());
         assertEquals(3, previewing.getMetrics().getActivityCount());
-        assertTrue(previewing.getObjectiveSummary().contains("less travel"));
+        // Checked against this proposal's own figures rather than a fixed phrase: the summary
+        // may only claim a saving the metrics printed above it actually show.
+        String summary = previewing.getObjectiveSummary();
+        boolean travelFell = previewing.getMetrics().getTravelBeforeMinutes()
+                > previewing.getMetrics().getTravelAfterMinutes();
+        assertEquals(travelFell, summary.contains("less travel"),
+                "the summary and the figures must agree: " + summary);
+        assertFalse(summary.isEmpty(), "and it must say something");
         assertTrue(previewing.getPreviewRows().stream()
                         .anyMatch(row -> !row.getAllReasons().isEmpty()),
                 "at least one row should explain itself");
 
         // The pinned museum kept its time; nothing sits in the unavailable hour.
-        final PreviewRowView museum = previewing.getPreviewRows().stream()
+        PreviewRowView museum = previewing.getPreviewRows().stream()
                 .filter(row -> row.getEventId().equals("event-museum"))
                 .findFirst().orElseThrow(AssertionError::new);
         assertEquals(LocalTime.of(11, 0), museum.getStart());
         assertTrue(museum.isLocked());
         for (PreviewRowView row : previewing.getPreviewRows()) {
-            final boolean insideBlock = row.getStart().isBefore(LocalTime.of(14, 0))
+            boolean insideBlock = row.getStart().isBefore(LocalTime.of(14, 0))
                     && row.getEnd().isAfter(LocalTime.of(13, 0));
             assertFalse(insideBlock, row.getTitle() + " overlaps the unavailable hour");
         }
@@ -170,7 +176,7 @@ class AutoScheduleWalkthroughTest {
 
         // 8. Re-run and Apply: the Trip and the Calendar both follow.
         controller.preview(settings(true));
-        final int proposedRows = viewModel.getState().getPreviewRows().size();
+        int proposedRows = viewModel.getState().getPreviewRows().size();
         controller.apply();
         assertEquals(AutoScheduleStatus.APPLIED, viewModel.getState().getStatus());
         assertEquals(proposedRows,
@@ -185,18 +191,18 @@ class AutoScheduleWalkthroughTest {
 
     @Test
     void aStalePreviewIsRefused() {
-        final AppBuilder builder = new AppBuilder();
-        final AppContainer app = builder.buildOffline();
-        final Trip trip = app.trips.save(inefficientDay());
-        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        AppBuilder builder = new AppBuilder();
+        AppContainer app = builder.buildOffline();
+        Trip trip = app.trips.save(inefficientDay());
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
-        final AutoScheduleController controller = wire(app, viewModel);
+        AutoScheduleController controller = wire(app, viewModel);
 
         controller.preview(settings(true));
 
         // Something else edits the Day Plan after the preview was produced.
-        final Trip edited = inefficientDay();
-        final List<ScheduledEvent> moved = new ArrayList<>(edited.getScheduledEvents());
+        Trip edited = inefficientDay();
+        List<ScheduledEvent> moved = new ArrayList<>(edited.getScheduledEvents());
         moved.set(0, new ScheduledEvent(moved.get(0).getId(), moved.get(0).getActivity(),
                 LocalTime.of(10, 0), LocalTime.of(11, 0), EventType.ACTIVITY, ""));
         app.trips.save(edited.copyWithSchedule(moved));
@@ -209,19 +215,19 @@ class AutoScheduleWalkthroughTest {
 
     @Test
     void anImpossiblePinProducesAStructuredConflict() {
-        final AppBuilder builder = new AppBuilder();
-        final AppContainer app = builder.buildOffline();
-        final Trip trip = app.trips.save(inefficientDay());
-        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        AppBuilder builder = new AppBuilder();
+        AppContainer app = builder.buildOffline();
+        Trip trip = app.trips.save(inefficientDay());
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
-        final AutoScheduleController controller = wire(app, viewModel);
+        AutoScheduleController controller = wire(app, viewModel);
 
         // The museum is pinned at 11:00, inside an hour the traveller is unavailable.
         controller.toggleLock("event-museum");
         controller.preview(settings(true,
                 new AutoScheduleSettings.Window(LocalTime.of(10, 30), LocalTime.of(12, 0))));
 
-        final DayPlanState state = viewModel.getState();
+        DayPlanState state = viewModel.getState();
         assertEquals(AutoScheduleStatus.CONFLICT, state.getStatus());
         assertTrue(state.isError());
         assertTrue(state.getMessage().contains("Royal Ontario Museum"),
@@ -233,18 +239,18 @@ class AutoScheduleWalkthroughTest {
 
     @Test
     void anEmptyDayPlanAndAMissingTripBothStaySafe() {
-        final AppBuilder builder = new AppBuilder();
-        final AppContainer app = builder.buildOffline();
-        final Trip empty = app.trips.save(new Trip("demo-trip", "Toronto", TRIP_DATE,
+        AppBuilder builder = new AppBuilder();
+        AppContainer app = builder.buildOffline();
+        Trip empty = app.trips.save(new Trip("demo-trip", "Toronto", TRIP_DATE,
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING));
 
-        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 empty.getId(), empty.getScheduledEvents(), "", false));
         wire(app, viewModel).preview(settings(true));
         assertEquals(AutoScheduleStatus.FAILURE, viewModel.getState().getStatus());
         assertTrue(viewModel.getState().getMessage().contains("Add activities"));
 
-        final DayPlanViewModel noTrip = new DayPlanViewModel(
+        DayPlanViewModel noTrip = new DayPlanViewModel(
                 new DayPlanState("", Collections.emptyList(), "", false));
         wire(app, noTrip).preview(settings(true));
         assertEquals(AutoScheduleStatus.IDLE, noTrip.getState().getStatus(),
@@ -261,10 +267,10 @@ class AutoScheduleWalkthroughTest {
      */
     @Test
     void noWeatherCaveatIsShownNowThatTheForecastIsHourly() {
-        final AppBuilder builder = new AppBuilder();
-        final AppContainer app = builder.buildOffline();
-        final Trip trip = app.trips.save(inefficientDay());
-        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        AppBuilder builder = new AppBuilder();
+        AppContainer app = builder.buildOffline();
+        Trip trip = app.trips.save(inefficientDay());
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
 
         wire(app, viewModel).preview(settings(true));
@@ -285,12 +291,12 @@ class AutoScheduleWalkthroughTest {
      */
     @Test
     void theWeatherPreferenceIsOfferedThroughTheProductionWiring() {
-        final AppBuilder builder = new AppBuilder();
-        final AppContainer app = builder.buildOffline();
-        final Trip trip = app.trips.save(inefficientDay());
-        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        AppBuilder builder = new AppBuilder();
+        AppContainer app = builder.buildOffline();
+        Trip trip = app.trips.save(inefficientDay());
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
-        final AtomicReference<WeatherOption> answer = new AtomicReference<>();
+        AtomicReference<WeatherOption> answer = new AtomicReference<>();
 
         wire(app, viewModel).loadWeatherOption(answer::set);
 
@@ -309,19 +315,19 @@ class AutoScheduleWalkthroughTest {
      */
     @Test
     void theWeatherPreferenceIsStillWithheldWhenNoForecastIsUsable() {
-        final AppBuilder builder = new AppBuilder();
-        final AppContainer app = builder.buildOffline();
-        final Trip trip = app.trips.save(inefficientDay());
-        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        AppBuilder builder = new AppBuilder();
+        AppContainer app = builder.buildOffline();
+        Trip trip = app.trips.save(inefficientDay());
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
-        final AutoScheduleInteractor noForecast = new AutoScheduleInteractor(app.trips,
+        AutoScheduleInteractor noForecast = new AutoScheduleInteractor(app.trips,
                 new DistanceServiceTravelTimeEstimator(new MockDistanceService()),
                 anyTrip -> WeatherContext.unavailable(),
                 new AutoSchedulePresenter(viewModel),
                 Arrays.asList(new WeatherSuitabilityPolicy(), new MealWindowPolicy(),
                         new DaylightPolicy()),
                 new ScheduleEngine());
-        final AtomicReference<WeatherOption> answer = new AtomicReference<>();
+        AtomicReference<WeatherOption> answer = new AtomicReference<>();
 
         new AutoScheduleController(noForecast, viewModel, TaskRunner.immediate())
                 .loadWeatherOption(answer::set);
@@ -339,21 +345,21 @@ class AutoScheduleWalkthroughTest {
      */
     @Test
     void anActivityAddedToThePlanLaterIsScheduledWithNoAutoscheduleChange() {
-        final AppBuilder builder = new AppBuilder();
-        final AppContainer app = builder.buildOffline();
-        final Trip trip = app.trips.save(inefficientDay());
+        AppBuilder builder = new AppBuilder();
+        AppContainer app = builder.buildOffline();
+        Trip trip = app.trips.save(inefficientDay());
 
         // Stands in for add-to-plan: a fourth activity appears in the Trip afterwards.
-        final List<ScheduledEvent> grown = new ArrayList<>(trip.getScheduledEvents());
+        List<ScheduledEvent> grown = new ArrayList<>(trip.getScheduledEvents());
         grown.add(new ScheduledEvent("event-gallery",
                 activity("gallery", "Art Gallery of Ontario", ActivityCategory.MUSEUM,
                         IndoorOutdoorType.INDOOR, 43.6536, -79.3925, 10, 17),
                 LocalTime.of(16, 30), LocalTime.of(17, 0), EventType.ACTIVITY, ""));
-        final Trip larger = app.trips.save(trip.copyWithSchedule(grown));
+        Trip larger = app.trips.save(trip.copyWithSchedule(grown));
 
-        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 larger.getId(), larger.getScheduledEvents(), "", false));
-        final AutoScheduleController controller = wire(app, viewModel);
+        AutoScheduleController controller = wire(app, viewModel);
 
         controller.preview(settings(true));
 
@@ -375,23 +381,23 @@ class AutoScheduleWalkthroughTest {
      */
     @Test
     void anHourlyGatewayWouldOfferThePreferenceWithNoOtherChange() {
-        final AppBuilder builder = new AppBuilder();
-        final AppContainer app = builder.buildOffline();
-        final Trip trip = app.trips.save(inefficientDay());
-        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        AppBuilder builder = new AppBuilder();
+        AppContainer app = builder.buildOffline();
+        Trip trip = app.trips.save(inefficientDay());
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
-        final Map<Integer, WeatherSeverity> byHour = new HashMap<>();
+        Map<Integer, WeatherSeverity> byHour = new HashMap<>();
         for (int hour = 0; hour < 24; hour++) {
             byHour.put(hour, WeatherSeverity.LOW);
         }
-        final AutoScheduleInteractor hourly = new AutoScheduleInteractor(app.trips,
+        AutoScheduleInteractor hourly = new AutoScheduleInteractor(app.trips,
                 new DistanceServiceTravelTimeEstimator(new MockDistanceService()),
                 anyTrip -> WeatherContext.hourly(byHour),
                 new AutoSchedulePresenter(viewModel),
                 Arrays.asList(new WeatherSuitabilityPolicy(), new MealWindowPolicy(),
                         new DaylightPolicy()),
                 new ScheduleEngine());
-        final AtomicReference<WeatherOption> answer = new AtomicReference<>();
+        AtomicReference<WeatherOption> answer = new AtomicReference<>();
 
         new AutoScheduleController(hourly, viewModel, TaskRunner.immediate())
                 .loadWeatherOption(answer::set);

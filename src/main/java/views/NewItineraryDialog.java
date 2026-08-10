@@ -17,13 +17,6 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Ellipse2D;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,28 +39,22 @@ import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import entity.entities.User;
+import use_case.ports.CityCandidate;
+import use_case.ports.CitySearchGeocoder;
 
 /**
  * Modal "New Itinerary" form combining a live city autocomplete with a trip-date picker.
  *
- * <p>Candidates come from Open-Meteo's geocoding API and expand downward beneath the city
- * field while the user types, one option per row, so ambiguous names surface as separate
- * options (e.g. "London, Ontario, Canada" vs "London, England, UK"). The user must pick a
- * suggested city before the itinerary can be created.</p>
+ * <p>Candidates come from the injected {@link CitySearchGeocoder} and expand downward beneath
+ * the city field while the user types, one option per row, so ambiguous names surface as
+ * separate options (e.g. "London, Ontario, Canada" vs "London, England, UK"). The user must
+ * pick a suggested city before the itinerary can be created.</p>
  */
 public final class NewItineraryDialog extends JDialog {
-    private static final String GEOCODING_ENDPOINT =
-            "https://geocoding-api.open-meteo.com/v1/search";
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(8);
     private static final int MAX_SUGGESTIONS = 8;
     private static final int CELL_HEIGHT = 28;
     private static final int VISIBLE_ROWS = 4;
-    private static final HttpClient HTTP = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5)).build();
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final JTextField cityField = new JTextField();
     private final DefaultListModel<String> suggestionModel = new DefaultListModel<>();
@@ -78,19 +65,24 @@ public final class NewItineraryDialog extends JDialog {
     private final JButton okButton = SwingTheme.primaryButton("Create Itinerary");
     private final Timer debounce = new Timer(400, e -> loadSuggestions(cityField.getText().trim()));
 
-    private List<Suggestion> suggestions = Collections.emptyList();
-    private Suggestion selected;
+    private List<CityCandidate> suggestions = Collections.emptyList();
+    private CityCandidate selected;
     private boolean confirmed;
     private boolean programmaticUpdate;
     private final Set<String> selectedFriendIds = new LinkedHashSet<>();
     private final List<User> friends;
+    private final CitySearchGeocoder geocoder;
 
-    public NewItineraryDialog(Frame owner) {
-        this(owner, Collections.emptyList());
+    public NewItineraryDialog(Frame owner, CitySearchGeocoder geocoder) {
+        this(owner, geocoder, Collections.emptyList());
     }
 
-    public NewItineraryDialog(Frame owner, List<User> friends) {
+    public NewItineraryDialog(Frame owner, CitySearchGeocoder geocoder, List<User> friends) {
         super(owner, "New Itinerary", true);
+        if (geocoder == null) {
+            throw new IllegalArgumentException("City search geocoder is required");
+        }
+        this.geocoder = geocoder;
         this.friends = friends == null ? Collections.emptyList() : new ArrayList<>(friends);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         debounce.setRepeats(false);
@@ -104,11 +96,11 @@ public final class NewItineraryDialog extends JDialog {
         suggestionScroll.setMinimumSize(new Dimension(320, CELL_HEIGHT * VISIBLE_ROWS + 8));
         suggestionScroll.setVisible(false);
 
-        final JPanel form = new JPanel(new GridBagLayout());
+        JPanel form = new JPanel(new GridBagLayout());
         form.setBackground(SwingTheme.BACKGROUND);
         form.setBorder(BorderFactory.createEmptyBorder(20, 22, 10, 22));
 
-        final GridBagConstraints gbc = new GridBagConstraints();
+        GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1;
@@ -148,7 +140,7 @@ public final class NewItineraryDialog extends JDialog {
 
             gbc.gridy = nextRow++;
             gbc.insets = new Insets(0, 0, 6, 0);
-            final JLabel friendsHint = new JLabel(
+            JLabel friendsHint = new JLabel(
                     "Select friends to share this itinerary. They can view and edit it when signed in.");
             friendsHint.setFont(SwingTheme.SMALL);
             friendsHint.setForeground(SwingTheme.MUTED);
@@ -159,19 +151,19 @@ public final class NewItineraryDialog extends JDialog {
             form.add(buildFriendsPicker(), gbc);
         }
 
-        final JButton cancel = new JButton("Cancel");
+        JButton cancel = new JButton("Cancel");
         cancel.setFont(SwingTheme.BODY);
         cancel.addActionListener(e -> dispose());
 
         okButton.setEnabled(false);
         okButton.addActionListener(e -> confirm());
 
-        final JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttons.setOpaque(false);
         buttons.add(cancel);
         buttons.add(okButton);
 
-        final JPanel content = new JPanel(new BorderLayout(0, 8));
+        JPanel content = new JPanel(new BorderLayout(0, 8));
         content.setBackground(SwingTheme.BACKGROUND);
         content.setBorder(BorderFactory.createEmptyBorder(0, 0, 16, 0));
         content.add(form, BorderLayout.CENTER);
@@ -184,22 +176,14 @@ public final class NewItineraryDialog extends JDialog {
         setLocationRelativeTo(owner);
 
         cityField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) {
-                onCityTyped();
-            }
-
-            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) {
-                onCityTyped();
-            }
-
-            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) {
-                onCityTyped();
-            }
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { onCityTyped(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { onCityTyped(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { onCityTyped(); }
         });
         suggestionList.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                final int index = suggestionList.locationToIndex(e.getPoint());
+                int index = suggestionList.locationToIndex(e.getPoint());
                 if (index >= 0 && index < suggestions.size()) {
                     select(suggestions.get(index));
                 }
@@ -218,17 +202,14 @@ public final class NewItineraryDialog extends JDialog {
                 if (e.getKeyCode() == KeyEvent.VK_DOWN) {
                     moveHighlight(1);
                     e.consume();
-                }
-                else if (e.getKeyCode() == KeyEvent.VK_UP) {
+                } else if (e.getKeyCode() == KeyEvent.VK_UP) {
                     moveHighlight(-1);
                     e.consume();
-                }
-                else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    final int index = suggestionList.getSelectedIndex();
+                } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    int index = suggestionList.getSelectedIndex();
                     if (index >= 0 && index < suggestions.size()) {
                         select(suggestions.get(index));
-                    }
-                    else {
+                    } else {
                         statusLabel.setText("Pick a city from the list, then create the itinerary.");
                     }
                     e.consume();
@@ -237,18 +218,12 @@ public final class NewItineraryDialog extends JDialog {
         });
     }
 
-    /**
-     * True when the user confirmed a city and the dialog should be treated as submitted.
-     * @return the result of the operation
-     */
+    /** True when the user confirmed a city and the dialog should be treated as submitted. */
     public boolean isConfirmed() {
         return confirmed;
     }
-    /**
-     * The fully qualified destination chosen by the user (e.g. "London, Ontario, Canada").
-     * @return the result of the operation
-     */
 
+    /** The fully qualified destination chosen by the user (e.g. "London, Ontario, Canada"). */
     public String getDestination() {
         return selected == null ? null : displayName(selected);
     }
@@ -256,13 +231,10 @@ public final class NewItineraryDialog extends JDialog {
     public LocalDate getDate() {
         return datePicker.getDate();
     }
-    /**
-     * Friends selected to share/edit this itinerary.
-     * @return the result of the operation
-     */
 
+    /** Friends selected to share/edit this itinerary. */
     public List<User> getSelectedFriends() {
-        final List<User> selectedFriends = new ArrayList<>();
+        List<User> selectedFriends = new ArrayList<>();
         for (User friend : friends) {
             if (selectedFriendIds.contains(friend.getId())) {
                 selectedFriends.add(friend);
@@ -276,7 +248,7 @@ public final class NewItineraryDialog extends JDialog {
     }
 
     private JScrollPane buildFriendsPicker() {
-        final JPanel list = new JPanel();
+        JPanel list = new JPanel();
         list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
         list.setBackground(SwingTheme.PANEL);
         list.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
@@ -284,7 +256,7 @@ public final class NewItineraryDialog extends JDialog {
             list.add(new FriendRow(friend));
             list.add(Box.createVerticalStrut(6));
         }
-        final JScrollPane scroll = new JScrollPane(list);
+        JScrollPane scroll = new JScrollPane(list);
         scroll.setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
         scroll.setPreferredSize(new Dimension(520, 140));
         scroll.setMinimumSize(new Dimension(320, 140));
@@ -305,7 +277,7 @@ public final class NewItineraryDialog extends JDialog {
             setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
             add(new CircularCheck(this));
             add(new JLabel(AvatarSupport.iconFor(friend, 28)));
-            final JLabel name = new JLabel("@" + friend.getUsername());
+            JLabel name = new JLabel("@" + friend.getUsername());
             name.setFont(SwingTheme.BODY);
             name.setForeground(SwingTheme.NAVY);
             add(name);
@@ -322,8 +294,7 @@ public final class NewItineraryDialog extends JDialog {
             if (selectedFriend) {
                 selectedFriendIds.add(friend.getId());
                 setBackground(SwingTheme.BLUE_SOFT);
-            }
-            else {
+            } else {
                 selectedFriendIds.remove(friend.getId());
                 setBackground(SwingTheme.BACKGROUND);
             }
@@ -346,19 +317,18 @@ public final class NewItineraryDialog extends JDialog {
 
         @Override
         protected void paintComponent(Graphics g) {
-            final Graphics2D g2 = (Graphics2D) g.create();
+            Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            final int size = Math.min(getWidth(), getHeight()) - 2;
-            final int x = (getWidth() - size) / 2;
-            final int y = (getHeight() - size) / 2;
+            int size = Math.min(getWidth(), getHeight()) - 2;
+            int x = (getWidth() - size) / 2;
+            int y = (getHeight() - size) / 2;
             if (row.isSelectedFriend()) {
                 g2.setColor(SwingTheme.BLUE);
                 g2.fill(new Ellipse2D.Float(x, y, size, size));
                 g2.setColor(Color.WHITE);
                 g2.drawLine(x + 5, y + size / 2, x + size / 2 - 1, y + size - 5);
                 g2.drawLine(x + size / 2 - 1, y + size - 5, x + size - 5, y + 5);
-            }
-            else {
+            } else {
                 g2.setColor(SwingTheme.PANEL);
                 g2.fill(new Ellipse2D.Float(x, y, size, size));
                 g2.setColor(SwingTheme.LINE);
@@ -369,12 +339,10 @@ public final class NewItineraryDialog extends JDialog {
     }
 
     private void onCityTyped() {
-        if (programmaticUpdate) {
-            return;
-        }
+        if (programmaticUpdate) return;
         selected = null;
         okButton.setEnabled(false);
-        final String query = cityField.getText().trim();
+        String query = cityField.getText().trim();
         if (query.isEmpty()) {
             suggestionModel.clear();
             suggestions = Collections.emptyList();
@@ -388,62 +356,40 @@ public final class NewItineraryDialog extends JDialog {
     }
 
     private void loadSuggestions(String query) {
-        if (query == null || query.isBlank()) {
-            return;
-        }
+        if (query == null || query.isBlank()) return;
         new Thread(() -> {
+            List<CityCandidate> results;
             try {
-                final String url = GEOCODING_ENDPOINT + "?name="
-                        + URLEncoder.encode(query, StandardCharsets.UTF_8)
-                        + "&count=" + MAX_SUGGESTIONS + "&language=en&format=json";
-                final HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-                        .timeout(REQUEST_TIMEOUT)
-                        .header("Accept", "application/json")
-                        .header("User-Agent", "Trippy-CSC207/1.0")
-                        .GET().build();
-                final HttpResponse<String> response = HTTP.send(request,
-                        HttpResponse.BodyHandlers.ofString());
-                final List<Suggestion> result = new ArrayList<>();
-                if (response.statusCode() == 200) {
-                    final SuggestionsResponse parsed =
-                            MAPPER.readValue(response.body(), SuggestionsResponse.class);
-                    if (parsed.results != null) {
-                        result.addAll(parsed.results);
-                    }
-                }
-                final List<Suggestion> finalResults = result;
-                SwingUtilities.invokeLater(() -> applySuggestions(query, finalResults));
+                results = geocoder.search(query, MAX_SUGGESTIONS);
             }
-            catch (Exception ignored) {
-                SwingUtilities.invokeLater(() -> applySuggestions(query, Collections.emptyList()));
+            catch (RuntimeException exception) {
+                results = Collections.emptyList();
             }
+            final List<CityCandidate> captured = results;
+            SwingUtilities.invokeLater(() -> applySuggestions(query, captured));
         }, "City-Suggestions").start();
     }
 
-    private void applySuggestions(String query, List<Suggestion> results) {
+    private void applySuggestions(String query, List<CityCandidate> results) {
         if (!query.equals(cityField.getText().trim())) {
             return;
         }
         suggestions = results;
         suggestionModel.clear();
-        for (Suggestion s : results) {
-            suggestionModel.addElement(displayName(s));
+        for (CityCandidate candidate : results) {
+            suggestionModel.addElement(displayName(candidate));
         }
         if (results.isEmpty()) {
             statusLabel.setText("No matches for \"" + query + "\".");
             setSuggestionsVisible(false);
-        }
-        else {
+        } else {
             statusLabel.setText(results.size() + " match(es). Click a city to select it.");
             suggestionList.clearSelection();
             setSuggestionsVisible(true);
         }
     }
 
-    /**
-     * Shows or hides the suggestions below the field, growing the dialog to fit them.
-     * @param visible the v is ib le value
-     */
+    /** Shows or hides the suggestions below the field, growing the dialog to fit them. */
     private void setSuggestionsVisible(boolean visible) {
         if (suggestionScroll.isVisible() == visible) {
             return;
@@ -461,23 +407,23 @@ public final class NewItineraryDialog extends JDialog {
         }
     }
 
-    private void select(Suggestion s) {
-        selected = s;
+    private void select(CityCandidate candidate) {
+        selected = candidate;
         programmaticUpdate = true;
-        cityField.setText(displayName(s));
+        cityField.setText(displayName(candidate));
         programmaticUpdate = false;
         okButton.setEnabled(true);
-        statusLabel.setText("Selected " + displayName(s) + ".");
+        statusLabel.setText("Selected " + displayName(candidate) + ".");
         setSuggestionsVisible(false);
     }
 
     private void moveHighlight(int delta) {
-        final int size = suggestionModel.size();
+        int size = suggestionModel.size();
         if (size == 0) {
             return;
         }
-        final int index = suggestionList.getSelectedIndex();
-        final int next = index < 0 ? 0 : Math.max(0, Math.min(size - 1, index + delta));
+        int index = suggestionList.getSelectedIndex();
+        int next = index < 0 ? 0 : Math.max(0, Math.min(size - 1, index + delta));
         suggestionList.setSelectedIndex(next);
         suggestionList.ensureIndexIsVisible(next);
     }
@@ -492,36 +438,27 @@ public final class NewItineraryDialog extends JDialog {
     }
 
     private JLabel label(String text) {
-        final JLabel label = new JLabel(text);
+        JLabel label = new JLabel(text);
         label.setFont(SwingTheme.BODY.deriveFont(java.awt.Font.BOLD));
         label.setForeground(SwingTheme.NAVY);
         return label;
     }
 
-    private static String displayName(Suggestion s) {
-        final String name = s.name == null || s.name.isBlank() ? "Unknown" : s.name;
-        final StringBuilder b = new StringBuilder(name);
-        if (s.admin1 != null && !s.admin1.isBlank() && !s.admin1.equalsIgnoreCase(name)) {
-            b.append(", ").append(s.admin1);
+    private static String displayName(CityCandidate candidate) {
+        String name = candidate.getName();
+        if (name == null || name.isBlank()) {
+            name = "Unknown";
         }
-        if (s.country != null && !s.country.isBlank()
-                && (s.admin1 == null || !s.country.equalsIgnoreCase(s.admin1))) {
-            b.append(", ").append(s.country);
+        StringBuilder b = new StringBuilder(name);
+        if (candidate.getRegion() != null && !candidate.getRegion().isBlank()
+                && !candidate.getRegion().equalsIgnoreCase(name)) {
+            b.append(", ").append(candidate.getRegion());
+        }
+        if (candidate.getCountry() != null && !candidate.getCountry().isBlank()
+                && (candidate.getRegion() == null
+                        || !candidate.getCountry().equalsIgnoreCase(candidate.getRegion()))) {
+            b.append(", ").append(candidate.getCountry());
         }
         return b.toString();
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private static final class SuggestionsResponse {
-        public List<Suggestion> results;
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private static final class Suggestion {
-        public String name;
-        public String admin1;
-        public String country;
-        public Double latitude;
-        public Double longitude;
     }
 }

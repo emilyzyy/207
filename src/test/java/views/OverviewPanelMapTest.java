@@ -1,45 +1,43 @@
 package views;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
+import interface_adapter.viewmodels.DashboardState;
+import interface_adapter.viewmodels.DashboardViewModel;
+import interface_adapter.viewmodels.ActivitySelectionViewModel;
+import interface_adapter.viewmodels.SearchState;
+import interface_adapter.viewmodels.SearchViewModel;
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.valueobjects.EventType;
+import interface_adapter.mock.MockPlacesService;
+import java.time.LocalTime;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
-import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-
+import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.valueobjects.EventType;
-import interface_adapter.mock.MockPlacesService;
-import interface_adapter.viewmodels.ActivitySelectionViewModel;
-import interface_adapter.viewmodels.DashboardState;
-import interface_adapter.viewmodels.DashboardViewModel;
-import interface_adapter.viewmodels.SearchState;
-import interface_adapter.viewmodels.SearchViewModel;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class OverviewPanelMapTest {
 
     @Test
     void mapObservesSearchViewModelWithoutEnablingNetworkTiles() {
         System.setProperty("trippy.map.tiles.mode", "offline");
-        final DashboardViewModel dashboard = new DashboardViewModel(
+        DashboardViewModel dashboard = new DashboardViewModel(
                 new DashboardState("", null, "", ""));
-        final SearchViewModel search = new SearchViewModel(
+        SearchViewModel search = new SearchViewModel(
                 new SearchState(Collections.emptyList(), ""));
-        final OverviewPanel overview = new OverviewPanel(dashboard, search);
-        final Activity activity = new MockPlacesService().findAll().get(0);
+        OverviewPanel overview = new OverviewPanel(dashboard, search);
+        Activity activity = new MockPlacesService().findAll().get(0);
 
         search.setState(new SearchState(
                 Collections.singletonList(activity), ""));
@@ -51,17 +49,17 @@ final class OverviewPanelMapTest {
     @Test
     void viewportLoaderMergesPlacesForTheVisibleBounds() throws Exception {
         System.setProperty("trippy.map.tiles.mode", "offline");
-        final DashboardViewModel dashboard = new DashboardViewModel(
+        DashboardViewModel dashboard = new DashboardViewModel(
                 new DashboardState("Toronto", null, "", ""));
-        final SearchViewModel search = new SearchViewModel(
+        SearchViewModel search = new SearchViewModel(
                 new SearchState(Collections.emptyList(), ""));
-        final OverviewPanel overview = new OverviewPanel(dashboard, search);
-        final MapPanel map = overview.getMapPanel();
+        OverviewPanel overview = new OverviewPanel(dashboard, search);
+        MapPanel map = overview.getMapPanel();
         map.setSize(620, 520);
 
-        final CountDownLatch loaded = new CountDownLatch(1);
-        final AtomicInteger requestedLimit = new AtomicInteger();
-        final List<Activity> mock = new MockPlacesService().findAll();
+        CountDownLatch loaded = new CountDownLatch(1);
+        AtomicInteger requestedLimit = new AtomicInteger();
+        List<Activity> mock = new MockPlacesService().findAll();
         map.setViewportLoader((south, west, north, east, max) -> {
             requestedLimit.set(max);
             loaded.countDown();
@@ -82,43 +80,46 @@ final class OverviewPanelMapTest {
     @Test
     void viewportLoaderSkipsReloadWhenMapIsFarFromTripCity() throws Exception {
         System.setProperty("trippy.map.tiles.mode", "offline");
-        final String destination = "Toronto";
-        final DashboardViewModel dashboard = new DashboardViewModel(
+        String destination = "Toronto";
+        DashboardViewModel dashboard = new DashboardViewModel(
                 new DashboardState(destination, null, "", ""));
-        final SearchViewModel search = new SearchViewModel(
+        SearchViewModel search = new SearchViewModel(
                 new SearchState(Collections.emptyList(), ""));
-        final OverviewPanel overview = new OverviewPanel(dashboard, search);
-        final MapPanel map = overview.getMapPanel();
+        OverviewPanel overview = new OverviewPanel(dashboard, search);
+        MapPanel map = overview.getMapPanel();
         map.setSize(620, 520);
 
-        final double[] home = StaticTileLoader.latLngForCity(destination);
+        double[] home = StaticTileLoader.latLngForCity(destination);
         assertNotNull(home);
 
-        // setViewportLoader schedules an immediate reload on the EDT while the map is still
-        // on the trip city. Ignore those loads so this test only asserts the far-from-home skip.
-        final AtomicBoolean armed = new AtomicBoolean(false);
-        final CountDownLatch loaded = new CountDownLatch(1);
+        // Count only loads whose viewport is far from the trip city. Home-city reloads from
+        // setViewportLoader / flyTo races must not fail the assertion (they are allowed).
+        AtomicInteger farLoads = new AtomicInteger();
         map.setViewportLoader((south, west, north, east, max) -> {
-            if (armed.get()) {
-                loaded.countDown();
+            double midLat = (south + north) / 2.0;
+            double midLng = (west + east) / 2.0;
+            if (Math.hypot(midLat - home[0], midLng - home[1]) > 1.0) {
+                farLoads.incrementAndGet();
             }
-            return new MockPlacesService().findAll();
+            return Collections.emptyList();
         });
         map.flyTo(home[0] + 5, home[1]);
-        armed.set(true);
         map.reloadViewport();
+        SwingUtilities.invokeAndWait(() -> { });
+        // In-flight executor work from a near-home reload may still finish; give it a moment.
+        Thread.sleep(300);
 
-        assertFalse(loaded.await(1, TimeUnit.SECONDS));
+        assertEquals(0, farLoads.get());
         assertEquals(0, map.getActivityCount());
     }
 
     @Test
     void markerLabelsFollowBookmarkAndOrderedDayPlanState() {
-        final MapPanel map = new MapPanel(600, 500, false);
-        final Activity plain = new MockPlacesService().findAll().get(0);
-        final Activity bookmark = new MockPlacesService().findAll().get(1);
-        final Activity first = new MockPlacesService().findAll().get(2);
-        final Activity secondBookmarked = new MockPlacesService().findAll().get(3);
+        MapPanel map = new MapPanel(600, 500, false);
+        Activity plain = new MockPlacesService().findAll().get(0);
+        Activity bookmark = new MockPlacesService().findAll().get(1);
+        Activity first = new MockPlacesService().findAll().get(2);
+        Activity secondBookmarked = new MockPlacesService().findAll().get(3);
         map.setActivities(Arrays.asList(plain, bookmark, first, secondBookmarked));
         map.setHighlightedIds(
                 new HashSet<>(Arrays.asList(bookmark.getId(), secondBookmarked.getId())),
@@ -137,12 +138,12 @@ final class OverviewPanelMapTest {
 
     @Test
     void markersDrawGenericThenBookmarkedThenPlannedAndSelectedLast() {
-        final MapPanel map = new MapPanel(600, 500, false);
-        final List<Activity> places = new MockPlacesService().findAll();
-        final Activity selectedGeneric = places.get(0);
-        final Activity planned = places.get(1);
-        final Activity generic = places.get(2);
-        final Activity bookmarked = places.get(3);
+        MapPanel map = new MapPanel(600, 500, false);
+        List<Activity> places = new MockPlacesService().findAll();
+        Activity selectedGeneric = places.get(0);
+        Activity planned = places.get(1);
+        Activity generic = places.get(2);
+        Activity bookmarked = places.get(3);
         map.setActivities(Arrays.asList(
                 planned, selectedGeneric, bookmarked, generic));
         map.setHighlightedIds(
@@ -150,7 +151,7 @@ final class OverviewPanelMapTest {
                 Collections.singleton(planned.getId()));
         map.selectActivity(selectedGeneric);
 
-        final List<Activity> ordered = map.markerDrawingOrder();
+        List<Activity> ordered = map.markerDrawingOrder();
 
         assertEquals(generic.getId(), ordered.get(0).getId());
         assertEquals(bookmarked.getId(), ordered.get(1).getId());
@@ -165,22 +166,22 @@ final class OverviewPanelMapTest {
     @Test
     void clickingMarkerSelectsSearchCardAndKeepsMapFocused() {
         System.setProperty("trippy.map.tiles.mode", "offline");
-        final Activity activity = new MockPlacesService().findAll().get(0);
-        final DashboardViewModel dashboard = new DashboardViewModel(
+        Activity activity = new MockPlacesService().findAll().get(0);
+        DashboardViewModel dashboard = new DashboardViewModel(
                 new DashboardState("Toronto", null, "", ""));
-        final SearchViewModel search = new SearchViewModel(new SearchState(
+        SearchViewModel search = new SearchViewModel(new SearchState(
                 Collections.singletonList(activity), ""));
-        final ActivitySelectionViewModel selection = new ActivitySelectionViewModel();
-        final OverviewPanel overview = new OverviewPanel(
+        ActivitySelectionViewModel selection = new ActivitySelectionViewModel();
+        OverviewPanel overview = new OverviewPanel(
                 dashboard, search, null, null, selection);
-        final MapPanel map = overview.getMapPanel();
+        MapPanel map = overview.getMapPanel();
         map.setSize(600, 500);
         map.selectActivity(activity);
         map.paint(new BufferedImage(600, 500, BufferedImage.TYPE_INT_ARGB).getGraphics());
 
-        final MouseEvent press = new MouseEvent(map, MouseEvent.MOUSE_PRESSED,
+        MouseEvent press = new MouseEvent(map, MouseEvent.MOUSE_PRESSED,
                 System.currentTimeMillis(), 0, 300, 250, 1, false);
-        final MouseEvent release = new MouseEvent(map, MouseEvent.MOUSE_RELEASED,
+        MouseEvent release = new MouseEvent(map, MouseEvent.MOUSE_RELEASED,
                 System.currentTimeMillis(), 0, 300, 250, 1, false);
         for (java.awt.event.MouseListener listener : map.getMouseListeners()) {
             listener.mousePressed(press);

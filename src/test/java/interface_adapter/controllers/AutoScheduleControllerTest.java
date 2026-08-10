@@ -6,6 +6,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import interface_adapter.viewmodels.AutoScheduleStatus;
+import interface_adapter.viewmodels.DayPlanState;
+import interface_adapter.viewmodels.DayPlanViewModel;
+import interface_adapter.viewmodels.PreviewRowView;
+import use_case.autoschedule.AutoScheduleApplyInputData;
+import use_case.autoschedule.AutoScheduleInputBoundary;
+import use_case.autoschedule.AutoScheduleInputData;
+import use_case.autoschedule.ProposedEventData;
+import entity.valueobjects.WeatherOption;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,25 +26,20 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-
 import javax.swing.SwingUtilities;
-
 import org.junit.jupiter.api.Test;
-
-import entity.valueobjects.WeatherOption;
-import interface_adapter.viewmodels.AutoScheduleStatus;
-import interface_adapter.viewmodels.DayPlanState;
-import interface_adapter.viewmodels.DayPlanViewModel;
-import interface_adapter.viewmodels.PreviewRowView;
-import use_case.autoschedule.AutoScheduleApplyInputData;
-import use_case.autoschedule.AutoScheduleInputBoundary;
-import use_case.autoschedule.AutoScheduleInputData;
-import use_case.autoschedule.ProposedEventData;
 
 class AutoScheduleControllerTest {
 
     /** Captures what the controller handed across the boundary. */
     private static final class RecordingUseCase implements AutoScheduleInputBoundary {
+        @Override
+        public void removeFromProposal(use_case.autoschedule.ProposalEditInputData inputData) {
+            removedFromProposal.add(inputData == null ? "" : inputData.getRemoveEventId());
+        }
+
+        final java.util.List<String> removedFromProposal = new java.util.ArrayList<>();
+
         private AutoScheduleInputData previewInput;
         private AutoScheduleApplyInputData applyInput;
         private int previewCalls;
@@ -79,12 +83,12 @@ class AutoScheduleControllerTest {
 
     @Test
     void previewPassesThePlainSettingsStraightThrough() {
-        final DayPlanViewModel viewModel = viewModel("trip-1");
+        DayPlanViewModel viewModel = viewModel("trip-1");
 
         controllerFor(viewModel).preview(settings(true,
                 new AutoScheduleSettings.Window(LocalTime.of(12, 0), LocalTime.of(13, 0))));
 
-        final AutoScheduleInputData input = useCase.previewInput;
+        AutoScheduleInputData input = useCase.previewInput;
         assertNotNull(input);
         assertEquals("trip-1", input.getTripId());
         assertEquals(LocalTime.of(10, 0), input.getAvailableStart());
@@ -100,7 +104,7 @@ class AutoScheduleControllerTest {
 
     @Test
     void previewCarriesTheWeatherChoiceBothWays() {
-        final DayPlanViewModel viewModel = viewModel("trip-1");
+        DayPlanViewModel viewModel = viewModel("trip-1");
 
         controllerFor(viewModel).preview(new AutoScheduleSettings(LocalTime.of(10, 0),
                 LocalTime.of(18, 0), Collections.emptyList(),
@@ -114,13 +118,13 @@ class AutoScheduleControllerTest {
 
     @Test
     void theWeatherCapabilityLookupGoesThroughTheTaskRunner() {
-        final DayPlanViewModel viewModel = viewModel("trip-1");
-        final AtomicInteger runnerCalls = new AtomicInteger();
-        final TaskRunner counting = work -> {
+        DayPlanViewModel viewModel = viewModel("trip-1");
+        AtomicInteger runnerCalls = new AtomicInteger();
+        TaskRunner counting = work -> {
             runnerCalls.incrementAndGet();
             work.run();
         };
-        final AtomicReference<WeatherOption> answer = new AtomicReference<>();
+        AtomicReference<WeatherOption> answer = new AtomicReference<>();
 
         new AutoScheduleController(useCase, viewModel, counting).loadWeatherOption(answer::set);
 
@@ -132,10 +136,10 @@ class AutoScheduleControllerTest {
 
     @Test
     void theWeatherCapabilityLookupNeverRunsOnTheEventThread() throws Exception {
-        final DayPlanViewModel viewModel = viewModel("trip-1");
-        final AtomicBoolean ranOnEventThread = new AtomicBoolean(true);
-        final CountDownLatch answered = new CountDownLatch(1);
-        final AutoScheduleController controller =
+        DayPlanViewModel viewModel = viewModel("trip-1");
+        AtomicBoolean ranOnEventThread = new AtomicBoolean(true);
+        CountDownLatch answered = new CountDownLatch(1);
+        AutoScheduleController controller =
                 new AutoScheduleController(useCase, viewModel, new SwingTaskRunner());
 
         SwingUtilities.invokeAndWait(() -> controller.loadWeatherOption(option -> {
@@ -150,7 +154,7 @@ class AutoScheduleControllerTest {
 
     @Test
     void aTripLessViewOffersNoWeatherPreferenceAndAsksNobody() {
-        final AtomicReference<WeatherOption> answer = new AtomicReference<>();
+        AtomicReference<WeatherOption> answer = new AtomicReference<>();
 
         controllerFor(viewModel("")).loadWeatherOption(answer::set);
 
@@ -160,8 +164,8 @@ class AutoScheduleControllerTest {
 
     @Test
     void previewCarriesThePinnedActivities() {
-        final DayPlanViewModel viewModel = viewModel("trip-1");
-        final AutoScheduleController controller = controllerFor(viewModel);
+        DayPlanViewModel viewModel = viewModel("trip-1");
+        AutoScheduleController controller = controllerFor(viewModel);
         controller.toggleLock("dinner");
 
         controller.preview(settings(true));
@@ -179,8 +183,8 @@ class AutoScheduleControllerTest {
 
     @Test
     void previewShowsThatWorkIsUnderWay() {
-        final DayPlanViewModel viewModel = viewModel("trip-1");
-        final List<AutoScheduleStatus> seen = new ArrayList<>();
+        DayPlanViewModel viewModel = viewModel("trip-1");
+        List<AutoScheduleStatus> seen = new ArrayList<>();
         viewModel.addPropertyChangeListener(event -> seen.add(viewModel.getState().getStatus()));
 
         controllerFor(viewModel).preview(settings(true));
@@ -198,9 +202,9 @@ class AutoScheduleControllerTest {
 
     @Test
     void theSlowWorkIsHandedToTheRunnerRatherThanRunInline() {
-        final DayPlanViewModel viewModel = viewModel("trip-1");
-        final List<Runnable> deferred = new ArrayList<>();
-        final AutoScheduleController controller =
+        DayPlanViewModel viewModel = viewModel("trip-1");
+        List<Runnable> deferred = new ArrayList<>();
+        AutoScheduleController controller =
                 new AutoScheduleController(useCase, viewModel, deferred::add);
 
         controller.preview(settings(true));
@@ -216,17 +220,17 @@ class AutoScheduleControllerTest {
 
     @Test
     void applySendsBackExactlyWhatIsOnScreen() {
-        final DayPlanViewModel viewModel = viewModel("trip-1");
+        DayPlanViewModel viewModel = viewModel("trip-1");
         viewModel.setState(previewing(viewModel.getState()));
 
         controllerFor(viewModel).apply();
 
-        final AutoScheduleApplyInputData input = useCase.applyInput;
+        AutoScheduleApplyInputData input = useCase.applyInput;
         assertNotNull(input);
         assertEquals("trip-1", input.getTripId());
         assertEquals("fingerprint-1", input.getExpectedFingerprint());
         assertEquals(2, input.getProposedEvents().size());
-        final ProposedEventData first = input.getProposedEvents().get(0);
+        ProposedEventData first = input.getProposedEvents().get(0);
         assertEquals("travel-a", first.getEventId());
         assertEquals(ProposedEventData.Kind.TRAVEL, first.getKind());
         assertEquals(ProposedEventData.Kind.ACTIVITY,
@@ -243,7 +247,7 @@ class AutoScheduleControllerTest {
 
     @Test
     void cancelDiscardsTheProposalWithoutTouchingTheUseCase() {
-        final DayPlanViewModel viewModel = viewModel("trip-1");
+        DayPlanViewModel viewModel = viewModel("trip-1");
         viewModel.setState(previewing(viewModel.getState()));
 
         controllerFor(viewModel).cancel();
@@ -256,8 +260,8 @@ class AutoScheduleControllerTest {
 
     @Test
     void pinningAnActivityTogglesIt() {
-        final DayPlanViewModel viewModel = viewModel("trip-1");
-        final AutoScheduleController controller = controllerFor(viewModel);
+        DayPlanViewModel viewModel = viewModel("trip-1");
+        AutoScheduleController controller = controllerFor(viewModel);
 
         controller.toggleLock("museum");
         assertTrue(controller.isLocked("museum"));
@@ -268,8 +272,8 @@ class AutoScheduleControllerTest {
 
     @Test
     void pinsSurviveAcrossRepeatedRuns() {
-        final DayPlanViewModel viewModel = viewModel("trip-1");
-        final AutoScheduleController controller = controllerFor(viewModel);
+        DayPlanViewModel viewModel = viewModel("trip-1");
+        AutoScheduleController controller = controllerFor(viewModel);
         controller.toggleLock("museum");
 
         controller.preview(settings(true));
@@ -280,7 +284,7 @@ class AutoScheduleControllerTest {
     }
 
     private static DayPlanState previewing(DayPlanState base) {
-        final List<PreviewRowView> rows = Arrays.asList(
+        List<PreviewRowView> rows = Arrays.asList(
                 new PreviewRowView("travel-a", "Travel to Museum", PreviewRowView.Kind.TRAVEL,
                         LocalTime.of(9, 40), LocalTime.of(10, 0), false, false, "", null),
                 new PreviewRowView("a", "Museum", PreviewRowView.Kind.ACTIVITY,

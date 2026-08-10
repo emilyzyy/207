@@ -5,27 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
-import org.junit.jupiter.api.Test;
-
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.valueobjects.EventType;
-import entity.valueobjects.TransportationMode;
 import interface_adapter.controllers.AutoScheduleController;
 import interface_adapter.controllers.AutoScheduleSettings;
 import interface_adapter.controllers.ManualPlanController;
 import interface_adapter.controllers.TaskRunner;
 import interface_adapter.gateways.DistanceServiceTravelTimeEstimator;
 import interface_adapter.gateways.WeatherServiceContextGateway;
-import interface_adapter.mock.MockDistanceService;
 import interface_adapter.presenters.AutoSchedulePresenter;
 import interface_adapter.presenters.ManualPlanPresenter;
 import interface_adapter.viewmodels.AutoScheduleStatus;
@@ -34,12 +19,26 @@ import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.PreviewRowView;
 import interface_adapter.viewmodels.SearchState;
 import interface_adapter.viewmodels.SearchViewModel;
+import app.AppContainer;
 import use_case.autoschedule.AutoScheduleInteractor;
 import use_case.autoschedule.engine.ScheduleEngine;
 import use_case.autoschedule.policy.DaylightPolicy;
 import use_case.autoschedule.policy.MealWindowPolicy;
 import use_case.autoschedule.policy.SoftPolicy;
 import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.valueobjects.EventType;
+import entity.valueobjects.TransportationMode;
+import interface_adapter.mock.MockDistanceService;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 /**
  * Where Alex's feature and Emily's meet.
@@ -59,9 +58,9 @@ class AddToPlanAutoscheduleIntegrationTest {
 
     /** A trip with one activity already in it, so "added" is distinguishable from "seeded". */
     private static Trip tripWithOneActivity(AppContainer app) {
-        final Trip trip = new Trip("integration-trip", "Toronto", TRIP_DATE,
+        Trip trip = new Trip("integration-trip", "Toronto", TRIP_DATE,
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING);
-        final Activity first = app.activities.findAll().get(0);
+        Activity first = app.activities.findAll().get(0);
         trip.replaceSchedule(Collections.singletonList(new ScheduledEvent(
                 "event-existing", first, LocalTime.of(9, 0),
                 LocalTime.of(9, 0).plusMinutes(first.getEstimatedDurationMinutes()),
@@ -71,7 +70,7 @@ class AddToPlanAutoscheduleIntegrationTest {
 
     /** The activity the traveller will discover and add; never part of the seeded plan. */
     private static Activity activityToAdd(AppContainer app, Trip trip) {
-        final List<String> already = new ArrayList<>();
+        List<String> already = new ArrayList<>();
         for (ScheduledEvent event : trip.getScheduledEvents()) {
             if (event.getActivity() != null) {
                 already.add(event.getActivity().getId());
@@ -86,7 +85,7 @@ class AddToPlanAutoscheduleIntegrationTest {
     }
 
     private static ManualPlanController manualPlan(AppContainer app, DayPlanViewModel dayPlan) {
-        final SearchViewModel search = new SearchViewModel(
+        SearchViewModel search = new SearchViewModel(
                 new SearchState(app.activities.findAll(), ""));
         return new ManualPlanController(app.addActivityToPlan, app.editEvent, app.removeEvent,
                 () -> dayPlan.getState().getTripId(), new ManualPlanPresenter(dayPlan, search));
@@ -94,9 +93,9 @@ class AddToPlanAutoscheduleIntegrationTest {
 
     private static AutoScheduleController autoschedule(AppContainer app,
                                                        DayPlanViewModel dayPlan) {
-        final List<SoftPolicy> builtIn = Arrays.asList(new WeatherSuitabilityPolicy(),
+        List<SoftPolicy> builtIn = Arrays.asList(new WeatherSuitabilityPolicy(),
                 new MealWindowPolicy(), new DaylightPolicy());
-        final AutoScheduleInteractor interactor = new AutoScheduleInteractor(app.trips,
+        AutoScheduleInteractor interactor = new AutoScheduleInteractor(app.trips,
                 new DistanceServiceTravelTimeEstimator(new MockDistanceService()),
                 new WeatherServiceContextGateway(app.weather),
                 new AutoSchedulePresenter(dayPlan), builtIn, new ScheduleEngine());
@@ -122,7 +121,7 @@ class AddToPlanAutoscheduleIntegrationTest {
 
     @Test
     void appBuilderWiresTheRealAddToPlanUseCase() {
-        final AppContainer app = new AppBuilder().buildOffline();
+        AppContainer app = new AppBuilder().buildOffline();
 
         assertNotNull(app.addActivityToPlan,
                 "AppContainer must expose the real add-to-plan use case");
@@ -132,7 +131,7 @@ class AddToPlanAutoscheduleIntegrationTest {
         // The panels the application builds are handed a manual controller, which is what
         // makes the buttons live rather than decorative. Line breaks are collapsed first:
         // this is a claim about wiring, and it should not fail because a call was wrapped.
-        final String builder = readFile("src/main/java/app/AppBuilder.java")
+        String builder = readFile("src/main/java/app/AppBuilder.java")
                 .replaceAll("\\s+", " ");
         assertTrue(builder.contains("new ManualPlanController("),
                 "AppBuilder must construct the manual plan controller");
@@ -147,15 +146,15 @@ class AddToPlanAutoscheduleIntegrationTest {
 
     @Test
     void addingAnActivityUpdatesTheTripAndTheDayPlan() {
-        final AppContainer app = new AppBuilder().buildOffline();
-        final Trip trip = tripWithOneActivity(app);
-        final Activity added = activityToAdd(app, trip);
-        final DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
+        AppContainer app = new AppBuilder().buildOffline();
+        Trip trip = tripWithOneActivity(app);
+        Activity added = activityToAdd(app, trip);
+        DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
 
         manualPlan(app, dayPlan).add(added.getId(), null);
 
-        final Trip saved = app.trips.findById("integration-trip").orElseThrow();
+        Trip saved = app.trips.findById("integration-trip").orElseThrow();
         assertEquals(2, saved.getScheduledEvents().size(),
                 "the activity must become a real scheduled event on the Trip");
         assertTrue(saved.getScheduledEvents().stream()
@@ -171,14 +170,14 @@ class AddToPlanAutoscheduleIntegrationTest {
 
     @Test
     void autoschedulePreviewsAndAppliesAnActivityAddedThroughAlexsWorkflow() {
-        final AppContainer app = new AppBuilder().buildOffline();
-        final Trip trip = tripWithOneActivity(app);
-        final Activity added = activityToAdd(app, trip);
-        final DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
+        AppContainer app = new AppBuilder().buildOffline();
+        Trip trip = tripWithOneActivity(app);
+        Activity added = activityToAdd(app, trip);
+        DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
 
         manualPlan(app, dayPlan).add(added.getId(), null);
-        final AutoScheduleController controller = autoschedule(app, dayPlan);
+        AutoScheduleController controller = autoschedule(app, dayPlan);
 
         controller.preview(settings());
         assertEquals(AutoScheduleStatus.PREVIEW, dayPlan.getState().getStatus());
@@ -190,7 +189,7 @@ class AddToPlanAutoscheduleIntegrationTest {
         controller.apply();
         assertEquals(AutoScheduleStatus.APPLIED, dayPlan.getState().getStatus());
 
-        final Trip applied = app.trips.findById("integration-trip").orElseThrow();
+        Trip applied = app.trips.findById("integration-trip").orElseThrow();
         assertTrue(applied.getScheduledEvents().stream()
                         .anyMatch(e -> e.getActivity() != null
                                 && e.getActivity().getId().equals(added.getId())),
@@ -202,16 +201,16 @@ class AddToPlanAutoscheduleIntegrationTest {
 
     @Test
     void noDuplicateEventIsCreatedByAddingThenScheduling() {
-        final AppContainer app = new AppBuilder().buildOffline();
-        final Trip trip = tripWithOneActivity(app);
-        final Activity added = activityToAdd(app, trip);
-        final DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
+        AppContainer app = new AppBuilder().buildOffline();
+        Trip trip = tripWithOneActivity(app);
+        Activity added = activityToAdd(app, trip);
+        DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
 
         manualPlan(app, dayPlan).add(added.getId(), null);
         assertActivitiesAreUnique(app.trips.findById("integration-trip").orElseThrow());
 
-        final AutoScheduleController controller = autoschedule(app, dayPlan);
+        AutoScheduleController controller = autoschedule(app, dayPlan);
         controller.preview(settings());
         controller.apply();
 
@@ -222,18 +221,18 @@ class AddToPlanAutoscheduleIntegrationTest {
 
     @Test
     void aDeclinedOrRejectedEditChangesNothing() {
-        final AppContainer app = new AppBuilder().buildOffline();
-        final Trip trip = tripWithOneActivity(app);
-        final DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
+        AppContainer app = new AppBuilder().buildOffline();
+        Trip trip = tripWithOneActivity(app);
+        DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
-        final ManualPlanController controller = manualPlan(app, dayPlan);
-        final LocalTime originalStart = trip.getScheduledEvents().get(0).getStartTime();
+        ManualPlanController controller = manualPlan(app, dayPlan);
+        LocalTime originalStart = trip.getScheduledEvents().get(0).getStartTime();
 
         // Dismissing the edit dialog never calls the controller, so the closest reachable
         // equivalent is an edit the controller rejects: either way nothing is written.
         controller.edit("event-existing", "not-a-time", "11:00", "");
 
-        final Trip after = app.trips.findById("integration-trip").orElseThrow();
+        Trip after = app.trips.findById("integration-trip").orElseThrow();
         assertEquals(1, after.getScheduledEvents().size());
         assertEquals(originalStart, after.getScheduledEvents().get(0).getStartTime(),
                 "a rejected edit must not move the event it was aimed at");
@@ -250,38 +249,44 @@ class AddToPlanAutoscheduleIntegrationTest {
 
     @Test
     void aFailedAddDoesNotCorruptTheTrip() {
-        final AppContainer app = new AppBuilder().buildOffline();
-        final Trip trip = tripWithOneActivity(app);
-        final DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
+        AppContainer app = new AppBuilder().buildOffline();
+        Trip trip = tripWithOneActivity(app);
+        DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
 
         manualPlan(app, dayPlan).add("no-such-activity", null);
 
-        final Trip after = app.trips.findById("integration-trip").orElseThrow();
+        Trip after = app.trips.findById("integration-trip").orElseThrow();
         assertEquals(1, after.getScheduledEvents().size(),
                 "a failed add must leave the itinerary exactly as it was");
         assertTrue(dayPlan.getState().isError(), "and must say so rather than failing silently");
 
         // The day still schedules afterwards, so a rejected add leaves nothing poisoned.
-        final AutoScheduleController controller = autoschedule(app, dayPlan);
+        AutoScheduleController controller = autoschedule(app, dayPlan);
         controller.preview(settings());
-        assertEquals(AutoScheduleStatus.PREVIEW, dayPlan.getState().getStatus());
+        // One activity has nothing to rearrange, so "already well arranged" is the right
+        // answer here. What matters is that it answered rather than failing.
+        AutoScheduleStatus outcome = dayPlan.getState().getStatus();
+        assertTrue(outcome == AutoScheduleStatus.PREVIEW
+                        || outcome == AutoScheduleStatus.NO_BENEFICIAL_CHANGE,
+                "a rejected add must leave the day schedulable, got " + outcome
+                        + ": " + dayPlan.getState().getMessage());
     }
 
     // --- 9. none of this depends on the seeded demo trip ---------------------------------
 
     @Test
     void theFlowDoesNotDependOnTheSeededDemoTrip() {
-        final AppContainer app = new AppBuilder().buildOffline();
-        final Trip trip = tripWithOneActivity(app);
-        final Activity added = activityToAdd(app, trip);
-        final DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
+        AppContainer app = new AppBuilder().buildOffline();
+        Trip trip = tripWithOneActivity(app);
+        Activity added = activityToAdd(app, trip);
+        DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
 
         assertFalse("demo-trip".equals(trip.getId()),
                 "this trip is built by the test, not the demo seeding");
         manualPlan(app, dayPlan).add(added.getId(), null);
-        final AutoScheduleController controller = autoschedule(app, dayPlan);
+        AutoScheduleController controller = autoschedule(app, dayPlan);
         controller.preview(settings());
 
         assertEquals(AutoScheduleStatus.PREVIEW, dayPlan.getState().getStatus());
@@ -297,12 +302,12 @@ class AddToPlanAutoscheduleIntegrationTest {
      */
     @Test
     void autoscheduleHasNoDependencyOnAddToPlanClasses() {
-        final List<String> alexClasses = Arrays.asList("ManualPlanController", "ManualPlanPresenter",
+        List<String> alexClasses = Arrays.asList("ManualPlanController", "ManualPlanPresenter",
                 "AddActivityToPlanUseCase", "EditScheduledEventUseCase",
                 "RemoveScheduledEventUseCase", "BookmarkController",
                 "ActivityDiscoveryController", "ActivityDiscoveryPresenter");
-        final List<String> offenders = new ArrayList<>();
-        final java.io.File root = new java.io.File(
+        List<String> offenders = new ArrayList<>();
+        java.io.File root = new java.io.File(
                 "src/main/java/use_case/autoschedule");
         collectOffenders(root, alexClasses, offenders);
 
@@ -313,16 +318,15 @@ class AddToPlanAutoscheduleIntegrationTest {
 
     private static void collectOffenders(java.io.File dir, List<String> names,
                                          List<String> offenders) {
-        final java.io.File[] children = dir.listFiles();
+        java.io.File[] children = dir.listFiles();
         if (children == null) {
             return;
         }
         for (java.io.File child : children) {
             if (child.isDirectory()) {
                 collectOffenders(child, names, offenders);
-            }
-            else if (child.getName().endsWith(".java")) {
-                final String body = readFile(child.getPath());
+            } else if (child.getName().endsWith(".java")) {
+                String body = readFile(child.getPath());
                 for (String name : names) {
                     if (body.contains(name)) {
                         offenders.add(child.getName() + " -> " + name);
@@ -336,14 +340,13 @@ class AddToPlanAutoscheduleIntegrationTest {
         try {
             return new String(java.nio.file.Files.readAllBytes(
                     java.nio.file.Paths.get(path)), java.nio.charset.StandardCharsets.UTF_8);
-        }
-        catch (java.io.IOException exception) {
+        } catch (java.io.IOException exception) {
             throw new IllegalStateException("could not read " + path, exception);
         }
     }
 
     private static void assertActivitiesAreUnique(Trip trip) {
-        final List<String> ids = new ArrayList<>();
+        List<String> ids = new ArrayList<>();
         for (ScheduledEvent event : trip.getScheduledEvents()) {
             if (event.getEventType() == EventType.ACTIVITY && event.getActivity() != null) {
                 ids.add(event.getActivity().getId());

@@ -1,5 +1,20 @@
 package use_case.autoschedule;
 
+import entity.valueobjects.WeatherOption;
+
+import use_case.autoschedule.engine.PlanValidator;
+import use_case.autoschedule.engine.ScheduleEngine;
+import use_case.autoschedule.engine.SchedulePlanRebuilder;
+import use_case.autoschedule.engine.ScheduleSearchResult;
+import use_case.autoschedule.engine.SearchBudget;
+import use_case.autoschedule.policy.SoftPolicy;
+import use_case.ports.TripRepository;
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.valueobjects.EventType;
+import entity.valueobjects.TransportationMode;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -9,20 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.valueobjects.EventType;
-import entity.valueobjects.TransportationMode;
-import entity.valueobjects.WeatherOption;
-import use_case.autoschedule.engine.PlanValidator;
-import use_case.autoschedule.engine.ScheduleEngine;
-import use_case.autoschedule.engine.SchedulePlanRebuilder;
-import use_case.autoschedule.engine.ScheduleSearchResult;
-import use_case.autoschedule.engine.SearchBudget;
-import use_case.autoschedule.policy.SoftPolicy;
-import use_case.ports.TripRepository;
 
 /**
  * Orchestrates one Autoschedule request.
@@ -89,12 +90,12 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
             presenter.presentFailure("Autoschedule settings are required");
             return;
         }
-        final Trip trip = findTrip(inputData.getTripId());
+        Trip trip = findTrip(inputData.getTripId());
         if (trip == null) {
             return;
         }
 
-        final List<ScheduledEvent> activityEvents = activityEventsOf(trip);
+        List<ScheduledEvent> activityEvents = activityEventsOf(trip);
         if (activityEvents.isEmpty()) {
             presenter.presentFailure("Add activities to the Day Plan before running Autoschedule");
             return;
@@ -105,47 +106,52 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
             return;
         }
 
-        final TimeWindow availability = validatedAvailability(trip, inputData);
+        TimeWindow availability = validatedAvailability(trip, inputData);
         if (availability == null) {
             return;
         }
-        final List<ScheduleTask> tasks = buildTasks(activityEvents, inputData, trip.getDate());
+        List<ScheduleTask> tasks = buildTasks(activityEvents, inputData, trip.getDate());
         if (tasks == null) {
             return;
         }
 
-        final ScheduleConflict invalid = problemValidator.validate(availability, tasks,
+        ScheduleConflict invalid = problemValidator.validate(availability, tasks,
                 inputData.getUnavailableWindows());
         if (invalid != null) {
             presenter.presentConflict(new AutoScheduleConflictOutputData(invalid));
             return;
         }
 
-        final TransportationMode mode = inputData.getTransportationMode() == null
+        TransportationMode mode = inputData.getTransportationMode() == null
                 ? trip.getTransportationMode() : inputData.getTransportationMode();
 
-        final TravelMatrix matrix;
+        // One conversation with the provider per request: the bulk prefetch and the exact
+        // refinement below both go through this, so a request cannot search against one set of
+        // live estimates and validate against another.
+        RequestScopedTravel travelForThisRequest = new RequestScopedTravel(travelEstimator);
+        TravelMatrix matrix;
         try {
-            matrix = prefetcher.prefetch(tasks, mode, trip.getDate(), availability);
-        }
-        catch (RuntimeException exception) {
+            matrix = new TravelMatrixPrefetcher(travelForThisRequest)
+                    .prefetch(tasks, mode, trip.getDate(), availability);
+        } catch (RuntimeException exception) {
             presenter.presentFailure(
                     "Travel times are unavailable right now, so no schedule was produced. "
                             + "Your Day Plan was not changed.");
             return;
         }
 
-        final List<String> warnings = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
         addOpeningHoursWarnings(tasks, warnings);
-        final WeatherContext weather = weatherFor(trip, inputData.isConsiderWeather(), warnings);
+        WeatherContext weather = weatherFor(trip, inputData.isConsiderWeather(), warnings);
 
-        final SchedulingPreferences preferences = SchedulingPreferences.builtIn(
+        SchedulingPreferences preferences = SchedulingPreferences.builtIn(
                 chosenPolicies(inputData), inputData.isKeepCurrentOrder(),
                 new PolicyContext(weather),
                 inputData.isMinimizeTravel(), inputData.isMinimizeGaps());
 
-        final RefinementOutcome outcome = searchWithExactTravel(availability, tasks,
-                inputData.getUnavailableWindows(), matrix, preferences, mode, trip.getDate());
+        RefinementOutcome outcome = searchWithExactTravel(availability, tasks,
+                inputData.getUnavailableWindows(), matrix, preferences, mode, trip.getDate(),
+                travelForThisRequest);
 
         if (outcome.plan == null) {
             presenter.presentConflict(new AutoScheduleConflictOutputData(outcome.conflict));
@@ -166,10 +172,6 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
      * being listed as an objective would be a lie about how the day was arranged. So a
      * coarse or missing forecast contributes zero here and says so in a warning, and the
      * schedule is produced either way.</p>
-      * @param warnings the w ar ni ng s value
-      * @param trip the t ri p value
-      * @param requested the r eq ue st ed value
-      * @return the result of the operation
      */
     private WeatherContext weatherFor(Trip trip, boolean requested, List<String> warnings) {
         if (!requested) {
@@ -178,8 +180,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         WeatherContext weather;
         try {
             weather = weatherGateway.contextFor(trip);
-        }
-        catch (RuntimeException exception) {
+        } catch (RuntimeException exception) {
             // The gateway contract says failures come back as an unavailable context, but a
             // schedule must not be lost if an implementation throws instead.
             weather = WeatherContext.unavailable();
@@ -188,8 +189,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
             warnings.add("You asked for weather to be considered, but no forecast was "
                     + "available, so the schedule was arranged using time and travel "
                     + "information only.");
-        }
-        else if (!weather.canDistinguishTimes()) {
+        } else if (!weather.canDistinguishTimes()) {
             warnings.add("The forecast covers the whole day rather than each hour, so weather "
                     + "could not influence the timing of outdoor activities.");
         }
@@ -201,7 +201,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         if (tripId == null || tripId.trim().isEmpty()) {
             return WeatherOption.unavailable(WeatherOption.NO_FORECAST);
         }
-        final Optional<Trip> found = trips.findById(tripId.trim());
+        Optional<Trip> found = trips.findById(tripId.trim());
         if (!found.isPresent()) {
             return WeatherOption.unavailable(WeatherOption.NO_FORECAST);
         }
@@ -218,8 +218,6 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
      * When they do not, they are written into the travel cache and the search runs again
      * knowing them — bounded, so a pathological day terminates with a conflict rather
      * than looping.</p>
-      * @param availability the a va il ab il it y value
-      * @return the result of the operation
      */
     private RefinementOutcome searchWithExactTravel(TimeWindow availability,
                                                     List<ScheduleTask> tasks,
@@ -227,29 +225,31 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
                                                     TravelMatrix matrix,
                                                     SchedulingPreferences preferences,
                                                     TransportationMode mode,
-                                                    java.time.LocalDate date) {
+                                                    java.time.LocalDate date,
+                                                    RequestScopedTravel snapshot) {
         TravelMatrix currentMatrix = matrix;
         ScheduleConflict lastConflict = ScheduleConflict.noFeasibleOrder();
         boolean withinLimit = true;
 
         for (int round = 0; round <= MAX_REFINEMENT_ROUNDS; round++) {
-            final ScheduleProblem problem = new ScheduleProblem(availability, tasks,
+            ScheduleProblem problem = new ScheduleProblem(availability, tasks,
                     unavailableWindows, currentMatrix, preferences);
-            final ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
+            ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
             withinLimit = result.isCompletedWithinLimit();
             if (!result.isFound()) {
                 return RefinementOutcome.conflict(result.getConflict());
             }
 
-            final Map<TravelLegKey, TravelEstimate> exact = exactEstimatesFor(result.getPlan(), mode, date);
+            Map<TravelLegKey, TravelEstimate> exact =
+                    exactEstimatesFor(result.getPlan(), mode, date, snapshot);
             if (exact.isEmpty()) {
                 return RefinementOutcome.plan(result.getPlan(), problem, withinLimit);
             }
 
-            final TravelMatrix refined = currentMatrix.withOverrides(exact);
-            final ScheduleProblem refinedProblem = new ScheduleProblem(availability, tasks,
+            TravelMatrix refined = currentMatrix.withOverrides(exact);
+            ScheduleProblem refinedProblem = new ScheduleProblem(availability, tasks,
                     unavailableWindows, refined, preferences);
-            final SchedulePlan rebuilt = rebuilder.rebuild(refinedProblem,
+            SchedulePlan rebuilt = rebuilder.rebuild(refinedProblem,
                     result.getPlan().orderedEventIds());
 
             if (rebuilt != null && planValidator.validate(refinedProblem, rebuilt) == null) {
@@ -264,30 +264,97 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
     /**
      * Re-estimates each leg for the moment it will actually be travelled, keeping only
      * the values that differ from the bucketed estimate the search used.
-      * @param plan the p la n value
-      * @return the result of the operation
      */
     private Map<TravelLegKey, TravelEstimate> exactEstimatesFor(SchedulePlan plan,
                                                                 TransportationMode mode,
-                                                                java.time.LocalDate date) {
-        final Map<TravelLegKey, TravelEstimate> changed = new HashMap<>();
-        final List<PlacedActivity> placements = plan.getPlacements();
+                                                                java.time.LocalDate date,
+                                                                RequestScopedTravel snapshot) {
+        Map<TravelLegKey, TravelEstimate> changed = new HashMap<>();
+        List<PlacedActivity> placements = plan.getPlacements();
         for (int i = 1; i < placements.size(); i++) {
-            final PlacedActivity current = placements.get(i);
+            PlacedActivity current = placements.get(i);
             if (!current.hasTravel()) {
                 continue;
             }
-            final ScheduleTask from = placements.get(i - 1).getTask();
-            final ScheduleTask to = current.getTask();
-            final LocalTime departure = current.getTravelDeparture();
-            final TravelEstimate exact = travelEstimator.estimate(
-                    from.getActivity().getLocation(), to.getActivity().getLocation(), mode,
-                    LocalDateTime.of(date, departure));
-            if (exact.getMinutes() != current.getTravelMinutesBefore()) {
+            ScheduleTask from = placements.get(i - 1).getTask();
+            ScheduleTask to = current.getTask();
+            LocalTime departure = current.getTravelDeparture();
+            // Refinement asks the provider again, for the exact moment each leg is travelled.
+            // A failure here is a statement about the provider, not about whether the day can
+            // be arranged: left to propagate it aborted the request, and treated as a huge
+            // number it turned into "no arrangement of this day fits your available hours".
+            // Keeping the bucketed estimate is the honest degradation -- the schedule stands,
+            // and the Preview already discloses that travel times may be estimates.
+            TravelEstimate exact;
+            try {
+                exact = snapshot.estimate(
+                        from.getActivity().getLocation(), to.getActivity().getLocation(), mode,
+                        LocalDateTime.of(date, departure));
+            } catch (RuntimeException providerFailed) {
+                snapshot.recordFailure(from.getEventId() + " to " + to.getEventId()
+                        + " at " + departure + ": " + providerFailed.getMessage());
+                continue;
+            }
+            if (exact != null && exact.getMinutes() != current.getTravelMinutesBefore()) {
                 changed.put(new TravelLegKey(from.getEventId(), to.getEventId(), departure), exact);
             }
         }
         return changed;
+    }
+
+    /**
+     * Takes one activity out of the proposal on screen, without re-solving the day.
+     *
+     * <p>The remaining activities keep the times and the order the search gave them. Journeys
+     * that still join the same two activities are kept exactly as they were; the leg into the
+     * removed activity and the leg out of it go, and the pair they leave adjacent gets one
+     * freshly estimated journey.</p>
+     *
+     * <p>Refuses rather than improvises when the replacement journey will not fit in the gap
+     * the fixed times leave: silently sliding the rest of the day would be a schedule the
+     * traveller never asked for, and a zero-minute journey would be a lie. The proposal on
+     * screen is left as it was and the reason is reported.</p>
+     */
+    @Override
+    public void removeFromProposal(ProposalEditInputData inputData) {
+        if (inputData == null || inputData.getRemoveEventId().isEmpty()) {
+            return;
+        }
+        Trip trip = trips.findById(inputData.getTripId()).orElse(null);
+        if (trip == null) {
+            presenter.presentFailure("That trip is no longer open.");
+            return;
+        }
+
+        Map<String, Activity> activitiesById = new HashMap<>();
+        for (ScheduledEvent event : activityEventsOf(trip)) {
+            activitiesById.put(event.getId(), event.getActivity());
+        }
+
+        TransportationMode mode = inputData.getMode() == null
+                ? trip.getTransportationMode() : inputData.getMode();
+        ProposalDraft.Result edited = ProposalDraft.withoutActivity(inputData.getProposedRows(),
+                inputData.getRemoveEventId(), activitiesById, mode, trip.getDate(),
+                travelEstimator);
+
+        if (!edited.isSuccessful()) {
+            presenter.presentDraftEditRefused(edited.getReason());
+            return;
+        }
+
+        // The comparison is still against the saved day, so "before" keeps meaning what it
+        // meant when the proposal was generated.
+        ScheduleMetrics before = ScheduleMetrics.ofExistingSchedule(trip.getScheduledEvents(),
+                travelEstimator, mode, trip.getDate());
+        presenter.presentEditedPreview(new AutoSchedulePreviewOutputData(edited.getRows(),
+                before.getTravelMinutes(), edited.getTravelMinutes(),
+                before.getIdleMinutes(), edited.getIdleMinutes(),
+                edited.getMovedCount(), edited.getActivityCount(),
+                Collections.<Reason>emptyList(), Collections.<String>emptyList(),
+                Collections.<PolicyId>emptyList(), inputData.getPreviewFingerprint(),
+                true, TravelEstimateQuality.ESTIMATED, true,
+                Collections.<ScheduleImprovement>emptyList(), 0),
+                inputData.getRemoveEventId());
     }
 
     @Override
@@ -296,7 +363,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
             presenter.presentFailure("Nothing to apply");
             return;
         }
-        final Trip trip = findTrip(inputData.getTripId());
+        Trip trip = findTrip(inputData.getTripId());
         if (trip == null) {
             return;
         }
@@ -305,40 +372,49 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
             return;
         }
 
-        final ScheduleFingerprint current = ScheduleFingerprint.of(trip.getScheduledEvents());
+        ScheduleFingerprint current = ScheduleFingerprint.of(trip.getScheduledEvents());
         if (!current.getValue().equals(inputData.getExpectedFingerprint())) {
             presenter.presentFailure("The Day Plan changed after this Preview was generated. "
                     + "Run Autoschedule again.");
             return;
         }
 
-        final Map<String, Activity> activitiesByEventId = new HashMap<>();
+        Map<String, Activity> activitiesByEventId = new HashMap<>();
         for (ScheduledEvent event : activityEventsOf(trip)) {
             activitiesByEventId.put(event.getId(), event.getActivity());
         }
 
-        final List<ScheduledEvent> events = new ArrayList<>();
+        for (ProposedEventData row : inputData.getProposedEvents()) {
+            if (row.getKind() == ProposedEventData.Kind.ACTIVITY
+                    && !activitiesByEventId.containsKey(row.getEventId())) {
+                presenter.presentFailure("This Preview refers to an activity that is no longer "
+                        + "in the Day Plan. Run Autoschedule again.");
+                return;
+            }
+        }
+        String travelProblem = appliedTravelProblem(inputData.getProposedEvents(),
+                activitiesByEventId, trip);
+        if (travelProblem != null) {
+            presenter.presentFailure(travelProblem);
+            return;
+        }
+
+        List<ScheduledEvent> events = new ArrayList<>();
         for (ProposedEventData row : inputData.getProposedEvents()) {
             if (row.getKind() == ProposedEventData.Kind.TRAVEL) {
                 events.add(new ScheduledEvent(row.getEventId(), null, row.getStart(), row.getEnd(),
                         EventType.TRAVEL, row.getTitle()));
                 continue;
             }
-            final Activity activity = activitiesByEventId.get(row.getEventId());
-            if (activity == null) {
-                presenter.presentFailure("This Preview refers to an activity that is no longer "
-                        + "in the Day Plan. Run Autoschedule again.");
-                return;
-            }
+            Activity activity = activitiesByEventId.get(row.getEventId());
             events.add(new ScheduledEvent(row.getEventId(), activity, row.getStart(), row.getEnd(),
                     EventType.ACTIVITY, ""));
         }
 
-        final Trip saved;
+        Trip saved;
         try {
             saved = trips.save(trip.copyWithSchedule(events));
-        }
-        catch (IllegalArgumentException | IllegalStateException exception) {
+        } catch (IllegalArgumentException | IllegalStateException exception) {
             presenter.presentFailure("The proposed schedule could not be saved: "
                     + exception.getMessage());
             return;
@@ -349,12 +425,89 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
                 ScheduleFingerprint.of(saved.getScheduledEvents()).getValue()));
     }
 
+    /**
+     * Final integrity gate for the exact rows Apply received.
+     *
+     * <p>The generated Preview already contains travel refined against exact departure
+     * estimates. Apply still cannot assume every adapter and ViewModel preserved those rows:
+     * silently saving two different places with only an empty gap would leave the normal Day
+     * Plan unable to explain how the traveller gets between them.</p>
+     *
+     * <p>Every check here is arithmetic on the rows themselves. It deliberately does <em>not</em>
+     * re-ask the routing provider. It used to, and refused the Preview whenever the fresh
+     * answer came back even a minute longer than the one the traveller had just approved —
+     * which live traffic does routinely. Approving a schedule and being told it "no longer
+     * fits" is the outside world moving, not a corrupted proposal, and the user cannot act on
+     * it: pressing Autoschedule again simply re-rolls the same dice. Genuine drift is picked
+     * up the next time the day is scheduled.</p>
+     */
+    /** Whether a journey is needed at all, decided by coordinates rather than by a lookup. */
+    private static boolean atDifferentPlaces(Activity from, Activity to) {
+        if (from == null || to == null || from.getLocation() == null
+                || to.getLocation() == null) {
+            return false;
+        }
+        return Double.compare(from.getLocation().getLatitude(),
+                        to.getLocation().getLatitude()) != 0
+                || Double.compare(from.getLocation().getLongitude(),
+                        to.getLocation().getLongitude()) != 0;
+    }
+
+    private String appliedTravelProblem(List<ProposedEventData> rows,
+                                        Map<String, Activity> activitiesByEventId,
+                                        Trip trip) {
+        ProposedEventData previousActivity = null;
+        ProposedEventData pendingTravel = null;
+        for (ProposedEventData row : rows) {
+            if (row.getKind() == ProposedEventData.Kind.TRAVEL) {
+                if (previousActivity == null || pendingTravel != null) {
+                    return "This Preview contains an unexplained travel row. Run Autoschedule "
+                            + "again; your Day Plan was not changed.";
+                }
+                pendingTravel = row;
+                continue;
+            }
+            if (previousActivity != null) {
+                Activity from = activitiesByEventId.get(previousActivity.getEventId());
+                Activity to = activitiesByEventId.get(row.getEventId());
+                // Two different places with no journey between them is a structural hole,
+                // and it can be recognised from the coordinates alone.
+                if (pendingTravel == null && atDifferentPlaces(from, to)) {
+                    return "This Preview is missing the required travel between "
+                            + from.getName() + " and " + to.getName()
+                            + ". Run Autoschedule again; your Day Plan was not changed.";
+                }
+                if (pendingTravel != null) {
+                    int shown = (int) Duration.between(
+                            pendingTravel.getStart(), pendingTravel.getEnd()).toMinutes();
+                    int gap = (int) Duration.between(
+                            previousActivity.getEnd(), row.getStart()).toMinutes();
+                    boolean outsideGap = pendingTravel.getStart().isBefore(
+                            previousActivity.getEnd())
+                            || pendingTravel.getEnd().isAfter(row.getStart());
+                    if (outsideGap || shown > gap) {
+                        return "The travel shown between " + from.getName() + " and "
+                                + to.getName() + " does not fit between them. Run Autoschedule "
+                                + "again; your Day Plan was not changed.";
+                    }
+                }
+            }
+            previousActivity = row;
+            pendingTravel = null;
+        }
+        if (pendingTravel != null) {
+            return "This Preview ends with an unexplained travel row. Run Autoschedule again; "
+                    + "your Day Plan was not changed.";
+        }
+        return null;
+    }
+
     private Trip findTrip(String tripId) {
         if (tripId == null || tripId.trim().isEmpty()) {
             presenter.presentFailure("Trip id is required");
             return null;
         }
-        final Optional<Trip> found = trips.findById(tripId.trim());
+        Optional<Trip> found = trips.findById(tripId.trim());
         if (!found.isPresent()) {
             presenter.presentFailure("Trip not found");
             return null;
@@ -363,7 +516,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
     }
 
     private static List<ScheduledEvent> activityEventsOf(Trip trip) {
-        final List<ScheduledEvent> events = new ArrayList<>();
+        List<ScheduledEvent> events = new ArrayList<>();
         for (ScheduledEvent event : trip.getScheduledEvents()) {
             if (event.getEventType() == EventType.ACTIVITY && event.getActivity() != null) {
                 events.add(event);
@@ -376,14 +529,11 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
      * The availability window for this run, which may narrow the trip's hours but never
      * widen them: the Trip entity refuses to hold events outside its own window, so a
      * wider request would produce a schedule that could not be saved.
-      * @param trip the t ri p value
-      * @param inputData the i np ut da ta value
-      * @return the result of the operation
      */
     private TimeWindow validatedAvailability(Trip trip, AutoScheduleInputData inputData) {
-        final LocalTime start = inputData.getAvailableStart() == null
+        LocalTime start = inputData.getAvailableStart() == null
                 ? trip.getStartTime() : inputData.getAvailableStart();
-        final LocalTime end = inputData.getAvailableEnd() == null
+        LocalTime end = inputData.getAvailableEnd() == null
                 ? trip.getEndTime() : inputData.getAvailableEnd();
 
         if (!end.isAfter(start)) {
@@ -406,11 +556,10 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
      * scheduler treats those as unconstrained beyond their general daily window, and that is
      * the ordinary case rather than a problem — warning about it put a caution on almost
      * every schedule and made the real warnings worth less.</p>
-      * @param tasks the t as ks value
      */
     private static void addOpeningHoursWarnings(List<ScheduleTask> tasks,
                                                 List<String> warnings) {
-        final List<String> closed = new ArrayList<>();
+        List<String> closed = new ArrayList<>();
         for (ScheduleTask task : tasks) {
             if (task.isClosedAllDay()) {
                 closed.add(task.getActivity().getName());
@@ -423,11 +572,7 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         }
     }
 
-    /**
-     * "A", "A and B", "A, B and C", then "A, B and 3 more" so a long day stays readable.
-     * @param names the n am es value
-     * @return the result of the operation
-     */
+    /** "A", "A and B", "A, B and C", then "A, B and 3 more" so a long day stays readable. */
     private static String namesOf(List<String> names) {
         if (names.size() == 1) {
             return names.get(0);
@@ -447,11 +592,9 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
      * <p>Weather is not filtered here even when it is declined: it is switched off by
      * giving it a context that cannot distinguish times, which makes it score zero and
      * keeps one reason for its absence instead of two.</p>
-      * @param inputData the i np ut da ta value
-      * @return the result of the operation
      */
     private List<SoftPolicy> chosenPolicies(AutoScheduleInputData inputData) {
-        final List<SoftPolicy> chosen = new ArrayList<>();
+        List<SoftPolicy> chosen = new ArrayList<>();
         for (SoftPolicy policy : registeredPolicies) {
             if (policy.id() == PolicyId.MEAL_TIME && !inputData.isPreserveMealtimes()) {
                 continue;
@@ -471,13 +614,11 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
      * <em>this</em> day. Resolving the weekday here rather than in the engine keeps the
      * search working on one day's plain time windows, and means nothing below this point
      * needs a calendar.</p>
-      * @param activityEvents the a ct iv it ye ve nt s value
-      * @return the result of the operation
      */
     private List<ScheduleTask> buildTasks(List<ScheduledEvent> activityEvents,
                                           AutoScheduleInputData inputData,
                                           LocalDate tripDate) {
-        final List<String> knownIds = new ArrayList<>();
+        List<String> knownIds = new ArrayList<>();
         for (ScheduledEvent event : activityEvents) {
             knownIds.add(event.getId());
         }
@@ -489,16 +630,16 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
             }
         }
 
-        final List<ScheduleTask> tasks = new ArrayList<>();
+        List<ScheduleTask> tasks = new ArrayList<>();
         for (int index = 0; index < activityEvents.size(); index++) {
-            final ScheduledEvent event = activityEvents.get(index);
-            final int duration = (event.getEndTime().toSecondOfDay()
+            ScheduledEvent event = activityEvents.get(index);
+            int duration = (event.getEndTime().toSecondOfDay()
                     - event.getStartTime().toSecondOfDay()) / 60;
             if (duration <= 0) {
                 presenter.presentFailure("An activity in the Day Plan has no duration");
                 return null;
             }
-            final TimeWindow lockedAt = inputData.getLockedEventIds().contains(event.getId())
+            TimeWindow lockedAt = inputData.getLockedEventIds().contains(event.getId())
                     ? new TimeWindow(event.getStartTime(), event.getEndTime()) : null;
             tasks.add(new ScheduleTask(event.getId(), event.getActivity(), duration, index,
                     lockedAt, tripDate));
@@ -513,24 +654,24 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
                                                        List<TimeWindow> unavailableWindows,
                                                        List<String> warnings,
                                                        TransportationMode mode) {
-        final SchedulePlan plan = outcome.plan;
-        final Map<String, ScheduledEvent> originalById = new HashMap<>();
+        SchedulePlan plan = outcome.plan;
+        Map<String, ScheduledEvent> originalById = new HashMap<>();
         for (ScheduledEvent event : originalEvents) {
             originalById.put(event.getId(), event);
         }
 
-        final List<ProposedEventData> rows = new ArrayList<>();
+        List<ProposedEventData> rows = new ArrayList<>();
         int movedCount = 0;
         for (PlacedActivity placed : plan.getPlacements()) {
-            final TimeWindow travel = placed.travelWindow();
+            TimeWindow travel = placed.travelWindow();
             if (travel != null) {
                 rows.add(new ProposedEventData("travel-" + placed.getTask().getEventId(), "",
                         "Travel to " + placed.getTask().getActivity().getName(),
                         ProposedEventData.Kind.TRAVEL, travel.getStart(), travel.getEnd(),
                         false, false));
             }
-            final ScheduledEvent original = originalById.get(placed.getTask().getEventId());
-            final boolean moved = original != null && !original.getStartTime().equals(placed.getStart());
+            ScheduledEvent original = originalById.get(placed.getTask().getEventId());
+            boolean moved = original != null && !original.getStartTime().equals(placed.getStart());
             if (moved) {
                 movedCount++;
             }
@@ -541,17 +682,17 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
                     placed.getTask().isLocked(), moved));
         }
 
-        final List<Reason> reasons = reasonCollector.collect(plan, preferences, unavailableWindows);
+        List<Reason> reasons = reasonCollector.collect(plan, preferences, unavailableWindows);
         // Measured with the journeys the current order implies, not only the travel rows it
         // happens to contain; see ScheduleMetrics for why the simpler reading flattered us.
-        final ScheduleMetrics before = ScheduleMetrics.ofExistingSchedule(trip.getScheduledEvents(),
+        ScheduleMetrics before = ScheduleMetrics.ofExistingSchedule(trip.getScheduledEvents(),
                 travelEstimator, mode, trip.getDate());
 
         // Reported waiting is all of it, not just the part a different order could have
         // reclaimed. "Before" has always counted every gap, so measuring "after" as
         // avoidable-only compared two different quantities and let the Preview claim an
         // empty day while drawing a visible hole in it.
-        final List<ScheduleImprovement> improvements = improvementFinder.find(originalEvents, plan,
+        List<ScheduleImprovement> improvements = improvementFinder.find(originalEvents, plan,
                 preferences, before, plan.totalTravelMinutes(),
                 plan.totalIdleMinutes());
 
@@ -597,7 +738,6 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         static final int SUPPORTED = 15;
 
         private MaximumActivities() {
-
         }
     }
 }

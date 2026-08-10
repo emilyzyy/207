@@ -1,18 +1,18 @@
 package app;
 
+import app.AppContainer;
+import use_case.usecases.CreateTripInputData;
+import entity.entities.Trip;
+import entity.valueobjects.Location;
+import entity.valueobjects.TransportationMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-import entity.entities.Trip;
-import entity.valueobjects.Location;
-import entity.valueobjects.TransportationMode;
-import use_case.usecases.CreateTripInputData;
-
 public final class TestRunner {
     public static void main(String[] args) {
-        final AppContainer app = new AppBuilder().buildOffline();
-        Trip trip = app.createTrip.execute(new CreateTripInputData(
+        AppContainer app = new AppBuilder().buildOffline();
+        Trip trip = app.createTrip.executeAndReturn(new CreateTripInputData(
                 "Toronto", LocalDate.of(2026, 7, 18),
                 LocalTime.of(9, 0), LocalTime.of(19, 0),
                 TransportationMode.TRANSIT));
@@ -22,18 +22,15 @@ public final class TestRunner {
         require(trip.getBookmarkedActivities().size() == 2, "bookmark use case");
         require(!trip.getScheduledEvents().isEmpty(), "auto schedule use case");
         require(app.summary.execute(trip.getId()).contains("Royal Ontario Museum"), "summary use case");
-        final LocalDateTime departure = LocalDateTime.of(LocalDate.of(2026, 7, 18), LocalTime.NOON);
-        final Location rom = app.activities.findById("rom").get().getLocation();
-        final Location pai = app.activities.findById("pai").get().getLocation();
+        LocalDateTime departure = LocalDateTime.of(LocalDate.of(2026, 7, 18), LocalTime.NOON);
+        Location rom = app.activities.findById("rom").get().getLocation();
+        Location pai = app.activities.findById("pai").get().getLocation();
         require(app.distances.estimateTravelMinutes(rom, pai, TransportationMode.WALKING, departure)
                 > app.distances.estimateTravelMinutes(rom, pai, TransportationMode.DRIVING, departure),
                 "transport mode timing");
         System.out.println("All Trippy tests passed.");
     }
-
     private static void require(boolean condition, String label) {
-        if (!condition) {
-            throw new AssertionError("Failed: " + label);
-        }
+        if (!condition) throw new AssertionError("Failed: " + label);
     }
 }

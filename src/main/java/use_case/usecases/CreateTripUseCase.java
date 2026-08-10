@@ -9,21 +9,110 @@ import java.util.UUID;
 import entity.entities.Trip;
 import entity.entities.TripDay;
 import entity.valueobjects.TransportationMode;
+import use_case.ports.AccountService;
 import use_case.ports.TripRepository;
 
-/** Interactor that validates, creates, and persists a new trip aggregate. */
+/**
+ * Interactor that validates, creates, and persists a new trip aggregate.
+ */
 public final class CreateTripUseCase implements CreateTripInputBoundary {
     private final TripRepository trips;
+    private final CreateTripOutputBoundary output;
+    private final AccountService account;
 
-    public CreateTripUseCase(TripRepository trips) {
-        if (trips == null) {
-            throw new IllegalArgumentException("Trip repository is required");
+    /**
+     * Creates a create-trip interactor.
+     *
+     * @param trips the trip repository
+     * @param output the output boundary for creation results
+     * @throws IllegalArgumentException if any dependency is missing
+     */
+    public CreateTripUseCase(TripRepository trips, CreateTripOutputBoundary output) {
+        this(trips, output, null);
+    }
+
+    /**
+     * Creates a create-trip interactor that may also share the trip with companions.
+     *
+     * @param trips the trip repository
+     * @param output the output boundary for creation results
+     * @param account optional account service used to share with companions
+     * @throws IllegalArgumentException if any required dependency is missing
+     */
+    public CreateTripUseCase(TripRepository trips, CreateTripOutputBoundary output,
+                             AccountService account) {
+        if (trips == null || output == null) {
+            throw new IllegalArgumentException("Create trip dependencies are required");
         }
         this.trips = trips;
+        this.output = output;
+        this.account = account;
     }
 
     @Override
-    public Trip execute(CreateTripInputData inputData) {
+    public void execute(CreateTripInputData inputData) {
+        try {
+            final Trip saved = doExecute(inputData);
+            output.presentSuccess(new CreateTripOutputData(
+                    saved, "Trip created successfully"));
+        }
+        catch (IllegalArgumentException | IllegalStateException exception) {
+            output.presentFailure(exception.getMessage());
+        }
+    }
+
+    /**
+     * Compatibility overload retained for the REST and legacy web entry points.
+     *
+     * @param destination destination name
+     * @param date start date
+     * @param start start time
+     * @param end end time
+     * @param mode transportation mode
+     * @return the created trip
+     */
+    public Trip execute(
+            String destination,
+            LocalDate date,
+            LocalTime start,
+            LocalTime end,
+            TransportationMode mode) {
+        return executeAndReturn(new CreateTripInputData(destination, date, start, end, mode));
+    }
+
+    /**
+     * Compatibility overload retained for the REST and legacy web entry points.
+     *
+     * @param destination destination name
+     * @param date start date
+     * @param start start time
+     * @param end end time
+     * @param mode transportation mode
+     * @param dayCount number of trip days
+     * @return the created trip
+     */
+    public Trip execute(
+            String destination,
+            LocalDate date,
+            LocalTime start,
+            LocalTime end,
+            TransportationMode mode,
+            int dayCount) {
+        return executeAndReturn(new CreateTripInputData(
+                destination, date, start, end, mode, dayCount));
+    }
+
+    /**
+     * Executes creation synchronously for callers that need the created trip.
+     *
+     * @param inputData the validated trip details
+     * @return the created trip
+     */
+    public Trip executeAndReturn(CreateTripInputData inputData) {
+        return doExecute(inputData);
+    }
+
+    private Trip doExecute(CreateTripInputData inputData) {
         if (inputData == null) {
             throw new IllegalArgumentException("Create trip input is required");
         }
@@ -54,35 +143,12 @@ public final class CreateTripUseCase implements CreateTripInputBoundary {
 
         final Trip trip = new Trip(
                 UUID.randomUUID().toString(), destination, mode, days);
-        return trips.save(trip);
-    }
-
-    /**
-     * Compatibility overload retained for the REST and legacy web entry points.
-      * @return the result of the operation
-     */
-    public Trip execute(
-            String destination,
-            LocalDate date,
-            LocalTime start,
-            LocalTime end,
-            TransportationMode mode) {
-        return execute(new CreateTripInputData(destination, date, start, end, mode));
-    }
-
-    /**
-     * Performs the e xe cu te operation.
-     * @return the result of the operation
-     */
-    public Trip execute(
-            String destination,
-            LocalDate date,
-            LocalTime start,
-            LocalTime end,
-            TransportationMode mode,
-            int dayCount) {
-        return execute(new CreateTripInputData(
-                destination, date, start, end, mode, dayCount));
+        final Trip saved = trips.save(trip);
+        final List<String> companionIds = inputData.getCompanionIds();
+        if (account != null && companionIds != null && !companionIds.isEmpty()) {
+            account.setTripMembers(saved.getId(), companionIds);
+        }
+        return saved;
     }
 
     private static String requireText(String value, String message) {

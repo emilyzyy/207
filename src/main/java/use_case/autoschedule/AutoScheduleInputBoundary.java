@@ -10,16 +10,10 @@ import entity.valueobjects.WeatherOption;
  */
 public interface AutoScheduleInputBoundary {
 
-    /**
-     * Works out a proposed schedule and presents it. Changes nothing.
-     * @param inputData the i np ut da ta value
-     */
+    /** Works out a proposed schedule and presents it. Changes nothing. */
     void preview(AutoScheduleInputData inputData);
 
-    /**
-     * Saves a previously previewed schedule, if the Day Plan has not moved on.
-     * @param inputData the i np ut da ta value
-     */
+    /** Saves a previously previewed schedule, if the Day Plan has not moved on. */
     void apply(AutoScheduleApplyInputData inputData);
 
     /**
@@ -33,8 +27,20 @@ public interface AutoScheduleInputBoundary {
      * weather, and keeps this class the only place that decides what counts as usable.</p>
      *
      * <p>Never throws. An unanswerable question yields an unavailable option.</p>
-      * @param tripId the t ri pi d value
-      * @return the result of the operation
      */
     WeatherOption weatherOptionFor(String tripId);
+
+    /**
+     * Removes one activity from the unsaved proposal, leaving everything else where it is.
+     *
+     * <p>Deliberately not a re-run of the search. The traveller took one thing out of a
+     * proposal they were reading; re-solving would hand back a different day and lose the
+     * arrangement they had just decided they liked. So the remaining activities keep their
+     * proposed times and order, and only the journeys either side of the removed activity are
+     * rebuilt.</p>
+     *
+     * <p>Nothing is saved. The repository is untouched, Apply still has to be pressed, and
+     * Cancel still restores the day exactly as it was.</p>
+     */
+    void removeFromProposal(ProposalEditInputData inputData);
 }

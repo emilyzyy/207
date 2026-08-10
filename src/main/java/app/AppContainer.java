@@ -7,9 +7,13 @@ import java.util.Optional;
 import entity.entities.Activity;
 import entity.entities.Trip;
 import entity.entities.WeatherWarning;
+import interface_adapter.controllers.CreateTripController;
+import interface_adapter.places.OpenMeteoCitySearch;
+import interface_adapter.presenters.CreateTripPresenter;
 import use_case.ports.AccountService;
 import use_case.ports.ActivityRepository;
 import use_case.ports.ApiTripService;
+import use_case.ports.CitySearchGeocoder;
 import use_case.ports.DistanceService;
 import use_case.ports.ItineraryDataAccessInterface;
 import use_case.ports.PlacesService;
@@ -17,7 +21,24 @@ import use_case.ports.PlacesWriter;
 import use_case.ports.TripRepository;
 import use_case.ports.WeatherService;
 import use_case.scheduling.ActivityScoringPolicy;
-import use_case.usecases.*;
+import use_case.usecases.AddActivityToPlanUseCase;
+import use_case.usecases.AutoScheduleTripUseCase;
+import use_case.usecases.BookmarkActivityUseCase;
+import use_case.usecases.CreateTripInputData;
+import use_case.usecases.CreateTripUseCase;
+import use_case.usecases.DeleteTripUseCase;
+import use_case.usecases.DiscoverTripPlacesUseCase;
+import use_case.usecases.EditItineraryInputBoundary;
+import use_case.usecases.EditItineraryInputData;
+import use_case.usecases.EditItineraryInteractor;
+import use_case.usecases.EditScheduledEventUseCase;
+import use_case.usecases.FilterActivitiesUseCase;
+import use_case.usecases.GetTripSummaryUseCase;
+import use_case.usecases.GetWeatherWarningUseCase;
+import use_case.usecases.ListTripsUseCase;
+import use_case.usecases.RemoveBookmarkUseCase;
+import use_case.usecases.RemoveScheduledEventUseCase;
+import use_case.usecases.SearchActivitiesUseCase;
 
 /**
  * Application-layer use-case registry. Concrete infrastructure is supplied by an outer builder.
@@ -34,8 +55,11 @@ public final class AppContainer implements ApiTripService {
     /** Present when Supabase account features (profile / friends) are enabled; otherwise null. */
     public final AccountService account;
     public final CreateTripUseCase createTrip;
+    public final CreateTripPresenter createTripPresenter;
+    public final CreateTripController createTripController;
+    public final CitySearchGeocoder citySearch;
     public final DiscoverTripPlacesUseCase discoverTripPlaces;
-    public final SearchActivitiesInteractor searchActivities;
+    public final SearchActivitiesUseCase searchActivities;
     public final FilterActivitiesUseCase filterActivities;
     public final BookmarkActivityUseCase bookmarkActivity;
     public final RemoveBookmarkUseCase removeBookmark;
@@ -45,7 +69,6 @@ public final class AppContainer implements ApiTripService {
     public final EditScheduledEventUseCase editEvent;
     public final RemoveScheduledEventUseCase removeEvent;
     public final GetTripSummaryUseCase summary;
-    public final ShareTripInputBoundary share;
     public final GetWeatherWarningUseCase weatherWarning;
     public final ListTripsUseCase listTrips;
     public final DeleteTripUseCase deleteTrip;
@@ -91,9 +114,12 @@ public final class AppContainer implements ApiTripService {
         this.weather = weather;
         this.distances = distances;
         this.account = account;
-        createTrip = new CreateTripUseCase(trips);
+        createTripPresenter = new CreateTripPresenter();
+        createTrip = new CreateTripUseCase(trips, createTripPresenter, account);
+        createTripController = new CreateTripController(createTrip);
+        citySearch = new OpenMeteoCitySearch();
         discoverTripPlaces = new DiscoverTripPlacesUseCase(trips, places, placesWriter);
-        searchActivities = new SearchActivitiesInteractor(places);
+        searchActivities = new SearchActivitiesUseCase(places);
         filterActivities = new FilterActivitiesUseCase();
         bookmarkActivity = new BookmarkActivityUseCase(trips, activities);
         removeBookmark = new RemoveBookmarkUseCase(trips);
@@ -103,7 +129,6 @@ public final class AppContainer implements ApiTripService {
         editEvent = new EditScheduledEventUseCase(trips);
         removeEvent = new RemoveScheduledEventUseCase(trips, distances);
         summary = new GetTripSummaryUseCase(trips);
-        share = new ShareTripUseCase(summary);
         weatherWarning = new GetWeatherWarningUseCase(trips, weather);
         listTrips = new ListTripsUseCase(trips);
         deleteTrip = new DeleteTripUseCase(trips);
@@ -117,7 +142,7 @@ public final class AppContainer implements ApiTripService {
 
     @Override
     public Trip createTrip(CreateTripInputData inputData) {
-        return createTrip.execute(inputData);
+        return createTrip.executeAndReturn(inputData);
     }
 
     @Override
@@ -168,7 +193,7 @@ public final class AppContainer implements ApiTripService {
 
     @Override
     public String shareTrip(String tripId) {
-        return share.execute(tripId);
+        return summary.execute(tripId);
     }
 
     @Override

@@ -14,13 +14,11 @@ import java.util.List;
 public final class ProblemValidator {
 
     /**
-      * @param tasks the t as ks value
-      * @param availability the a va il ab il it y value
      * @return the first conflict found, or null when the request is worth searching
      */
     public ScheduleConflict validate(TimeWindow availability, List<ScheduleTask> tasks,
                                      List<TimeWindow> unavailableWindows) {
-        final ScheduleConflict windowProblem = validateUnavailableWindows(availability, unavailableWindows);
+        ScheduleConflict windowProblem = validateUnavailableWindows(availability, unavailableWindows);
         if (windowProblem != null) {
             return windowProblem;
         }
@@ -33,7 +31,7 @@ public final class ProblemValidator {
             return null;
         }
         for (int i = 0; i < windows.size(); i++) {
-            final TimeWindow window = windows.get(i);
+            TimeWindow window = windows.get(i);
             if (!availability.encloses(window)) {
                 return ScheduleConflict.of(ScheduleConflict.Kind.LOCK_OUTSIDE_AVAILABILITY,
                         "", window.toString());
@@ -51,12 +49,12 @@ public final class ProblemValidator {
     private ScheduleConflict validateLocks(TimeWindow availability, List<ScheduleTask> tasks,
                                            List<TimeWindow> unavailableWindows) {
         for (int i = 0; i < tasks.size(); i++) {
-            final ScheduleTask task = tasks.get(i);
+            ScheduleTask task = tasks.get(i);
             if (!task.isLocked()) {
                 continue;
             }
-            final TimeWindow lock = task.getLockedAt();
-            final String name = task.getActivity().getName();
+            TimeWindow lock = task.getLockedAt();
+            String name = task.getActivity().getName();
 
             if (!availability.encloses(lock)) {
                 return ScheduleConflict.of(ScheduleConflict.Kind.LOCK_OUTSIDE_AVAILABILITY,
@@ -71,14 +69,13 @@ public final class ProblemValidator {
             if (unavailableWindows != null) {
                 for (TimeWindow blocked : unavailableWindows) {
                     if (blocked.overlaps(lock)) {
-                        return ScheduleConflict.of(
-                                ScheduleConflict.Kind.LOCK_INSIDE_UNAVAILABLE_PERIOD,
-                                task.getEventId(), name);
+                        return ScheduleConflict.lockedInsideUnavailable(
+                                task.getEventId(), name, lock, blocked);
                     }
                 }
             }
             for (int j = i + 1; j < tasks.size(); j++) {
-                final ScheduleTask other = tasks.get(j);
+                ScheduleTask other = tasks.get(j);
                 if (other.isLocked() && lock.overlaps(other.getLockedAt())) {
                     return ScheduleConflict.of(ScheduleConflict.Kind.LOCKS_OVERLAP,
                             task.getEventId(), name + " and " + other.getActivity().getName());
