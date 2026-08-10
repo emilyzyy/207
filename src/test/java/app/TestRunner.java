@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-import app.AppContainer;
 import entity.entities.Trip;
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;

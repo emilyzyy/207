@@ -15,7 +15,6 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import app.AppContainer;
 import entity.entities.Trip;
 import entity.entities.WeatherWarning;
 import entity.valueobjects.WeatherSeverity;

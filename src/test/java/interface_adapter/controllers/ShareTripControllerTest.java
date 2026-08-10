@@ -13,7 +13,6 @@ import database.persistence.InMemoryItineraryDataAccessObject;
 import entity.entities.Trip;
 import entity.valueobjects.TransportationMode;
 import use_case.usecases.GetTripSummaryUseCase;
-import use_case.usecases.ShareTripInputBoundary;
 import use_case.usecases.ShareTripOutputBoundary;
 import use_case.usecases.ShareTripOutputData;
 import use_case.usecases.ShareTripUseCase;

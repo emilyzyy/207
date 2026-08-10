@@ -24,8 +24,6 @@ import org.junit.jupiter.api.Test;
 import entity.entities.Trip;
 import entity.valueobjects.TransportationMode;
 import interface_adapter.viewmodels.DayPlanViewModel;
-import views.DateSelectionButton;
-import views.TimeSelectorPanel;
 import views.TrippyFrame;
 
 final class SwingApplicationIntegrationTest {

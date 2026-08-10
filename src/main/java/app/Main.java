@@ -15,7 +15,6 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
-import app.AppContainer;
 import app.config.DotEnv;
 import com.sun.net.httpserver.HttpServer;
 import database.persistence.DualModeItineraryDataAccess;

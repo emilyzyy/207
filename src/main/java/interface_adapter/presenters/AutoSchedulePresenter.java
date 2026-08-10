@@ -22,7 +22,6 @@ import use_case.autoschedule.AutoScheduleAppliedOutputData;
 import use_case.autoschedule.AutoScheduleConflictOutputData;
 import use_case.autoschedule.AutoScheduleOutputBoundary;
 import use_case.autoschedule.AutoSchedulePreviewOutputData;
-import use_case.autoschedule.PolicyId;
 import use_case.autoschedule.ProposedEventData;
 import use_case.autoschedule.Reason;
 import use_case.autoschedule.ReasonCode;

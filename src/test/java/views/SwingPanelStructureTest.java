@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.event.MouseEvent;
-import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collections;
 

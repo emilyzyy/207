@@ -15,7 +15,6 @@ import java.util.Set;
 
 import javax.swing.SwingUtilities;
 
-import app.AppContainer;
 import app.config.DotEnv;
 import database.persistence.CachedPlacesRepository;
 import database.persistence.DayScopedTripRepository;
