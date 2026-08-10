@@ -1,13 +1,15 @@
 package views;
 
 import entity.entities.User;
+import interface_adapter.controllers.ProfileController;
+import interface_adapter.viewmodels.ProfileState;
+import interface_adapter.viewmodels.ProfileViewModel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.util.function.Function;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -20,8 +22,11 @@ import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 
-/** Editable profile: avatar, username, email, optional password change, with save and sign out. */
+/** Profile View: delegates load / save / sign-out to {@link ProfileController}. */
 public final class ProfileDialog extends JDialog {
+    private final ProfileController controller;
+    private final ProfileViewModel viewModel;
+    private final String sessionPassword;
     private final JTextField usernameField = new JTextField(24);
     private final JTextField emailField = new JTextField(24);
     private final JPasswordField oldPasswordField = new JPasswordField(24);
@@ -31,7 +36,6 @@ public final class ProfileDialog extends JDialog {
     private final JButton changePasswordButton = SwingTheme.secondaryButton("Change your password");
     private final JLabel avatarPreview = new JLabel();
     private final JLabel status = new JLabel(" ");
-    private final String currentPassword;
     private String avatarColor;
     private String avatarImage;
     private boolean changingPassword;
@@ -41,19 +45,33 @@ public final class ProfileDialog extends JDialog {
 
     public ProfileDialog(
             JFrame owner,
-            User profile,
-            String currentPassword,
-            Function<ProfileSaveRequest, User> onSave) {
+            ProfileController controller,
+            ProfileViewModel viewModel,
+            String sessionPassword) {
         super(owner, "Profile", true);
-        if (profile == null || onSave == null) {
-            throw new IllegalArgumentException("Profile and save handler are required");
+        if (controller == null || viewModel == null) {
+            throw new IllegalArgumentException("Profile controller and ViewModel are required");
         }
-        this.currentPassword = currentPassword == null ? "" : currentPassword;
+        this.controller = controller;
+        this.viewModel = viewModel;
+        this.sessionPassword = sessionPassword == null ? "" : sessionPassword;
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        avatarColor = profile.getAvatarColor();
-        avatarImage = profile.getAvatarImage();
-        usernameField.setText(profile.getUsername());
-        emailField.setText(profile.getEmail());
+
+        User initial = viewModel.getState().getProfile();
+        if (initial == null) {
+            controller.load();
+            initial = viewModel.getState().getProfile();
+        }
+        if (initial == null) {
+            throw new IllegalStateException(
+                    viewModel.getState().getMessage().isEmpty()
+                            ? "Could not load profile."
+                            : viewModel.getState().getMessage());
+        }
+        avatarColor = initial.getAvatarColor();
+        avatarImage = initial.getAvatarImage();
+        usernameField.setText(initial.getUsername());
+        emailField.setText(initial.getEmail());
         refreshAvatarPreview();
 
         JPanel root = new JPanel(new BorderLayout(0, 12));
@@ -126,8 +144,11 @@ public final class ProfileDialog extends JDialog {
         footer.setOpaque(false);
         JButton signOut = SwingTheme.secondaryButton("Sign out");
         signOut.addActionListener(event -> {
-            signOutRequested = true;
-            dispose();
+            controller.signOut();
+            if (viewModel.getState().isSignedOut()) {
+                signOutRequested = true;
+                dispose();
+            }
         });
         footer.add(signOut, BorderLayout.WEST);
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
@@ -136,41 +157,23 @@ public final class ProfileDialog extends JDialog {
         cancel.addActionListener(event -> dispose());
         JButton save = SwingTheme.primaryButton("Save");
         save.addActionListener(event -> {
-            try {
-                String newPassword = "";
-                if (changingPassword) {
-                    String oldPassword = new String(oldPasswordField.getPassword());
-                    String nextPassword = new String(newPasswordField.getPassword());
-                    String confirmPassword = new String(confirmPasswordField.getPassword());
-                    if (oldPassword.isEmpty() && nextPassword.isEmpty() && confirmPassword.isEmpty()) {
-                        throw new IllegalArgumentException(
-                                "Enter your old and new passwords, or cancel password change.");
-                    }
-                    if (!oldPassword.equals(this.currentPassword)) {
-                        throw new IllegalArgumentException("Current password is incorrect.");
-                    }
-                    String passwordError = PasswordRules.validateNewPasswordPair(
-                            nextPassword, confirmPassword);
-                    if (passwordError != null) {
-                        throw new IllegalArgumentException(passwordError);
-                    }
-                    newPassword = nextPassword;
-                }
-                ProfileSaveRequest request = new ProfileSaveRequest(
-                        usernameField.getText().trim(),
-                        emailField.getText().trim(),
-                        newPassword,
-                        avatarColor,
-                        avatarImage);
-                savedProfile = onSave.apply(request);
+            controller.save(
+                    usernameField.getText(),
+                    emailField.getText(),
+                    avatarColor,
+                    avatarImage,
+                    changingPassword,
+                    new String(oldPasswordField.getPassword()),
+                    new String(newPasswordField.getPassword()),
+                    new String(confirmPasswordField.getPassword()),
+                    sessionPassword);
+            ProfileState state = viewModel.getState();
+            status.setText(state.getMessage().isEmpty() ? " " : state.getMessage());
+            status.setForeground(state.isError() ? SwingTheme.ERROR : SwingTheme.SUCCESS);
+            if (state.isSaved() && state.getProfile() != null) {
                 saved = true;
-                status.setForeground(SwingTheme.SUCCESS);
-                status.setText("Profile saved.");
+                savedProfile = state.getProfile();
                 dispose();
-            } catch (RuntimeException exception) {
-                status.setForeground(SwingTheme.ERROR);
-                status.setText(exception.getMessage() == null
-                        ? "Could not save profile." : exception.getMessage());
             }
         });
         right.add(cancel);
@@ -302,48 +305,5 @@ public final class ProfileDialog extends JDialog {
 
     private void refreshAvatarPreview() {
         avatarPreview.setIcon(AvatarSupport.iconFor(avatarColor, avatarImage, 64));
-    }
-
-    /** Values collected from the profile form on Save. */
-    public static final class ProfileSaveRequest {
-        private final String username;
-        private final String email;
-        private final String password;
-        private final String avatarColor;
-        private final String avatarImage;
-
-        public ProfileSaveRequest(
-                String username,
-                String email,
-                String password,
-                String avatarColor,
-                String avatarImage) {
-            this.username = username;
-            this.email = email;
-            this.password = password;
-            this.avatarColor = avatarColor;
-            this.avatarImage = avatarImage;
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        /** Empty when the password is not being changed. */
-        public String getPassword() {
-            return password;
-        }
-
-        public String getAvatarColor() {
-            return avatarColor;
-        }
-
-        public String getAvatarImage() {
-            return avatarImage;
-        }
     }
 }

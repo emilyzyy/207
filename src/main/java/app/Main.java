@@ -1,6 +1,14 @@
 package app;
 
 import interface_adapter.controllers.ApiController;
+import interface_adapter.controllers.FriendsController;
+import interface_adapter.controllers.ProfileController;
+import interface_adapter.presenters.FriendsPresenter;
+import interface_adapter.presenters.ProfilePresenter;
+import interface_adapter.viewmodels.FriendsState;
+import interface_adapter.viewmodels.FriendsViewModel;
+import interface_adapter.viewmodels.ProfileState;
+import interface_adapter.viewmodels.ProfileViewModel;
 import views.FriendsDialog;
 import views.GalleryPanel;
 import views.LoginDialog;
@@ -13,6 +21,8 @@ import use_case.ports.AuthService;
 import use_case.ports.AuthSession;
 import use_case.ports.DestinationGeocoder;
 import use_case.usecases.CreateTripInputData;
+import use_case.usecases.ManageFriendsInteractor;
+import use_case.usecases.ManageProfileInteractor;
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
@@ -164,7 +174,7 @@ public final class Main {
             }
         };
         Runnable onFriends = !signedIn || app.account == null ? null : () -> {
-            new FriendsDialog(galleryFrame, app.account).setVisible(true);
+            openFriends(app, galleryFrame);
             if (galleryHolder[0] != null) {
                 galleryHolder[0].setIncomingFriendRequestCount(countIncomingFriendRequests(app));
             }
@@ -322,9 +332,16 @@ public final class Main {
             if (app.account == null) {
                 return;
             }
-            new FriendsDialog(tripFrame, app.account).setVisible(true);
+            openFriends(app, tripFrame);
             tripFrame.setIncomingFriendRequestCount(countIncomingFriendRequests(app));
         });
+    }
+
+    private static void openFriends(AppContainer app, JFrame owner) {
+        FriendsViewModel viewModel = new FriendsViewModel(FriendsState.empty());
+        FriendsController controller = new FriendsController(
+                new ManageFriendsInteractor(app.account, new FriendsPresenter(viewModel)));
+        new FriendsDialog(owner, controller, viewModel).setVisible(true);
     }
 
     /**
@@ -335,9 +352,34 @@ public final class Main {
         if (app.account == null || auth == null) {
             return null;
         }
-        User profile;
+        ProfileViewModel viewModel = new ProfileViewModel(ProfileState.empty());
+        ProfileController controller = new ProfileController(
+                new ManageProfileInteractor(app.account, auth, new ProfilePresenter(viewModel)));
+        controller.load();
+        if (viewModel.getState().isError() || viewModel.getState().getProfile() == null) {
+            JOptionPane.showMessageDialog(owner,
+                    viewModel.getState().getMessage().isEmpty()
+                            ? "Could not load profile."
+                            : viewModel.getState().getMessage(),
+                    "Profile",
+                    JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
         try {
-            profile = app.account.ensureProfile(null);
+            ProfileDialog dialog = new ProfileDialog(
+                    owner,
+                    controller,
+                    viewModel,
+                    auth.currentSession().map(AuthSession::getPassword).orElse(""));
+            dialog.setVisible(true);
+            if (dialog.isSignOutRequested()) {
+                DualModeItineraryDataAccess dual = dualMode(app);
+                if (dual != null) {
+                    dual.clearLocal();
+                }
+                return null;
+            }
+            return dialog.isSaved() ? dialog.getSavedProfile() : null;
         } catch (RuntimeException exception) {
             JOptionPane.showMessageDialog(owner,
                     exception.getMessage(),
@@ -345,21 +387,6 @@ public final class Main {
                     JOptionPane.ERROR_MESSAGE);
             return null;
         }
-        ProfileDialog dialog = new ProfileDialog(owner, profile,
-                auth.currentSession().map(AuthSession::getPassword).orElse(""),
-                request ->
-                app.account.updateProfile(
-                        request.getUsername(),
-                        request.getEmail(),
-                        request.getPassword(),
-                        request.getAvatarColor(),
-                        request.getAvatarImage()));
-        dialog.setVisible(true);
-        if (dialog.isSignOutRequested()) {
-            signOut(app, auth);
-            return null;
-        }
-        return dialog.isSaved() ? dialog.getSavedProfile() : null;
     }
 
     private static User loadProfile(AppContainer app) {

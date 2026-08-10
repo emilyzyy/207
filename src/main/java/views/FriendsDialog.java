@@ -1,13 +1,14 @@
 package views;
 
-import use_case.ports.AccountService;
 import entity.entities.Friendship;
 import entity.entities.User;
+import interface_adapter.controllers.FriendsController;
+import interface_adapter.viewmodels.FriendsState;
+import interface_adapter.viewmodels.FriendsViewModel;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -21,21 +22,23 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 
-/** Friends hub: add by username, manage requests, and view current friends. */
+/** Friends hub View: delegates all actions to {@link FriendsController}. */
 public final class FriendsDialog extends JDialog {
-    private final AccountService account;
+    private final FriendsController controller;
+    private final FriendsViewModel viewModel;
     private final JLabel status = new JLabel(" ");
     private final JPanel addPanel = new JPanel(new BorderLayout(0, 8));
     private final JPanel requestsPanel = new JPanel();
     private final JPanel friendsPanel = new JPanel();
     private final JTextField usernameField = new JTextField(18);
 
-    public FriendsDialog(JFrame owner, AccountService account) {
+    public FriendsDialog(JFrame owner, FriendsController controller, FriendsViewModel viewModel) {
         super(owner, "Friends", true);
-        if (account == null) {
-            throw new IllegalArgumentException("Account service is required");
+        if (controller == null || viewModel == null) {
+            throw new IllegalArgumentException("Friends controller and ViewModel are required");
         }
-        this.account = account;
+        this.controller = controller;
+        this.viewModel = viewModel;
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setMinimumSize(new Dimension(460, 420));
         setPreferredSize(new Dimension(520, 480));
@@ -59,13 +62,6 @@ public final class FriendsDialog extends JDialog {
         tabs.addTab("Add", wrapScroll(addPanel));
         tabs.addTab("Requests", wrapScroll(requestsPanel));
         tabs.addTab("Friends", wrapScroll(friendsPanel));
-        tabs.addChangeListener(event -> {
-            if (tabs.getSelectedIndex() == 1) {
-                refreshRequests();
-            } else if (tabs.getSelectedIndex() == 2) {
-                refreshFriends();
-            }
-        });
         root.add(tabs, BorderLayout.CENTER);
 
         status.setFont(SwingTheme.SMALL);
@@ -82,8 +78,8 @@ public final class FriendsDialog extends JDialog {
         root.add(footer, BorderLayout.SOUTH);
 
         setContentPane(root);
-        refreshRequests();
-        refreshFriends();
+        viewModel.addPropertyChangeListener(event -> render(viewModel.getState()));
+        controller.load();
         pack();
         setLocationRelativeTo(owner);
     }
@@ -101,73 +97,60 @@ public final class FriendsDialog extends JDialog {
         row.add(new JLabel("Username"));
         row.add(usernameField);
         JButton send = SwingTheme.primaryButton("Send request");
-        send.addActionListener(event -> sendRequest());
+        send.addActionListener(event -> {
+            controller.sendRequest(usernameField.getText());
+            if (!viewModel.getState().isError()) {
+                usernameField.setText("");
+            }
+        });
         row.add(send);
         addPanel.add(row, BorderLayout.CENTER);
     }
 
-    private void sendRequest() {
-        try {
-            Friendship created = account.sendFriendRequest(usernameField.getText().trim());
-            usernameField.setText("");
-            status.setForeground(SwingTheme.SUCCESS);
-            status.setText("Request sent to @" + created.getOtherUser().getUsername() + ".");
-            refreshRequests();
-        } catch (RuntimeException exception) {
-            status.setForeground(SwingTheme.ERROR);
-            status.setText(exception.getMessage());
+    private void render(FriendsState state) {
+        status.setText(state.getMessage().isEmpty() ? " " : state.getMessage());
+        status.setForeground(state.isError() ? SwingTheme.ERROR : SwingTheme.SUCCESS);
+        if (!state.isError() && state.getMessage().isEmpty()) {
+            status.setForeground(SwingTheme.MUTED);
         }
+        rebuildRequests(state);
+        rebuildFriends(state);
     }
 
-    private void refreshRequests() {
+    private void rebuildRequests(FriendsState state) {
         requestsPanel.removeAll();
-        try {
-            List<Friendship> incoming = account.listIncomingRequests();
-            List<Friendship> outgoing = account.listOutgoingRequests();
-            requestsPanel.add(sectionLabel("Incoming"));
-            if (incoming.isEmpty()) {
-                requestsPanel.add(mutedRow("No incoming requests."));
-            } else {
-                for (Friendship request : incoming) {
-                    requestsPanel.add(incomingRow(request));
-                    requestsPanel.add(Box.createVerticalStrut(6));
-                }
+        requestsPanel.add(sectionLabel("Incoming"));
+        if (state.getIncoming().isEmpty()) {
+            requestsPanel.add(mutedRow("No incoming requests."));
+        } else {
+            for (Friendship request : state.getIncoming()) {
+                requestsPanel.add(incomingRow(request));
+                requestsPanel.add(Box.createVerticalStrut(6));
             }
-            requestsPanel.add(Box.createVerticalStrut(12));
-            requestsPanel.add(sectionLabel("Outgoing"));
-            if (outgoing.isEmpty()) {
-                requestsPanel.add(mutedRow("No outgoing requests."));
-            } else {
-                for (Friendship request : outgoing) {
-                    requestsPanel.add(outgoingRow(request));
-                    requestsPanel.add(Box.createVerticalStrut(6));
-                }
+        }
+        requestsPanel.add(Box.createVerticalStrut(12));
+        requestsPanel.add(sectionLabel("Outgoing"));
+        if (state.getOutgoing().isEmpty()) {
+            requestsPanel.add(mutedRow("No outgoing requests."));
+        } else {
+            for (Friendship request : state.getOutgoing()) {
+                requestsPanel.add(outgoingRow(request));
+                requestsPanel.add(Box.createVerticalStrut(6));
             }
-        } catch (RuntimeException exception) {
-            status.setForeground(SwingTheme.ERROR);
-            status.setText(exception.getMessage());
-            requestsPanel.add(mutedRow("Could not load requests."));
         }
         requestsPanel.revalidate();
         requestsPanel.repaint();
     }
 
-    private void refreshFriends() {
+    private void rebuildFriends(FriendsState state) {
         friendsPanel.removeAll();
-        try {
-            List<Friendship> friends = account.listAcceptedFriendships();
-            if (friends.isEmpty()) {
-                friendsPanel.add(mutedRow("You have no friends yet."));
-            } else {
-                for (Friendship friendship : friends) {
-                    friendsPanel.add(friendRow(friendship));
-                    friendsPanel.add(Box.createVerticalStrut(6));
-                }
+        if (state.getAccepted().isEmpty()) {
+            friendsPanel.add(mutedRow("You have no friends yet."));
+        } else {
+            for (Friendship friendship : state.getAccepted()) {
+                friendsPanel.add(friendRow(friendship));
+                friendsPanel.add(Box.createVerticalStrut(6));
             }
-        } catch (RuntimeException exception) {
-            status.setForeground(SwingTheme.ERROR);
-            status.setText(exception.getMessage());
-            friendsPanel.add(mutedRow("Could not load friends."));
         }
         friendsPanel.revalidate();
         friendsPanel.repaint();
@@ -177,18 +160,7 @@ public final class FriendsDialog extends JDialog {
         JPanel row = listRow();
         row.add(avatarAndName(request.getOtherUser()), BorderLayout.CENTER);
         JButton accept = SwingTheme.primaryButton("Accept");
-        accept.addActionListener(event -> {
-            try {
-                account.acceptFriendRequest(request.getId());
-                status.setForeground(SwingTheme.SUCCESS);
-                status.setText("You are now friends with @" + request.getOtherUser().getUsername() + ".");
-                refreshRequests();
-                refreshFriends();
-            } catch (RuntimeException exception) {
-                status.setForeground(SwingTheme.ERROR);
-                status.setText(exception.getMessage());
-            }
-        });
+        accept.addActionListener(event -> controller.accept(request.getId()));
         row.add(accept, BorderLayout.EAST);
         return row;
     }
@@ -197,17 +169,7 @@ public final class FriendsDialog extends JDialog {
         JPanel row = listRow();
         row.add(avatarAndName(request.getOtherUser()), BorderLayout.CENTER);
         JButton cancel = SwingTheme.secondaryButton("Cancel");
-        cancel.addActionListener(event -> {
-            try {
-                account.cancelFriendRequest(request.getId());
-                status.setForeground(SwingTheme.MUTED);
-                status.setText("Cancelled request to @" + request.getOtherUser().getUsername() + ".");
-                refreshRequests();
-            } catch (RuntimeException exception) {
-                status.setForeground(SwingTheme.ERROR);
-                status.setText(exception.getMessage());
-            }
-        });
+        cancel.addActionListener(event -> controller.cancel(request.getId()));
         row.add(cancel, BorderLayout.EAST);
         return row;
     }
@@ -225,18 +187,8 @@ public final class FriendsDialog extends JDialog {
                     "Remove friend",
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE);
-            if (choice != JOptionPane.YES_OPTION) {
-                return;
-            }
-            try {
-                account.removeFriend(friendship.getId());
-                status.setForeground(SwingTheme.MUTED);
-                status.setText("Removed @" + friend.getUsername()
-                        + ". You can send them a new request anytime.");
-                refreshFriends();
-            } catch (RuntimeException exception) {
-                status.setForeground(SwingTheme.ERROR);
-                status.setText(exception.getMessage());
+            if (choice == JOptionPane.YES_OPTION) {
+                controller.remove(friendship.getId());
             }
         });
         row.add(remove, BorderLayout.EAST);
