@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
@@ -91,12 +92,18 @@ final class OverviewPanelMapTest {
         double[] home = StaticTileLoader.latLngForCity(destination);
         assertNotNull(home);
 
+        // setViewportLoader schedules an immediate reload on the EDT while the map is still
+        // on the trip city. Ignore those loads so this test only asserts the far-from-home skip.
+        AtomicBoolean armed = new AtomicBoolean(false);
         CountDownLatch loaded = new CountDownLatch(1);
         map.setViewportLoader((south, west, north, east, max) -> {
-            loaded.countDown();
+            if (armed.get()) {
+                loaded.countDown();
+            }
             return new MockPlacesService().findAll();
         });
         map.flyTo(home[0] + 5, home[1]);
+        armed.set(true);
         map.reloadViewport();
 
         assertFalse(loaded.await(1, TimeUnit.SECONDS));
