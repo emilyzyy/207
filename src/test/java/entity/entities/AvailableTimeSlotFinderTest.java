@@ -1,21 +1,22 @@
 package entity.entities;
 
-import entity.entities.ScheduledEvent;
-import entity.valueobjects.EventType;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Collections;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import entity.valueobjects.EventType;
 
 final class AvailableTimeSlotFinderTest {
     private final AvailableTimeSlotFinder finder = new AvailableTimeSlotFinder();
 
     @Test
     void choosesTheEarliestOneHourGapEvenWhenAShorterGapAppearsFirst() {
-        AvailableTimeSlotFinder.Slot slot = finder.find(
+        final AvailableTimeSlotFinder.Slot slot = finder.find(
                 LocalTime.of(9, 0), LocalTime.of(14, 0), Arrays.asList(
                         event("a", 9, 30, 10, 0), event("b", 11, 0, 13, 0)));
         assertEquals(LocalTime.of(10, 0), slot.getStart());
@@ -24,7 +25,7 @@ final class AvailableTimeSlotFinderTest {
 
     @Test
     void fallsBackThroughFortyFiveThirtyAndFifteenMinutes() {
-        AvailableTimeSlotFinder.Slot slot = finder.find(
+        final AvailableTimeSlotFinder.Slot slot = finder.find(
                 LocalTime.of(9, 0), LocalTime.of(10, 45),
                 Collections.singletonList(event("a", 9, 45, 10, 15)));
         assertEquals(LocalTime.of(9, 0), slot.getStart());
@@ -33,7 +34,7 @@ final class AvailableTimeSlotFinderTest {
 
     @Test
     void returnsNullWhenNoQuarterHourCanFit() {
-        AvailableTimeSlotFinder.Slot slot = finder.find(
+        final AvailableTimeSlotFinder.Slot slot = finder.find(
                 LocalTime.of(9, 0), LocalTime.of(10, 0),
                 Collections.singletonList(event("a", 9, 0, 10, 0)));
         assertNull(slot);

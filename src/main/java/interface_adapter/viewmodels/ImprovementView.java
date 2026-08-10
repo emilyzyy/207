@@ -24,22 +24,34 @@ public final class ImprovementView {
         this.secondary = secondary == null ? "" : secondary;
     }
 
-    /** A small glyph, so the category survives being printed in grey or read aloud. */
+    /**
+     * A small glyph, so the category survives being printed in grey or read aloud.
+     * @return the result of the operation
+     */
     public String getMarker() {
         return marker;
     }
+    /**
+     * The figure or short title: "19 MIN", "PIN KEPT", "DAYLIGHT".
+     * @return the result of the operation
+     */
 
-    /** The figure or short title: "19 MIN", "PIN KEPT", "DAYLIGHT". */
     public String getPrimary() {
         return primary;
     }
+    /**
+     * One short supporting line, or empty when the primary says it all.
+     * @return the result of the operation
+     */
 
-    /** One short supporting line, or empty when the primary says it all. */
     public String getSecondary() {
         return secondary;
     }
+    /**
+     * The whole card as one sentence, for tooltips and screen readers.
+     * @return the result of the operation
+     */
 
-    /** The whole card as one sentence, for tooltips and screen readers. */
     public String spoken() {
         return secondary.isEmpty() ? primary : primary + ", " + secondary;
     }

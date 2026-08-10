@@ -46,13 +46,23 @@ public final class TripAssistantDecision {
         this.requestedFact = requestedFact == null ? RequestedFact.UNKNOWN : requestedFact;
     }
 
-    public Intent getIntent() { return intent; }
+    public Intent getIntent() {
+        return intent;
+    }
 
-    public List<String> getActivityIds() { return activityIds; }
+    public List<String> getActivityIds() {
+        return activityIds;
+    }
 
-    public String getAnswer() { return answer; }
+    public String getAnswer() {
+        return answer;
+    }
 
-    public String getNotice() { return notice; }
+    public String getNotice() {
+        return notice;
+    }
 
-    public RequestedFact getRequestedFact() { return requestedFact; }
+    public RequestedFact getRequestedFact() {
+        return requestedFact;
+    }
 }

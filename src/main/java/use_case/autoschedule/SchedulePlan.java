@@ -16,7 +16,7 @@ public final class SchedulePlan {
         if (score == null) {
             throw new IllegalArgumentException("Schedule score is required");
         }
-        List<PlacedActivity> sorted = new ArrayList<>(placements);
+        final List<PlacedActivity> sorted = new ArrayList<>(placements);
         Collections.sort(sorted, (left, right) -> left.getStart().compareTo(right.getStart()));
         this.placements = Collections.unmodifiableList(sorted);
         this.score = score;
@@ -30,6 +30,10 @@ public final class SchedulePlan {
         return score;
     }
 
+    /**
+     * Performs the t ot al tr av el mi nu te s operation.
+     * @return the result of the operation
+     */
     public int totalTravelMinutes() {
         int total = 0;
         for (PlacedActivity placement : placements) {
@@ -47,6 +51,7 @@ public final class SchedulePlan {
      * the Preview claim zero waiting while an eighty-three minute hole sat on screen, and
      * announce "289 min of waiting removed" against a figure that had never counted the same
      * thing.</p>
+      * @return the result of the operation
      */
     public int totalIdleMinutes() {
         int total = 0;
@@ -60,7 +65,10 @@ public final class SchedulePlan {
         return total;
     }
 
-    /** Waiting a different order could in principle have reclaimed. Used for ranking. */
+    /**
+     * Waiting a different order could in principle have reclaimed. Used for ranking.
+     * @return the result of the operation
+     */
     public int totalAvoidableIdleMinutes() {
         int total = 0;
         for (PlacedActivity placement : placements) {
@@ -69,9 +77,12 @@ public final class SchedulePlan {
         return total;
     }
 
-    /** Event ids in scheduled order — the readable form used by tests and reasons. */
+    /**
+     * Event ids in scheduled order — the readable form used by tests and reasons.
+     * @return the result of the operation
+     */
     public List<String> orderedEventIds() {
-        List<String> ids = new ArrayList<>();
+        final List<String> ids = new ArrayList<>();
         for (PlacedActivity placement : placements) {
             ids.add(placement.getTask().getEventId());
         }

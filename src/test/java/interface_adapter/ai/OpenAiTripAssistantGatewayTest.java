@@ -1,15 +1,10 @@
 package interface_adapter.ai;
 
-import use_case.tripassistant.TripAssistantDecision;
-import use_case.tripassistant.TripAssistantRequest;
-import entity.entities.Activity;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.IndoorOutdoorType;
-import entity.valueobjects.Location;
-import entity.valueobjects.TransportationMode;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sun.net.httpserver.HttpServer;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -19,26 +14,33 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpServer;
+import entity.entities.Activity;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.Location;
+import entity.valueobjects.TransportationMode;
+import use_case.tripassistant.TripAssistantDecision;
+import use_case.tripassistant.TripAssistantRequest;
 
 final class OpenAiTripAssistantGatewayTest {
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Test
     void postsGroundedStructuredRequestToResponsesApiAndParsesIds() throws Exception {
-        AtomicReference<String> requestBody = new AtomicReference<String>();
-        AtomicReference<String> authorization = new AtomicReference<String>();
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        final AtomicReference<String> requestBody = new AtomicReference<String>();
+        final AtomicReference<String> authorization = new AtomicReference<String>();
+        final HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/v1/responses", exchange -> {
             requestBody.set(new String(exchange.getRequestBody().readAllBytes(),
                     StandardCharsets.UTF_8));
             authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
-            byte[] response = ("{\"status\":\"completed\",\"output\":[{"
+            final byte[] response = ("{\"status\":\"completed\",\"output\":[{"
                     + "\"type\":\"message\",\"content\":[{\"type\":\"output_text\","
                     + "\"text\":\"{\\\"intent\\\":\\\"RAIN\\\","
                     + "\\\"activity_ids\\\":[\\\"museum\\\"],"
@@ -50,19 +52,19 @@ final class OpenAiTripAssistantGatewayTest {
         });
         server.start();
         try {
-            URI endpoint = URI.create("http://127.0.0.1:"
+            final URI endpoint = URI.create("http://127.0.0.1:"
                     + server.getAddress().getPort() + "/v1/responses");
-            OpenAiTripAssistantGateway gateway = new OpenAiTripAssistantGateway(
+            final OpenAiTripAssistantGateway gateway = new OpenAiTripAssistantGateway(
                     HttpClient.newHttpClient(), mapper, endpoint, "fake-test-key",
                     "gpt-test", Duration.ofSeconds(5));
 
-            TripAssistantDecision decision = gateway.answer(request());
+            final TripAssistantDecision decision = gateway.answer(request());
 
             assertEquals(TripAssistantDecision.Intent.RAIN, decision.getIntent());
             assertEquals(Collections.singletonList("museum"), decision.getActivityIds());
             assertEquals("These options fit a rainy day.", decision.getAnswer());
             assertEquals("Bearer fake-test-key", authorization.get());
-            JsonNode root = mapper.readTree(requestBody.get());
+            final JsonNode root = mapper.readTree(requestBody.get());
             assertEquals("gpt-test", root.path("model").asText());
             assertFalse(root.path("store").asBoolean(true));
             assertEquals(300, root.path("max_output_tokens").asInt());
@@ -75,24 +77,25 @@ final class OpenAiTripAssistantGatewayTest {
                     .path("properties").path("answer").path("maxLength").asInt());
             assertTrue(root.path("text").path("format").path("schema")
                     .path("properties").has("requested_fact"));
-            JsonNode context = mapper.readTree(root.path("input").asText());
+            final JsonNode context = mapper.readTree(root.path("input").asText());
             assertEquals("Toronto", context.path("destination").asText());
             assertEquals("TRANSIT", context.path("transportation_mode").asText());
             assertTrue(context.has("bookmarked_activity_ids"));
             assertTrue(context.has("day_plan"));
             assertTrue(context.has("weather"));
-        } finally {
+        }
+        finally {
             server.stop(0);
         }
     }
 
     @Test
     void proxyRequestDoesNotContainAnOpenAiAuthorizationHeader() throws Exception {
-        AtomicReference<String> authorization = new AtomicReference<String>();
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        final AtomicReference<String> authorization = new AtomicReference<String>();
+        final HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/v1/responses", exchange -> {
             authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
-            byte[] response = ("{\"status\":\"completed\",\"output\":[{"
+            final byte[] response = ("{\"status\":\"completed\",\"output\":[{"
                     + "\"type\":\"message\",\"content\":[{\"type\":\"output_text\","
                     + "\"text\":\"{\\\"intent\\\":\\\"GENERAL\\\","
                     + "\\\"activity_ids\\\":[],"
@@ -104,23 +107,24 @@ final class OpenAiTripAssistantGatewayTest {
         });
         server.start();
         try {
-            URI endpoint = URI.create("http://127.0.0.1:"
+            final URI endpoint = URI.create("http://127.0.0.1:"
                     + server.getAddress().getPort() + "/v1/responses");
-            OpenAiTripAssistantGateway gateway =
+            final OpenAiTripAssistantGateway gateway =
                     OpenAiTripAssistantGateway.viaProxy(endpoint, "gpt-5.4-mini");
 
-            TripAssistantDecision decision = gateway.answer(request());
+            final TripAssistantDecision decision = gateway.answer(request());
 
             assertEquals(TripAssistantDecision.Intent.GENERAL, decision.getIntent());
             assertEquals("I'm George.", decision.getAnswer());
             assertNull(authorization.get());
-        } finally {
+        }
+        finally {
             server.stop(0);
         }
     }
 
     private TripAssistantRequest request() {
-        Activity museum = new Activity(
+        final Activity museum = new Activity(
                 "museum", "Actual Museum", ActivityCategory.MUSEUM,
                 new Location(43.6, -79.3, "Museum address"), 4.8, 90,
                 LocalTime.of(9, 0), LocalTime.of(18, 0),

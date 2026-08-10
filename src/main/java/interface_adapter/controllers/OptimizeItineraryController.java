@@ -1,9 +1,10 @@
 package interface_adapter.controllers;
 
+import java.util.function.Supplier;
+
+import interface_adapter.viewmodels.DayPlanViewModel;
 import use_case.usecases.OptimizeItineraryInputBoundary;
 import use_case.usecases.OptimizeItineraryInputData;
-import interface_adapter.viewmodels.DayPlanViewModel;
-import java.util.function.Supplier;
 
 /** Swing controller for first-pass current-itinerary compaction. */
 public final class OptimizeItineraryController {
@@ -28,8 +29,9 @@ public final class OptimizeItineraryController {
         this.tripId = () -> viewModel.getState().getTripId();
     }
 
+    /** Performs the e xe cu te operation. */
     public void execute() {
-        String currentTripId = tripId.get();
+        final String currentTripId = tripId.get();
         if (currentTripId == null || currentTripId.trim().isEmpty()) {
             return;
         }

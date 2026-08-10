@@ -1,8 +1,9 @@
 package use_case.autoschedule;
 
+import java.time.LocalDateTime;
+
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;
-import java.time.LocalDateTime;
 
 /**
  * Inward-facing travel contract owned by the Autoschedule use case.
@@ -24,13 +25,20 @@ import java.time.LocalDateTime;
  */
 public interface TravelTimeEstimator {
 
-    /** Estimated travel time for one directed leg leaving at {@code departure}. */
+    /**
+     * Estimated travel time for one directed leg leaving at {@code departure}.
+     * @param to the t o value
+     * @param from the f ro m value
+     * @return the result of the operation
+     */
     TravelEstimate estimate(Location from, Location to,
                             TransportationMode mode, LocalDateTime departure);
 
     /**
      * Whether estimates for {@code mode} actually vary with departure time.
      * When false the caller collapses all departure periods into a single bucket.
+      * @param mode the m od e value
+      * @return the result of the operation
      */
     boolean isTimeSensitive(TransportationMode mode);
 }

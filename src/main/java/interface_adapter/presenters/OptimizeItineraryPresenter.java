@@ -18,7 +18,7 @@ public final class OptimizeItineraryPresenter implements OptimizeItineraryOutput
 
     @Override
     public void presentSuccess(OptimizeItineraryOutputData outputData) {
-        DayPlanState current = viewModel.getState();
+        final DayPlanState current = viewModel.getState();
         viewModel.setState(new DayPlanState(
                 outputData.getTrip().getId(),
                 outputData.getTrip().getScheduledEvents(),
@@ -31,7 +31,7 @@ public final class OptimizeItineraryPresenter implements OptimizeItineraryOutput
 
     @Override
     public void presentFailure(String errorMessage) {
-        DayPlanState current = viewModel.getState();
+        final DayPlanState current = viewModel.getState();
         viewModel.setState(new DayPlanState(
                 current.getTripId(),
                 current.getEvents(),

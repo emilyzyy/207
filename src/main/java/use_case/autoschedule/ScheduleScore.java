@@ -36,7 +36,10 @@ public final class ScheduleScore implements Comparable<ScheduleScore> {
         this.tieBreak = tieBreak == null ? "" : tieBreak;
     }
 
-    /** The whole objective: everything the traveller would rather not spend, added up. */
+    /**
+     * The whole objective: everything the traveller would rather not spend, added up.
+     * @return the result of the operation
+     */
     public int practicalCostMinutes() {
         return travelMinutes + avoidableIdleMinutes + policyPenaltyMinutes + orderPenaltyMinutes;
     }
@@ -48,17 +51,21 @@ public final class ScheduleScore implements Comparable<ScheduleScore> {
     public int getAvoidableIdleMinutes() {
         return avoidableIdleMinutes;
     }
+    /**
+     * Capped meal, daylight and weather penalties combined.
+     * @return the result of the operation
+     */
 
-    /** Capped meal, daylight and weather penalties combined. */
     public int getPolicyPenaltyMinutes() {
         return policyPenaltyMinutes;
     }
-
     /**
      * A small, capped charge for rearranging the user's original order, added only when
      * they ask to keep it. Being capped is what keeps it a near-tie consideration rather
      * than something that could outweigh a genuinely better day.
+      * @return the result of the operation
      */
+
     public int getOrderPenaltyMinutes() {
         return orderPenaltyMinutes;
     }
@@ -69,7 +76,7 @@ public final class ScheduleScore implements Comparable<ScheduleScore> {
 
     @Override
     public int compareTo(ScheduleScore other) {
-        int result = Integer.compare(practicalCostMinutes(), other.practicalCostMinutes());
+        final int result = Integer.compare(practicalCostMinutes(), other.practicalCostMinutes());
         if (result != 0) {
             return result;
         }

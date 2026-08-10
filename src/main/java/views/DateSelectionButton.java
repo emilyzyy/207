@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dialog;
 import java.time.LocalDate;
+
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
@@ -23,28 +24,32 @@ public final class DateSelectionButton extends JButton {
         return date;
     }
 
+    /**
+     * Performs the s et da te operation.
+     * @param value the v al ue value
+     */
     public void setDate(LocalDate value) {
         date = value == null ? LocalDate.now() : value;
         setText(date.toString());
     }
 
     private void showCalendar() {
-        DatePickerPanel picker = new DatePickerPanel(date);
+        final DatePickerPanel picker = new DatePickerPanel(date);
         picker.setAllowClickExtend(false);
-        JDialog dialog = new JDialog(
+        final JDialog dialog = new JDialog(
                 SwingUtilities.getWindowAncestor(this), "Select trip start date",
                 Dialog.ModalityType.APPLICATION_MODAL);
-        JButton cancel = SwingTheme.secondaryButton("Cancel");
+        final JButton cancel = SwingTheme.secondaryButton("Cancel");
         cancel.addActionListener(event -> dialog.dispose());
-        JButton select = SwingTheme.primaryButton("Select Date");
+        final JButton select = SwingTheme.primaryButton("Select Date");
         select.addActionListener(event -> {
             setDate(picker.getDate());
             dialog.dispose();
         });
-        JPanel actions = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT));
+        final JPanel actions = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT));
         actions.add(cancel);
         actions.add(select);
-        JPanel content = new JPanel(new BorderLayout(0, 8));
+        final JPanel content = new JPanel(new BorderLayout(0, 8));
         content.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
         content.add(picker, BorderLayout.CENTER);
         content.add(actions, BorderLayout.SOUTH);

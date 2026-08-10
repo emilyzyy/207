@@ -1,14 +1,15 @@
 package interface_adapter.gateways;
 
-import use_case.autoschedule.WeatherContext;
-import use_case.autoschedule.WeatherContextGateway;
-import use_case.ports.WeatherService;
-import entity.entities.Trip;
-import entity.entities.WeatherWarning;
-import entity.valueobjects.WeatherSeverity;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import entity.entities.Trip;
+import entity.entities.WeatherWarning;
+import entity.valueobjects.WeatherSeverity;
+import use_case.autoschedule.WeatherContext;
+import use_case.autoschedule.WeatherContextGateway;
+import use_case.ports.WeatherService;
 
 /**
  * Supplies Autoschedule's forecast context from the team's shared {@code WeatherService}.
@@ -45,12 +46,12 @@ public final class WeatherServiceContextGateway implements WeatherContextGateway
     @Override
     public WeatherContext contextFor(Trip trip) {
         try {
-            List<WeatherWarning> hourly = weatherService.getHourlyWarnings(trip);
+            final List<WeatherWarning> hourly = weatherService.getHourlyWarnings(trip);
             if (hourly == null || hourly.isEmpty()) {
                 return WeatherContext.unavailable();
             }
 
-            Map<Integer, WeatherSeverity> byHour = new HashMap<>();
+            final Map<Integer, WeatherSeverity> byHour = new HashMap<>();
             for (WeatherWarning warning : hourly) {
                 if (warning == null || warning.getTime() == null
                         || warning.getSeverity() == null) {
@@ -70,7 +71,8 @@ public final class WeatherServiceContextGateway implements WeatherContextGateway
                 return WeatherContext.tripLevel(byHour.values().iterator().next());
             }
             return WeatherContext.hourly(byHour);
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             return WeatherContext.unavailable();
         }
     }

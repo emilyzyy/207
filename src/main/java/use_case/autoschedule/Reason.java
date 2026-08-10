@@ -24,8 +24,11 @@ public final class Reason {
     public ReasonCode getCode() {
         return code;
     }
+    /**
+     * Optional supporting fact, such as a closing time. Never a full sentence.
+     * @return the result of the operation
+     */
 
-    /** Optional supporting fact, such as a closing time. Never a full sentence. */
     public String getDetail() {
         return detail;
     }
@@ -38,7 +41,7 @@ public final class Reason {
         if (!(other instanceof Reason)) {
             return false;
         }
-        Reason that = (Reason) other;
+        final Reason that = (Reason) other;
         return eventId.equals(that.eventId) && code == that.code && detail.equals(that.detail);
     }
 

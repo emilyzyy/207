@@ -1,20 +1,5 @@
 package database.supabase;
 
-import use_case.usecases.PlaceHydrator;
-import use_case.ports.AuthService;
-import use_case.ports.AuthSession;
-import use_case.ports.ItineraryDataAccessInterface;
-import use_case.ports.TripRepository;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.entities.TripDay;
-import entity.valueobjects.EventType;
-import entity.valueobjects.TransportationMode;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -30,6 +15,22 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.entities.TripDay;
+import entity.valueobjects.EventType;
+import entity.valueobjects.TransportationMode;
+import use_case.ports.AuthService;
+import use_case.ports.AuthSession;
+import use_case.ports.ItineraryDataAccessInterface;
+import use_case.ports.TripRepository;
+import use_case.usecases.PlaceHydrator;
 
 /**
  * Persists itineraries to Supabase PostgREST using lean place refs; hydrates activities on load.
@@ -80,9 +81,9 @@ public final class SupabaseItineraryDataAccess
         if (itinerary == null) {
             throw new IllegalArgumentException("Itinerary is required");
         }
-        AuthSession session = requireSession();
-        Optional<String> existingOwner = lookupTripOwner(itinerary.getId());
-        ObjectNode tripRow = mapper.createObjectNode();
+        final AuthSession session = requireSession();
+        final Optional<String> existingOwner = lookupTripOwner(itinerary.getId());
+        final ObjectNode tripRow = mapper.createObjectNode();
         tripRow.put("destination", itinerary.getDestination());
         tripRow.put("trip_date", itinerary.getDay(0).getDate().toString());
         tripRow.put("start_time", itinerary.getDay(0).getStartTime().toString());
@@ -95,7 +96,8 @@ public final class SupabaseItineraryDataAccess
             // PATCH omits user_id so collaborators cannot steal ownership, and avoids upsert RLS.
             request("PATCH", "/rest/v1/trips?id=eq." + enc(itinerary.getId()),
                     tripRow.toString(), "return=minimal");
-        } else {
+        }
+        else {
             tripRow.put("id", itinerary.getId());
             tripRow.put("user_id", session.getUserId());
             request("POST", "/rest/v1/trips", tripRow.toString(), "return=minimal");
@@ -103,7 +105,7 @@ public final class SupabaseItineraryDataAccess
 
         request("DELETE", "/rest/v1/trip_days?trip_id=eq." + enc(itinerary.getId()),
                 null, null);
-        ArrayNode days = mapper.createArrayNode();
+        final ArrayNode days = mapper.createArrayNode();
         for (int i = 0; i < itinerary.getDayCount(); i++) {
             days.add(dayRow(itinerary.getId(), i, itinerary.getDay(i)));
         }
@@ -113,7 +115,7 @@ public final class SupabaseItineraryDataAccess
 
         request("DELETE", "/rest/v1/trip_bookmarks?trip_id=eq." + enc(itinerary.getId()),
                 null, null);
-        ArrayNode bookmarks = mapper.createArrayNode();
+        final ArrayNode bookmarks = mapper.createArrayNode();
         for (Activity activity : itinerary.getBookmarkedActivities()) {
             bookmarks.add(bookmarkRow(itinerary.getId(), activity));
         }
@@ -123,7 +125,7 @@ public final class SupabaseItineraryDataAccess
 
         request("DELETE", "/rest/v1/scheduled_events?trip_id=eq." + enc(itinerary.getId()),
                 null, null);
-        ArrayNode events = mapper.createArrayNode();
+        final ArrayNode events = mapper.createArrayNode();
         for (int dayIndex = 0; dayIndex < itinerary.getDayCount(); dayIndex++) {
             int order = 0;
             for (ScheduledEvent event : itinerary.getDay(dayIndex).getScheduledEvents()) {
@@ -147,13 +149,13 @@ public final class SupabaseItineraryDataAccess
             return Optional.empty();
         }
         requireSession();
-        String id = itineraryId.trim();
-        String path = "/rest/v1/trips?id=eq." + enc(id);
-        JsonNode rows = readArray(request("GET", path, null, null));
+        final String id = itineraryId.trim();
+        final String path = "/rest/v1/trips?id=eq." + enc(id);
+        final JsonNode rows = readArray(request("GET", path, null, null));
         if (rows == null || rows.size() == 0) {
             return Optional.empty();
         }
-        ObjectNode row = (ObjectNode) rows.get(0);
+        final ObjectNode row = (ObjectNode) rows.get(0);
         row.set("trip_bookmarks", children("trip_bookmarks", id));
         row.set("trip_days", children("trip_days", id));
         row.set("scheduled_events", children("scheduled_events", id));
@@ -161,7 +163,7 @@ public final class SupabaseItineraryDataAccess
     }
 
     private JsonNode children(String table, String tripId) {
-        String path = "/rest/v1/" + table + "?trip_id=eq." + enc(tripId);
+        final String path = "/rest/v1/" + table + "?trip_id=eq." + enc(tripId);
         return readArray(request("GET", path, null, null));
     }
 
@@ -173,29 +175,29 @@ public final class SupabaseItineraryDataAccess
     @Override
     public List<Trip> findAll() {
         requireSession();
-        String path = "/rest/v1/trips?order=updated_at.desc";
-        JsonNode rows = readArray(request("GET", path, null, null));
-        List<Trip> trips = new ArrayList<Trip>();
+        final String path = "/rest/v1/trips?order=updated_at.desc";
+        final JsonNode rows = readArray(request("GET", path, null, null));
+        final List<Trip> trips = new ArrayList<Trip>();
         if (rows == null || rows.size() == 0) {
             return trips;
         }
-        StringBuilder ids = new StringBuilder();
+        final StringBuilder ids = new StringBuilder();
         for (JsonNode row : rows) {
             if (ids.length() > 0) {
                 ids.append(',');
             }
             ids.append(text(row, "id"));
         }
-        ObjectNode tripRows = mapper.createObjectNode();
+        final ObjectNode tripRows = mapper.createObjectNode();
         tripRows.set("trip_bookmarks", childrenIn("trip_bookmarks", ids.toString()));
         tripRows.set("trip_days", childrenIn("trip_days", ids.toString()));
         tripRows.set("scheduled_events", childrenIn("scheduled_events", ids.toString()));
-        Map<String, JsonNode> bookmarks = indexByTrip(tripRows.get("trip_bookmarks"));
-        Map<String, JsonNode> days = indexByTrip(tripRows.get("trip_days"));
-        Map<String, JsonNode> events = indexByTrip(tripRows.get("scheduled_events"));
+        final Map<String, JsonNode> bookmarks = indexByTrip(tripRows.get("trip_bookmarks"));
+        final Map<String, JsonNode> days = indexByTrip(tripRows.get("trip_days"));
+        final Map<String, JsonNode> events = indexByTrip(tripRows.get("scheduled_events"));
         for (JsonNode row : rows) {
-            String id = text(row, "id");
-            ObjectNode merged = (ObjectNode) row;
+            final String id = text(row, "id");
+            final ObjectNode merged = (ObjectNode) row;
             merged.set("trip_bookmarks", bookmarks.getOrDefault(id, mapper.createArrayNode()));
             merged.set("trip_days", days.getOrDefault(id, mapper.createArrayNode()));
             merged.set("scheduled_events", events.getOrDefault(id, mapper.createArrayNode()));
@@ -206,9 +208,11 @@ public final class SupabaseItineraryDataAccess
 
     @Override
     public boolean deleteById(String id) {
-        if (id == null || id.trim().isEmpty()) return false;
+        if (id == null || id.trim().isEmpty()) {
+            return false;
+        }
         requireSession();
-        String encoded = enc(id.trim());
+        final String encoded = enc(id.trim());
         request("DELETE", "/rest/v1/scheduled_events?trip_id=eq." + encoded, null, null);
         request("DELETE", "/rest/v1/trip_bookmarks?trip_id=eq." + encoded, null, null);
         request("DELETE", "/rest/v1/trip_days?trip_id=eq." + encoded, null, null);
@@ -217,17 +221,17 @@ public final class SupabaseItineraryDataAccess
     }
 
     private JsonNode childrenIn(String table, String tripIds) {
-        String path = "/rest/v1/" + table + "?trip_id=in.(" + tripIds + ")";
+        final String path = "/rest/v1/" + table + "?trip_id=in.(" + tripIds + ")";
         return readArray(request("GET", path, null, null));
     }
 
     private Map<String, JsonNode> indexByTrip(JsonNode children) {
-        Map<String, JsonNode> byTrip = new java.util.HashMap<>();
+        final Map<String, JsonNode> byTrip = new java.util.HashMap<>();
         if (children == null || !children.isArray()) {
             return byTrip;
         }
         for (JsonNode child : children) {
-            String tripId = text(child, "trip_id");
+            final String tripId = text(child, "trip_id");
             JsonNode list = byTrip.get(tripId);
             if (list == null || !list.isArray()) {
                 list = mapper.createArrayNode();
@@ -239,18 +243,18 @@ public final class SupabaseItineraryDataAccess
     }
 
     private Trip toTrip(JsonNode row) {
-        String id = text(row, "id");
-        String destination = text(row, "destination");
-        LocalDate date = LocalDate.parse(text(row, "trip_date"));
-        LocalTime start = LocalTime.parse(normalizeTime(text(row, "start_time")));
-        LocalTime end = LocalTime.parse(normalizeTime(text(row, "end_time")));
-        TransportationMode mode = TransportationMode.valueOf(text(row, "transportation_mode"));
-        Trip trip = new Trip(id, destination, mode, loadDays(row, date, start, end));
+        final String id = text(row, "id");
+        final String destination = text(row, "destination");
+        final LocalDate date = LocalDate.parse(text(row, "trip_date"));
+        final LocalTime start = LocalTime.parse(normalizeTime(text(row, "start_time")));
+        final LocalTime end = LocalTime.parse(normalizeTime(text(row, "end_time")));
+        final TransportationMode mode = TransportationMode.valueOf(text(row, "transportation_mode"));
+        final Trip trip = new Trip(id, destination, mode, loadDays(row, date, start, end));
 
-        JsonNode bookmarks = row.get("trip_bookmarks");
+        final JsonNode bookmarks = row.get("trip_bookmarks");
         if (bookmarks != null && bookmarks.isArray()) {
             for (JsonNode bookmark : bookmarks) {
-                Activity activity = hydrator.hydrate(
+                final Activity activity = hydrator.hydrate(
                         text(bookmark, "place_id"),
                         text(bookmark, "name"),
                         bookmark.path("latitude").asDouble(),
@@ -260,9 +264,9 @@ public final class SupabaseItineraryDataAccess
             }
         }
 
-        JsonNode events = row.get("scheduled_events");
+        final JsonNode events = row.get("scheduled_events");
         if (events != null && events.isArray()) {
-            List<JsonNode> ordered = new ArrayList<JsonNode>();
+            final List<JsonNode> ordered = new ArrayList<JsonNode>();
             for (JsonNode event : events) {
                 ordered.add(event);
             }
@@ -272,9 +276,9 @@ public final class SupabaseItineraryDataAccess
                 if (dayIndex < 0 || dayIndex >= trip.getDayCount()) {
                     dayIndex = 0;
                 }
-                EventType type = EventType.valueOf(text(event, "event_type"));
-                LocalTime eventStart = LocalTime.parse(normalizeTime(text(event, "start_time")));
-                LocalTime eventEnd = LocalTime.parse(normalizeTime(text(event, "end_time")));
+                final EventType type = EventType.valueOf(text(event, "event_type"));
+                final LocalTime eventStart = LocalTime.parse(normalizeTime(text(event, "start_time")));
+                final LocalTime eventEnd = LocalTime.parse(normalizeTime(text(event, "end_time")));
                 String notes = text(event, "notes");
                 if (notes == null) {
                     notes = "";
@@ -297,13 +301,13 @@ public final class SupabaseItineraryDataAccess
 
     private List<TripDay> loadDays(JsonNode row, LocalDate fallbackDate,
                                    LocalTime fallbackStart, LocalTime fallbackEnd) {
-        List<TripDay> days = new ArrayList<TripDay>();
-        JsonNode dayRows = row.get("trip_days");
+        final List<TripDay> days = new ArrayList<TripDay>();
+        final JsonNode dayRows = row.get("trip_days");
         if (dayRows == null || !dayRows.isArray() || dayRows.size() == 0) {
             days.add(new TripDay(fallbackDate, fallbackStart, fallbackEnd));
             return days;
         }
-        List<JsonNode> ordered = new ArrayList<JsonNode>();
+        final List<JsonNode> ordered = new ArrayList<JsonNode>();
         for (JsonNode day : dayRows) {
             ordered.add(day);
         }
@@ -318,7 +322,7 @@ public final class SupabaseItineraryDataAccess
     }
 
     private ObjectNode dayRow(String tripId, int dayIndex, TripDay day) {
-        ObjectNode row = mapper.createObjectNode();
+        final ObjectNode row = mapper.createObjectNode();
         row.put("trip_id", tripId);
         row.put("day_index", dayIndex);
         row.put("trip_date", day.getDate().toString());
@@ -328,7 +332,7 @@ public final class SupabaseItineraryDataAccess
     }
 
     private ObjectNode bookmarkRow(String tripId, Activity activity) {
-        ObjectNode row = mapper.createObjectNode();
+        final ObjectNode row = mapper.createObjectNode();
         row.put("trip_id", tripId);
         row.put("place_id", activity.getId());
         row.put("name", activity.getName());
@@ -338,7 +342,7 @@ public final class SupabaseItineraryDataAccess
     }
 
     private ObjectNode eventRow(String tripId, ScheduledEvent event, int dayIndex, int sortOrder) {
-        ObjectNode row = mapper.createObjectNode();
+        final ObjectNode row = mapper.createObjectNode();
         row.put("id", event.getId());
         row.put("trip_id", tripId);
         row.put("event_type", event.getEventType().name());
@@ -347,12 +351,13 @@ public final class SupabaseItineraryDataAccess
         row.put("notes", event.getNotes() == null ? "" : event.getNotes());
         row.put("sort_order", dayIndex * 100_000 + sortOrder);
         if (event.getEventType() == EventType.ACTIVITY && event.getActivity() != null) {
-            Activity activity = event.getActivity();
+            final Activity activity = event.getActivity();
             row.put("place_id", activity.getId());
             row.put("name", activity.getName());
             row.put("latitude", activity.getLocation().getLatitude());
             row.put("longitude", activity.getLocation().getLongitude());
-        } else {
+        }
+        else {
             row.putNull("place_id");
             row.putNull("name");
             row.putNull("latitude");
@@ -371,24 +376,25 @@ public final class SupabaseItineraryDataAccess
             return Optional.empty();
         }
         try {
-            String body = request("GET",
+            final String body = request("GET",
                     "/rest/v1/trips?id=eq." + enc(tripId) + "&select=user_id&limit=1",
                     null, null);
-            JsonNode array = readArray(body);
+            final JsonNode array = readArray(body);
             if (!array.isArray() || array.size() == 0) {
                 return Optional.empty();
             }
-            String owner = text(array.get(0), "user_id");
+            final String owner = text(array.get(0), "user_id");
             return owner == null || owner.isEmpty() ? Optional.empty() : Optional.of(owner);
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             return Optional.empty();
         }
     }
 
     private String request(String method, String path, String jsonBody, String prefer) {
         try {
-            AuthSession session = requireSession();
-            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl + path))
+            final AuthSession session = requireSession();
+            final HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl + path))
                     .timeout(Duration.ofSeconds(20))
                     .header("apikey", anonKey)
                     .header("Authorization", "Bearer " + session.getAccessToken())
@@ -398,23 +404,28 @@ public final class SupabaseItineraryDataAccess
             }
             if ("GET".equals(method)) {
                 builder.GET();
-            } else if ("DELETE".equals(method)) {
+            }
+            else if ("DELETE".equals(method)) {
                 builder.DELETE();
-            } else if ("POST".equals(method)) {
+            }
+            else if ("POST".equals(method)) {
                 builder.POST(HttpRequest.BodyPublishers.ofString(jsonBody == null ? "" : jsonBody));
-            } else if ("PATCH".equals(method)) {
+            }
+            else if ("PATCH".equals(method)) {
                 builder.method("PATCH",
                         HttpRequest.BodyPublishers.ofString(jsonBody == null ? "" : jsonBody));
-            } else {
+            }
+            else {
                 throw new IllegalArgumentException("Unsupported method: " + method);
             }
-            HttpResponse<String> response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            final HttpResponse<String> response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw new IllegalStateException("Supabase HTTP " + response.statusCode()
                         + " " + method + " " + path + ": " + truncate(response.body()));
             }
             return response.body() == null ? "" : response.body();
-        } catch (IOException | InterruptedException exception) {
+        }
+        catch (IOException | InterruptedException exception) {
             if (exception instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
@@ -429,14 +440,15 @@ public final class SupabaseItineraryDataAccess
                 return mapper.createArrayNode();
             }
             return mapper.readTree(body);
-        } catch (IOException exception) {
+        }
+        catch (IOException exception) {
             throw new IllegalStateException("Invalid Supabase JSON: " + exception.getMessage(),
                     exception);
         }
     }
 
     private static String text(JsonNode node, String field) {
-        JsonNode value = node.get(field);
+        final JsonNode value = node.get(field);
         return value == null || value.isNull() ? null : value.asText();
     }
 
@@ -446,7 +458,7 @@ public final class SupabaseItineraryDataAccess
         }
         // Postgres time may arrive as HH:mm:ss or HH:mm:ss.ffffff
         String trimmed = value.trim();
-        int dot = trimmed.indexOf('.');
+        final int dot = trimmed.indexOf('.');
         if (dot > 0) {
             trimmed = trimmed.substring(0, dot);
         }

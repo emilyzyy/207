@@ -5,16 +5,19 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
-import interface_adapter.controllers.AutoScheduleSettings;
-import entity.valueobjects.WeatherOption;
 import java.awt.GraphicsEnvironment;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.time.LocalTime;
 import java.util.concurrent.atomic.AtomicReference;
+
 import javax.swing.SwingUtilities;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+
+import entity.valueobjects.WeatherOption;
+import interface_adapter.controllers.AutoScheduleSettings;
 
 /**
  * The settings dialog's half of the weather contract.
@@ -50,7 +53,7 @@ class AutoScheduleWeatherCheckBoxTest {
 
     private AutoScheduleSettingsDialog dialog() throws Exception {
         assumeFalse(GraphicsEnvironment.isHeadless(), "a dialog needs a display");
-        AtomicReference<AutoScheduleSettingsDialog> built = new AtomicReference<>();
+        final AtomicReference<AutoScheduleSettingsDialog> built = new AtomicReference<>();
         SwingUtilities.invokeAndWait(() -> built.set(new AutoScheduleSettingsDialog(
                 null, LocalTime.of(9, 0), LocalTime.of(21, 0))));
         opened.add(built.get());
@@ -59,7 +62,7 @@ class AutoScheduleWeatherCheckBoxTest {
 
     @Test
     void usableHourlyWeatherEnablesTheCheckBoxAndTicksItByDefault() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialog();
+        final AutoScheduleSettingsDialog dialog = dialog();
 
         SwingUtilities.invokeAndWait(() -> dialog.applyWeatherOption(WeatherOption.available()));
 
@@ -73,7 +76,7 @@ class AutoScheduleWeatherCheckBoxTest {
 
     @Test
     void theTravellerCanTurnAnAvailableWeatherPreferenceOff() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialog();
+        final AutoScheduleSettingsDialog dialog = dialog();
 
         SwingUtilities.invokeAndWait(() -> {
             dialog.applyWeatherOption(WeatherOption.available());
@@ -87,7 +90,7 @@ class AutoScheduleWeatherCheckBoxTest {
 
     @Test
     void aWholeDayForecastDisablesAndUnticksTheCheckBox() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialog();
+        final AutoScheduleSettingsDialog dialog = dialog();
 
         SwingUtilities.invokeAndWait(() -> dialog.applyWeatherOption(
                 WeatherOption.unavailable(WeatherOption.NO_HOURLY_FORECAST)));
@@ -101,7 +104,7 @@ class AutoScheduleWeatherCheckBoxTest {
 
     @Test
     void anUnavailableForecastDisablesAndUnticksTheCheckBox() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialog();
+        final AutoScheduleSettingsDialog dialog = dialog();
 
         SwingUtilities.invokeAndWait(() -> dialog.applyWeatherOption(
                 WeatherOption.unavailable(WeatherOption.NO_FORECAST)));
@@ -114,7 +117,7 @@ class AutoScheduleWeatherCheckBoxTest {
 
     @Test
     void theExplanationIsAlsoAvailableToAScreenReader() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialog();
+        final AutoScheduleSettingsDialog dialog = dialog();
 
         SwingUtilities.invokeAndWait(() -> dialog.applyWeatherOption(
                 WeatherOption.unavailable(WeatherOption.NO_HOURLY_FORECAST)));
@@ -129,7 +132,7 @@ class AutoScheduleWeatherCheckBoxTest {
 
     @Test
     void theCheckBoxIsSafeBeforeTheCapabilityAnswerArrives() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialog();
+        final AutoScheduleSettingsDialog dialog = dialog();
 
         // The lookup is a network call, so the dialog is usable before it returns. Until
         // then weather is off, and submitting early simply schedules without it.
@@ -141,7 +144,7 @@ class AutoScheduleWeatherCheckBoxTest {
 
     @Test
     void aNullAnswerLeavesTheCheckBoxUntouched() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialog();
+        final AutoScheduleSettingsDialog dialog = dialog();
 
         SwingUtilities.invokeAndWait(() -> dialog.applyWeatherOption(null));
 
@@ -151,11 +154,11 @@ class AutoScheduleWeatherCheckBoxTest {
 
     @Test
     void theOtherSettingsAreUnaffectedByTheWeatherAnswer() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialog();
+        final AutoScheduleSettingsDialog dialog = dialog();
 
         SwingUtilities.invokeAndWait(() -> dialog.applyWeatherOption(WeatherOption.available()));
 
-        AutoScheduleSettings settings = dialog.read();
+        final AutoScheduleSettings settings = dialog.read();
         assertEquals(LocalTime.of(9, 0), settings.getAvailableStart());
         assertEquals(LocalTime.of(21, 0), settings.getAvailableEnd());
         assertTrue(settings.isKeepCurrentOrder(), "preserve-order still defaults on");

@@ -1,13 +1,13 @@
 package use_case.autoschedule.policy;
 
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.WeatherSeverity;
 import use_case.autoschedule.PlacedActivity;
 import use_case.autoschedule.PolicyContext;
 import use_case.autoschedule.PolicyId;
 import use_case.autoschedule.Reason;
 import use_case.autoschedule.ReasonCode;
 import use_case.autoschedule.WeatherContext;
-import entity.valueobjects.IndoorOutdoorType;
-import entity.valueobjects.WeatherSeverity;
 
 /**
  * Prefers to keep exposed activities out of poor weather.
@@ -39,24 +39,24 @@ public final class WeatherSuitabilityPolicy implements SoftPolicy {
 
     @Override
     public int penaltyMinutes(PlacedActivity placement, PolicyContext context) {
-        WeatherContext weather = context.getWeather();
+        final WeatherContext weather = context.getWeather();
         // A forecast covering the whole trip scores every candidate time alike, so it
         // cannot inform when to do anything. Charging for it would add a constant to
         // every schedule and imply the timing was weather-optimised when it was not.
         if (!weather.canDistinguishTimes()) {
             return 0;
         }
-        double exposure = exposureFactor(placement);
+        final double exposure = exposureFactor(placement);
         if (exposure == 0.0) {
             return 0;
         }
-        WeatherSeverity severity = weather.severityAt(placement.getStart());
+        final WeatherSeverity severity = weather.severityAt(placement.getStart());
         if (severity == null) {
             return 0;
         }
-        int durationMinutes = placement.getTask().getDurationMinutes();
-        double hours = durationMinutes / 60.0;
-        int raw = (int) Math.round(penaltyPerHour(severity) * hours * exposure);
+        final int durationMinutes = placement.getTask().getDurationMinutes();
+        final double hours = durationMinutes / 60.0;
+        final int raw = (int) Math.round(penaltyPerHour(severity) * hours * exposure);
         return Math.min(MAX_PENALTY_MINUTES, raw);
     }
 
@@ -65,7 +65,7 @@ public final class WeatherSuitabilityPolicy implements SoftPolicy {
         if (penaltyMinutes(placement, context) <= 0) {
             return null;
         }
-        WeatherSeverity severity = context.getWeather().severityAt(placement.getStart());
+        final WeatherSeverity severity = context.getWeather().severityAt(placement.getStart());
         // A non-zero penalty is not the same as bad weather. Every outdoor activity is
         // charged LOW_PENALTY_PER_HOUR even in sunshine, which is deliberate and harmless
         // to the ranking -- it is a constant across candidate times. It is not a reason to
@@ -79,9 +79,13 @@ public final class WeatherSuitabilityPolicy implements SoftPolicy {
                 severity.name());
     }
 
-    /** How exposed the activity is: fully outdoors, partly, or not at all. */
+    /**
+     * How exposed the activity is: fully outdoors, partly, or not at all.
+     * @param placement the p la ce me nt value
+     * @return the result of the operation
+     */
     private static double exposureFactor(PlacedActivity placement) {
-        IndoorOutdoorType type = placement.getTask().getActivity().getIndoorOutdoorType();
+        final IndoorOutdoorType type = placement.getTask().getActivity().getIndoorOutdoorType();
         if (type == IndoorOutdoorType.OUTDOOR) {
             return 1.0;
         }

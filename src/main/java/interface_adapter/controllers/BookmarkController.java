@@ -1,11 +1,12 @@
 package interface_adapter.controllers;
 
+import java.util.function.Supplier;
+
+import entity.entities.Trip;
 import interface_adapter.presenters.ActivityDiscoveryPresenter;
 import interface_adapter.viewmodels.SearchViewModel;
 import use_case.usecases.BookmarkActivityUseCase;
 import use_case.usecases.RemoveBookmarkUseCase;
-import entity.entities.Trip;
-import java.util.function.Supplier;
 
 /** Handles bookmark and unbookmark actions without exposing repositories to Swing. */
 public final class BookmarkController {
@@ -29,25 +30,34 @@ public final class BookmarkController {
         this.presenter = presenter;
     }
 
+    /**
+     * Performs the t og gl e operation.
+     * @param activityId the a ct iv it yi d value
+     */
     public void toggle(String activityId) {
         execute(activityId, search.getState().getBookmarkedIds().contains(activityId));
     }
 
+    /**
+     * Performs the r em ov e operation.
+     * @param activityId the a ct iv it yi d value
+     */
     public void remove(String activityId) {
         execute(activityId, true);
     }
 
     private void execute(String activityId, boolean removing) {
         try {
-            String currentTripId = tripId.get();
+            final String currentTripId = tripId.get();
             if (currentTripId == null || currentTripId.trim().isEmpty()) {
                 throw new IllegalArgumentException("Create a trip before bookmarking activities");
             }
-            Trip updated = removing
+            final Trip updated = removing
                     ? remove.execute(currentTripId, activityId)
                     : bookmark.execute(currentTripId, activityId);
             presenter.presentTrip(updated);
-        } catch (IllegalArgumentException exception) {
+        }
+        catch (IllegalArgumentException exception) {
             presenter.presentFailure(exception.getMessage());
         }
     }

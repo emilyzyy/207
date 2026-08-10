@@ -1,7 +1,5 @@
 package views;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.net.URI;
@@ -13,7 +11,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+
 import javax.imageio.ImageIO;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 final class StaticTileLoader {
     static final int TILE_SIZE = 256;
@@ -25,7 +27,8 @@ final class StaticTileLoader {
             new ConcurrentHashMap<>();
     private static long nextGeocodeAt;
 
-    private StaticTileLoader() {}
+    private StaticTileLoader() {
+    }
 
     static double[] latLngForCity(String city) {
         switch (city.toLowerCase()) {
@@ -38,7 +41,12 @@ final class StaticTileLoader {
         }
     }
 
-    /** Loads a map tile centered on the given city, geocoding unknown cities on the fly. */
+    /**
+     * Loads a map tile centered on the given city, geocoding unknown cities on the fly.
+     * @param zoom the z oo m value
+     * @param city the c it y value
+     * @return the result of the operation
+     */
     static CompletableFuture<BufferedImage> loadCityTile(String city, int zoom) {
         return cityCoords(city).thenCompose(coords ->
                 coords == null ? CompletableFuture.completedFuture(null)
@@ -46,16 +54,20 @@ final class StaticTileLoader {
     }
 
     static CompletableFuture<double[]> cityCoords(String city) {
-        double[] known = latLngForCity(city);
+        final double[] known = latLngForCity(city);
         if (known != null) {
             return CompletableFuture.completedFuture(known);
         }
-        String key = city == null ? "" : city.trim().toLowerCase();
-        if (key.isEmpty()) return CompletableFuture.completedFuture(null);
-        CompletableFuture<double[]> future = COORDINATES.computeIfAbsent(key,
+        final String key = city == null ? "" : city.trim().toLowerCase();
+        if (key.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        final CompletableFuture<double[]> future = COORDINATES.computeIfAbsent(key,
                 ignored -> CompletableFuture.supplyAsync(() -> geocodeCity(city)));
         future.thenAccept(coords -> {
-            if (coords == null) COORDINATES.remove(key, future);
+            if (coords == null) {
+                COORDINATES.remove(key, future);
+            }
         });
         return future;
     }
@@ -63,62 +75,74 @@ final class StaticTileLoader {
     private static double[] geocodeCity(String city) {
         try {
             throttleGeocoding();
-            String uri = "https://nominatim.openstreetmap.org/search?q="
+            final String uri = "https://nominatim.openstreetmap.org/search?q="
                     + URLEncoder.encode(city, StandardCharsets.UTF_8)
                     + "&format=json&limit=1";
-            HttpRequest request = HttpRequest.newBuilder(URI.create(uri))
+            final HttpRequest request = HttpRequest.newBuilder(URI.create(uri))
                     .header("User-Agent", "Trippy-CSC207/1.0")
                     .timeout(Duration.ofSeconds(10)).GET().build();
-            HttpResponse<String> response = HTTP.send(request,
+            final HttpResponse<String> response = HTTP.send(request,
                     HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() != 200) return null;
-            JsonNode root = new ObjectMapper().readTree(response.body());
-            if (!root.isArray() || root.isEmpty()) return null;
-            JsonNode first = root.get(0);
+            if (response.statusCode() != 200) {
+                return null;
+            }
+            final JsonNode root = new ObjectMapper().readTree(response.body());
+            if (!root.isArray() || root.isEmpty()) {
+                return null;
+            }
+            final JsonNode first = root.get(0);
             return new double[]{first.get("lat").asDouble(), first.get("lon").asDouble()};
-        } catch (Exception ignored) {
+        }
+        catch (Exception ignored) {
             return null;
         }
     }
 
     private static synchronized void throttleGeocoding() throws InterruptedException {
-        long wait = nextGeocodeAt - System.currentTimeMillis();
-        if (wait > 0) Thread.sleep(wait);
+        final long wait = nextGeocodeAt - System.currentTimeMillis();
+        if (wait > 0) {
+            Thread.sleep(wait);
+        }
         nextGeocodeAt = System.currentTimeMillis() + 1000L;
     }
 
     static CompletableFuture<BufferedImage> loadTile(double lat, double lng, int zoom) {
-        String cacheKey = zoom + "|" + Math.round(lat * 10_000)
+        final String cacheKey = zoom + "|" + Math.round(lat * 10_000)
                 + "|" + Math.round(lng * 10_000);
-        CompletableFuture<BufferedImage> future = TILES.computeIfAbsent(cacheKey,
+        final CompletableFuture<BufferedImage> future = TILES.computeIfAbsent(cacheKey,
                 ignored -> loadTileUncached(lat, lng, zoom));
         future.thenAccept(image -> {
-            if (image == null) TILES.remove(cacheKey, future);
+            if (image == null) {
+                TILES.remove(cacheKey, future);
+            }
         });
         return future;
     }
 
     private static CompletableFuture<BufferedImage> loadTileUncached(
             double lat, double lng, int zoom) {
-        int maxTiles = 1 << zoom;
-        double lngTile = (lng + 180.0) / 360.0 * maxTiles;
-        int tx = (int) Math.floor(lngTile);
-        double latRad = Math.toRadians(lat);
-        double latTile = (1.0 - Math.log(Math.tan(latRad) + 1.0 / Math.cos(latRad)) / Math.PI) / 2.0 * maxTiles;
-        int ty = (int) Math.floor(latTile);
-        String url = "https://tile.openstreetmap.org/" + zoom + "/" + tx + "/" + ty + ".png";
+        final int maxTiles = 1 << zoom;
+        final double lngTile = (lng + 180.0) / 360.0 * maxTiles;
+        final int tx = (int) Math.floor(lngTile);
+        final double latRad = Math.toRadians(lat);
+        final double latTile = (1.0 - Math.log(Math.tan(latRad) + 1.0 / Math.cos(latRad)) / Math.PI) / 2.0 * maxTiles;
+        final int ty = (int) Math.floor(latTile);
+        final String url = "https://tile.openstreetmap.org/" + zoom + "/" + tx + "/" + ty + ".png";
         return CompletableFuture.supplyAsync(() -> {
             for (int attempt = 0; attempt < 2; attempt++) {
                 try {
-                    HttpRequest req = HttpRequest.newBuilder(URI.create(url))
+                    final HttpRequest req = HttpRequest.newBuilder(URI.create(url))
                             .header("User-Agent", "Trippy-CSC207/1.0 (github.com/emilyzyy/207)")
                             .GET().timeout(Duration.ofSeconds(8)).build();
-                    HttpResponse<InputStream> res = HTTP.send(req,
+                    final HttpResponse<InputStream> res = HTTP.send(req,
                             HttpResponse.BodyHandlers.ofInputStream());
                     try (InputStream body = res.body()) {
-                        if (res.statusCode() == 200) return ImageIO.read(body);
+                        if (res.statusCode() == 200) {
+                            return ImageIO.read(body);
+                        }
                     }
-                } catch (Exception ignored) {
+                }
+                catch (Exception ignored) {
                     // One retry handles transient tile-server/network failures.
                 }
             }

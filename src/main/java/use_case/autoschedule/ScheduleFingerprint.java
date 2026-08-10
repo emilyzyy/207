@@ -1,11 +1,12 @@
 package use_case.autoschedule;
 
-import entity.entities.ScheduledEvent;
-import entity.valueobjects.EventType;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+
+import entity.entities.ScheduledEvent;
+import entity.valueobjects.EventType;
 
 /**
  * A summary of the Day Plan a Preview was calculated from.
@@ -26,8 +27,13 @@ public final class ScheduleFingerprint {
         this.value = value;
     }
 
+    /**
+     * Performs the o f operation.
+     * @param events the e ve nt s value
+     * @return the result of the operation
+     */
     public static ScheduleFingerprint of(List<ScheduledEvent> events) {
-        List<String> parts = new ArrayList<>();
+        final List<String> parts = new ArrayList<>();
         for (ScheduledEvent event : events) {
             if (event.getEventType() == EventType.ACTIVITY) {
                 parts.add(event.getId() + "@" + event.getStartTime() + "-" + event.getEndTime());
@@ -37,6 +43,11 @@ public final class ScheduleFingerprint {
         return new ScheduleFingerprint(String.join(",", parts));
     }
 
+    /**
+     * Performs the f ro mv al ue operation.
+     * @param value the v al ue value
+     * @return the result of the operation
+     */
     public static ScheduleFingerprint fromValue(String value) {
         return new ScheduleFingerprint(value == null ? "" : value);
     }

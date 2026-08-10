@@ -1,11 +1,12 @@
 package use_case.usecases;
 
+import java.util.List;
+
+import entity.entities.Activity;
+import entity.entities.Trip;
 import use_case.ports.PlacesService;
 import use_case.ports.PlacesWriter;
 import use_case.ports.TripRepository;
-import entity.entities.Activity;
-import entity.entities.Trip;
-import java.util.List;
 
 /**
  * Records the pool of places discovered for a trip's destination so the trip can be planned
@@ -23,18 +24,28 @@ public final class DiscoverTripPlacesUseCase {
         this.placesWriter = placesWriter;
     }
 
-    /** Searches for real places around the destination and records them on the trip. */
+    /**
+     * Searches for real places around the destination and records them on the trip.
+     * @param destination the d es ti na ti on value
+     * @param tripId the t ri pi d value
+     * @return the result of the operation
+     */
     public Trip execute(String tripId, String destination) {
-        List<Activity> discovered = places.search(destination, "");
+        final List<Activity> discovered = places.search(destination, "");
         if (discovered.isEmpty()) {
             return requireTrip(tripId);
         }
         return record(tripId, discovered);
     }
 
-    /** Records an already-known set of places (e.g. mock or cached data) on the trip. */
+    /**
+     * Records an already-known set of places (e.g. mock or cached data) on the trip.
+     * @param discovered the d is co ve re d value
+     * @param tripId the t ri pi d value
+     * @return the result of the operation
+     */
     public Trip record(String tripId, List<Activity> discovered) {
-        Trip trip = requireTrip(tripId);
+        final Trip trip = requireTrip(tripId);
         if (discovered == null || discovered.isEmpty()) {
             return trip;
         }

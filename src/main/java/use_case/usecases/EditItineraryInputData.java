@@ -1,8 +1,9 @@
 package use_case.usecases;
 
-import entity.valueobjects.TransportationMode;
 import java.time.LocalDate;
 import java.time.LocalTime;
+
+import entity.valueobjects.TransportationMode;
 
 /**
  * Immutable input for editing an already-created itinerary's trip options.

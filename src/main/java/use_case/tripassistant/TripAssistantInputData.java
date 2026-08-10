@@ -1,10 +1,10 @@
 package use_case.tripassistant;
 
-import entity.valueobjects.TripAssistantMessage;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import entity.valueobjects.TripAssistantMessage;
 
 /** Values supplied by the Swing controller for one George chat turn. */
 public final class TripAssistantInputData {
@@ -20,9 +20,15 @@ public final class TripAssistantInputData {
                 history == null ? Collections.<TripAssistantMessage>emptyList() : history));
     }
 
-    public String getTripId() { return tripId; }
+    public String getTripId() {
+        return tripId;
+    }
 
-    public String getQuestion() { return question; }
+    public String getQuestion() {
+        return question;
+    }
 
-    public List<TripAssistantMessage> getHistory() { return history; }
+    public List<TripAssistantMessage> getHistory() {
+        return history;
+    }
 }

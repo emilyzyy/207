@@ -1,9 +1,22 @@
 package use_case.autoschedule;
 
-import static use_case.autoschedule.ProblemFixtures.at;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static use_case.autoschedule.ProblemFixtures.at;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
+
+import org.junit.jupiter.api.Test;
 
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
@@ -26,17 +39,6 @@ import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
 import use_case.autoschedule.testdoubles.FakeTravelTimeEstimator;
 import use_case.autoschedule.testdoubles.FakeTripRepository;
 import use_case.autoschedule.testdoubles.FakeWeatherContextGateway;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
-import org.junit.jupiter.api.Test;
 
 /**
  * Properties every proposed day must have, whatever the search decided.
@@ -80,7 +82,7 @@ class ScheduleInvariantsTest {
         }
 
         private DayPlanState preview() {
-            DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(trip.getId(),
+            final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(trip.getId(),
                     trip.getScheduledEvents(), "", false, Collections.emptyList()));
             new AutoScheduleInteractor(new FakeTripRepository(trip), estimator,
                     new FakeWeatherContextGateway(), new AutoSchedulePresenter(viewModel),
@@ -91,7 +93,7 @@ class ScheduleInvariantsTest {
         }
 
         private String describe(DayPlanState state) {
-            StringBuilder text = new StringBuilder("\n" + label
+            final StringBuilder text = new StringBuilder("\n" + label
                     + "\n  keepOrder=" + keepOrder + " locks=" + locks
                     + " unavailable=" + unavailable);
             text.append("\n  before:");
@@ -125,27 +127,27 @@ class ScheduleInvariantsTest {
      * the same set of days is checked on every run.
      */
     private static List<Scenario> scenarios() {
-        List<Scenario> all = new ArrayList<>();
-        Random random = new Random(7788991L);
+        final List<Scenario> all = new ArrayList<>();
+        final Random random = new Random(7788991L);
 
         for (int count = 2; count <= 5; count++) {
             for (int variant = 0; variant < 14; variant++) {
-                boolean keepOrder = variant % 2 == 0;
-                boolean lateOpener = variant % 3 == 0;
-                boolean earlyCloser = variant % 5 == 0;
-                boolean asymmetric = variant % 4 < 2;
-                boolean departureSensitive = variant % 7 < 3;
-                int lockCount = variant % 6 == 0 ? 2 : variant % 4 == 0 ? 1 : 0;
-                boolean unavailablePeriod = variant % 3 == 1;
+                final boolean keepOrder = variant % 2 == 0;
+                final boolean lateOpener = variant % 3 == 0;
+                final boolean earlyCloser = variant % 5 == 0;
+                final boolean asymmetric = variant % 4 < 2;
+                final boolean departureSensitive = variant % 7 < 3;
+                final int lockCount = variant % 6 == 0 ? 2 : variant % 4 == 0 ? 1 : 0;
+                final boolean unavailablePeriod = variant % 3 == 1;
 
-                List<Activity> places = new ArrayList<>();
-                List<ScheduledEvent> events = new ArrayList<>();
+                final List<Activity> places = new ArrayList<>();
+                final List<ScheduledEvent> events = new ArrayList<>();
                 LocalTime cursor = at(9, 0);
                 for (int i = 0; i < count; i++) {
-                    String id = "a" + i;
-                    LocalTime opens = lateOpener && i == count - 1 ? at(13, 0) : at(8, 0);
-                    LocalTime closes = earlyCloser && i == 0 ? at(12, 0) : at(21, 0);
-                    Activity activity = place(id,
+                    final String id = "a" + i;
+                    final LocalTime opens = lateOpener && i == count - 1 ? at(13, 0) : at(8, 0);
+                    final LocalTime closes = earlyCloser && i == 0 ? at(12, 0) : at(21, 0);
+                    final Activity activity = place(id,
                             i % 3 == 0 ? ActivityCategory.FOOD : ActivityCategory.MUSEUM,
                             i % 2 == 0 ? IndoorOutdoorType.OUTDOOR : IndoorOutdoorType.INDOOR,
                             43.6 + i * 0.015, -79.4 + i * 0.015, opens, closes);
@@ -169,11 +171,11 @@ class ScheduleInvariantsTest {
                     continue;
                 }
 
-                Trip trip = new Trip("trip-" + count + "-" + variant, "Toronto", DATE,
+                final Trip trip = new Trip("trip-" + count + "-" + variant, "Toronto", DATE,
                         at(9, 0), at(21, 0), TransportationMode.WALKING);
                 trip.replaceSchedule(events);
 
-                FakeTravelTimeEstimator estimator =
+                final FakeTravelTimeEstimator estimator =
                         new FakeTravelTimeEstimator().timeSensitive(departureSensitive);
                 for (int from = 0; from < count; from++) {
                     for (int to = 0; to < count; to++) {
@@ -182,18 +184,18 @@ class ScheduleInvariantsTest {
                         }
                         // Zero, short and long journeys all appear, and asymmetric variants
                         // make the reverse leg cost something different.
-                        int minutes = new int[]{0, 3, 12, 45}[(from + to + variant) % 4];
-                        int reverse = asymmetric ? (minutes + 7) % 50 : minutes;
+                        final int minutes = new int[]{0, 3, 12, 45}[(from + to + variant) % 4];
+                        final int reverse = asymmetric ? (minutes + 7) % 50 : minutes;
                         estimator.route("a" + from, "a" + to, minutes);
                         estimator.route("a" + to, "a" + from, reverse);
                     }
                 }
 
-                Set<String> locks = new LinkedHashSet<>();
+                final Set<String> locks = new LinkedHashSet<>();
                 for (int i = 0; i < lockCount && i < events.size(); i++) {
                     locks.add(events.get(i).getId());
                 }
-                List<TimeWindow> unavailable = unavailablePeriod
+                final List<TimeWindow> unavailable = unavailablePeriod
                         ? Collections.singletonList(new TimeWindow(at(14, 0), at(15, 0)))
                         : Collections.<TimeWindow>emptyList();
 
@@ -213,15 +215,15 @@ class ScheduleInvariantsTest {
     void everyProposedDayIsAWalkableSequenceOfTheSameActivities() {
         int checked = 0;
         for (Scenario scenario : scenarios()) {
-            DayPlanState state = scenario.preview();
-            List<PreviewRowView> rows = state.getPreviewRows();
+            final DayPlanState state = scenario.preview();
+            final List<PreviewRowView> rows = state.getPreviewRows();
             if (rows.isEmpty()) {
                 continue;
             }
-            String detail = scenario.describe(state);
+            final String detail = scenario.describe(state);
 
-            Set<String> seen = new HashSet<>();
-            Set<String> travelSeen = new HashSet<>();
+            final Set<String> seen = new HashSet<>();
+            final Set<String> travelSeen = new HashSet<>();
             LocalTime previousEnd = null;
             PreviewRowView previousRow = null;
 
@@ -237,7 +239,8 @@ class ScheduleInvariantsTest {
                             "each activity appears exactly once" + detail);
                     assertEquals(60, minutes(row.getStart(), row.getEnd()),
                             "an activity keeps the length it was given" + detail);
-                } else {
+                }
+                else {
                     assertTrue(travelSeen.add(row.getEventId()),
                             "a journey is drawn exactly once" + detail);
                     assertTrue(previousRow != null
@@ -263,15 +266,15 @@ class ScheduleInvariantsTest {
     @Test
     void consecutiveActivitiesAreJoinedByExactlyOneVisibleJourney() {
         for (Scenario scenario : scenarios()) {
-            DayPlanState state = scenario.preview();
-            List<PreviewRowView> rows = state.getPreviewRows();
+            final DayPlanState state = scenario.preview();
+            final List<PreviewRowView> rows = state.getPreviewRows();
             if (rows.isEmpty()) {
                 continue;
             }
-            String detail = scenario.describe(state);
+            final String detail = scenario.describe(state);
 
             for (int i = 0; i < rows.size(); i++) {
-                PreviewRowView row = rows.get(i);
+                final PreviewRowView row = rows.get(i);
                 if (row.getKind() != PreviewRowView.Kind.TRAVEL) {
                     continue;
                 }
@@ -281,7 +284,7 @@ class ScheduleInvariantsTest {
                                 && rows.get(i + 1).getKind() == PreviewRowView.Kind.ACTIVITY,
                         "a journey must be followed by the activity it reaches" + detail);
 
-                PreviewRowView destination = rows.get(i + 1);
+                final PreviewRowView destination = rows.get(i + 1);
                 assertTrue(!row.getEnd().isAfter(destination.getStart()),
                         "a journey cannot land after the activity it reaches has begun"
                                 + detail);
@@ -289,8 +292,8 @@ class ScheduleInvariantsTest {
                 // is a wait the traveller could not have spent travelling anyway: an
                 // unavailable period, or a door that is not open yet.
                 if (!row.getEnd().equals(destination.getStart())) {
-                    Activity venue = activityFor(scenario, destination.getEventId());
-                    boolean waitingForTheDoors =
+                    final Activity venue = activityFor(scenario, destination.getEventId());
+                    final boolean waitingForTheDoors =
                             !venue.getOpeningTime().isBefore(destination.getStart());
                     boolean waitingOutAnAppointment = false;
                     for (TimeWindow window : scenario.unavailable) {
@@ -309,11 +312,11 @@ class ScheduleInvariantsTest {
     @Test
     void hardConstraintsHoldInEveryProposedDay() {
         for (Scenario scenario : scenarios()) {
-            DayPlanState state = scenario.preview();
+            final DayPlanState state = scenario.preview();
             if (state.getPreviewRows().isEmpty()) {
                 continue;
             }
-            String detail = scenario.describe(state);
+            final String detail = scenario.describe(state);
 
             for (PreviewRowView row : state.getPreviewRows()) {
                 assertTrue(!row.getStart().isBefore(at(9, 0)) && !row.getEnd().isAfter(at(21, 0)),
@@ -326,15 +329,15 @@ class ScheduleInvariantsTest {
                 if (row.getKind() != PreviewRowView.Kind.ACTIVITY) {
                     continue;
                 }
-                Activity activity = activityFor(scenario, row.getEventId());
+                final Activity activity = activityFor(scenario, row.getEventId());
                 assertTrue(!row.getStart().isBefore(activity.getOpeningTime())
                                 && !row.getEnd().isAfter(activity.getClosingTime()),
                         "an activity must stay inside its opening hours" + detail);
             }
 
             for (String lockedId : scenario.locks) {
-                PreviewRowView row = activityRow(state, lockedId);
-                ScheduledEvent original = originalEvent(scenario, lockedId);
+                final PreviewRowView row = activityRow(state, lockedId);
+                final ScheduledEvent original = originalEvent(scenario, lockedId);
                 if (row != null) {
                     assertEquals(original.getStartTime(), row.getStart(),
                             "a locked activity keeps its time" + detail);
@@ -347,11 +350,11 @@ class ScheduleInvariantsTest {
     @Test
     void reportedMetricsAgreeWithTheProposedRowsInEveryScenario() {
         for (Scenario scenario : scenarios()) {
-            DayPlanState state = scenario.preview();
+            final DayPlanState state = scenario.preview();
             if (state.getPreviewRows().isEmpty() || state.getMetrics() == null) {
                 continue;
             }
-            String detail = scenario.describe(state);
+            final String detail = scenario.describe(state);
 
             int travel = 0;
             int gaps = 0;
@@ -382,15 +385,15 @@ class ScheduleInvariantsTest {
     @Test
     void everyImprovementCardDescribesSomethingThatActuallyHappened() {
         for (Scenario scenario : scenarios()) {
-            DayPlanState state = scenario.preview();
+            final DayPlanState state = scenario.preview();
             if (state.getPreviewRows().isEmpty()) {
                 continue;
             }
-            String detail = scenario.describe(state);
+            final String detail = scenario.describe(state);
 
             for (ImprovementView card : state.getImprovements()) {
                 // The whole card, so a claim is checked wherever its words happen to sit.
-                String headline = card.spoken();
+                final String headline = card.spoken();
                 assertTrue(!headline.startsWith("0 "),
                         "a saving of nothing is not an improvement: " + headline + detail);
 
@@ -405,13 +408,13 @@ class ScheduleInvariantsTest {
                             "travel can only be claimed saved if it fell" + detail);
                 }
                 if (headline.contains("ORDER KEPT")) {
-                    List<String> before = new ArrayList<>();
+                    final List<String> before = new ArrayList<>();
                     for (ScheduledEvent event : scenario.trip.getScheduledEvents()) {
                         if (event.getEventType() == EventType.ACTIVITY) {
                             before.add(event.getId());
                         }
                     }
-                    List<String> after = new ArrayList<>();
+                    final List<String> after = new ArrayList<>();
                     for (PreviewRowView row : state.getPreviewRows()) {
                         if (row.getKind() == PreviewRowView.Kind.ACTIVITY) {
                             after.add(row.getEventId());
@@ -434,17 +437,17 @@ class ScheduleInvariantsTest {
      */
     @Test
     void aFailingRoutingProviderNeverBecomesZeroMinutesOfTravel() {
-        Activity first = place("f", ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR,
+        final Activity first = place("f", ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR,
                 43.65, -79.38, at(8, 0), at(21, 0));
-        Activity second = place("s", ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR,
+        final Activity second = place("s", ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR,
                 43.80, -79.20, at(8, 0), at(21, 0));
-        Trip trip = new Trip("trip-fail", "Toronto", DATE, at(9, 0), at(21, 0),
+        final Trip trip = new Trip("trip-fail", "Toronto", DATE, at(9, 0), at(21, 0),
                 TransportationMode.WALKING);
         trip.replaceSchedule(Arrays.asList(
                 new ScheduledEvent("f", first, at(9, 0), at(10, 0), EventType.ACTIVITY, ""),
                 new ScheduledEvent("s", second, at(11, 0), at(12, 0), EventType.ACTIVITY, "")));
 
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("trip-fail",
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("trip-fail",
                 trip.getScheduledEvents(), "", false, Collections.emptyList()));
         new AutoScheduleInteractor(new FakeTripRepository(trip),
                 new TravelTimeEstimator() {
@@ -466,7 +469,7 @@ class ScheduleInvariantsTest {
                         TransportationMode.WALKING, Collections.emptySet(),
                         Collections.emptyList(), true, true));
 
-        DayPlanState state = viewModel.getState();
+        final DayPlanState state = viewModel.getState();
         if (state.getPreviewRows().isEmpty()) {
             // Refusing to propose a day it cannot cost is an acceptable answer; pretending
             // the journey is free is not.

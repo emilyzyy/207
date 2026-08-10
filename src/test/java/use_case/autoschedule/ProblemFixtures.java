@@ -1,14 +1,15 @@
 package use_case.autoschedule;
 
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import entity.entities.Activity;
 import entity.valueobjects.ActivityCategory;
 import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
 import entity.valueobjects.OpeningHours;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 /** Builders for readable scheduling fixtures. */
 public final class ProblemFixtures {
@@ -16,16 +17,17 @@ public final class ProblemFixtures {
     public static final java.time.LocalDate TRIP_DATE = java.time.LocalDate.of(2026, 8, 12);
 
     private ProblemFixtures() {
+
     }
 
     public static LocalTime at(int hour, int minute) {
         return LocalTime.of(hour, minute);
     }
-
     /**
      * An activity whose Location address is its id, so fixtures and the fake estimator
      * can refer to the same route by a short readable name.
      */
+
     public static Activity activity(String id, LocalTime opening, LocalTime closing) {
         return new Activity(id, id, ActivityCategory.MUSEUM,
                 new Location(43.65, -79.38, id), 4.5, 60, opening, closing,
@@ -49,13 +51,13 @@ public final class ProblemFixtures {
      * @param spans {@code "09:00-12:00", "13:00-17:00"} and so on, all on the given weekday
      */
     public static OpeningHours hoursOn(java.time.DayOfWeek day, String... spans) {
-        List<OpeningHours.TimeInterval> intervals = new ArrayList<>();
+        final List<OpeningHours.TimeInterval> intervals = new ArrayList<>();
         for (String span : spans) {
-            String[] halves = span.split("-");
+            final String[] halves = span.split("-");
             intervals.add(new OpeningHours.TimeInterval(
                     LocalTime.parse(halves[0]), LocalTime.parse(halves[1])));
         }
-        java.util.Map<java.time.DayOfWeek, List<OpeningHours.TimeInterval>> week =
+        final java.util.Map<java.time.DayOfWeek, List<OpeningHours.TimeInterval>> week =
                 new java.util.EnumMap<>(java.time.DayOfWeek.class);
         week.put(day, intervals);
         return OpeningHours.of(week);
@@ -107,13 +109,13 @@ public final class ProblemFixtures {
     public static List<ScheduleTask> tasks(ScheduleTask... items) {
         return new ArrayList<>(Arrays.asList(items));
     }
-
     /** Builds a matrix where every leg costs the same in every active period. */
+
     public static TravelMatrix flatMatrix(List<ScheduleTask> tasks, TimeWindow availability,
                                           int minutes) {
-        PeriodPlan plan = PeriodPlan.forRun(availability, false,
+        final PeriodPlan plan = PeriodPlan.forRun(availability, false,
                 tasks.size() * (tasks.size() - 1));
-        TravelMatrix.Builder builder = TravelMatrix.builder(plan);
+        final TravelMatrix.Builder builder = TravelMatrix.builder(plan);
         for (DeparturePeriod period : plan.activePeriods()) {
             for (ScheduleTask from : tasks) {
                 for (ScheduleTask to : tasks) {

@@ -1,12 +1,13 @@
 package use_case.autoschedule;
 
-import entity.entities.Activity;
-import entity.valueobjects.OpeningHours;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import entity.entities.Activity;
+import entity.valueobjects.OpeningHours;
 
 /**
  * One Day Plan activity as the scheduler sees it: an identity, a duration that must
@@ -44,8 +45,11 @@ public final class ScheduleTask {
     }
 
     /**
-     * @param tripDate the day being scheduled, used to pick the right weekday's hours; null
+      * @param durationMinutes the d ur at io nm in ut es value
      *                 leaves the activity on its coarse single window as before
+      * @param eventId the e ve nt id value
+     * @param tripDate the day being scheduled, used to pick the right weekday's hours; null
+      * @param activity the a ct iv it y value
      */
     public ScheduleTask(String eventId, Activity activity, int durationMinutes,
                         int originalIndex, TimeWindow lockedAt, LocalDate tripDate) {
@@ -72,14 +76,15 @@ public final class ScheduleTask {
         this.originalIndex = originalIndex;
         this.lockedAt = lockedAt;
 
-        OpeningHours hours = activity.getOpeningHours();
+        final OpeningHours hours = activity.getOpeningHours();
         if (tripDate == null || hours == null || !hours.isKnown()) {
             this.hoursKnown = false;
             this.openingWindows = Collections.singletonList(
                     new TimeWindow(activity.getOpeningTime(), activity.getClosingTime()));
-        } else {
+        }
+        else {
             this.hoursKnown = true;
-            List<TimeWindow> windows = new ArrayList<>();
+            final List<TimeWindow> windows = new ArrayList<>();
             for (OpeningHours.TimeInterval interval : hours.intervalsOn(tripDate)) {
                 windows.add(new TimeWindow(interval.getStart(), interval.getEnd()));
             }
@@ -87,6 +92,12 @@ public final class ScheduleTask {
         }
     }
 
+    /**
+     * Performs the m ov ab le operation.
+     * @param activity the a ct iv it y value
+     * @param eventId the e ve nt id value
+     * @return the result of the operation
+     */
     public static ScheduleTask movable(String eventId, Activity activity,
                                        int durationMinutes, int originalIndex) {
         return new ScheduleTask(eventId, activity, durationMinutes, originalIndex, null);
@@ -115,62 +126,84 @@ public final class ScheduleTask {
     public TimeWindow getLockedAt() {
         return lockedAt;
     }
-
     /**
      * The venue's opening windows on the day being scheduled, earliest first.
      *
      * <p>Empty only when {@link #hasKnownHours()} is true and the venue is shut all day.</p>
+      * @return the result of the operation
      */
+
     public List<TimeWindow> getOpeningWindows() {
         return openingWindows;
     }
+    /**
+     * The date being scheduled, or null when none was supplied.
+     * @return the result of the operation
+     */
 
-    /** The date being scheduled, or null when none was supplied. */
     public LocalDate getTripDate() {
         return tripDate;
     }
+    /**
+     * False when no provider told us the hours, in which case they constrain nothing.
+     * @return the result of the operation
+     */
 
-    /** False when no provider told us the hours, in which case they constrain nothing. */
     public boolean hasKnownHours() {
         return hoursKnown;
     }
+    /**
+     * The venue is on record as shut for the whole of the day being scheduled.
+     * @return the result of the operation
+     */
 
-    /** The venue is on record as shut for the whole of the day being scheduled. */
     public boolean isClosedAllDay() {
         return hoursKnown && openingWindows.isEmpty();
     }
-
     /**
      * The first minute of the day the venue is open.
      *
      * <p>With several windows this is the start of the first one, so it remains the earliest
      * a visit could begin. Callers deciding whether a particular span is allowed must use
      * {@link #getOpeningWindows()} instead — the gap between windows is not open.</p>
+      * @return the result of the operation
      */
+
     public LocalTime getOpeningTime() {
         return openingWindows.isEmpty()
                 ? activity.getOpeningTime() : openingWindows.get(0).getStart();
     }
 
-    /** The last minute of the day the venue is open; see {@link #getOpeningTime()}. */
+    /**
+     * The last minute of the day the venue is open; see {@link #getOpeningTime()}.
+     * @return the result of the operation
+     */
     public LocalTime getClosingTime() {
         return openingWindows.isEmpty()
                 ? activity.getClosingTime()
                 : openingWindows.get(openingWindows.size() - 1).getEnd();
     }
 
-    /** Whether {@code [start, end]} sits entirely inside a single opening window. */
+    /**
+     * Whether {@code [start, end]} sits entirely inside a single opening window.
+     * @param end the e nd value
+     * @param start the s ta rt value
+     * @return the result of the operation
+     */
     public boolean isOpenThroughout(LocalTime start, LocalTime end) {
         return openingWindowFor(start, end) != null;
     }
-
     /**
      * The single opening window that contains {@code [start, end]}, or null if none does.
      *
      * <p>Explaining a placement means naming the window it is actually in — telling a user
      * a cafe "closes at 22:00" when the visit sits in its 09:00-12:00 morning shift would be
      * true of the venue and useless about the visit.</p>
+      * @param start the s ta rt value
+      * @param end the e nd value
+      * @return the result of the operation
      */
+
     public TimeWindow openingWindowFor(LocalTime start, LocalTime end) {
         for (TimeWindow window : openingWindows) {
             if (!start.isBefore(window.getStart()) && !end.isAfter(window.getEnd())) {

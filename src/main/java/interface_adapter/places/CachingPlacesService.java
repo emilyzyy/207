@@ -1,13 +1,14 @@
 package interface_adapter.places;
 
+import java.util.List;
+
+import entity.entities.Activity;
+import entity.valueobjects.GeoPoint;
+import use_case.ports.DestinationGeocoder;
 import use_case.ports.PlacesService;
 import use_case.ports.PlacesWriter;
-import use_case.ports.DestinationGeocoder;
-import entity.valueobjects.GeoPoint;
 import use_case.search.ActivitySearchRequest;
 import use_case.search.ActivitySearchResult;
-import entity.entities.Activity;
-import java.util.List;
 
 /** Decorates discovered-place lookup by copying successful results into a repository. */
 public final class CachingPlacesService
@@ -25,14 +26,14 @@ public final class CachingPlacesService
 
     @Override
     public List<Activity> search(String destination, String query) {
-        List<Activity> results = delegate.search(destination, query);
+        final List<Activity> results = delegate.search(destination, query);
         cache.addAll(results);
         return results;
     }
 
     @Override
     public ActivitySearchResult search(ActivitySearchRequest request) {
-        ActivitySearchResult result = delegate.search(request);
+        final ActivitySearchResult result = delegate.search(request);
         cache.addAll(result.getActivities());
         return result;
     }
@@ -40,7 +41,7 @@ public final class CachingPlacesService
     @Override
     public List<Activity> searchInBounds(String destination, double south, double west,
                                          double north, double east, int maxResults) {
-        List<Activity> results = delegate.searchInBounds(
+        final List<Activity> results = delegate.searchInBounds(
                 destination, south, west, north, east, maxResults);
         cache.addAll(results);
         return results;

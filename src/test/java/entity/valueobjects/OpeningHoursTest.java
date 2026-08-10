@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 
 /**
@@ -25,20 +26,20 @@ class OpeningHoursTest {
     private static final LocalDate SATURDAY = LocalDate.of(2026, 8, 15);
 
     private static OpeningHours wednesdayOnly(String... spans) {
-        List<OpeningHours.TimeInterval> intervals = new ArrayList<>();
+        final List<OpeningHours.TimeInterval> intervals = new ArrayList<>();
         for (String span : spans) {
-            String[] halves = span.split("-");
+            final String[] halves = span.split("-");
             intervals.add(new OpeningHours.TimeInterval(
                     LocalTime.parse(halves[0]), LocalTime.parse(halves[1])));
         }
-        Map<DayOfWeek, List<OpeningHours.TimeInterval>> week = new EnumMap<>(DayOfWeek.class);
+        final Map<DayOfWeek, List<OpeningHours.TimeInterval>> week = new EnumMap<>(DayOfWeek.class);
         week.put(DayOfWeek.WEDNESDAY, intervals);
         return OpeningHours.of(week);
     }
 
     @Test
     void unknownHoursAreNeitherOpenNorClosed() {
-        OpeningHours unknown = OpeningHours.unknown();
+        final OpeningHours unknown = OpeningHours.unknown();
 
         assertFalse(unknown.isKnown());
         assertFalse(unknown.isClosedOn(WEDNESDAY),
@@ -53,7 +54,7 @@ class OpeningHoursTest {
 
     @Test
     void aKnownWeekWithNoIntervalsForADayIsClosedThatDay() {
-        OpeningHours hours = wednesdayOnly("10:00-16:00");
+        final OpeningHours hours = wednesdayOnly("10:00-16:00");
 
         assertTrue(hours.isKnown());
         assertFalse(hours.isClosedOn(WEDNESDAY));
@@ -63,7 +64,7 @@ class OpeningHoursTest {
 
     @Test
     void alwaysOpenIsKnownAndNeverClosed() {
-        OpeningHours always = OpeningHours.alwaysOpen();
+        final OpeningHours always = OpeningHours.alwaysOpen();
 
         assertTrue(always.isKnown());
         assertFalse(always.isClosedOn(WEDNESDAY));
@@ -72,7 +73,7 @@ class OpeningHoursTest {
 
     @Test
     void intervalsAreSortedEvenWhenSuppliedOutOfOrder() {
-        OpeningHours hours = wednesdayOnly("14:00-18:00", "09:00-12:00");
+        final OpeningHours hours = wednesdayOnly("14:00-18:00", "09:00-12:00");
 
         assertEquals(Arrays.asList("09:00-12:00", "14:00-18:00"),
                 Arrays.asList(hours.intervalsOn(WEDNESDAY).get(0).toString(),
@@ -102,7 +103,7 @@ class OpeningHoursTest {
 
     @Test
     void anIntervalReadsBackWhatItWasGiven() {
-        OpeningHours.TimeInterval interval = new OpeningHours.TimeInterval(
+        final OpeningHours.TimeInterval interval = new OpeningHours.TimeInterval(
                 LocalTime.of(9, 30), LocalTime.of(17, 15));
 
         assertEquals(LocalTime.of(9, 30), interval.getStart());

@@ -1,10 +1,5 @@
 package use_case.usecases;
 
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.valueobjects.EventType;
-import entity.valueobjects.TransportationMode;
-import use_case.ports.DistanceService;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -12,6 +7,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.valueobjects.EventType;
+import entity.valueobjects.TransportationMode;
+import use_case.ports.DistanceService;
 
 /**
  * What happens to generated travel when the traveller changes the day by hand.
@@ -35,8 +36,8 @@ public final class DerivedTravel {
     static final String TRAVEL_ID_PREFIX = "travel-";
 
     private DerivedTravel() {
-    }
 
+    }
     /**
      * The day after {@code removedEventId} goes, with its journeys repaired.
      *
@@ -50,29 +51,32 @@ public final class DerivedTravel {
      * is a visible absence rather than a fiction, and it is recoverable by running
      * Autoschedule again.</p>
      *
+      * @param events the e ve nt s value
      * @param distances may be null, in which case no replacement leg is computed
+      * @return the result of the operation
      */
+
     public static List<ScheduledEvent> afterRemoving(List<ScheduledEvent> events,
                                                      String removedEventId,
                                                      TransportationMode mode,
                                                      LocalDate date,
                                                      DistanceService distances) {
-        List<ScheduledEvent> before = activitiesOf(events);
-        Map<String, ScheduledEvent> legsByDestination = travelByDestination(events);
+        final List<ScheduledEvent> before = activitiesOf(events);
+        final Map<String, ScheduledEvent> legsByDestination = travelByDestination(events);
 
-        List<ScheduledEvent> after = new ArrayList<>();
+        final List<ScheduledEvent> after = new ArrayList<>();
         for (ScheduledEvent activity : before) {
             if (!activity.getId().equals(removedEventId)) {
                 after.add(activity);
             }
         }
 
-        List<ScheduledEvent> rebuilt = new ArrayList<>();
+        final List<ScheduledEvent> rebuilt = new ArrayList<>();
         for (int i = 0; i < after.size(); i++) {
-            ScheduledEvent destination = after.get(i);
+            final ScheduledEvent destination = after.get(i);
             if (i > 0) {
-                ScheduledEvent arrivingFrom = after.get(i - 1);
-                ScheduledEvent leg = legFor(arrivingFrom, destination, before,
+                final ScheduledEvent arrivingFrom = after.get(i - 1);
+                final ScheduledEvent leg = legFor(arrivingFrom, destination, before,
                         legsByDestination, mode, date, distances);
                 if (leg != null) {
                     rebuilt.add(leg);
@@ -86,20 +90,27 @@ public final class DerivedTravel {
     /**
      * The journey into {@code destination}, kept when the pair is unchanged and re-estimated
      * when the removal made them newly adjacent.
+      * @param destination the d es ti na ti on value
+      * @param arrivingFrom the a rr iv in gf ro m value
+      * @return the result of the operation
      */
     private static ScheduledEvent legFor(ScheduledEvent arrivingFrom, ScheduledEvent destination,
                                          List<ScheduledEvent> before,
                                          Map<String, ScheduledEvent> legsByDestination,
                                          TransportationMode mode, LocalDate date,
                                          DistanceService distances) {
-        ScheduledEvent existing = legsByDestination.get(destination.getId());
+        final ScheduledEvent existing = legsByDestination.get(destination.getId());
         if (existing != null && wasAlreadyAdjacent(arrivingFrom, destination, before)) {
             return existing;
         }
         return estimatedLeg(arrivingFrom, destination, mode, date, distances);
     }
 
-    /** Whether these two ran back to back before anything was removed. */
+    /**
+     * Whether these two ran back to back before anything was removed.
+     * @param arrivingFrom the a rr iv in gf ro m value
+     * @return the result of the operation
+     */
     private static boolean wasAlreadyAdjacent(ScheduledEvent arrivingFrom,
                                               ScheduledEvent destination,
                                               List<ScheduledEvent> before) {
@@ -117,40 +128,43 @@ public final class DerivedTravel {
      * <p>Null when it cannot honestly be drawn: no estimator, no coordinates, a provider that
      * failed, a journey of no length, or a gap too short to contain it. Returning null loses a
      * leg; returning something else would lose the truth.</p>
+      * @param arrivingFrom the a rr iv in gf ro m value
+      * @return the result of the operation
      */
     private static ScheduledEvent estimatedLeg(ScheduledEvent arrivingFrom,
                                                ScheduledEvent destination,
                                                TransportationMode mode, LocalDate date,
                                                DistanceService distances) {
-        Activity from = arrivingFrom.getActivity();
-        Activity to = destination.getActivity();
+        final Activity from = arrivingFrom.getActivity();
+        final Activity to = destination.getActivity();
         if (distances == null || from == null || to == null || mode == null || date == null) {
             return null;
         }
-        int minutes;
+        final int minutes;
         try {
             minutes = distances.estimateTravelMinutes(from.getLocation(), to.getLocation(), mode,
                     LocalDateTime.of(date, arrivingFrom.getEndTime()));
-        } catch (RuntimeException providerFailed) {
+        }
+        catch (RuntimeException providerFailed) {
             // The day still saves; it simply has one fewer drawn journey than it might.
             return null;
         }
         if (minutes <= 0) {
             return null;
         }
-        int gap = (destination.getStartTime().toSecondOfDay()
+        final int gap = (destination.getStartTime().toSecondOfDay()
                 - arrivingFrom.getEndTime().toSecondOfDay()) / 60;
         if (gap < minutes) {
             return null;
         }
-        LocalTime departure = destination.getStartTime().minusMinutes(minutes);
+        final LocalTime departure = destination.getStartTime().minusMinutes(minutes);
         return new ScheduledEvent(TRAVEL_ID_PREFIX + destination.getId(), null, departure,
                 destination.getStartTime(), EventType.TRAVEL,
                 "Travel to " + to.getName());
     }
 
     private static List<ScheduledEvent> activitiesOf(List<ScheduledEvent> events) {
-        List<ScheduledEvent> activities = new ArrayList<>();
+        final List<ScheduledEvent> activities = new ArrayList<>();
         if (events == null) {
             return activities;
         }
@@ -163,7 +177,7 @@ public final class DerivedTravel {
     }
 
     private static Map<String, ScheduledEvent> travelByDestination(List<ScheduledEvent> events) {
-        Map<String, ScheduledEvent> legs = new LinkedHashMap<>();
+        final Map<String, ScheduledEvent> legs = new LinkedHashMap<>();
         if (events == null) {
             return legs;
         }

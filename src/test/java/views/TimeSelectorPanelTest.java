@@ -6,8 +6,10 @@ import java.awt.GraphicsEnvironment;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.swing.JComboBox;
 import javax.swing.SwingUtilities;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledIf;
 
@@ -34,7 +36,7 @@ class TimeSelectorPanelTest {
 
     /** What the traveller reads, as one string. */
     private static String shown(TimeSelectorPanel panel) {
-        List<String> parts = new ArrayList<>();
+        final List<String> parts = new ArrayList<>();
         for (java.awt.Component child : panel.getComponents()) {
             if (child instanceof JComboBox) {
                 parts.add(String.valueOf(((JComboBox<?>) child).getSelectedItem()));
@@ -65,7 +67,7 @@ class TimeSelectorPanelTest {
 
     @Test
     void whatIsShownIsWhatIsHandedBack() throws Exception {
-        LocalTime[] times = {
+        final LocalTime[] times = {
             LocalTime.of(0, 0), LocalTime.of(12, 0), LocalTime.of(1, 0),
             LocalTime.of(13, 0), LocalTime.of(18, 0), LocalTime.of(9, 30),
             LocalTime.of(23, 45), LocalTime.of(11, 15),

@@ -5,6 +5,7 @@ import entity.valueobjects.ActivityCategory;
 /** Presentation-only labels and non-colour cues for activity categories. */
 final class ActivityCategoryPresentation {
     private ActivityCategoryPresentation() {
+
     }
 
     static String icon(ActivityCategory category) {
@@ -27,7 +28,7 @@ final class ActivityCategoryPresentation {
     }
 
     static String decorate(ActivityCategory category, String text) {
-        String icon = icon(category);
+        final String icon = icon(category);
         return icon.isEmpty() ? text : icon + "  " + text;
     }
 }

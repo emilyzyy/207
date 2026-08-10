@@ -20,6 +20,11 @@ public final class TravelMatrix {
         this.legs = legs;
     }
 
+    /**
+     * Performs the b ui ld er operation.
+     * @param periods the p er io ds value
+     * @return the result of the operation
+     */
     public static Builder builder(PeriodPlan periods) {
         return new Builder(periods);
     }
@@ -27,15 +32,18 @@ public final class TravelMatrix {
     public PeriodPlan getPeriods() {
         return periods;
     }
-
     /**
      * Travel for the leg {@code fromId -> toId} departing at {@code departure},
      * read from the bucket containing that departure.
+      * @param toId the t oi d value
+      * @param fromId the f ro mi d value
+      * @param departure the d ep ar tu re value
+      * @return the result of the operation
      */
+
     public TravelEstimate estimateAt(String fromId, String toId, LocalTime departure) {
         return require(fromId, toId, periods.resolve(departure));
     }
-
     /**
      * Smallest travel time for this leg across every active period.
      *
@@ -43,11 +51,15 @@ public final class TravelMatrix {
      * value is ever below it, a bound built from these minima can never overestimate
      * the remaining cost, so pruning cannot discard a branch that might still be
      * optimal.</p>
+      * @param toId the t oi d value
+      * @param fromId the f ro mi d value
+      * @return the result of the operation
      */
+
     public int minMinutes(String fromId, String toId) {
         int best = Integer.MAX_VALUE;
         for (DeparturePeriod period : periods.activePeriods()) {
-            TravelEstimate estimate = legs.get(new PeriodLeg(fromId, toId, period));
+            final TravelEstimate estimate = legs.get(new PeriodLeg(fromId, toId, period));
             if (estimate != null && estimate.getMinutes() < best) {
                 best = estimate.getMinutes();
             }
@@ -61,6 +73,9 @@ public final class TravelMatrix {
     /**
      * Cheapest way to arrive at {@code toId} from any of {@code candidateFromIds},
      * minimised over periods. Used by the search's remaining-travel relaxation.
+      * @param toId the t oi d value
+      * @param candidateFromIds the c an di da te fr om id s value
+      * @return the result of the operation
      */
     public int minIncomingMinutes(String toId, Collection<String> candidateFromIds) {
         int best = Integer.MAX_VALUE;
@@ -73,7 +88,10 @@ public final class TravelMatrix {
         return best == Integer.MAX_VALUE ? 0 : best;
     }
 
-    /** The weakest confidence of any leg held here, for honest Preview disclosure. */
+    /**
+     * The weakest confidence of any leg held here, for honest Preview disclosure.
+     * @return the result of the operation
+     */
     public TravelEstimateQuality weakestQuality() {
         TravelEstimateQuality weakest = TravelEstimateQuality.ROUTED;
         for (TravelEstimate estimate : legs.values()) {
@@ -87,31 +105,40 @@ public final class TravelMatrix {
         return weakest;
     }
 
-    /** True when every leg in this matrix came from a live routing answer. */
+    /**
+     * True when every leg in this matrix came from a live routing answer.
+     * @return the result of the operation
+     */
     public boolean allRouted() {
         return weakestQuality() == TravelEstimateQuality.ROUTED;
     }
-
     /**
      * A copy with exact-departure values written over the buckets they fall in,
      * used between refinement rounds so the next search sees the real numbers.
+      * @param overrides the o ve rr id es value
+      * @return the result of the operation
      */
+
     public TravelMatrix withOverrides(Map<TravelLegKey, TravelEstimate> overrides) {
-        Map<PeriodLeg, TravelEstimate> updated = new HashMap<>(legs);
+        final Map<PeriodLeg, TravelEstimate> updated = new HashMap<>(legs);
         for (Map.Entry<TravelLegKey, TravelEstimate> entry : overrides.entrySet()) {
-            TravelLegKey leg = entry.getKey();
+            final TravelLegKey leg = entry.getKey();
             updated.put(new PeriodLeg(leg.getFromId(), leg.getToId(),
                     periods.resolve(leg.getDeparture())), entry.getValue());
         }
         return new TravelMatrix(periods, updated);
     }
 
+    /**
+     * Performs the l eg co un t operation.
+     * @return the result of the operation
+     */
     public int legCount() {
         return legs.size();
     }
 
     private TravelEstimate require(String fromId, String toId, DeparturePeriod period) {
-        TravelEstimate estimate = legs.get(new PeriodLeg(fromId, toId, period));
+        final TravelEstimate estimate = legs.get(new PeriodLeg(fromId, toId, period));
         if (estimate == null) {
             throw new IllegalStateException(missingMessage(fromId, toId));
         }
@@ -121,8 +148,8 @@ public final class TravelMatrix {
     private static String missingMessage(String fromId, String toId) {
         return "No travel estimate prefetched for " + fromId + " to " + toId;
     }
-
     /** Collects prefetched estimates for one run. */
+
     public static final class Builder {
         private final PeriodPlan periods;
         private final Map<PeriodLeg, TravelEstimate> legs = new HashMap<>();
@@ -134,6 +161,13 @@ public final class TravelMatrix {
             this.periods = periods;
         }
 
+        /**
+         * Performs the p ut operation.
+         * @param toId the t oi d value
+         * @param period the p er io d value
+         * @param fromId the f ro mi d value
+         * @return the result of the operation
+         */
         public Builder put(String fromId, String toId, DeparturePeriod period,
                            TravelEstimate estimate) {
             if (fromId == null || toId == null || period == null || estimate == null) {
@@ -143,6 +177,10 @@ public final class TravelMatrix {
             return this;
         }
 
+        /**
+         * Performs the b ui ld operation.
+         * @return the result of the operation
+         */
         public TravelMatrix build() {
             return new TravelMatrix(periods, new HashMap<>(legs));
         }
@@ -171,7 +209,7 @@ public final class TravelMatrix {
             if (!(other instanceof PeriodLeg)) {
                 return false;
             }
-            PeriodLeg that = (PeriodLeg) other;
+            final PeriodLeg that = (PeriodLeg) other;
             return period == that.period && fromId.equals(that.fromId) && toId.equals(that.toId);
         }
 

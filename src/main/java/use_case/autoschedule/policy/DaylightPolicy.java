@@ -1,12 +1,13 @@
 package use_case.autoschedule.policy;
 
+import java.time.LocalTime;
+
+import entity.valueobjects.IndoorOutdoorType;
 import use_case.autoschedule.PlacedActivity;
 import use_case.autoschedule.PolicyContext;
 import use_case.autoschedule.PolicyId;
 import use_case.autoschedule.Reason;
 import use_case.autoschedule.ReasonCode;
-import entity.valueobjects.IndoorOutdoorType;
-import java.time.LocalTime;
 
 /**
  * Prefers to place outdoor activities in daylight.
@@ -43,7 +44,7 @@ public final class DaylightPolicy implements SoftPolicy {
         if (!isOutdoor(placement)) {
             return null;
         }
-        String eventId = placement.getTask().getEventId();
+        final String eventId = placement.getTask().getEventId();
         if (minutesOutsideDaylight(placement) == 0) {
             return new Reason(eventId, ReasonCode.IN_DAYLIGHT, "");
         }
@@ -51,23 +52,27 @@ public final class DaylightPolicy implements SoftPolicy {
     }
 
     private static boolean isOutdoor(PlacedActivity placement) {
-        IndoorOutdoorType type = placement.getTask().getActivity().getIndoorOutdoorType();
+        final IndoorOutdoorType type = placement.getTask().getActivity().getIndoorOutdoorType();
         return type == IndoorOutdoorType.OUTDOOR || type == IndoorOutdoorType.MIXED;
     }
 
-    /** Minutes of the activity that fall before dawn or after dusk. */
+    /**
+     * Minutes of the activity that fall before dawn or after dusk.
+     * @param placement the p la ce me nt value
+     * @return the result of the operation
+     */
     private static int minutesOutsideDaylight(PlacedActivity placement) {
-        int before = overlap(placement.getStart(), placement.getEnd(),
+        final int before = overlap(placement.getStart(), placement.getEnd(),
                 LocalTime.MIDNIGHT, DAYLIGHT_START);
-        int after = overlap(placement.getStart(), placement.getEnd(),
+        final int after = overlap(placement.getStart(), placement.getEnd(),
                 DAYLIGHT_END, LocalTime.MAX);
         return before + after;
     }
 
     private static int overlap(LocalTime start, LocalTime end,
                                LocalTime windowStart, LocalTime windowEnd) {
-        LocalTime from = start.isAfter(windowStart) ? start : windowStart;
-        LocalTime to = end.isBefore(windowEnd) ? end : windowEnd;
+        final LocalTime from = start.isAfter(windowStart) ? start : windowStart;
+        final LocalTime to = end.isBefore(windowEnd) ? end : windowEnd;
         if (!to.isAfter(from)) {
             return 0;
         }

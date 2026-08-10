@@ -7,10 +7,16 @@ public final class DeleteTripUseCase {
     private final TripRepository trips;
 
     public DeleteTripUseCase(TripRepository trips) {
-        if (trips == null) throw new IllegalArgumentException("Trip repository is required");
+        if (trips == null) {
+            throw new IllegalArgumentException("Trip repository is required");
+        }
         this.trips = trips;
     }
 
+    /**
+     * Performs the e xe cu te operation.
+     * @param tripId the t ri pi d value
+     */
     public void execute(String tripId) {
         if (tripId == null || tripId.trim().isEmpty()) {
             throw new IllegalArgumentException("Trip id is required");

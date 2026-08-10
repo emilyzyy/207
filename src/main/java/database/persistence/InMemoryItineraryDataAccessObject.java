@@ -1,13 +1,14 @@
 package database.persistence;
 
-import use_case.ports.ItineraryDataAccessInterface;
-import use_case.ports.TripRepository;
-import entity.entities.Trip;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+
+import entity.entities.Trip;
+import use_case.ports.ItineraryDataAccessInterface;
+import use_case.ports.TripRepository;
 
 /**
  * In-memory itinerary store used by edit-itinerary and as the app's {@link TripRepository}.
@@ -57,8 +58,8 @@ public final class InMemoryItineraryDataAccessObject
     public boolean deleteById(String id) {
         return id != null && itineraries.remove(id) != null;
     }
-
     /** Drops all local itineraries (used on sign-out). */
+
     public void clear() {
         itineraries.clear();
     }

@@ -39,29 +39,55 @@ public final class User {
     public String getEmail() {
         return email;
     }
+    /**
+     * Hex color used when no uploaded image is set (default white).
+     * @return the result of the operation
+     */
 
-    /** Hex color used when no uploaded image is set (default white). */
     public String getAvatarColor() {
         return avatarColor;
     }
+    /**
+     * Optional base64-encoded image bytes; null means use {@link #getAvatarColor()}.
+     * @return the result of the operation
+     */
 
-    /** Optional base64-encoded image bytes; null means use {@link #getAvatarColor()}. */
     public String getAvatarImage() {
         return avatarImage;
     }
 
+    /**
+     * Performs the h as up lo ad ed av at ar operation.
+     * @return the result of the operation
+     */
     public boolean hasUploadedAvatar() {
         return avatarImage != null && !avatarImage.isEmpty();
     }
 
+    /**
+     * Performs the w it hu se rn am e operation.
+     * @param newUsername the n ew us er na me value
+     * @return the result of the operation
+     */
     public User withUsername(String newUsername) {
         return new User(id, newUsername, email, avatarColor, avatarImage);
     }
 
+    /**
+     * Performs the w it he ma il operation.
+     * @param newEmail the n ew em ai l value
+     * @return the result of the operation
+     */
     public User withEmail(String newEmail) {
         return new User(id, username, newEmail, avatarColor, avatarImage);
     }
 
+    /**
+     * Performs the w it ha va ta r operation.
+     * @param image the i ma ge value
+     * @param color the c ol or value
+     * @return the result of the operation
+     */
     public User withAvatar(String color, String image) {
         return new User(id, username, email, color, image);
     }

@@ -23,17 +23,32 @@ public final class ScheduleImprovement {
         this.subject = subject == null ? "" : subject;
     }
 
-    /** A whole-schedule improvement measured in minutes or activities, e.g. waiting removed. */
+    /**
+     * A whole-schedule improvement measured in minutes or activities, e.g. waiting removed.
+     * @param amount the a mo un t value
+     * @param type the t yp e value
+     * @return the result of the operation
+     */
     public static ScheduleImprovement of(ScheduleImprovementType type, int amount) {
         return new ScheduleImprovement(type, amount, "");
     }
+    /**
+     * An improvement attributable to one named activity.
+     * @param subject the s ub je ct value
+     * @param type the t yp e value
+     * @return the result of the operation
+     */
 
-    /** An improvement attributable to one named activity. */
     public static ScheduleImprovement forActivity(ScheduleImprovementType type, String subject) {
         return new ScheduleImprovement(type, 0, subject);
     }
+    /**
+     * An improvement attributable to one named activity, with a size.
+     * @param amount the a mo un t value
+     * @param type the t yp e value
+     * @return the result of the operation
+     */
 
-    /** An improvement attributable to one named activity, with a size. */
     public static ScheduleImprovement forActivity(ScheduleImprovementType type, int amount,
                                                   String subject) {
         return new ScheduleImprovement(type, amount, subject);
@@ -42,13 +57,19 @@ public final class ScheduleImprovement {
     public ScheduleImprovementType getType() {
         return type;
     }
+    /**
+     * Minutes or a count, depending on the type; zero when the type carries no size.
+     * @return the result of the operation
+     */
 
-    /** Minutes or a count, depending on the type; zero when the type carries no size. */
     public int getAmount() {
         return amount;
     }
+    /**
+     * The activity this is about, or empty when it describes the whole day.
+     * @return the result of the operation
+     */
 
-    /** The activity this is about, or empty when it describes the whole day. */
     public String getSubject() {
         return subject;
     }

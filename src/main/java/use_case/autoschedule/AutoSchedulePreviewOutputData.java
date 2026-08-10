@@ -97,8 +97,11 @@ public final class AutoSchedulePreviewOutputData {
     public List<Reason> getReasons() {
         return reasons;
     }
+    /**
+     * Things the user should know that did not stop the schedule being produced.
+     * @return the result of the operation
+     */
 
-    /** Things the user should know that did not stop the schedule being produced. */
     public List<String> getWarnings() {
         return warnings;
     }
@@ -110,41 +113,48 @@ public final class AutoSchedulePreviewOutputData {
     public String getScheduleFingerprint() {
         return scheduleFingerprint;
     }
-
     /**
      * False when the node budget stopped the search early, so the Preview can say
      * "best found within the search limit" instead of implying it proved anything.
+      * @return the result of the operation
      */
+
     public boolean isSearchCompletedWithinLimit() {
         return searchCompletedWithinLimit;
     }
-
     /**
      * The weakest confidence behind any travel number shown. UNKNOWN is reported
      * honestly rather than dressed up as routed, because the shared routing port
      * cannot distinguish a real route from its own distance-based fallback.
+      * @return the result of the operation
      */
+
     public TravelEstimateQuality getTravelQuality() {
         return travelQuality;
     }
+    /**
+     * Whether the traveller asked to keep the order they had arranged.
+     * @return the result of the operation
+     */
 
-    /** Whether the traveller asked to keep the order they had arranged. */
     public boolean isKeptCurrentOrder() {
         return keptCurrentOrder;
     }
-
     /**
      * What this schedule provably improved, each one a before/after comparison.
      * Empty when nothing improved — which is a real answer, not a missing one.
+      * @return the result of the operation
      */
+
     public List<ScheduleImprovement> getImprovements() {
         return improvements;
     }
-
     /**
      * The schedule's total cost in minutes: travel, wasted waiting and the capped soft
      * penalties added together. Shown so the Preview can be specific about what improved.
+      * @return the result of the operation
      */
+
     public int getPracticalCostMinutes() {
         return practicalCostMinutes;
     }

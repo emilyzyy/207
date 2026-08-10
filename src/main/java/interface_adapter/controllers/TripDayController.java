@@ -1,9 +1,10 @@
 package interface_adapter.controllers;
 
+import java.util.function.Supplier;
+
+import entity.entities.Trip;
 import interface_adapter.presenters.ManualPlanPresenter;
 import use_case.ports.TripRepository;
-import entity.entities.Trip;
-import java.util.function.Supplier;
 
 /** Switches which day of a multi-day trip the Day Plan and Calendar are showing. */
 public final class TripDayController {
@@ -21,25 +22,29 @@ public final class TripDayController {
         this.presenter = presenter;
     }
 
-    /** Makes the given day the active one and re-renders the Day Plan around it. */
+    /**
+     * Makes the given day the active one and re-renders the Day Plan around it.
+     * @param dayIndex the d ay in de x value
+     */
     public void switchTo(int dayIndex) {
         try {
-            Trip trip = trips.findById(requireTripId())
+            final Trip trip = trips.findById(requireTripId())
                     .orElseThrow(() -> new IllegalArgumentException("Trip not found"));
             if (dayIndex < 0 || dayIndex >= trip.getDayCount()) {
                 throw new IllegalArgumentException("Day out of range");
             }
             trip.setActiveDayIndex(dayIndex);
-            Trip saved = trips.save(trip);
+            final Trip saved = trips.save(trip);
             presenter.presentSuccess(saved, "Showing " + saved.getDay(dayIndex).getDate()
                     + ".");
-        } catch (IllegalArgumentException exception) {
+        }
+        catch (IllegalArgumentException exception) {
             presenter.presentFailure(exception.getMessage());
         }
     }
 
     private String requireTripId() {
-        String current = tripId.get();
+        final String current = tripId.get();
         if (current == null || current.trim().isEmpty()) {
             throw new IllegalArgumentException("Create a trip before switching days");
         }

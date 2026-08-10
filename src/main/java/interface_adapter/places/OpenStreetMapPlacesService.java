@@ -1,5 +1,16 @@
 package interface_adapter.places;
 
+import java.text.Normalizer;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import entity.entities.Activity;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.IndoorOutdoorType;
 import use_case.ports.ActivitySearchGateway;
 import use_case.ports.DestinationGeocoder;
 import use_case.ports.NamedPlaceSearch;
@@ -10,16 +21,6 @@ import use_case.search.ActivitySearchResult;
 import use_case.search.PlaceSearchException;
 import use_case.search.SearchFailure;
 import use_case.search.SearchSource;
-import entity.entities.Activity;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.IndoorOutdoorType;
-import java.text.Normalizer;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /** Local-first search coordinator; network details remain behind focused ports. */
 public final class OpenStreetMapPlacesService
@@ -31,7 +32,7 @@ public final class OpenStreetMapPlacesService
     private final Map<String, Map<String, Activity>> visibleIndex = new ConcurrentHashMap<>();
 
     public OpenStreetMapPlacesService() {
-        NominatimNamedPlaceSearch nominatim = new NominatimNamedPlaceSearch();
+        final NominatimNamedPlaceSearch nominatim = new NominatimNamedPlaceSearch();
         this.namedPlaces = nominatim;
         this.nearby = new OverpassNearbyActivityDiscovery(nominatim);
         this.geocoder = nominatim;
@@ -56,27 +57,34 @@ public final class OpenStreetMapPlacesService
 
     @Override
     public ActivitySearchResult search(ActivitySearchRequest request) {
-        if (request.getDestination().isEmpty()) return new ActivitySearchResult(
-                List.of(), SearchSource.LOCAL, false, SearchFailure.INVALID_DESTINATION);
-        String destinationKey = normalize(request.getDestination());
-        List<Activity> local = filterAndRank(candidates(destinationKey), request);
+        if (request.getDestination().isEmpty()) {
+            return new ActivitySearchResult(
+                    List.of(), SearchSource.LOCAL, false, SearchFailure.INVALID_DESTINATION);
+        }
+        final String destinationKey = normalize(request.getDestination());
+        final List<Activity> local = filterAndRank(candidates(destinationKey), request);
         if (request.getQuery().isEmpty()) {
             return discoverNearby(request, destinationKey, local);
         }
         // An exact cached name is complete enough to answer immediately (e.g. Tim Hortons).
-        if (hasExactName(local, request.getQuery())) return new ActivitySearchResult(
-                limit(local, request.getLimit()), SearchSource.LOCAL, false, SearchFailure.NONE);
+        if (hasExactName(local, request.getQuery())) {
+            return new ActivitySearchResult(
+                    limit(local, request.getLimit()), SearchSource.LOCAL, false, SearchFailure.NONE);
+        }
         try {
-            List<Activity> remote = namedPlaces.find(request.getDestination(),
+            final List<Activity> remote = namedPlaces.find(request.getDestination(),
                     request.getQuery(), request.getLimit());
             add(destinationKey, remote);
-            List<Activity> merged = filterAndRank(candidates(destinationKey), request);
-            if (merged.isEmpty()) return new ActivitySearchResult(List.of(),
-                    SearchSource.NOMINATIM, false, SearchFailure.NO_MATCH);
+            final List<Activity> merged = filterAndRank(candidates(destinationKey), request);
+            if (merged.isEmpty()) {
+                return new ActivitySearchResult(List.of(),
+                        SearchSource.NOMINATIM, false, SearchFailure.NO_MATCH);
+            }
             return new ActivitySearchResult(limit(merged, request.getLimit()),
                     local.isEmpty() ? SearchSource.NOMINATIM : SearchSource.LOCAL_AND_REMOTE,
                     false, SearchFailure.NONE);
-        } catch (PlaceSearchException failure) {
+        }
+        catch (PlaceSearchException failure) {
             return new ActivitySearchResult(limit(local, request.getLimit()), SearchSource.LOCAL,
                     !local.isEmpty(), failure.getFailure());
         }
@@ -86,13 +94,14 @@ public final class OpenStreetMapPlacesService
                                                 String destinationKey,
                                                 List<Activity> local) {
         try {
-            List<Activity> remote = nearby.around(request.getDestination(), request.getLimit());
+            final List<Activity> remote = nearby.around(request.getDestination(), request.getLimit());
             add(destinationKey, remote);
-            List<Activity> merged = filterAndRank(candidates(destinationKey), request);
+            final List<Activity> merged = filterAndRank(candidates(destinationKey), request);
             return new ActivitySearchResult(limit(merged, request.getLimit()),
                     local.isEmpty() ? SearchSource.OVERPASS : SearchSource.LOCAL_AND_REMOTE,
                     false, merged.isEmpty() ? SearchFailure.NO_MATCH : SearchFailure.NONE);
-        } catch (PlaceSearchException failure) {
+        }
+        catch (PlaceSearchException failure) {
             return new ActivitySearchResult(limit(local, request.getLimit()), SearchSource.LOCAL,
                     !local.isEmpty(), failure.getFailure());
         }
@@ -107,17 +116,21 @@ public final class OpenStreetMapPlacesService
     @Override
     public List<Activity> searchInBounds(String destination, double south, double west,
                                          double north, double east, int maxResults) {
-        Map<String, Activity> viewport = visibleIndex(normalize(destination));
+        final Map<String, Activity> viewport = visibleIndex(normalize(destination));
         // A box that lies fully inside the already-fetched whole-city discovery is answered from
         // that cache instead of issuing another Overpass request.
-        List<Activity> covered = nearby.cachedInBounds(
+        final List<Activity> covered = nearby.cachedInBounds(
                 destination, south, west, north, east);
         if (covered != null) {
-            for (Activity activity : covered) viewport.put(activity.getId(), activity);
+            for (Activity activity : covered) {
+                viewport.put(activity.getId(), activity);
+            }
             return covered;
         }
-        List<Activity> activities = nearby.inBounds(south, west, north, east, maxResults);
-        for (Activity activity : activities) viewport.put(activity.getId(), activity);
+        final List<Activity> activities = nearby.inBounds(south, west, north, east, maxResults);
+        for (Activity activity : activities) {
+            viewport.put(activity.getId(), activity);
+        }
         return activities;
     }
 
@@ -130,28 +143,35 @@ public final class OpenStreetMapPlacesService
     }
 
     private void add(String destination, List<Activity> activities) {
-        Map<String, Activity> destinationIndex = index(destination);
-        for (Activity activity : activities) destinationIndex.put(activity.getId(), activity);
+        final Map<String, Activity> destinationIndex = index(destination);
+        for (Activity activity : activities) {
+            destinationIndex.put(activity.getId(), activity);
+        }
     }
 
     private Iterable<Activity> candidates(String destination) {
         // Viewport places are recorded per destination so a trip that finishes loading after the
         // user has moved on can never leak its markers into the next itinerary's search results.
-        Map<String, Activity> merged = new LinkedHashMap<>(visibleIndex(destination));
+        final Map<String, Activity> merged = new LinkedHashMap<>(visibleIndex(destination));
         merged.putAll(index(destination));
         return merged.values();
     }
 
     private static List<Activity> filterAndRank(Iterable<Activity> source,
                                                 ActivitySearchRequest request) {
-        List<Activity> matches = new ArrayList<>();
-        String query = normalize(request.getQuery());
+        final List<Activity> matches = new ArrayList<>();
+        final String query = normalize(request.getQuery());
         for (Activity activity : source) {
-            if (request.getCategory() != null && activity.getCategory() != request.getCategory())
+            if (request.getCategory() != null && activity.getCategory() != request.getCategory()) {
                 continue;
+            }
             if (request.getSetting() != null
-                    && activity.getIndoorOutdoorType() != request.getSetting()) continue;
-            if (!query.isEmpty() && score(activity, query) <= 0) continue;
+                    && activity.getIndoorOutdoorType() != request.getSetting()) {
+                continue;
+            }
+            if (!query.isEmpty() && score(activity, query) <= 0) {
+                continue;
+            }
             matches.add(activity);
         }
         matches.sort(Comparator.comparingDouble((Activity activity) -> score(activity, query))
@@ -160,19 +180,31 @@ public final class OpenStreetMapPlacesService
     }
 
     private static double score(Activity activity, String query) {
-        if (query.isEmpty()) return metadataScore(activity);
-        String name = normalize(activity.getName());
-        String address = normalize(activity.getLocation().getAddress());
-        String category = normalize(activity.getCategory().name().replace('_', ' '));
-        if (name.equals(query)) return 100 + metadataScore(activity);
-        if (name.startsWith(query)) return 85 + metadataScore(activity);
-        if (name.contains(query)) return 70 + metadataScore(activity);
-        String[] tokens = query.split("\\s+");
+        if (query.isEmpty()) {
+            return metadataScore(activity);
+        }
+        final String name = normalize(activity.getName());
+        final String address = normalize(activity.getLocation().getAddress());
+        final String category = normalize(activity.getCategory().name().replace('_', ' '));
+        if (name.equals(query)) {
+            return 100 + metadataScore(activity);
+        }
+        if (name.startsWith(query)) {
+            return 85 + metadataScore(activity);
+        }
+        if (name.contains(query)) {
+            return 70 + metadataScore(activity);
+        }
+        final String[] tokens = query.split("\\s+");
         int found = 0;
         for (String token : tokens) {
-            if (name.contains(token) || address.contains(token) || category.contains(token)) found++;
+            if (name.contains(token) || address.contains(token) || category.contains(token)) {
+                found++;
+            }
         }
-        if (found == 0) return 0;
+        if (found == 0) {
+            return 0;
+        }
         return 45.0 * found / tokens.length + metadataScore(activity);
     }
 
@@ -180,15 +212,22 @@ public final class OpenStreetMapPlacesService
         double score = 0;
         if (activity.getLocation() != null
                 && activity.getLocation().getAddress() != null
-                && !activity.getLocation().getAddress().equals(activity.getName())) score += 5;
-        if (activity.getOpeningHoursText() != null) score += 3;
+                && !activity.getLocation().getAddress().equals(activity.getName())) {
+            score += 5;
+        }
+        if (activity.getOpeningHoursText() != null) {
+            score += 3;
+        }
         return score;
     }
 
     private static boolean hasExactName(List<Activity> activities, String query) {
-        String normalized = normalize(query);
-        for (Activity activity : activities)
-            if (normalize(activity.getName()).equals(normalized)) return true;
+        final String normalized = normalize(query);
+        for (Activity activity : activities) {
+            if (normalize(activity.getName()).equals(normalized)) {
+                return true;
+            }
+        }
         return false;
     }
 
@@ -197,8 +236,10 @@ public final class OpenStreetMapPlacesService
     }
 
     private static String normalize(String text) {
-        if (text == null) return "";
-        String decomposed = Normalizer.normalize(text, Normalizer.Form.NFD)
+        if (text == null) {
+            return "";
+        }
+        final String decomposed = Normalizer.normalize(text, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "");
         return decomposed.toLowerCase().replaceAll("[^a-z0-9]+", " ").trim();
     }

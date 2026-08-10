@@ -1,13 +1,5 @@
 package interface_adapter.places;
 
-import use_case.ports.DestinationGeocoder;
-import use_case.ports.NearbyActivityDiscovery;
-import entity.valueobjects.GeoPoint;
-import use_case.search.PlaceSearchException;
-import use_case.search.SearchFailure;
-import entity.entities.Activity;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -22,6 +14,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import entity.entities.Activity;
+import entity.valueobjects.GeoPoint;
+import use_case.ports.DestinationGeocoder;
+import use_case.ports.NearbyActivityDiscovery;
+import use_case.search.PlaceSearchException;
+import use_case.search.SearchFailure;
 
 /** Overpass adapter dedicated to set-based nearby and viewport discovery. */
 public final class OverpassNearbyActivityDiscovery implements NearbyActivityDiscovery {
@@ -94,15 +95,17 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
 
     @Override
     public List<Activity> around(String destination, int limit) {
-        int window = windowLimit(limit);
-        String key = "around|" + normalize(destination) + "|" + window;
-        List<Activity> cached = cache.get(key);
-        if (cached != null) return new ArrayList<>(cached);
-        GeoPoint center = geocoder.geocode(destination);
-        int radius = Math.min(center.getDiscoveryRadiusMeters(), MAX_AROUND_RADIUS_METERS);
-        String area = "around:" + radius + ","
+        final int window = windowLimit(limit);
+        final String key = "around|" + normalize(destination) + "|" + window;
+        final List<Activity> cached = cache.get(key);
+        if (cached != null) {
+            return new ArrayList<>(cached);
+        }
+        final GeoPoint center = geocoder.geocode(destination);
+        final int radius = Math.min(center.getDiscoveryRadiusMeters(), MAX_AROUND_RADIUS_METERS);
+        final String area = "around:" + radius + ","
                 + center.getLatitude() + "," + center.getLongitude();
-        List<Activity> result = coordinatedLoad(key, query(area, window), window);
+        final List<Activity> result = coordinatedLoad(key, query(area, window), window);
         if (!result.isEmpty()) {
             aroundCoverage.put(normalize(destination), new AroundCoverage(
                     center.getLatitude(), center.getLongitude(), radius, result));
@@ -112,15 +115,17 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
 
     @Override
     public List<Activity> inBounds(double south, double west, double north, double east, int limit) {
-        int window = windowLimit(limit);
-        String key = "bounds|" + Math.round(south * 100) + "," + Math.round(west * 100)
+        final int window = windowLimit(limit);
+        final String key = "bounds|" + Math.round(south * 100) + "," + Math.round(west * 100)
                 + "," + Math.round(north * 100) + "," + Math.round(east * 100) + "|" + window;
-        List<Activity> cached = cache.get(key);
-        if (cached != null) return new ArrayList<>(cached);
-        double centerLat = (south + north) / 2;
-        double centerLng = (west + east) / 2;
-        int radius = viewportRadius(south, west, north, east);
-        String area = "around:" + radius + ","
+        final List<Activity> cached = cache.get(key);
+        if (cached != null) {
+            return new ArrayList<>(cached);
+        }
+        final double centerLat = (south + north) / 2;
+        final double centerLng = (west + east) / 2;
+        final int radius = viewportRadius(south, west, north, east);
+        final String area = "around:" + radius + ","
                 + centerLat + "," + centerLng;
         return coordinatedLoad(key, query(area, window), window);
     }
@@ -128,15 +133,17 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
     @Override
     public List<Activity> cachedInBounds(String destination,
                                          double south, double west, double north, double east) {
-        AroundCoverage coverage = aroundCoverage.get(normalize(destination));
+        final AroundCoverage coverage = aroundCoverage.get(normalize(destination));
         if (coverage == null || !covers(coverage, south, west, north, east)) {
             return null;
         }
-        List<Activity> inBox = new ArrayList<>();
+        final List<Activity> inBox = new ArrayList<>();
         for (Activity activity : coverage.activities) {
-            if (activity.getLocation() == null) continue;
-            double lat = activity.getLocation().getLatitude();
-            double lng = activity.getLocation().getLongitude();
+            if (activity.getLocation() == null) {
+                continue;
+            }
+            final double lat = activity.getLocation().getLatitude();
+            final double lng = activity.getLocation().getLongitude();
             if (lat >= south && lat <= north && lng >= west && lng <= east) {
                 inBox.add(activity);
             }
@@ -144,28 +151,39 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
         return inBox;
     }
 
-    /** True when the whole box, including its corners, lies inside the coverage circle. */
+    /**
+     * True when the whole box, including its corners, lies inside the coverage circle.
+     * @param coverage the c ov er ag e value
+     * @return the result of the operation
+     */
     private static boolean covers(AroundCoverage coverage,
                                   double south, double west, double north, double east) {
-        double centerLat = (south + north) / 2;
-        double centerLng = (west + east) / 2;
-        double halfWidth = (east - west) * 111_320.0
+        final double centerLat = (south + north) / 2;
+        final double centerLng = (west + east) / 2;
+        final double halfWidth = (east - west) * 111_320.0
                 * Math.cos(Math.toRadians(centerLat)) / 2.0;
-        double halfHeight = (north - south) * 111_320.0 / 2.0;
-        double boxHalfDiagonal = Math.hypot(halfWidth, halfHeight);
-        double distance = distanceMeters(coverage.latitude, coverage.longitude,
+        final double halfHeight = (north - south) * 111_320.0 / 2.0;
+        final double boxHalfDiagonal = Math.hypot(halfWidth, halfHeight);
+        final double distance = distanceMeters(coverage.latitude, coverage.longitude,
                 centerLat, centerLng);
         return distance + boxHalfDiagonal <= coverage.radiusMeters;
     }
 
-    /** Great-circle distance in metres (Haversine). */
+    /**
+     * Great-circle distance in metres (Haversine).
+     * @param lng2 the l ng2 value
+     * @param lat2 the l at2 value
+     * @param lng1 the l ng1 value
+     * @param lat1 the l at1 value
+     * @return the result of the operation
+     */
     private static double distanceMeters(double lat1, double lng1, double lat2, double lng2) {
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLng = Math.toRadians(lng2 - lng1);
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+        final double dLat = Math.toRadians(lat2 - lat1);
+        final double dLng = Math.toRadians(lng2 - lng1);
+        final double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
                 * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        final double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return 6_371_000.0 * c;
     }
 
@@ -189,27 +207,34 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
      * public replicas (a whole-box bbox query does not). The radius is clamped to the reliable
      * ceiling, so a wide view fills around its centre while panning pulls in the neighbouring
      * boxes. Each box is cached under its own key, so revisiting a seen view is instant.
+      * @param west the w es t value
+      * @param south the s ou th value
+      * @return the result of the operation
      */
     private static int viewportRadius(double south, double west,
                                       double north, double east) {
-        double metersPerDegreeLng = 111_320.0
+        final double metersPerDegreeLng = 111_320.0
                 * Math.cos(Math.toRadians((south + north) / 2));
-        double halfWidthMeters = (east - west) * metersPerDegreeLng / 2.0;
-        double halfHeightMeters = (north - south) * 111_320.0 / 2.0;
-        double halfMin = Math.max(500.0, Math.min(halfWidthMeters, halfHeightMeters));
+        final double halfWidthMeters = (east - west) * metersPerDegreeLng / 2.0;
+        final double halfHeightMeters = (north - south) * 111_320.0 / 2.0;
+        final double halfMin = Math.max(500.0, Math.min(halfWidthMeters, halfHeightMeters));
         return (int) Math.round(Math.min(MAX_AROUND_RADIUS_METERS, halfMin));
     }
 
     private static int windowLimit(int limit) {
         return Math.min(Math.max(1, limit), MAX_WINDOW_RESULTS);
     }
-
     /**
      * Deduplicates repeated lookups for the same key and repeats the cache check after waiting.
      * A trip opening starts enrichment and viewport discovery almost together; without this
      * boundary, a Search click can launch a duplicate request before the first call has populated
      * the cache. Locking is per key, so unrelated lookups are not blocked by an in-flight one.
+      * @param query the q ue ry value
+      * @param limit the l im it value
+      * @param key the k ey value
+      * @return the result of the operation
      */
+
     private List<Activity> coordinatedLoad(String key, String query, int limit) {
         return coordinatedLoad(key, () -> loadAndCache(key, query, limit));
     }
@@ -217,56 +242,65 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
     private List<Activity> coordinatedLoad(String key,
                                            java.util.function.Supplier<List<Activity>> loader) {
         List<Activity> cached = cache.get(key);
-        if (cached != null) return new ArrayList<>(cached);
-        Object lock = keyLocks.computeIfAbsent(key, ignored -> new Object());
+        if (cached != null) {
+            return new ArrayList<>(cached);
+        }
+        final Object lock = keyLocks.computeIfAbsent(key, ignored -> new Object());
         synchronized (lock) {
             try {
                 cached = cache.get(key);
-                if (cached != null) return new ArrayList<>(cached);
+                if (cached != null) {
+                    return new ArrayList<>(cached);
+                }
                 return loader.get();
-            } finally {
+            }
+            finally {
                 keyLocks.remove(key, lock);
             }
         }
     }
 
     private List<Activity> loadAndCache(String key, String query, int limit) {
-        List<Activity> result = fetch(query, limit);
+        final List<Activity> result = fetch(query, limit);
         // A transient empty Overpass response must not poison this destination for the
         // remainder of the session. Successful results are stable enough to cache.
-        if (!result.isEmpty()) cache.put(key, new ArrayList<>(result));
+        if (!result.isEmpty()) {
+            cache.put(key, new ArrayList<>(result));
+        }
         return result;
     }
 
     private List<Activity> fetch(String query, int limit) {
-        JsonNode elements = request(query);
-        Map<String, Activity> unique = new LinkedHashMap<>();
+        final JsonNode elements = request(query);
+        final Map<String, Activity> unique = new LinkedHashMap<>();
         for (JsonNode element : elements) {
             mapper.fromOverpass(element).ifPresent(activity -> unique.put(activity.getId(), activity));
-            if (unique.size() >= limit) break;
+            if (unique.size() >= limit) {
+                break;
+            }
         }
         return new ArrayList<>(unique.values());
     }
 
     private JsonNode request(String query) {
-        long deadline = System.nanoTime()
+        final long deadline = System.nanoTime()
                 + TimeUnit.MILLISECONDS.toNanos(MAX_OVERALL_WAIT_MILLIS);
         PlaceSearchException last = null;
         JsonNode validEmptyResponse = null;
         for (URI endpoint : endpoints) {
-            long remainingMillis = remainingMillis(deadline);
+            final long remainingMillis = remainingMillis(deadline);
             if (remainingMillis <= 0) {
                 break;
             }
             try {
-                String body = "data=" + URLEncoder.encode(query, StandardCharsets.UTF_8);
-                HttpRequest request = HttpRequest.newBuilder(endpoint)
+                final String body = "data=" + URLEncoder.encode(query, StandardCharsets.UTF_8);
+                final HttpRequest request = HttpRequest.newBuilder(endpoint)
                         .timeout(Duration.ofMillis(Math.min(
                                 REQUEST_TIMEOUT.toMillis(), remainingMillis)))
                         .header("Content-Type", "application/x-www-form-urlencoded")
                         .header("User-Agent", USER_AGENT)
                         .POST(HttpRequest.BodyPublishers.ofString(body)).build();
-                HttpResponse<String> response = http.send(request,
+                final HttpResponse<String> response = http.send(request,
                         HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
                 if (response.statusCode() == 429) {
                     last = new PlaceSearchException(SearchFailure.RATE_LIMITED,
@@ -279,14 +313,14 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
                             "Overpass HTTP " + response.statusCode());
                     continue;
                 }
-                String text = response.body() == null ? "" : response.body().trim();
+                final String text = response.body() == null ? "" : response.body().trim();
                 if (!text.startsWith("{") && !text.startsWith("[")) {
                     last = new PlaceSearchException(SearchFailure.SERVICE_UNAVAILABLE,
                             "Overpass returned a non-JSON response");
                     continue;
                 }
-                JsonNode root = json.readTree(text);
-                String remark = root.path("remark").asText("");
+                final JsonNode root = json.readTree(text);
+                final String remark = root.path("remark").asText("");
                 if (remark.contains("timed out") || remark.contains("runtime error")) {
                     // Overpass answers a server-side timeout with HTTP 200, an empty elements
                     // array and a remark such as "Query timed out". That is a failure, not a
@@ -295,7 +329,7 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
                             "Overpass query failed: " + remark);
                     continue;
                 }
-                JsonNode elements = root.has("elements")
+                final JsonNode elements = root.has("elements")
                         ? root.path("elements") : json.createArrayNode();
                 if (elements.isArray() && elements.isEmpty()) {
                     // Public replicas occasionally return an empty successful response while
@@ -304,44 +338,58 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
                     continue;
                 }
                 return elements;
-            } catch (InterruptedException exception) {
+            }
+            catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
                 throw new PlaceSearchException(SearchFailure.SERVICE_UNAVAILABLE,
                         "Nearby discovery was interrupted", exception);
-            } catch (IOException | RuntimeException exception) {
+            }
+            catch (IOException | RuntimeException exception) {
                 if (exception instanceof PlaceSearchException) {
                     last = (PlaceSearchException) exception;
-                } else {
+                }
+                else {
                     last = new PlaceSearchException(SearchFailure.SERVICE_UNAVAILABLE,
                             "Overpass is unavailable", exception);
                 }
             }
         }
-        if (validEmptyResponse != null) return validEmptyResponse;
+        if (validEmptyResponse != null) {
+            return validEmptyResponse;
+        }
         throw last == null ? new PlaceSearchException(SearchFailure.SERVICE_UNAVAILABLE,
                 "No Overpass endpoint is configured") : last;
     }
 
-    /** How much of the overall deadline is left, in milliseconds (at least zero). */
+    /**
+     * How much of the overall deadline is left, in milliseconds (at least zero).
+     * @param deadline the d ea dl in e value
+     * @return the result of the operation
+     */
     private static long remainingMillis(long deadline) {
         return Math.max(0L, TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime()));
     }
+    /**
+     * Honours Retry-After when present, otherwise a short default, all within the deadline.
+     * @param deadline the d ea dl in e value
+     * @param response the r es po ns e value
+     */
 
-    /** Honours Retry-After when present, otherwise a short default, all within the deadline. */
     private void sleepRetryAfter(HttpResponse<?> response, long deadline)
             throws InterruptedException {
         long waitMillis = DEFAULT_RATE_LIMIT_WAIT_MILLIS;
-        String retryAfter = response.headers().firstValue("Retry-After").orElse(null);
+        final String retryAfter = response.headers().firstValue("Retry-After").orElse(null);
         if (retryAfter != null) {
             try {
                 waitMillis = Math.min(
                         TimeUnit.SECONDS.toMillis(Math.max(0L, Long.parseLong(retryAfter.trim()))),
                         MAX_RETRY_AFTER_MILLIS);
-            } catch (NumberFormatException ignored) {
+            }
+            catch (NumberFormatException ignored) {
                 // fall back to the default wait
             }
         }
-        long allowed = Math.min(waitMillis, remainingMillis(deadline));
+        final long allowed = Math.min(waitMillis, remainingMillis(deadline));
         if (allowed > 0) {
             Thread.sleep(allowed);
         }
@@ -353,7 +401,11 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
         return "[out:json][timeout:10];(" + selectors(area) + ");out center " + limit + ";";
     }
 
-    /** Selector groups remain separate and testable while sharing one network request. */
+    /**
+     * Selector groups remain separate and testable while sharing one network request.
+     * @param area the a re a value
+     * @return the result of the operation
+     */
     static String selectors(String area) {
         return foodAndCoffee(area) + cultureAndEntertainment(area)
                 + natureAndRecreation(area) + shoppingAndHistoric(area);
@@ -388,8 +440,10 @@ public final class OverpassNearbyActivityDiscovery implements NearbyActivityDisc
     }
 
     private static List<URI> configuredEndpoints() {
-        String configured = System.getProperty("trippy.overpass.endpoint", "").trim();
-        if (!configured.isEmpty()) return List.of(URI.create(configured));
+        final String configured = System.getProperty("trippy.overpass.endpoint", "").trim();
+        if (!configured.isEmpty()) {
+            return List.of(URI.create(configured));
+        }
         return DEFAULT_ENDPOINTS;
     }
 

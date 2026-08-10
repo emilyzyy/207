@@ -5,6 +5,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.Arc2D;
+
 import javax.swing.JComponent;
 import javax.swing.Timer;
 
@@ -35,8 +36,12 @@ public final class Spinner extends JComponent {
     public Spinner() {
         this(DEFAULT_SIZE, DEFAULT_STROKE);
     }
+    /**
+     * A spinner of the given diameter and stroke, for overlays that need a bigger circle.
+     * @param stroke the s tr ok e value
+     * @param size the s iz e value
+     */
 
-    /** A spinner of the given diameter and stroke, for overlays that need a bigger circle. */
     public Spinner(int size, float stroke) {
         this.size = size;
         this.stroke = stroke;
@@ -64,7 +69,8 @@ public final class Spinner extends JComponent {
         if (visible) {
             angle = 0;
             timer.start();
-        } else {
+        }
+        else {
             timer.stop();
         }
     }
@@ -75,21 +81,24 @@ public final class Spinner extends JComponent {
         super.removeNotify();
     }
 
-    /** True while the animation is running; lets tests assert it stops when hidden. */
+    /**
+     * True while the animation is running; lets tests assert it stops when hidden.
+     * @return the result of the operation
+     */
     boolean isSpinning() {
         return timer.isRunning();
     }
 
     @Override
     protected void paintComponent(Graphics graphics) {
-        Graphics2D g = (Graphics2D) graphics.create();
+        final Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
         g.setStroke(new java.awt.BasicStroke(stroke, java.awt.BasicStroke.CAP_ROUND,
                 java.awt.BasicStroke.JOIN_ROUND));
 
-        int inset = (int) Math.ceil(stroke / 2);
-        int diameter = size - 2 * inset;
+        final int inset = (int) Math.ceil(stroke / 2);
+        final int diameter = size - 2 * inset;
 
         g.setColor(SwingTheme.LINE);
         g.draw(new Arc2D.Double(inset, inset, diameter, diameter, 0, 360, Arc2D.OPEN));

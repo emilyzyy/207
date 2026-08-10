@@ -1,9 +1,10 @@
 package use_case.search;
 
-import entity.entities.Activity;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import entity.entities.Activity;
 
 /** Search output that distinguishes no matches from unavailable external services. */
 public final class ActivitySearchResult {
@@ -21,8 +22,19 @@ public final class ActivitySearchResult {
         this.failure = failure == null ? SearchFailure.NONE : failure;
     }
 
-    public List<Activity> getActivities() { return activities; }
-    public SearchSource getSource() { return source; }
-    public boolean isPartial() { return partial; }
-    public SearchFailure getFailure() { return failure; }
+    public List<Activity> getActivities() {
+        return activities;
+    }
+
+    public SearchSource getSource() {
+        return source;
+    }
+
+    public boolean isPartial() {
+        return partial;
+    }
+
+    public SearchFailure getFailure() {
+        return failure;
+    }
 }

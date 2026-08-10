@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.time.LocalTime;
+
 import org.junit.jupiter.api.Test;
 
 /**
@@ -56,7 +57,7 @@ class TimeDisplayTest {
     @Test
     void readsBackExactlyWhatItPrints() {
         for (int hour = 0; hour < 24; hour++) {
-            LocalTime time = LocalTime.of(hour, 15);
+            final LocalTime time = LocalTime.of(hour, 15);
             assertEquals(time, TimeDisplay.parse(TimeDisplay.format(time)),
                     "a field must be able to read back its own text");
         }

@@ -1,10 +1,11 @@
 package entity.entities;
 
+import java.time.LocalTime;
+
 import entity.valueobjects.ActivityCategory;
 import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
 import entity.valueobjects.OpeningHours;
-import java.time.LocalTime;
 
 public final class Activity {
     private final String id;
@@ -39,7 +40,14 @@ public final class Activity {
      */
     private final OpeningHours openingHours;
 
-    /** An activity whose real hours are not known; the single window is all there is. */
+    /**
+     * An activity whose real hours are not known; the single window is all there is.
+     * @param location the l oc at io n value
+     * @param rating the r at in g value
+     * @param category the c at eg or y value
+     * @param id the i d value
+     * @param name the n am e value
+     */
     public Activity(String id, String name, ActivityCategory category, Location location, double rating,
                     int estimatedDurationMinutes, LocalTime openingTime, LocalTime closingTime,
                     IndoorOutdoorType indoorOutdoorType, String weatherRisk) {
@@ -54,6 +62,11 @@ public final class Activity {
      * — so an entity cannot do it, and this constructor deliberately does not pretend to.
      * Adapters that want the scheduler to honour real hours must parse the text and use the
      * constructor below.</p>
+      * @param name the n am e value
+      * @param rating the r at in g value
+      * @param location the l oc at io n value
+      * @param category the c at eg or y value
+      * @param id the i d value
      */
     public Activity(String id, String name, ActivityCategory category, Location location, double rating,
                     int estimatedDurationMinutes, LocalTime openingTime, LocalTime closingTime,
@@ -82,20 +95,59 @@ public final class Activity {
         this.openingHours = openingHours == null ? OpeningHours.unknown() : openingHours;
     }
 
-    public String getId() { return id; }
-    public String getName() { return name; }
-    public ActivityCategory getCategory() { return category; }
-    public Location getLocation() { return location; }
-    public double getRating() { return rating; }
-    public int getEstimatedDurationMinutes() { return estimatedDurationMinutes; }
-    public LocalTime getOpeningTime() { return openingTime; }
-    public LocalTime getClosingTime() { return closingTime; }
-    public IndoorOutdoorType getIndoorOutdoorType() { return indoorOutdoorType; }
-    public String getWeatherRisk() { return weatherRisk; }
+    public String getId() {
+        return id;
+    }
 
-    /** Exactly what the provider said, unmodified; null when it said nothing. */
-    public String getOpeningHoursText() { return openingHoursText; }
+    public String getName() {
+        return name;
+    }
 
-    /** Never null; ask {@link OpeningHours#isKnown()} before reading anything into it. */
-    public OpeningHours getOpeningHours() { return openingHours; }
+    public ActivityCategory getCategory() {
+        return category;
+    }
+
+    public Location getLocation() {
+        return location;
+    }
+
+    public double getRating() {
+        return rating;
+    }
+
+    public int getEstimatedDurationMinutes() {
+        return estimatedDurationMinutes;
+    }
+
+    public LocalTime getOpeningTime() {
+        return openingTime;
+    }
+
+    public LocalTime getClosingTime() {
+        return closingTime;
+    }
+
+    public IndoorOutdoorType getIndoorOutdoorType() {
+        return indoorOutdoorType;
+    }
+
+    public String getWeatherRisk() {
+        return weatherRisk;
+    }
+    /**
+     * Exactly what the provider said, unmodified; null when it said nothing.
+     * @return the result of the operation
+     */
+
+    public String getOpeningHoursText() {
+        return openingHoursText;
+    }
+    /**
+     * Never null; ask {@link OpeningHours#isKnown()} before reading anything into it.
+     * @return the result of the operation
+     */
+
+    public OpeningHours getOpeningHours() {
+        return openingHours;
+    }
 }

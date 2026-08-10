@@ -8,6 +8,7 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.Arc2D;
 import java.awt.geom.RoundRectangle2D;
+
 import javax.swing.Icon;
 
 /**
@@ -45,28 +46,29 @@ final class LockIcon implements Icon {
 
     @Override
     public void paintIcon(Component component, Graphics graphics, int x, int y) {
-        Graphics2D g = (Graphics2D) graphics.create();
+        final Graphics2D g = (Graphics2D) graphics.create();
         try {
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                     RenderingHints.VALUE_ANTIALIAS_ON);
             g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
                     RenderingHints.VALUE_STROKE_PURE);
 
-            Color ink = locked ? SwingTheme.BLUE : SwingTheme.MUTED;
-            double unit = size / 16.0;
+            final Color ink = locked ? SwingTheme.BLUE : SwingTheme.MUTED;
+            final double unit = size / 16.0;
 
             // Body: a rounded rectangle across the lower half.
-            double bodyWidth = 11 * unit;
-            double bodyHeight = 8 * unit;
-            double bodyX = x + (size - bodyWidth) / 2.0;
-            double bodyY = y + size - bodyHeight - unit;
-            RoundRectangle2D body = new RoundRectangle2D.Double(
+            final double bodyWidth = 11 * unit;
+            final double bodyHeight = 8 * unit;
+            final double bodyX = x + (size - bodyWidth) / 2.0;
+            final double bodyY = y + size - bodyHeight - unit;
+            final RoundRectangle2D body = new RoundRectangle2D.Double(
                     bodyX, bodyY, bodyWidth, bodyHeight, 2.5 * unit, 2.5 * unit);
 
             if (locked) {
                 g.setColor(ink);
                 g.fill(body);
-            } else {
+            }
+            else {
                 g.setColor(SwingTheme.PANEL);
                 g.fill(body);
                 g.setColor(ink);
@@ -75,10 +77,10 @@ final class LockIcon implements Icon {
             }
 
             // Shackle: a closed arc when locked, swung open and to the right when not.
-            double shackleWidth = 7 * unit;
-            double shackleX = x + (size - shackleWidth) / 2.0;
-            double shackleY = y + 1.5 * unit;
-            double shackleHeight = 7 * unit;
+            final double shackleWidth = 7 * unit;
+            final double shackleX = x + (size - shackleWidth) / 2.0;
+            final double shackleY = y + 1.5 * unit;
+            final double shackleHeight = 7 * unit;
             g.setColor(ink);
             g.setStroke(new BasicStroke((float) (1.6 * unit), BasicStroke.CAP_ROUND,
                     BasicStroke.JOIN_ROUND));
@@ -92,7 +94,8 @@ final class LockIcon implements Icon {
                 g.drawLine((int) Math.round(shackleX + shackleWidth),
                         (int) Math.round(shackleY + shackleHeight / 2.0),
                         (int) Math.round(shackleX + shackleWidth), (int) Math.round(bodyY));
-            } else {
+            }
+            else {
                 // Open: the arc is lifted and only the left leg comes down, so the loop reads
                 // as unfastened at a glance and at small sizes.
                 g.draw(new Arc2D.Double(shackleX + 2 * unit, shackleY - unit,
@@ -101,7 +104,8 @@ final class LockIcon implements Icon {
                         (int) Math.round(shackleY - unit + shackleHeight / 2.0),
                         (int) Math.round(shackleX + 2 * unit), (int) Math.round(bodyY));
             }
-        } finally {
+        }
+        finally {
             g.dispose();
         }
     }

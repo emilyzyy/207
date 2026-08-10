@@ -1,13 +1,14 @@
 package interface_adapter.viewmodels;
 
-import entity.entities.Activity;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.IndoorOutdoorType;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import entity.entities.Activity;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.IndoorOutdoorType;
 
 /** Immutable seeded activity-discovery display state. */
 public final class SearchState {
@@ -99,11 +100,19 @@ public final class SearchState {
         return loading;
     }
 
-    public ActivityCategory getCategory() { return category; }
+    public ActivityCategory getCategory() {
+        return category;
+    }
 
-    public double getMinimumRating() { return minimumRating; }
+    public double getMinimumRating() {
+        return minimumRating;
+    }
 
-    public IndoorOutdoorType getType() { return type; }
+    public IndoorOutdoorType getType() {
+        return type;
+    }
 
-    public String getFeedback() { return feedback; }
+    public String getFeedback() {
+        return feedback;
+    }
 }

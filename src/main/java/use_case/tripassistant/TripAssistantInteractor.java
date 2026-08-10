@@ -1,13 +1,5 @@
 package use_case.tripassistant;
 
-import use_case.ports.ActivityRepository;
-import use_case.ports.TripAssistantGateway;
-import use_case.ports.TripRepository;
-import use_case.ports.WeatherService;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.entities.WeatherWarning;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -15,6 +7,15 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.entities.WeatherWarning;
+import use_case.ports.ActivityRepository;
+import use_case.ports.TripAssistantGateway;
+import use_case.ports.TripRepository;
+import use_case.ports.WeatherService;
 
 /** Loads the latest trip aggregate and obtains one grounded George answer. */
 public final class TripAssistantInteractor implements TripAssistantInputBoundary {
@@ -49,29 +50,32 @@ public final class TripAssistantInteractor implements TripAssistantInputBoundary
             if (inputData.getTripId().isEmpty()) {
                 throw new IllegalArgumentException("Open or create a trip before asking George");
             }
-            Trip trip = trips.findById(inputData.getTripId())
+            final Trip trip = trips.findById(inputData.getTripId())
                     .orElseThrow(() -> new IllegalArgumentException(
                             "The current trip could not be found"));
-            TripAssistantRequest request = requestFor(trip, inputData);
-            TripAssistantDecision decision = gateway.answer(request);
+            final TripAssistantRequest request = requestFor(trip, inputData);
+            final TripAssistantDecision decision = gateway.answer(request);
             presenter.presentSuccess(formatter.format(request, decision));
-        } catch (IllegalArgumentException exception) {
+        }
+        catch (IllegalArgumentException exception) {
             presenter.presentFailure(exception.getMessage());
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             presenter.presentFailure("George couldn't answer right now. Please try again.");
         }
     }
 
     private TripAssistantRequest requestFor(Trip trip, TripAssistantInputData inputData) {
-        List<Activity> available = availableActivities(trip);
-        Set<String> bookmarkedIds = new LinkedHashSet<String>();
+        final List<Activity> available = availableActivities(trip);
+        final Set<String> bookmarkedIds = new LinkedHashSet<String>();
         for (Activity activity : trip.getBookmarkedActivities()) {
             bookmarkedIds.add(activity.getId());
         }
         List<WeatherWarning> warnings;
         try {
             warnings = weather.getHourlyWarnings(trip);
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             warnings = Collections.emptyList();
         }
         return new TripAssistantRequest(
@@ -82,9 +86,9 @@ public final class TripAssistantInteractor implements TripAssistantInputBoundary
     }
 
     private List<Activity> availableActivities(Trip trip) {
-        Map<String, Activity> known = new LinkedHashMap<String, Activity>();
-        List<Activity> discovered = trip.getDiscoveredPlaces();
-        List<Activity> base = discovered.isEmpty() ? activities.findAll() : discovered;
+        final Map<String, Activity> known = new LinkedHashMap<String, Activity>();
+        final List<Activity> discovered = trip.getDiscoveredPlaces();
+        final List<Activity> base = discovered.isEmpty() ? activities.findAll() : discovered;
         addActivities(known, base);
         addActivities(known, trip.getBookmarkedActivities());
         for (ScheduledEvent event : trip.getScheduledEvents()) {

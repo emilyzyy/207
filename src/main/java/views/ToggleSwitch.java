@@ -5,6 +5,7 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+
 import javax.swing.JToggleButton;
 
 /**
@@ -53,26 +54,27 @@ public final class ToggleSwitch extends JToggleButton {
 
     @Override
     protected void paintComponent(Graphics graphics) {
-        Graphics2D g = (Graphics2D) graphics.create();
+        final Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
 
-        int width = TRACK_WIDTH;
-        int height = TRACK_HEIGHT;
-        int x = (getWidth() - width) / 2;
-        int y = (getHeight() - height) / 2;
+        final int width = TRACK_WIDTH;
+        final int height = TRACK_HEIGHT;
+        final int x = (getWidth() - width) / 2;
+        final int y = (getHeight() - height) / 2;
 
         final Color track;
         if (isSelected()) {
             track = isEnabled() ? ON : ON_FIXED;
-        } else {
+        }
+        else {
             track = isEnabled() ? OFF : OFF_DISABLED;
         }
         g.setColor(track);
         g.fillRoundRect(x, y, width, height, height, height);
 
-        int knobSize = height - 2 * KNOB_MARGIN;
-        int knobX = isSelected()
+        final int knobSize = height - 2 * KNOB_MARGIN;
+        final int knobX = isSelected()
                 ? x + width - KNOB_MARGIN - knobSize
                 : x + KNOB_MARGIN;
         g.setColor(KNOB);

@@ -1,9 +1,10 @@
 package interface_adapter.controllers;
 
-import interface_adapter.viewmodels.TimeDisplay;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import interface_adapter.viewmodels.TimeDisplay;
 
 /**
  * Checks the settings dialog before anything is submitted.
@@ -19,20 +20,21 @@ public final class AutoScheduleSettingsValidator {
     private static final String PERIOD = "Unavailable period ";
 
     /**
-     * @param tripStart the trip's own opening hour, or null when unknown
+      * @param settings the s et ti ng s value
      * @param tripEnd   the trip's own closing hour, or null when unknown
+     * @param tripStart the trip's own opening hour, or null when unknown
      * @return the problems found, in the order they should be shown; empty when usable
      */
     public List<String> validate(AutoScheduleSettings settings, LocalTime tripStart,
                                  LocalTime tripEnd) {
-        List<String> problems = new ArrayList<>();
+        final List<String> problems = new ArrayList<>();
         if (settings == null) {
             problems.add("Choose the hours you are available.");
             return problems;
         }
 
-        LocalTime start = settings.getAvailableStart();
-        LocalTime end = settings.getAvailableEnd();
+        final LocalTime start = settings.getAvailableStart();
+        final LocalTime end = settings.getAvailableEnd();
         if (start == null || end == null) {
             problems.add("Choose both an available-from and an available-until time.");
             return problems;
@@ -48,9 +50,9 @@ public final class AutoScheduleSettingsValidator {
                     + "). To extend your day, edit the trip settings.");
         }
 
-        List<AutoScheduleSettings.Window> windows = settings.getUnavailableWindows();
+        final List<AutoScheduleSettings.Window> windows = settings.getUnavailableWindows();
         for (int i = 0; i < windows.size(); i++) {
-            AutoScheduleSettings.Window window = windows.get(i);
+            final AutoScheduleSettings.Window window = windows.get(i);
             if (window.getStart() == null || window.getEnd() == null) {
                 problems.add(PERIOD + (i + 1) + " needs a start and an end time.");
                 continue;
@@ -65,11 +67,11 @@ public final class AutoScheduleSettingsValidator {
                         + " falls outside the hours you are available.");
             }
             for (int j = i + 1; j < windows.size(); j++) {
-                AutoScheduleSettings.Window other = windows.get(j);
+                final AutoScheduleSettings.Window other = windows.get(j);
                 if (other.getStart() == null || other.getEnd() == null) {
                     continue;
                 }
-                boolean overlaps = window.getStart().isBefore(other.getEnd())
+                final boolean overlaps = window.getStart().isBefore(other.getEnd())
                         && other.getStart().isBefore(window.getEnd());
                 if (overlaps) {
                     problems.add("Unavailable periods " + (i + 1) + " and " + (j + 1)

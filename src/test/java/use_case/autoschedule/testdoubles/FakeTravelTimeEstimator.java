@@ -1,15 +1,16 @@
 package use_case.autoschedule.testdoubles;
 
-import use_case.autoschedule.DeparturePeriod;
-import use_case.autoschedule.TravelEstimate;
-import use_case.autoschedule.TravelTimeEstimator;
-import entity.valueobjects.Location;
-import entity.valueobjects.TransportationMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import entity.valueobjects.Location;
+import entity.valueobjects.TransportationMode;
+import use_case.autoschedule.DeparturePeriod;
+import use_case.autoschedule.TravelEstimate;
+import use_case.autoschedule.TravelTimeEstimator;
 
 /**
  * Deterministic travel estimator for tests, programmable per departure period so the
@@ -50,16 +51,16 @@ public final class FakeTravelTimeEstimator implements TravelTimeEstimator {
     @Override
     public TravelEstimate estimate(Location from, Location to,
                                    TransportationMode mode, LocalDateTime departure) {
-        String fromId = from.getAddress();
-        String toId = to.getAddress();
-        DeparturePeriod period = DeparturePeriod.containing(departure.toLocalTime());
+        final String fromId = from.getAddress();
+        final String toId = to.getAddress();
+        final DeparturePeriod period = DeparturePeriod.containing(departure.toLocalTime());
         calls.add(new Call(fromId, toId, period));
 
-        Integer perPeriod = byRouteAndPeriod.get(key(fromId, toId) + period.name());
+        final Integer perPeriod = byRouteAndPeriod.get(key(fromId, toId) + period.name());
         if (perPeriod != null) {
             return TravelEstimate.routed(perPeriod);
         }
-        Integer flat = byRoute.get(key(fromId, toId));
+        final Integer flat = byRoute.get(key(fromId, toId));
         return TravelEstimate.routed(flat == null ? defaultMinutes : flat);
     }
 
@@ -83,8 +84,8 @@ public final class FakeTravelTimeEstimator implements TravelTimeEstimator {
     private static String key(String fromId, String toId) {
         return fromId + ">" + toId + "@";
     }
-
     /** One recorded estimate request. */
+
     public static final class Call {
         private final String fromId;
         private final String toId;

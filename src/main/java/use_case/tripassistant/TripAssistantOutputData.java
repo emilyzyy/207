@@ -14,7 +14,11 @@ public final class TripAssistantOutputData {
         this.activityIds = Collections.unmodifiableList(new ArrayList<String>(activityIds));
     }
 
-    public String getAnswer() { return answer; }
+    public String getAnswer() {
+        return answer;
+    }
 
-    public List<String> getActivityIds() { return activityIds; }
+    public List<String> getActivityIds() {
+        return activityIds;
+    }
 }

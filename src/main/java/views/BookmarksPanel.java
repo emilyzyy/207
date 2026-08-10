@@ -1,5 +1,23 @@
 package views;
 
+import java.awt.BorderLayout;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
 import interface_adapter.controllers.BookmarkController;
 import interface_adapter.controllers.ManualPlanController;
 import interface_adapter.viewmodels.ActivitySelectionViewModel;
@@ -8,22 +26,6 @@ import interface_adapter.viewmodels.BookmarksViewModel;
 import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.TripAccessViewModel;
 import interface_adapter.viewmodels.TripOptionsViewModel;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import java.awt.BorderLayout;
-import java.awt.Cursor;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 
 /** Saved-activity view synchronized with the active trip's bookmarks. */
 public final class BookmarksPanel extends JPanel {
@@ -88,14 +90,14 @@ public final class BookmarksPanel extends JPanel {
         setBackground(SwingTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
 
-        JPanel heading = new JPanel();
+        final JPanel heading = new JPanel();
         heading.setOpaque(false);
         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
-        JLabel title = new JLabel("Saved for later");
+        final JLabel title = new JLabel("Saved for later");
         title.setFont(SwingTheme.HEADING);
         title.setForeground(SwingTheme.NAVY);
         heading.add(title);
-        JLabel copy = new JLabel("Bookmark activities while exploring, then use them when planning.");
+        final JLabel copy = new JLabel("Bookmark activities while exploring, then use them when planning.");
         copy.setFont(SwingTheme.SMALL);
         copy.setForeground(SwingTheme.MUTED);
         heading.add(copy);
@@ -106,7 +108,7 @@ public final class BookmarksPanel extends JPanel {
 
         list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
         list.setBackground(SwingTheme.BACKGROUND);
-        JScrollPane scroll = new JScrollPane(list);
+        final JScrollPane scroll = new JScrollPane(list);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getViewport().setBackground(SwingTheme.BACKGROUND);
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
@@ -131,31 +133,31 @@ public final class BookmarksPanel extends JPanel {
     private void render(BookmarksState state) {
         list.removeAll();
         if (state.getBookmarks().isEmpty()) {
-            JLabel empty = new JLabel("No saved activities yet");
+            final JLabel empty = new JLabel("No saved activities yet");
             empty.setFont(SwingTheme.BODY);
             empty.setForeground(SwingTheme.MUTED);
             list.add(empty);
         }
         for (Activity activity : state.getBookmarks()) {
-            JPanel card = new JPanel(new BorderLayout());
+            final JPanel card = new JPanel(new BorderLayout());
             SwingTheme.styleCard(card);
             card.setPreferredSize(new Dimension(10, 132));
             card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 132));
             card.setBackground(SwingTheme.categorySurface(activity.getCategory()));
             makeSelectable(card, activity);
-            JLabel name = new JLabel(ActivityCategoryPresentation.decorate(
+            final JLabel name = new JLabel(ActivityCategoryPresentation.decorate(
                     activity.getCategory(), activity.getName()));
             name.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
             name.setForeground(SwingTheme.NAVY);
             card.add(name, BorderLayout.NORTH);
-            JLabel details = new JLabel(activity.getCategory() + " - "
+            final JLabel details = new JLabel(activity.getCategory() + " - "
                     + activity.getLocation().getAddress());
             details.setFont(SwingTheme.SMALL);
             details.setForeground(SwingTheme.MUTED);
             card.add(details, BorderLayout.CENTER);
-            JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+            final JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
             actions.setOpaque(false);
-            JButton remove = SwingTheme.secondaryButton("Remove bookmark");
+            final JButton remove = SwingTheme.secondaryButton("Remove bookmark");
             remove.setEnabled(controller != null && canEditItinerary());
             remove.addActionListener(event -> {
                 if (canEditItinerary() && RemovalDialogs.confirm(
@@ -168,12 +170,13 @@ public final class BookmarksPanel extends JPanel {
             });
             actions.add(remove);
             if (isInDayPlan(activity)) {
-                JLabel planned = new JLabel("In day plan");
+                final JLabel planned = new JLabel("In day plan");
                 planned.setFont(SwingTheme.SMALL);
                 planned.setForeground(SwingTheme.MUTED);
                 actions.add(planned);
-            } else {
-                JButton add = SwingTheme.primaryButton("Add to plan");
+            }
+            else {
+                final JButton add = SwingTheme.primaryButton("Add to plan");
                 add.setEnabled(manualPlan != null && canEditItinerary());
 
                 if (!canEditItinerary()) {
@@ -188,7 +191,8 @@ public final class BookmarksPanel extends JPanel {
                     if (dayPlan != null && tripOptions != null) {
                         AddToPlanDialog.open(
                                 this, activity, dayPlan, tripOptions, manualPlan);
-                    } else {
+                    }
+                    else {
                         manualPlan.add(activity.getId(), "");
                     }
                 });
@@ -219,7 +223,9 @@ public final class BookmarksPanel extends JPanel {
     }
 
     private void makeSelectable(JPanel card, Activity activity) {
-        if (selection == null) return;
+        if (selection == null) {
+            return;
+        }
         card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         card.setToolTipText("Show " + activity.getName() + " on the map");
         if (activity.getId().equals(selection.getSelectedActivityId())) {

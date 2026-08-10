@@ -1,10 +1,5 @@
 package views;
 
-import interface_adapter.controllers.ShareTripController;
-import interface_adapter.viewmodels.DashboardState;
-import interface_adapter.viewmodels.DashboardViewModel;
-import interface_adapter.viewmodels.DayPlanViewModel;
-import entity.entities.User;
 import java.awt.BorderLayout;
 import java.awt.Cursor;
 import java.awt.Dimension;
@@ -12,12 +7,19 @@ import java.awt.FlowLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.format.DateTimeFormatter;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+
+import entity.entities.User;
+import interface_adapter.controllers.ShareTripController;
+import interface_adapter.viewmodels.DashboardState;
+import interface_adapter.viewmodels.DashboardViewModel;
+import interface_adapter.viewmodels.DayPlanViewModel;
 
 /** Persistent application header for identity and active-trip context. */
 public final class HeaderPanel extends JPanel {
@@ -52,7 +54,7 @@ public final class HeaderPanel extends JPanel {
         setBackground(SwingTheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(13, 22, 13, 22));
 
-        JLabel brand = new JLabel("Trippy");
+        final JLabel brand = new JLabel("Trippy");
         brand.setFont(SwingTheme.TITLE);
         brand.setForeground(SwingTheme.NAVY);
         brand.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -75,7 +77,7 @@ public final class HeaderPanel extends JPanel {
         });
         add(brand, BorderLayout.WEST);
 
-        JPanel tripSummary = new JPanel();
+        final JPanel tripSummary = new JPanel();
         tripSummary.setOpaque(false);
         tripSummary.setLayout(new BoxLayout(tripSummary, BoxLayout.Y_AXIS));
         tripLabel.setFont(SwingTheme.HEADING);
@@ -89,9 +91,9 @@ public final class HeaderPanel extends JPanel {
         tripSummary.add(dateLabel);
         add(tripSummary, BorderLayout.CENTER);
 
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        final JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         actions.setOpaque(false);
-        Dimension headerActionSize = new Dimension(82, 38);
+        final Dimension headerActionSize = new Dimension(82, 38);
         shareButton.setPreferredSize(headerActionSize);
         shareButton.setMinimumSize(headerActionSize);
         friendsButton.setPreferredSize(headerActionSize);
@@ -131,6 +133,11 @@ public final class HeaderPanel extends JPanel {
         this.onHomeAction = onHomeAction;
     }
 
+    /**
+     * Performs the s et au th ac ti on operation.
+     * @param signedIn the s ig ne di n value
+     * @param action the a ct io n value
+     */
     public void setAuthAction(Runnable action, boolean signedIn) {
         this.onAuthAction = action == null ? () -> { } : action;
         authButton.setVisible(action != null && !signedIn);
@@ -147,6 +154,10 @@ public final class HeaderPanel extends JPanel {
         this.onFriendsAction = action == null ? () -> { } : action;
     }
 
+    /**
+     * Performs the s et in co mi ng fr ie nd re qu es tc ou nt operation.
+     * @param count the c ou nt value
+     */
     public void setIncomingFriendRequestCount(int count) {
         friendsButton.setBadgeCount(count);
         friendsButton.setToolTipText(count <= 0
@@ -154,6 +165,10 @@ public final class HeaderPanel extends JPanel {
                 : count + " incoming friend request" + (count == 1 ? "" : "s"));
     }
 
+    /**
+     * Performs the s et pr of il eu se r operation.
+     * @param user the u se r value
+     */
     public void setProfileUser(User user) {
         avatarButton.setIcon(AvatarSupport.iconFor(user, AVATAR_SIZE));
         avatarButton.setToolTipText(user == null ? "Profile" : "@" + user.getUsername());

@@ -1,9 +1,10 @@
 package interface_adapter.viewmodels;
 
-import entity.entities.Activity;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import entity.entities.Activity;
 
 /** Immutable bookmark-list display state. */
 public final class BookmarksState {

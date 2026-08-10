@@ -1,12 +1,13 @@
 package interface_adapter.gateways;
 
+import java.time.LocalDateTime;
+
+import entity.valueobjects.Location;
+import entity.valueobjects.TransportationMode;
 import use_case.autoschedule.TravelEstimate;
 import use_case.autoschedule.TravelEstimateQuality;
 import use_case.autoschedule.TravelTimeEstimator;
 import use_case.ports.DistanceService;
-import entity.valueobjects.Location;
-import entity.valueobjects.TransportationMode;
-import java.time.LocalDateTime;
 
 /**
  * Supplies Autoschedule's travel estimates from the team's shared {@code DistanceService}.
@@ -39,7 +40,7 @@ public final class DistanceServiceTravelTimeEstimator implements TravelTimeEstim
     @Override
     public TravelEstimate estimate(Location from, Location to,
                                    TransportationMode mode, LocalDateTime departure) {
-        int minutes = distances.estimateTravelMinutes(from, to, mode, departure);
+        final int minutes = distances.estimateTravelMinutes(from, to, mode, departure);
         return new TravelEstimate(minutes, TravelEstimateQuality.UNKNOWN);
     }
 

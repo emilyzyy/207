@@ -1,14 +1,14 @@
 package use_case.autoschedule;
 
-import entity.valueobjects.WeatherOption;
-
-import entity.valueobjects.TransportationMode;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+
+import entity.valueobjects.TransportationMode;
+import entity.valueobjects.WeatherOption;
 
 /**
  * What the user asked for when generating a Preview.
@@ -50,10 +50,13 @@ public final class AutoScheduleInputData {
     }
 
     /**
+      * @param availableEnd the a va il ab le en d value
+      * @param availableStart the a va il ab le st ar t value
+      * @param tripId the t ri pi d value
+     * @param preferDaylight    whether outdoor activities prefer daylight
      * @param minimizeTravel    whether shorter journeys make one day better than another
      * @param minimizeGaps      whether avoidable waiting counts against a day
      * @param preserveMealtimes whether meals prefer a customary window
-     * @param preferDaylight    whether outdoor activities prefer daylight
      */
     public AutoScheduleInputData(String tripId, LocalTime availableStart, LocalTime availableEnd,
                                  TransportationMode transportationMode,
@@ -102,8 +105,11 @@ public final class AutoScheduleInputData {
     public List<TimeWindow> getUnavailableWindows() {
         return unavailableWindows;
     }
+    /**
+     * Leave my activities in the order I put them, if possible.
+     * @return the result of the operation
+     */
 
-    /** Leave my activities in the order I put them, if possible. */
     public boolean isMinimizeTravel() {
         return minimizeTravel;
     }
@@ -123,14 +129,15 @@ public final class AutoScheduleInputData {
     public boolean isKeepCurrentOrder() {
         return keepCurrentOrder;
     }
-
     /**
      * Whether the traveller asked for weather to be taken into account.
      *
      * <p>Only meaningful when the forecast could distinguish times in the first place; the
      * use case checks that again rather than trusting the dialog, so a stale or mistaken
      * tick costs nothing but the tick.</p>
+      * @return the result of the operation
      */
+
     public boolean isConsiderWeather() {
         return considerWeather;
     }

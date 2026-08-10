@@ -12,6 +12,7 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
+
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -60,17 +61,17 @@ public final class DatePickerPanel extends JPanel {
                 BorderFactory.createLineBorder(SwingTheme.LINE),
                 BorderFactory.createEmptyBorder(10, 10, 10, 10)));
 
-        JButton previous = SwingTheme.secondaryButton("<");
+        final JButton previous = SwingTheme.secondaryButton("<");
         previous.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         previous.addActionListener(e -> shiftMonth(-1));
-        JButton next = SwingTheme.secondaryButton(">");
+        final JButton next = SwingTheme.secondaryButton(">");
         next.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         next.addActionListener(e -> shiftMonth(1));
 
         monthLabel.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         monthLabel.setForeground(SwingTheme.NAVY);
 
-        JPanel header = new JPanel(new BorderLayout());
+        final JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
         header.add(previous, BorderLayout.WEST);
         header.add(monthLabel, BorderLayout.CENTER);
@@ -89,32 +90,48 @@ public final class DatePickerPanel extends JPanel {
     public LocalDate getDate() {
         return start != null ? start : LocalDate.now();
     }
+    /**
+     * The earliest selected day.
+     * @return the result of the operation
+     */
 
-    /** The earliest selected day. */
     public LocalDate getStartDate() {
         return start;
     }
+    /**
+     * The latest selected day.
+     * @return the result of the operation
+     */
 
-    /** The latest selected day. */
     public LocalDate getEndDate() {
         return end;
     }
+    /**
+     * Number of days covered by the selection, always at least 1.
+     * @return the result of the operation
+     */
 
-    /** Number of days covered by the selection, always at least 1. */
     public int getDayCount() {
         if (start == null || end == null) {
             return 1;
         }
-        long days = Math.abs(ChronoUnit.DAYS.between(start, end)) + 1;
+        final long days = Math.abs(ChronoUnit.DAYS.between(start, end)) + 1;
         return (int) Math.min(days, Integer.MAX_VALUE);
     }
 
-    /** Invoked after the user finishes a selection gesture (drag or click). */
+    /**
+     * Invoked after the user finishes a selection gesture (drag or click).
+     * @param listener the l is te ne r value
+     */
     public void setRangeChangeListener(Runnable listener) {
         this.rangeChangeListener = listener;
     }
+    /**
+     * Programmatically replaces the selected range; does not notify the listener.
+     * @param newEnd the n ew en d value
+     * @param newStart the n ew st ar t value
+     */
 
-    /** Programmatically replaces the selected range; does not notify the listener. */
     public void setRange(LocalDate newStart, LocalDate newEnd) {
         if (newStart == null) {
             return;
@@ -131,6 +148,7 @@ public final class DatePickerPanel extends JPanel {
     /**
      * Single-date pickers (which only read {@link #getDate()}) call this with {@code false}
      * so every click re-picks the day instead of extending a range on the second click.
+      * @param allow the a ll ow value
      */
     public void setAllowClickExtend(boolean allow) {
         this.allowClickExtend = allow;
@@ -144,13 +162,13 @@ public final class DatePickerPanel extends JPanel {
     /** Builds the weekday header and the 42 day cells once; only re-styled afterwards. */
     private void buildGrid() {
         for (DayOfWeek day : DayOfWeek.values()) {
-            JLabel label = new JLabel(day.toString().substring(0, 3), JLabel.CENTER);
+            final JLabel label = new JLabel(day.toString().substring(0, 3), JLabel.CENTER);
             label.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
             label.setForeground(SwingTheme.MUTED);
             grid.add(label);
         }
         for (int index = 0; index < dayButtons.length; index++) {
-            JButton button = new JButton();
+            final JButton button = new JButton();
             button.setFont(SwingTheme.SMALL);
             button.setFocusPainted(false);
             button.setOpaque(true);
@@ -168,8 +186,8 @@ public final class DatePickerPanel extends JPanel {
         gridStart = displayed.atDay(1)
                 .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         for (int index = 0; index < dayButtons.length; index++) {
-            LocalDate date = gridStart.plusDays(index);
-            JButton button = dayButtons[index];
+            final LocalDate date = gridStart.plusDays(index);
+            final JButton button = dayButtons[index];
             button.setText(String.valueOf(date.getDayOfMonth()));
             button.setForeground(YearMonth.from(date).equals(displayed)
                     ? SwingTheme.NAVY : SwingTheme.MUTED);
@@ -180,8 +198,8 @@ public final class DatePickerPanel extends JPanel {
     }
 
     private void applyRangeStyle(JButton button, LocalDate date) {
-        boolean inRange = inRange(date);
-        boolean endpoint = start != null && end != null
+        final boolean inRange = inRange(date);
+        final boolean endpoint = start != null && end != null
                 && !start.equals(end)
                 && (date.equals(start) || date.equals(end));
         if (inRange) {
@@ -193,7 +211,8 @@ public final class DatePickerPanel extends JPanel {
                     : BorderFactory.createCompoundBorder(
                             BorderFactory.createLineBorder(SwingTheme.BLUE),
                             BorderFactory.createEmptyBorder(4, 4, 4, 4)));
-        } else {
+        }
+        else {
             button.setBackground(SwingTheme.PANEL);
             button.setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
         }
@@ -203,20 +222,23 @@ public final class DatePickerPanel extends JPanel {
         if (start == null || end == null) {
             return false;
         }
-        LocalDate lo = start.isBefore(end) ? start : end;
-        LocalDate hi = start.isBefore(end) ? end : start;
+        final LocalDate lo = start.isBefore(end) ? start : end;
+        final LocalDate hi = start.isBefore(end) ? end : start;
         return !date.isBefore(lo) && !date.isAfter(hi);
     }
 
     private final MouseAdapter mouseHandler = new MouseAdapter() {
         @Override
         public void mousePressed(MouseEvent e) {
-            LocalDate day = dayAt(e);
-            if (day == null) return;
+            final LocalDate day = dayAt(e);
+            if (day == null) {
+                return;
+            }
             if (allowClickExtend && pendingEnd) {
                 end = clampToMaxRange(day);
                 pendingEnd = false;
-            } else {
+            }
+            else {
                 start = day;
                 end = day;
             }
@@ -227,9 +249,13 @@ public final class DatePickerPanel extends JPanel {
 
         @Override
         public void mouseDragged(MouseEvent e) {
-            if (!dragging) return;
-            LocalDate day = dayAt(e);
-            if (day == null || day.equals(end)) return;
+            if (!dragging) {
+                return;
+            }
+            final LocalDate day = dayAt(e);
+            if (day == null || day.equals(end)) {
+                return;
+            }
             end = clampToMaxRange(day);
             dragged = true;
             render();
@@ -237,11 +263,13 @@ public final class DatePickerPanel extends JPanel {
 
         @Override
         public void mouseReleased(MouseEvent e) {
-            if (!dragging) return;
+            if (!dragging) {
+                return;
+            }
             dragging = false;
             pendingEnd = !dragged;
             if (start != null && end != null && start.isAfter(end)) {
-                LocalDate swap = start;
+                final LocalDate swap = start;
                 start = end;
                 end = swap;
             }
@@ -252,12 +280,16 @@ public final class DatePickerPanel extends JPanel {
         }
     };
 
-    /** Caps a candidate end day so the selected range never exceeds {@link #MAX_RANGE_DAYS}. */
+    /**
+     * Caps a candidate end day so the selected range never exceeds {@link #MAX_RANGE_DAYS}.
+     * @param day the d ay value
+     * @return the result of the operation
+     */
     private LocalDate clampToMaxRange(LocalDate day) {
         if (start == null || day == null) {
             return day;
         }
-        long span = ChronoUnit.DAYS.between(start, day);
+        final long span = ChronoUnit.DAYS.between(start, day);
         if (span >= MAX_RANGE_DAYS) {
             return start.plusDays(MAX_RANGE_DAYS - 1);
         }
@@ -267,16 +299,20 @@ public final class DatePickerPanel extends JPanel {
         return day;
     }
 
-    /** Maps a mouse position (from any day cell) to the LocalDate under the cursor. */
+    /**
+     * Maps a mouse position (from any day cell) to the LocalDate under the cursor.
+     * @param e the e value
+     * @return the result of the operation
+     */
     private LocalDate dayAt(MouseEvent e) {
-        Point p = SwingUtilities.convertPoint(e.getComponent(), e.getPoint(), grid);
-        int w = grid.getWidth();
-        int h = grid.getHeight();
+        final Point p = SwingUtilities.convertPoint(e.getComponent(), e.getPoint(), grid);
+        final int w = grid.getWidth();
+        final int h = grid.getHeight();
         if (w <= 0 || h <= 0 || p.x < 0 || p.y < 0 || p.x >= w || p.y >= h) {
             return null;
         }
-        int col = Math.min(GRID_COLUMNS - 1, p.x * GRID_COLUMNS / w);
-        int row = Math.min(GRID_ROWS, p.y * (GRID_ROWS + 1) / h);
+        final int col = Math.min(GRID_COLUMNS - 1, p.x * GRID_COLUMNS / w);
+        final int row = Math.min(GRID_ROWS, p.y * (GRID_ROWS + 1) / h);
         if (row == 0) {
             return null;
         }

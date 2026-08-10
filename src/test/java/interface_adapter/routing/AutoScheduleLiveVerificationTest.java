@@ -2,19 +2,21 @@ package interface_adapter.routing;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import interface_adapter.gateways.DistanceServiceTravelTimeEstimator;
-import interface_adapter.gateways.WeatherServiceContextGateway;
-import use_case.autoschedule.TravelEstimate;
-import use_case.autoschedule.WeatherContext;
-import entity.entities.Trip;
-import entity.valueobjects.Location;
-import entity.valueobjects.TransportationMode;
-import interface_adapter.weather.OpenMeteoWeatherService;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+import entity.entities.Trip;
+import entity.valueobjects.Location;
+import entity.valueobjects.TransportationMode;
+import interface_adapter.gateways.DistanceServiceTravelTimeEstimator;
+import interface_adapter.gateways.WeatherServiceContextGateway;
+import interface_adapter.weather.OpenMeteoWeatherService;
+import use_case.autoschedule.TravelEstimate;
+import use_case.autoschedule.WeatherContext;
 
 /**
  * Opt-in checks against the real providers, following the project's existing convention
@@ -49,16 +51,16 @@ class AutoScheduleLiveVerificationTest {
     }
 
     private int timed(String label, TransportationMode mode, LocalDateTime departure) {
-        long started = System.currentTimeMillis();
-        TravelEstimate estimate = estimator.estimate(UNION_STATION, CASA_LOMA, mode, departure);
-        long elapsed = System.currentTimeMillis() - started;
+        final long started = System.currentTimeMillis();
+        final TravelEstimate estimate = estimator.estimate(UNION_STATION, CASA_LOMA, mode, departure);
+        final long elapsed = System.currentTimeMillis() - started;
         recordResult(label, estimate.getMinutes(), elapsed);
         return estimate.getMinutes();
     }
 
     @Test
     void walkingReturnsAPlausibleRoute() {
-        int minutes = timed("walking (OSRM)", TransportationMode.WALKING, MORNING);
+        final int minutes = timed("walking (OSRM)", TransportationMode.WALKING, MORNING);
 
         assertTrue(minutes > 0 && minutes < 240,
                 "Union Station to Casa Loma on foot should be well under four hours");
@@ -66,8 +68,8 @@ class AutoScheduleLiveVerificationTest {
 
     @Test
     void walkingDoesNotChangeWithDepartureTime() {
-        int morning = timed("walking @ 09:30", TransportationMode.WALKING, MORNING);
-        int evening = timed("walking @ 17:30", TransportationMode.WALKING, RUSH_HOUR);
+        final int morning = timed("walking @ 09:30", TransportationMode.WALKING, MORNING);
+        final int evening = timed("walking @ 17:30", TransportationMode.WALKING, RUSH_HOUR);
 
         assertTrue(Math.abs(morning - evening) <= 2,
                 "the walking provider takes no departure time, so these should match");
@@ -75,12 +77,12 @@ class AutoScheduleLiveVerificationTest {
 
     @Test
     void transitIsTimetableAwareAcrossDifferentDepartureTimes() {
-        int morning = timed("transit @ 09:30 (Transitous)", TransportationMode.TRANSIT, MORNING);
-        int evening = timed("transit @ 17:30 (Transitous)", TransportationMode.TRANSIT, RUSH_HOUR);
+        final int morning = timed("transit @ 09:30 (Transitous)", TransportationMode.TRANSIT, MORNING);
+        final int evening = timed("transit @ 17:30 (Transitous)", TransportationMode.TRANSIT, RUSH_HOUR);
         // Night service is thinner, so this is where the timetable shows itself. Two daytime
         // departures can legitimately match on a well-served route, which is why comparing
         // only those would prove nothing either way.
-        int night = timed("transit @ 03:00 (Transitous)", TransportationMode.TRANSIT,
+        final int night = timed("transit @ 03:00 (Transitous)", TransportationMode.TRANSIT,
                 LocalDateTime.of(TRIP_DATE, LocalTime.of(3, 0)));
 
         System.out.println("[live] transit day-vs-night differs: " + (morning != night));
@@ -90,13 +92,13 @@ class AutoScheduleLiveVerificationTest {
 
     @Test
     void drivingReturnsARouteAndReportsWhichProviderAnswered() {
-        boolean keyPresent = System.getenv("TOMTOM_API_KEY") != null
+        final boolean keyPresent = System.getenv("TOMTOM_API_KEY") != null
                 || System.getProperty("tomtom.api.key") != null;
         System.out.println("[live] TomTom key present: " + keyPresent
                 + (keyPresent ? " (traffic-aware path)" : " (OSRM fallback, not traffic-aware)"));
 
-        int morning = timed("driving @ 09:30", TransportationMode.DRIVING, MORNING);
-        int evening = timed("driving @ 17:30", TransportationMode.DRIVING, RUSH_HOUR);
+        final int morning = timed("driving @ 09:30", TransportationMode.DRIVING, MORNING);
+        final int evening = timed("driving @ 17:30", TransportationMode.DRIVING, RUSH_HOUR);
 
         assertTrue(morning > 0 && evening > 0);
         if (keyPresent) {
@@ -107,13 +109,13 @@ class AutoScheduleLiveVerificationTest {
 
     @Test
     void theRealForecastCannotDistinguishOneTimeOfDayFromAnother() {
-        Trip trip = new Trip("live-check", "Toronto", TRIP_DATE,
+        final Trip trip = new Trip("live-check", "Toronto", TRIP_DATE,
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING);
 
-        long started = System.currentTimeMillis();
-        WeatherContext context =
+        final long started = System.currentTimeMillis();
+        final WeatherContext context =
                 new WeatherServiceContextGateway(new OpenMeteoWeatherService()).contextFor(trip);
-        long elapsed = System.currentTimeMillis() - started;
+        final long elapsed = System.currentTimeMillis() - started;
 
         System.out.println(String.format(
                 "[live] weather available=%s canDistinguishTimes=%s (%d ms)",

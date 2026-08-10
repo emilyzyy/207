@@ -1,15 +1,16 @@
 package interface_adapter.controllers;
 
-import use_case.usecases.EditItineraryInputBoundary;
-import use_case.usecases.EditItineraryInputData;
-import use_case.usecases.TripOptionsOutputBoundary;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
+
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import use_case.usecases.EditItineraryInputBoundary;
+import use_case.usecases.EditItineraryInputData;
+import use_case.usecases.TripOptionsOutputBoundary;
 
 /** Converts popup values into an edit-itinerary request and summarizes schedule adjustments. */
 public final class TripOptionsController {
@@ -28,31 +29,46 @@ public final class TripOptionsController {
         this.output = output;
     }
 
+    /**
+     * Performs the e xe cu te operation.
+     * @param end the e nd value
+     * @param start the s ta rt value
+     * @param date the d at e value
+     */
     public void execute(LocalDate date, LocalTime start, LocalTime end) {
         try {
-            Trip before = activeTrip.get();
-            if (before == null) throw new IllegalArgumentException("Open a trip first");
-            Map<String, String> originalTimes = eventTimes(before);
-            Trip updated = edit.execute(new EditItineraryInputData(
+            final Trip before = activeTrip.get();
+            if (before == null) {
+                throw new IllegalArgumentException("Open a trip first");
+            }
+            final Map<String, String> originalTimes = eventTimes(before);
+            final Trip updated = edit.execute(new EditItineraryInputData(
                     before.getId(), before.getDestination(), date, start, end,
                     before.getTransportationMode()));
             int removed = 0;
             int adjusted = 0;
-            Map<String, String> updatedTimes = eventTimes(updated);
+            final Map<String, String> updatedTimes = eventTimes(updated);
             for (Map.Entry<String, String> event : originalTimes.entrySet()) {
-                if (!updatedTimes.containsKey(event.getKey())) removed++;
-                else if (!event.getValue().equals(updatedTimes.get(event.getKey()))) adjusted++;
+                if (!updatedTimes.containsKey(event.getKey())) {
+                    removed++;
+
+                } else if (!event.getValue().equals(updatedTimes.get(event.getKey()))) {
+
+                    adjusted++;
+                }
             }
             output.presentSuccess(updated, message(adjusted, removed));
-        } catch (IllegalArgumentException exception) {
+        }
+        catch (IllegalArgumentException exception) {
             output.presentFailure(exception.getMessage());
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             output.presentFailure("Trip options could not be saved");
         }
     }
 
     private static Map<String, String> eventTimes(Trip trip) {
-        Map<String, String> times = new LinkedHashMap<>();
+        final Map<String, String> times = new LinkedHashMap<>();
         for (int day = 0; day < trip.getDayCount(); day++) {
             for (ScheduledEvent event : trip.getDay(day).getScheduledEvents()) {
                 times.put(day + "|" + event.getId(),
@@ -63,12 +79,18 @@ public final class TripOptionsController {
     }
 
     private static String message(int adjusted, int removed) {
-        if (adjusted == 0 && removed == 0) return "Trip options saved.";
-        StringBuilder result = new StringBuilder("Trip options saved.");
-        if (adjusted > 0) result.append(' ').append(adjusted)
-                .append(adjusted == 1 ? " activity was trimmed." : " activities were trimmed.");
-        if (removed > 0) result.append(' ').append(removed)
-                .append(removed == 1 ? " activity was removed." : " activities were removed.");
+        if (adjusted == 0 && removed == 0) {
+            return "Trip options saved.";
+        }
+        final StringBuilder result = new StringBuilder("Trip options saved.");
+        if (adjusted > 0) {
+            result.append(' ').append(adjusted)
+                    .append(adjusted == 1 ? " activity was trimmed." : " activities were trimmed.");
+        }
+        if (removed > 0) {
+            result.append(' ').append(removed)
+                    .append(removed == 1 ? " activity was removed." : " activities were removed.");
+        }
         return result.toString();
     }
 }

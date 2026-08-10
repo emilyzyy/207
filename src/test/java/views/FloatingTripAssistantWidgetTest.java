@@ -1,30 +1,33 @@
 package views;
 
-import interface_adapter.controllers.TaskRunner;
-import interface_adapter.controllers.TripAssistantController;
-import interface_adapter.presenters.TripAssistantPresenter;
-import interface_adapter.viewmodels.TripAssistantState;
-import interface_adapter.viewmodels.TripAssistantViewModel;
-import entity.valueobjects.TripAssistantMessage;
-import java.awt.Rectangle;
-import java.util.Collections;
-import java.util.concurrent.atomic.AtomicReference;
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.awt.Rectangle;
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+
+import org.junit.jupiter.api.Test;
+
+import entity.valueobjects.TripAssistantMessage;
+import interface_adapter.controllers.TaskRunner;
+import interface_adapter.controllers.TripAssistantController;
+import interface_adapter.presenters.TripAssistantPresenter;
+import interface_adapter.viewmodels.TripAssistantState;
+import interface_adapter.viewmodels.TripAssistantViewModel;
+
 final class FloatingTripAssistantWidgetTest {
 
     @Test
     void avatarAndWideHeaderTogglePreserveHistory() throws Exception {
-        AtomicReference<FloatingTripAssistantWidget> reference = new AtomicReference<>();
+        final AtomicReference<FloatingTripAssistantWidget> reference = new AtomicReference<>();
         SwingUtilities.invokeAndWait(() -> {
-            FloatingTripAssistantWidget widget = widget();
+            final FloatingTripAssistantWidget widget = widget();
             widget.setSize(900, 700);
             widget.doLayout();
             reference.set(widget);
@@ -53,7 +56,7 @@ final class FloatingTripAssistantWidgetTest {
                     .getText().contains("Hi, I'm George."));
         });
 
-        FloatingTripAssistantWidget widget = reference.get();
+        final FloatingTripAssistantWidget widget = reference.get();
         assertEquals("Open George chat", widget.getAvatarButton()
                 .getAccessibleContext().getAccessibleName());
     }
@@ -61,7 +64,7 @@ final class FloatingTripAssistantWidgetTest {
     @Test
     void panelAndAvatarStayBottomRightAndWithinBoundsAfterResize() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
-            FloatingTripAssistantWidget widget = widget();
+            final FloatingTripAssistantWidget widget = widget();
             widget.setExpanded(true);
             assertAnchored(widget, 900, 700);
             assertAnchored(widget, 520, 430);
@@ -73,8 +76,8 @@ final class FloatingTripAssistantWidgetTest {
             FloatingTripAssistantWidget widget, int width, int height) {
         widget.setSize(width, height);
         widget.doLayout();
-        Rectangle avatar = widget.getAvatarButton().getBounds();
-        Rectangle panel = widget.getAssistantPanel().getBounds();
+        final Rectangle avatar = widget.getAvatarButton().getBounds();
+        final Rectangle panel = widget.getAssistantPanel().getBounds();
 
         assertWithin(avatar, width, height);
         assertWithin(panel, width, height);
@@ -96,16 +99,16 @@ final class FloatingTripAssistantWidgetTest {
     }
 
     private FloatingTripAssistantWidget widget() {
-        TripAssistantViewModel viewModel = new TripAssistantViewModel(
+        final TripAssistantViewModel viewModel = new TripAssistantViewModel(
                 new TripAssistantState(Collections.singletonList(
                         new TripAssistantMessage(
                                 TripAssistantMessage.Role.ASSISTANT,
                                 "Hi, I'm George.")), false, ""));
-        TripAssistantPresenter presenter = new TripAssistantPresenter(viewModel);
-        TripAssistantController controller = new TripAssistantController(
+        final TripAssistantPresenter presenter = new TripAssistantPresenter(viewModel);
+        final TripAssistantController controller = new TripAssistantController(
                 input -> { }, () -> "trip-1", presenter, viewModel,
                 TaskRunner.immediate());
-        TripAssistantPanel panel = new TripAssistantPanel(viewModel, controller);
+        final TripAssistantPanel panel = new TripAssistantPanel(viewModel, controller);
         return new FloatingTripAssistantWidget(new JPanel(), panel);
     }
 }

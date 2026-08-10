@@ -21,9 +21,23 @@ public final class ActivitySearchRequest {
         this.limit = Math.max(1, limit);
     }
 
-    public String getDestination() { return destination; }
-    public String getQuery() { return query; }
-    public ActivityCategory getCategory() { return category; }
-    public IndoorOutdoorType getSetting() { return setting; }
-    public int getLimit() { return limit; }
+    public String getDestination() {
+        return destination;
+    }
+
+    public String getQuery() {
+        return query;
+    }
+
+    public ActivityCategory getCategory() {
+        return category;
+    }
+
+    public IndoorOutdoorType getSetting() {
+        return setting;
+    }
+
+    public int getLimit() {
+        return limit;
+    }
 }

@@ -4,9 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import entity.valueobjects.Location;
-import entity.valueobjects.TransportationMode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -19,8 +16,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiPredicate;
+
 import javax.net.ssl.SSLSession;
+
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import entity.valueobjects.Location;
+import entity.valueobjects.TransportationMode;
 
 /**
  * Direct tests for the routing adapter, driven through its injectable HttpClient.
@@ -69,12 +72,12 @@ class OsrmDistanceServiceTest {
     @Test
     void tomtomReceivesCoordinatesAsLatitudeThenLongitude() {
         withTomtomKey(() -> {
-            OsrmDistanceService service = serviceWith(tomtomBody(900));
+            final OsrmDistanceService service = serviceWith(tomtomBody(900));
 
             service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
                     TransportationMode.DRIVING, DEPARTURE);
 
-            String url = client.lastUri().toString();
+            final String url = client.lastUri().toString();
             assertTrue(url.contains("43.6453,-79.3806:43.678,-79.4094"),
                     "TomTom expects latitude,longitude; request was " + url);
             assertFalse(url.contains("-79.3806,43.6453"),
@@ -85,12 +88,12 @@ class OsrmDistanceServiceTest {
     @Test
     void tomtomRequestCarriesTheProposedDepartureTime() {
         withTomtomKey(() -> {
-            OsrmDistanceService service = serviceWith(tomtomBody(900));
+            final OsrmDistanceService service = serviceWith(tomtomBody(900));
 
             service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
                     TransportationMode.DRIVING, DEPARTURE);
 
-            String url = client.lastUri().toString();
+            final String url = client.lastUri().toString();
             assertTrue(url.contains("departAt=2026-08-12T17%3A30%3A00")
                             || url.contains("departAt=2026-08-12T17:30:00"),
                     "the departure time should reach TomTom: " + url);
@@ -101,9 +104,9 @@ class OsrmDistanceServiceTest {
     @Test
     void tomtomTravelTimeIsParsedIntoMinutes() {
         withTomtomKey(() -> {
-            OsrmDistanceService service = serviceWith(tomtomBody(1500));
+            final OsrmDistanceService service = serviceWith(tomtomBody(1500));
 
-            int minutes = service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
+            final int minutes = service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
                     TransportationMode.DRIVING, DEPARTURE);
 
             assertEquals(25, minutes);
@@ -116,9 +119,9 @@ class OsrmDistanceServiceTest {
         withTomtomKey(() -> {
             client.enqueue(500, "");
             client.enqueue(200, osrmBody(1200));
-            OsrmDistanceService service = new OsrmDistanceService(client, new ObjectMapper());
+            final OsrmDistanceService service = new OsrmDistanceService(client, new ObjectMapper());
 
-            int minutes = service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
+            final int minutes = service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
                     TransportationMode.DRIVING, DEPARTURE);
 
             assertEquals(20, minutes);
@@ -130,9 +133,9 @@ class OsrmDistanceServiceTest {
 
     @Test
     void drivingUsesOsrmDirectlyWhenNoKeyIsConfigured() {
-        OsrmDistanceService service = serviceWithoutTomtomKey(osrmBody(600));
+        final OsrmDistanceService service = serviceWithoutTomtomKey(osrmBody(600));
 
-        int minutes = service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
+        final int minutes = service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
                 TransportationMode.DRIVING, DEPARTURE);
 
         assertEquals(10, minutes);
@@ -142,12 +145,12 @@ class OsrmDistanceServiceTest {
 
     @Test
     void osrmReceivesCoordinatesAsLongitudeThenLatitude() {
-        OsrmDistanceService service = serviceWith(osrmBody(600));
+        final OsrmDistanceService service = serviceWith(osrmBody(600));
 
         service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
                 TransportationMode.WALKING, DEPARTURE);
 
-        String url = client.lastUri().toString();
+        final String url = client.lastUri().toString();
         assertTrue(url.contains("-79.3806,43.6453;-79.4094,43.678"),
                 "OSRM expects longitude,latitude; request was " + url);
         assertTrue(url.contains("routed-foot"));
@@ -155,13 +158,13 @@ class OsrmDistanceServiceTest {
 
     @Test
     void transitReceivesLatitudeLongitudeAndADepartureTime() {
-        OsrmDistanceService service = serviceWith(transitousBody(1800));
+        final OsrmDistanceService service = serviceWith(transitousBody(1800));
 
-        int minutes = service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
+        final int minutes = service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
                 TransportationMode.TRANSIT, DEPARTURE);
 
         assertEquals(30, minutes);
-        String url = client.lastUri().toString();
+        final String url = client.lastUri().toString();
         assertTrue(url.contains("fromPlace=43.6453%2C-79.3806"), "request was " + url);
         assertTrue(url.contains("time="), "transit should be timetable-aware: " + url);
         assertTrue(url.contains("arriveBy=false"));
@@ -169,9 +172,9 @@ class OsrmDistanceServiceTest {
 
     @Test
     void anUnusableResponseStillYieldsAPositiveEstimate() {
-        OsrmDistanceService service = serviceWith("{\"code\":\"NoRoute\"}");
+        final OsrmDistanceService service = serviceWith("{\"code\":\"NoRoute\"}");
 
-        int minutes = service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
+        final int minutes = service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
                 TransportationMode.WALKING, DEPARTURE);
 
         assertTrue(minutes > 0, "the existing distance-based fallback should still apply");
@@ -180,7 +183,7 @@ class OsrmDistanceServiceTest {
     @Test
     void noApiKeyIsHardCodedInTheAdapter() {
         // The key must come from configuration; a literal here would be committed to Git.
-        OsrmDistanceService service = serviceWithoutTomtomKey(osrmBody(600));
+        final OsrmDistanceService service = serviceWithoutTomtomKey(osrmBody(600));
         service.estimateTravelMinutes(UNION_STATION, CASA_LOMA,
                 TransportationMode.DRIVING, DEPARTURE);
         assertFalse(client.lastUri().toString().contains("key="),
@@ -188,14 +191,16 @@ class OsrmDistanceServiceTest {
     }
 
     private void withTomtomKey(Runnable body) {
-        String previous = System.getProperty("tomtom.api.key");
+        final String previous = System.getProperty("tomtom.api.key");
         System.setProperty("tomtom.api.key", "test-key-not-a-real-credential");
         try {
             body.run();
-        } finally {
+        }
+        finally {
             if (previous == null) {
                 System.clearProperty("tomtom.api.key");
-            } else {
+            }
+            else {
                 System.setProperty("tomtom.api.key", previous);
             }
         }
@@ -226,7 +231,7 @@ class OsrmDistanceServiceTest {
         public <T> HttpResponse<T> send(HttpRequest request,
                                         HttpResponse.BodyHandler<T> responseBodyHandler) {
             requested.add(request.uri());
-            int index = Math.min(served, bodies.size() - 1);
+            final int index = Math.min(served, bodies.size() - 1);
             served++;
             return (HttpResponse<T>) new StubResponse(request.uri(),
                     statuses.get(index)[0], bodies.get(index));
@@ -320,7 +325,7 @@ class OsrmDistanceServiceTest {
 
         @Override
         public HttpHeaders headers() {
-            BiPredicate<String, String> keepAll = (name, value) -> true;
+            final BiPredicate<String, String> keepAll = (name, value) -> true;
             return HttpHeaders.of(new java.util.HashMap<>(), keepAll);
         }
 

@@ -1,10 +1,11 @@
 package use_case.autoschedule.testdoubles;
 
-import use_case.ports.TripRepository;
-import entity.entities.Trip;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import entity.entities.Trip;
+import use_case.ports.TripRepository;
 
 /** In-memory trip store that records whether anything was saved. */
 public final class FakeTripRepository implements TripRepository {
@@ -30,7 +31,7 @@ public final class FakeTripRepository implements TripRepository {
 
     @Override
     public List<Trip> findAll() {
-        List<Trip> all = new ArrayList<>();
+        final List<Trip> all = new ArrayList<>();
         if (trip != null) {
             all.add(trip);
         }

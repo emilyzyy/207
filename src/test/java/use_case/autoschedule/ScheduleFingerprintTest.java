@@ -3,14 +3,16 @@ package use_case.autoschedule;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.valueobjects.EventType;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
 import org.junit.jupiter.api.Test;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.valueobjects.EventType;
 
 /**
  * The fingerprint is what stops a Preview being applied over a Day Plan that has moved on
@@ -36,7 +38,7 @@ class ScheduleFingerprintTest {
 
     @Test
     void theSamePlanAlwaysProducesTheSameFingerprint() {
-        List<ScheduledEvent> events = Arrays.asList(activityEvent("a", 9), activityEvent("b", 12));
+        final List<ScheduledEvent> events = Arrays.asList(activityEvent("a", 9), activityEvent("b", 12));
 
         assertEquals(ScheduleFingerprint.of(events), ScheduleFingerprint.of(events));
     }
@@ -65,8 +67,8 @@ class ScheduleFingerprintTest {
 
     @Test
     void merelyReorderingTheListIsNotAChange() {
-        List<ScheduledEvent> one = Arrays.asList(activityEvent("a", 9), activityEvent("b", 12));
-        List<ScheduledEvent> other = Arrays.asList(activityEvent("b", 12), activityEvent("a", 9));
+        final List<ScheduledEvent> one = Arrays.asList(activityEvent("a", 9), activityEvent("b", 12));
+        final List<ScheduledEvent> other = Arrays.asList(activityEvent("b", 12), activityEvent("a", 9));
 
         assertEquals(ScheduleFingerprint.of(one), ScheduleFingerprint.of(other),
                 "the same activities at the same times are the same plan");
@@ -74,8 +76,8 @@ class ScheduleFingerprintTest {
 
     @Test
     void travelBlocksAreIgnored() {
-        List<ScheduledEvent> withoutTravel = Arrays.asList(activityEvent("a", 9));
-        List<ScheduledEvent> withTravel = Arrays.asList(
+        final List<ScheduledEvent> withoutTravel = Arrays.asList(activityEvent("a", 9));
+        final List<ScheduledEvent> withTravel = Arrays.asList(
                 activityEvent("a", 9), travelEvent("travel-a", 10, 20));
 
         assertEquals(ScheduleFingerprint.of(withoutTravel), ScheduleFingerprint.of(withTravel),
@@ -91,7 +93,7 @@ class ScheduleFingerprintTest {
 
     @Test
     void aFingerprintRoundTripsThroughItsStringForm() {
-        ScheduleFingerprint original = ScheduleFingerprint.of(
+        final ScheduleFingerprint original = ScheduleFingerprint.of(
                 Arrays.asList(activityEvent("a", 9)));
 
         assertEquals(original, ScheduleFingerprint.fromValue(original.getValue()),

@@ -35,8 +35,8 @@ public final class CalendarViewModel {
         this.dashboard = dashboard;
         this.dayPlan = dayPlan;
         this.today = today;
-        LocalDate tripDate = dashboard.getState().getDate();
-        LocalDate initialFocus = tripDate == null
+        final LocalDate tripDate = dashboard.getState().getDate();
+        final LocalDate initialFocus = tripDate == null
                 ? Objects.requireNonNull(today.get(), "Today is required") : tripDate;
         state = new CalendarState(
                 CalendarViewMode.MONTH,
@@ -53,6 +53,10 @@ public final class CalendarViewModel {
         return state;
     }
 
+    /**
+     * Performs the s et vi ew mo de operation.
+     * @param viewMode the v ie wm od e value
+     */
     public void setViewMode(CalendarViewMode viewMode) {
         update(new CalendarState(
                 Objects.requireNonNull(viewMode, "Calendar view is required"),
@@ -60,6 +64,10 @@ public final class CalendarViewModel {
                 state.getDestination(), state.getEvents()));
     }
 
+    /**
+     * Performs the s el ec td at e operation.
+     * @param date the d at e value
+     */
     public void selectDate(LocalDate date) {
         update(new CalendarState(
                 state.getViewMode(), Objects.requireNonNull(date, "Date is required"),
@@ -67,38 +75,50 @@ public final class CalendarViewModel {
                 state.getDestination(), state.getEvents()));
     }
 
+    /** Performs the p re vi ou sp er io d operation. */
     public void previousPeriod() {
         selectDate(shift(state.getFocusDate(), -1));
     }
 
+    /** Performs the n ex tp er io d operation. */
     public void nextPeriod() {
         selectDate(shift(state.getFocusDate(), 1));
     }
 
+    /** Performs the g ot ot od ay operation. */
     public void goToToday() {
         selectDate(Objects.requireNonNull(today.get(), "Today is required"));
     }
 
+    /** Performs the g ot ot ri pd at e operation. */
     public void goToTripDate() {
         if (state.getTripDate() != null) {
             selectDate(state.getTripDate());
         }
     }
 
+    /**
+     * Performs the a dd pr op er ty ch an ge li st en er operation.
+     * @param listener the l is te ne r value
+     */
     public void addPropertyChangeListener(PropertyChangeListener listener) {
         changes.addPropertyChangeListener(listener);
     }
 
+    /**
+     * Performs the r em ov ep ro pe rt yc ha ng el is te ne r operation.
+     * @param listener the l is te ne r value
+     */
     public void removePropertyChangeListener(PropertyChangeListener listener) {
         changes.removePropertyChangeListener(listener);
     }
 
     private List<LocalDate> tripDates() {
-        List<LocalDate> dayPlanDates = dayPlan.getState().getTripDates();
+        final List<LocalDate> dayPlanDates = dayPlan.getState().getTripDates();
         if (!dayPlanDates.isEmpty()) {
             return dayPlanDates;
         }
-        LocalDate dashboardDate = dashboard.getState().getDate();
+        final LocalDate dashboardDate = dashboard.getState().getDate();
         return dashboardDate == null
                 ? Collections.emptyList()
                 : Collections.singletonList(dashboardDate);
@@ -125,10 +145,10 @@ public final class CalendarViewModel {
     }
 
     private void synchronizeTrip() {
-        DashboardState dashboardState = dashboard.getState();
-        LocalDate nextTripDate = dashboardState.getDate();
-        List<LocalDate> nextTripDates = tripDates();
-        LocalDate nextActiveDate = nextTripDates.isEmpty() ? null : nextTripDates.get(0);
+        final DashboardState dashboardState = dashboard.getState();
+        final LocalDate nextTripDate = dashboardState.getDate();
+        final List<LocalDate> nextTripDates = tripDates();
+        final LocalDate nextActiveDate = nextTripDates.isEmpty() ? null : nextTripDates.get(0);
         LocalDate focus = state.getFocusDate();
         if (!Objects.equals(state.getTripDate(), nextActiveDate) && nextActiveDate != null) {
             focus = nextActiveDate;
@@ -146,7 +166,7 @@ public final class CalendarViewModel {
     }
 
     private void update(CalendarState updatedState) {
-        CalendarState oldState = state;
+        final CalendarState oldState = state;
         state = updatedState;
         changes.firePropertyChange("state", oldState, state);
     }

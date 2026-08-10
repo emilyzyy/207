@@ -1,9 +1,10 @@
 package interface_adapter.viewmodels;
 
-import entity.valueobjects.TripAssistantMessage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import entity.valueobjects.TripAssistantMessage;
 
 /** Immutable chat history and request status for George's floating chat widget. */
 public final class TripAssistantState {
@@ -19,9 +20,15 @@ public final class TripAssistantState {
         this.error = error == null ? "" : error;
     }
 
-    public List<TripAssistantMessage> getMessages() { return messages; }
+    public List<TripAssistantMessage> getMessages() {
+        return messages;
+    }
 
-    public boolean isLoading() { return loading; }
+    public boolean isLoading() {
+        return loading;
+    }
 
-    public String getError() { return error; }
+    public String getError() {
+        return error;
+    }
 }

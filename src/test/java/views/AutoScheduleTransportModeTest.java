@@ -4,15 +4,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import interface_adapter.controllers.AutoScheduleSettings;
-import entity.valueobjects.TransportationMode;
 import java.awt.Component;
 import java.awt.Container;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.swing.JComboBox;
+
 import org.junit.jupiter.api.Test;
+
+import entity.valueobjects.TransportationMode;
+import interface_adapter.controllers.AutoScheduleSettings;
 
 /**
  * The traveller can say how they are getting around again.
@@ -30,7 +33,7 @@ class AutoScheduleTransportModeTest {
 
     @SuppressWarnings("unchecked")
     private static JComboBox<TransportationMode> modeBox(Component root) {
-        List<Component> found = new ArrayList<>();
+        final List<Component> found = new ArrayList<>();
         collect(root, found);
         for (Component component : found) {
             if (component instanceof JComboBox
@@ -53,12 +56,12 @@ class AutoScheduleTransportModeTest {
 
     @Test
     void allThreeRealModesAreOfferedAlongsideFastest() {
-        AutoScheduleSettingsDialog dialog = dialog();
-        JComboBox<TransportationMode> box = modeBox(dialog.getContentPane());
+        final AutoScheduleSettingsDialog dialog = dialog();
+        final JComboBox<TransportationMode> box = modeBox(dialog.getContentPane());
 
         assertNotNull(box, "the dialog must offer a way to choose how you travel");
         assertEquals(4, box.getItemCount());
-        List<TransportationMode> offered = new ArrayList<>();
+        final List<TransportationMode> offered = new ArrayList<>();
         for (int i = 0; i < box.getItemCount(); i++) {
             offered.add(box.getItemAt(i));
         }
@@ -71,7 +74,7 @@ class AutoScheduleTransportModeTest {
 
     @Test
     void fastestIsTheDefaultSoDecliningToChooseStillWorks() {
-        AutoScheduleSettingsDialog dialog = dialog();
+        final AutoScheduleSettingsDialog dialog = dialog();
 
         assertEquals(TransportationMode.FASTEST,
                 modeBox(dialog.getContentPane()).getSelectedItem());
@@ -80,10 +83,10 @@ class AutoScheduleTransportModeTest {
 
     @Test
     void theChosenModeIsWhatTheSettingsCarry() {
-        AutoScheduleSettingsDialog dialog = dialog();
+        final AutoScheduleSettingsDialog dialog = dialog();
         modeBox(dialog.getContentPane()).setSelectedItem(TransportationMode.TRANSIT);
 
-        AutoScheduleSettings settings = dialog.read();
+        final AutoScheduleSettings settings = dialog.read();
 
         assertNotNull(settings, settings == null ? "the dialog refused valid input" : "");
         assertEquals(TransportationMode.TRANSIT, settings.getTransportationMode());

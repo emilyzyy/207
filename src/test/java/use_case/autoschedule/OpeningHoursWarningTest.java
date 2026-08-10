@@ -5,6 +5,20 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.DayOfWeek;
+import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.valueobjects.EventType;
+import entity.valueobjects.OpeningHours;
+import entity.valueobjects.TransportationMode;
 import use_case.autoschedule.engine.ScheduleEngine;
 import use_case.autoschedule.policy.DaylightPolicy;
 import use_case.autoschedule.policy.MealWindowPolicy;
@@ -14,18 +28,6 @@ import use_case.autoschedule.testdoubles.FakeTravelTimeEstimator;
 import use_case.autoschedule.testdoubles.FakeTripRepository;
 import use_case.autoschedule.testdoubles.FakeWeatherContextGateway;
 import use_case.autoschedule.testdoubles.RecordingPresenter;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.valueobjects.EventType;
-import entity.valueobjects.OpeningHours;
-import entity.valueobjects.TransportationMode;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import org.junit.jupiter.api.Test;
 
 /**
  * What the traveller is told about opening hours, which is the whole point of keeping
@@ -47,14 +49,14 @@ class OpeningHoursWarningTest {
     private final FakeWeatherContextGateway weather = new FakeWeatherContextGateway();
 
     private static ScheduledEvent event(String id, int startHour, OpeningHours hours) {
-        Activity activity = ProblemFixtures.activityWithHours(id, hours);
-        LocalTime start = LocalTime.of(startHour, 0);
+        final Activity activity = ProblemFixtures.activityWithHours(id, hours);
+        final LocalTime start = LocalTime.of(startHour, 0);
         return new ScheduledEvent(id, activity, start, start.plusMinutes(60),
                 EventType.ACTIVITY, "");
     }
 
     private FakeTripRepository tripWith(ScheduledEvent... events) {
-        Trip trip = new Trip("trip-1", "Toronto", ProblemFixtures.TRIP_DATE,
+        final Trip trip = new Trip("trip-1", "Toronto", ProblemFixtures.TRIP_DATE,
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING);
         trip.replaceSchedule(Arrays.asList(events));
         return new FakeTripRepository(trip);
@@ -125,7 +127,7 @@ class OpeningHoursWarningTest {
 
         assertNull(presenter.getPreview(),
                 "a venue that is shut cannot quietly be scheduled anyway");
-        AutoScheduleConflictOutputData conflict = presenter.getConflict();
+        final AutoScheduleConflictOutputData conflict = presenter.getConflict();
         assertNotNull(conflict);
         // Shut all day is its own kind. Reported as "cannot fit" it read as a window that
         // was merely too narrow, and the traveller was invited to keep moving the activity

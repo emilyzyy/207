@@ -47,8 +47,11 @@ public final class PreviewMetricsView {
     public int getActivityCount() {
         return activityCount;
     }
+    /**
+     * Travel, wasted waiting and capped soft penalties, added together.
+     * @return the result of the operation
+     */
 
-    /** Travel, wasted waiting and capped soft penalties, added together. */
     public int getPracticalCostMinutes() {
         return practicalCostMinutes;
     }

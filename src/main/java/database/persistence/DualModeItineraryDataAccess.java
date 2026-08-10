@@ -1,12 +1,13 @@
 package database.persistence;
 
-import use_case.ports.AuthService;
-import use_case.ports.ItineraryDataAccessInterface;
-import use_case.ports.TripRepository;
-import entity.entities.Trip;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import entity.entities.Trip;
+import use_case.ports.AuthService;
+import use_case.ports.ItineraryDataAccessInterface;
+import use_case.ports.TripRepository;
 
 /**
  * Uses local in-memory storage while signed out; remote cloud storage while signed in.
@@ -39,21 +40,25 @@ public final class DualModeItineraryDataAccess
         this.auth = auth;
     }
 
+    /** Performs the c le ar lo ca l operation. */
     public void clearLocal() {
         local.clear();
     }
+    /**
+     * After sign-in, push a local trip (if present) up to the account.
+     * @param tripId the t ri pi d value
+     */
 
-    /** After sign-in, push a local trip (if present) up to the account. */
     public void syncTripToCloud(String tripId) {
         if (!cloud()) {
             return;
         }
-        Optional<Trip> localTrip = local.findById(tripId);
+        final Optional<Trip> localTrip = local.findById(tripId);
         if (localTrip.isPresent()) {
             remote.save(localTrip.get());
             return;
         }
-        Optional<Trip> already = remote.findById(tripId);
+        final Optional<Trip> already = remote.findById(tripId);
         if (!already.isPresent()) {
             // nothing to sync
         }
@@ -71,7 +76,7 @@ public final class DualModeItineraryDataAccess
     @Override
     public Trip saveItinerary(Trip itinerary) {
         if (cloud()) {
-            Trip saved = remoteItinerary.saveItinerary(itinerary);
+            final Trip saved = remoteItinerary.saveItinerary(itinerary);
             local.save(saved);
             return saved;
         }
@@ -86,7 +91,7 @@ public final class DualModeItineraryDataAccess
     @Override
     public Optional<Trip> loadItinerary(String itineraryId) {
         if (cloud()) {
-            Optional<Trip> remoteTrip = remoteItinerary.loadItinerary(itineraryId);
+            final Optional<Trip> remoteTrip = remoteItinerary.loadItinerary(itineraryId);
             if (remoteTrip.isPresent()) {
                 local.save(remoteTrip.get());
                 return remoteTrip;
@@ -103,7 +108,7 @@ public final class DualModeItineraryDataAccess
     @Override
     public List<Trip> findAll() {
         if (cloud()) {
-            List<Trip> remoteTrips = remote.findAll();
+            final List<Trip> remoteTrips = remote.findAll();
             for (Trip trip : remoteTrips) {
                 local.save(trip);
             }
@@ -114,8 +119,12 @@ public final class DualModeItineraryDataAccess
 
     @Override
     public boolean deleteById(String id) {
-        if (id == null || id.trim().isEmpty()) return false;
-        if (cloud()) remote.deleteById(id);
+        if (id == null || id.trim().isEmpty()) {
+            return false;
+        }
+        if (cloud()) {
+            remote.deleteById(id);
+        }
         return local.deleteById(id) || cloud();
     }
 }

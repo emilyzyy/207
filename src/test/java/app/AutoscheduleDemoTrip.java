@@ -1,5 +1,11 @@
 package app;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
@@ -10,11 +16,6 @@ import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;
 import entity.valueobjects.WeatherSeverity;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * <p><b>Test fixture only.</b> This lived in the production {@code app} package, where its
@@ -59,13 +60,14 @@ public final class AutoscheduleDemoTrip {
     public static final LocalTime UNAVAILABLE_TO = LocalTime.of(15, 0);
 
     private AutoscheduleDemoTrip() {
-    }
 
+    }
     /** The day as the traveller carelessly arranged it, before any scheduling. */
+
     public static Trip inefficientDay() {
-        Trip trip = new Trip("demo-trip", "Toronto", DEMO_DATE,
+        final Trip trip = new Trip("demo-trip", "Toronto", DEMO_DATE,
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING);
-        List<ScheduledEvent> events = new ArrayList<>();
+        final List<ScheduledEvent> events = new ArrayList<>();
 
         // Chronological because the Trip entity insists on it. The day is careless in its
         // *times* and its geography, not in the order the list happens to be built: it runs
@@ -105,18 +107,20 @@ public final class AutoscheduleDemoTrip {
      * from 6 p.m. and severe after 7 p.m.</p>
      */
     public static List<WeatherWarning> hourlyForecast() {
-        Location toronto = new Location(43.6532, -79.3832, "Toronto");
-        List<WeatherWarning> hourly = new ArrayList<>();
+        final Location toronto = new Location(43.6532, -79.3832, "Toronto");
+        final List<WeatherWarning> hourly = new ArrayList<>();
         for (int hour = 0; hour < 24; hour++) {
-            WeatherSeverity severity;
-            String condition;
+            final WeatherSeverity severity;
+            final String condition;
             if (hour >= 19) {
                 severity = WeatherSeverity.HIGH;
                 condition = "Heavy rain";
-            } else if (hour >= 18) {
+            }
+            else if (hour >= 18) {
                 severity = WeatherSeverity.MEDIUM;
                 condition = "Showers";
-            } else {
+            }
+            else {
                 severity = WeatherSeverity.LOW;
                 condition = "Sunny intervals";
             }

@@ -1,23 +1,5 @@
 package app;
 
-import interface_adapter.viewmodels.DayPlanViewModel;
-import views.TrippyFrame;
-import views.DateSelectionButton;
-import views.TimeSelectorPanel;
-import app.AppContainer;
-import entity.entities.Trip;
-import entity.valueobjects.TransportationMode;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.GraphicsEnvironment;
-import java.util.ArrayList;
-import java.util.List;
-import javax.swing.AbstractButton;
-import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -25,6 +7,26 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
+
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.GraphicsEnvironment;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.AbstractButton;
+import javax.swing.JTabbedPane;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+
+import org.junit.jupiter.api.Test;
+
+import entity.entities.Trip;
+import entity.valueobjects.TransportationMode;
+import interface_adapter.viewmodels.DayPlanViewModel;
+import views.DateSelectionButton;
+import views.TimeSelectorPanel;
+import views.TrippyFrame;
 
 final class SwingApplicationIntegrationTest {
 
@@ -36,14 +38,14 @@ final class SwingApplicationIntegrationTest {
         System.setProperty("trippy.map.tiles.mode", "offline");
 
         SwingUtilities.invokeAndWait(() -> {
-            AppBuilder builder = new AppBuilder();
-            AppContainer app = builder.buildOffline();
-            Trip created = app.createTrip.execute(
+            final AppBuilder builder = new AppBuilder();
+            final AppContainer app = builder.buildOffline();
+            final Trip created = app.createTrip.execute(
                     "Toronto", java.time.LocalDate.of(2026, 8, 2),
                     java.time.LocalTime.of(9, 0), java.time.LocalTime.of(18, 0),
                     TransportationMode.WALKING);
-            TrippyFrame frame = builder.buildFrameForTrip(app, created);
-            JTabbedPane tabs = findTabs(frame);
+            final TrippyFrame frame = builder.buildFrameForTrip(app, created);
+            final JTabbedPane tabs = findTabs(frame);
             assertNotNull(tabs);
             assertEquals(3, tabs.getTabCount());
             assertEquals("Search", tabs.getTitleAt(0));
@@ -63,16 +65,16 @@ final class SwingApplicationIntegrationTest {
             assertTrue(frame.getTripAssistantPanel().getHistoryArea()
                     .getText().contains("George"));
 
-            DayPlanViewModel sharedState = frame.getCalendarDialog().getViewModel();
+            final DayPlanViewModel sharedState = frame.getCalendarDialog().getViewModel();
             assertSame(sharedState, frame.getDayPlanPanel().getViewModel());
             assertEquals(created.getId(), sharedState.getState().getTripId());
-            AbstractButton autoschedule = findButton(frame, "Autoschedule");
+            final AbstractButton autoschedule = findButton(frame, "Autoschedule");
             assertNotNull(autoschedule, "Autoschedule should be the Day Plan action");
             assertTrue(autoschedule.isEnabled());
-            AbstractButton options = findButton(frame, "Options");
+            final AbstractButton options = findButton(frame, "Options");
             assertNotNull(options, "Trip options should be available from the Day Plan");
             assertTrue(options.isEnabled());
-            AbstractButton share = findButton(frame, "Share");
+            final AbstractButton share = findButton(frame, "Share");
             assertNotNull(share);
             assertTrue(share.isEnabled());
             share.doClick();
@@ -82,7 +84,7 @@ final class SwingApplicationIntegrationTest {
             assertEquals(created.getDate(), frame.getCalendarDialog()
                     .getCalendarViewModel().getState().getTripDate());
 
-            AbstractButton calendar = findButton(frame, "Calendar View");
+            final AbstractButton calendar = findButton(frame, "Calendar View");
             assertNotNull(calendar);
             calendar.doClick();
             assertTrue(frame.getCalendarDialog().isVisible());
@@ -104,7 +106,7 @@ final class SwingApplicationIntegrationTest {
         }
         if (component instanceof Container) {
             for (Component child : ((Container) component).getComponents()) {
-                JTabbedPane found = findTabs(child);
+                final JTabbedPane found = findTabs(child);
                 if (found != null) {
                     return found;
                 }
@@ -114,19 +116,19 @@ final class SwingApplicationIntegrationTest {
     }
 
     private static List<JTextField> findTextFields(Component component) {
-        List<JTextField> result = new ArrayList<JTextField>();
+        final List<JTextField> result = new ArrayList<JTextField>();
         collectTextFields(component, result);
         return result;
     }
 
     private static <T extends Component> T findComponent(Component component, Class<T> type) {
-        List<T> matches = findComponents(component, type);
+        final List<T> matches = findComponents(component, type);
         return matches.isEmpty() ? null : matches.get(0);
     }
 
     private static <T extends Component> List<T> findComponents(
             Component component, Class<T> type) {
-        List<T> matches = new ArrayList<>();
+        final List<T> matches = new ArrayList<>();
         collectComponents(component, type, matches);
         return matches;
     }
@@ -162,7 +164,7 @@ final class SwingApplicationIntegrationTest {
         }
         if (component instanceof Container) {
             for (Component child : ((Container) component).getComponents()) {
-                AbstractButton found = findButton(child, text);
+                final AbstractButton found = findButton(child, text);
                 if (found != null) {
                     return found;
                 }

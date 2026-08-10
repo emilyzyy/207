@@ -43,27 +43,35 @@ public final class OpeningHours {
         this.alwaysOpen = alwaysOpen;
     }
 
-    /** Nothing is known about this venue's hours; scheduling stays permissive. */
+    /**
+     * Nothing is known about this venue's hours; scheduling stays permissive.
+     * @return the result of the operation
+     */
     public static OpeningHours unknown() {
         return UNKNOWN;
     }
+    /**
+     * The venue never closes.
+     * @return the result of the operation
+     */
 
-    /** The venue never closes. */
     public static OpeningHours alwaysOpen() {
         return ALWAYS;
     }
-
     /**
      * Known hours. A weekday absent from the map, or present with no intervals, is closed.
      * Intervals are sorted and must not cross midnight — split them first.
+      * @param byDay the b yd ay value
+      * @return the result of the operation
      */
+
     public static OpeningHours of(Map<DayOfWeek, List<TimeInterval>> byDay) {
         if (byDay == null) {
             return UNKNOWN;
         }
-        Map<DayOfWeek, List<TimeInterval>> copy = new EnumMap<>(DayOfWeek.class);
+        final Map<DayOfWeek, List<TimeInterval>> copy = new EnumMap<>(DayOfWeek.class);
         for (Map.Entry<DayOfWeek, List<TimeInterval>> entry : byDay.entrySet()) {
-            List<TimeInterval> intervals = new ArrayList<>(entry.getValue());
+            final List<TimeInterval> intervals = new ArrayList<>(entry.getValue());
             Collections.sort(intervals,
                     (left, right) -> left.getStart().compareTo(right.getStart()));
             copy.put(entry.getKey(), Collections.unmodifiableList(intervals));
@@ -74,18 +82,24 @@ public final class OpeningHours {
     public boolean isKnown() {
         return alwaysOpen || byDay != null;
     }
+    /**
+     * True when the venue is known to be shut for the whole of this date.
+     * @param date the d at e value
+     * @return the result of the operation
+     */
 
-    /** True when the venue is known to be shut for the whole of this date. */
     public boolean isClosedOn(LocalDate date) {
         return isKnown() && !alwaysOpen && intervalsOn(date).isEmpty();
     }
-
     /**
      * The intervals this venue is open on the given date, earliest first.
      *
      * <p>Empty when unknown as well as when closed, so callers must ask {@link #isKnown()}
      * before reading an empty list as a refusal.</p>
+      * @param date the d at e value
+      * @return the result of the operation
      */
+
     public List<TimeInterval> intervalsOn(LocalDate date) {
         if (alwaysOpen) {
             return Collections.singletonList(
@@ -94,7 +108,7 @@ public final class OpeningHours {
         if (byDay == null || date == null) {
             return Collections.emptyList();
         }
-        List<TimeInterval> intervals = byDay.get(date.getDayOfWeek());
+        final List<TimeInterval> intervals = byDay.get(date.getDayOfWeek());
         return intervals == null ? Collections.<TimeInterval>emptyList() : intervals;
     }
 

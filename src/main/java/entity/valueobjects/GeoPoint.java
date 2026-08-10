@@ -14,7 +14,16 @@ public final class GeoPoint {
         this.longitude = longitude;
         this.discoveryRadiusMeters = Math.max(1500, Math.min(5000, discoveryRadiusMeters));
     }
-    public double getLatitude() { return latitude; }
-    public double getLongitude() { return longitude; }
-    public int getDiscoveryRadiusMeters() { return discoveryRadiusMeters; }
+
+    public double getLatitude() {
+        return latitude;
+    }
+
+    public double getLongitude() {
+        return longitude;
+    }
+
+    public int getDiscoveryRadiusMeters() {
+        return discoveryRadiusMeters;
+    }
 }

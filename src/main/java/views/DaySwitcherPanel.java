@@ -1,8 +1,5 @@
 package views;
 
-import interface_adapter.controllers.TripDayController;
-import interface_adapter.viewmodels.DayPlanState;
-import interface_adapter.viewmodels.DayPlanViewModel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -10,6 +7,7 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.time.LocalDate;
 import java.util.List;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -17,6 +15,10 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JToggleButton;
 import javax.swing.SwingUtilities;
+
+import interface_adapter.controllers.TripDayController;
+import interface_adapter.viewmodels.DayPlanState;
+import interface_adapter.viewmodels.DayPlanViewModel;
 
 /**
  * A single-row strip of one toggle per trip day, above the planner tabs so the active day can be
@@ -61,7 +63,7 @@ public final class DaySwitcherPanel extends JPanel {
 
     private void render(DayPlanState state) {
         strip.removeAll();
-        List<LocalDate> dates = state.getTripDates();
+        final List<LocalDate> dates = state.getTripDates();
         if (dates.size() <= 1 || tripDayController == null) {
             setVisible(false);
             return;
@@ -70,8 +72,8 @@ public final class DaySwitcherPanel extends JPanel {
         JToggleButton activeDay = null;
         for (int i = 0; i < dates.size(); i++) {
             final int index = i;
-            boolean active = index == state.getActiveDayIndex();
-            JToggleButton day = new JToggleButton((active ? "\u25cf " : "") + "Day "
+            final boolean active = index == state.getActiveDayIndex();
+            final JToggleButton day = new JToggleButton((active ? "\u25cf " : "") + "Day "
                     + (i + 1) + " \u00b7 " + dates.get(i), active);
             day.setFont(SwingTheme.SMALL);
             day.setFocusPainted(true);
@@ -83,9 +85,13 @@ public final class DaySwitcherPanel extends JPanel {
                     BorderFactory.createEmptyBorder(4, 10, 4, 10)));
             day.setToolTipText("Show " + dates.get(i));
             day.addActionListener(event -> tripDayController.switchTo(index));
-            if (i > 0) strip.add(Box.createHorizontalStrut(8));
+            if (i > 0) {
+                strip.add(Box.createHorizontalStrut(8));
+            }
             strip.add(day);
-            if (active) activeDay = day;
+            if (active) {
+                activeDay = day;
+            }
         }
         strip.revalidate();
         strip.repaint();
@@ -93,7 +99,7 @@ public final class DaySwitcherPanel extends JPanel {
         // Keep the selected day visible: switching days elsewhere (calendar, autoschedule)
         // must scroll a long strip to the active tab.
         if (activeDay != null) {
-            JToggleButton visible = activeDay;
+            final JToggleButton visible = activeDay;
             SwingUtilities.invokeLater(() -> strip.scrollRectToVisible(visible.getBounds()));
         }
     }
@@ -104,12 +110,12 @@ public final class DaySwitcherPanel extends JPanel {
      * Reserve the scrollbar's height only while the strip actually overflows the viewport.
      */
     private void reserveScrollbarHeight() {
-        int viewportWidth = scroller.getViewport().getExtentSize().width;
-        boolean overflows = viewportWidth > 0
+        final int viewportWidth = scroller.getViewport().getExtentSize().width;
+        final boolean overflows = viewportWidth > 0
                 && strip.getPreferredSize().width > viewportWidth;
-        int target = strip.getPreferredSize().height
+        final int target = strip.getPreferredSize().height
                 + (overflows ? scroller.getHorizontalScrollBar().getPreferredSize().height : 0);
-        Dimension current = scroller.getPreferredSize();
+        final Dimension current = scroller.getPreferredSize();
         if (current == null || current.height != target) {
             scroller.setPreferredSize(new Dimension(
                     current == null ? 0 : current.width, target));
@@ -120,7 +126,8 @@ public final class DaySwitcherPanel extends JPanel {
     private static void onEventThread(Runnable action) {
         if (SwingUtilities.isEventDispatchThread()) {
             action.run();
-        } else {
+        }
+        else {
             SwingUtilities.invokeLater(action);
         }
     }

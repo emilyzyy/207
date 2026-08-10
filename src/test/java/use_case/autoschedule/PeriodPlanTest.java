@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalTime;
+
 import org.junit.jupiter.api.Test;
 
 class PeriodPlanTest {
@@ -20,28 +21,28 @@ class PeriodPlanTest {
 
     @Test
     void fullDayWindowUsesEveryOverlappingPeriod() {
-        PeriodPlan plan = PeriodPlan.forRun(ProblemFixtures.window(9, 21), true, 6);
+        final PeriodPlan plan = PeriodPlan.forRun(ProblemFixtures.window(9, 21), true, 6);
         assertEquals(4, plan.size());
     }
 
     @Test
     void narrowWindowOnlyUsesPeriodsItTouches() {
-        PeriodPlan plan = PeriodPlan.forRun(ProblemFixtures.window(12, 15), true, 6);
+        final PeriodPlan plan = PeriodPlan.forRun(ProblemFixtures.window(12, 15), true, 6);
         assertEquals(1, plan.size());
         assertEquals(DeparturePeriod.MIDDAY, plan.activePeriods().get(0));
     }
 
     @Test
     void timeInsensitiveModeCollapsesToOneBucket() {
-        PeriodPlan plan = PeriodPlan.forRun(ProblemFixtures.window(9, 21), false, 56);
+        final PeriodPlan plan = PeriodPlan.forRun(ProblemFixtures.window(9, 21), false, 56);
         assertEquals(1, plan.size(), "walking has no time input, so one matrix is enough");
         assertEquals(56, plan.prefetchCallCount(56));
     }
 
     @Test
     void everyTimeStillResolvesAfterCollapsing() {
-        PeriodPlan plan = PeriodPlan.forRun(ProblemFixtures.window(9, 21), false, 56);
-        DeparturePeriod only = plan.activePeriods().get(0);
+        final PeriodPlan plan = PeriodPlan.forRun(ProblemFixtures.window(9, 21), false, 56);
+        final DeparturePeriod only = plan.activePeriods().get(0);
         assertEquals(only, plan.resolve(LocalTime.of(9, 30)));
         assertEquals(only, plan.resolve(LocalTime.of(17, 45)));
         assertEquals(only, plan.resolve(LocalTime.of(20, 30)));
@@ -50,7 +51,7 @@ class PeriodPlanTest {
     @Test
     void budgetOverflowMergesPeriodsDeterministically() {
         // 8 activities = 56 directed pairs; 4 periods would be 224 calls, over the 120 cap.
-        PeriodPlan plan = PeriodPlan.forRun(ProblemFixtures.window(9, 21), true, 56);
+        final PeriodPlan plan = PeriodPlan.forRun(ProblemFixtures.window(9, 21), true, 56);
         assertTrue(plan.prefetchCallCount(56) <= PeriodPlan.MAX_PREFETCH_CALLS,
                 "prefetch must stay inside the documented budget");
         assertEquals(2, plan.size());
@@ -60,15 +61,15 @@ class PeriodPlanTest {
 
     @Test
     void smallProblemsKeepFullGranularity() {
-        PeriodPlan plan = PeriodPlan.forRun(ProblemFixtures.window(9, 21), true, 6);
+        final PeriodPlan plan = PeriodPlan.forRun(ProblemFixtures.window(9, 21), true, 6);
         assertEquals(4, plan.size());
         assertEquals(24, plan.prefetchCallCount(6));
     }
 
     @Test
     void mergingIsRepeatableForTheSameInput() {
-        PeriodPlan first = PeriodPlan.forRun(ProblemFixtures.window(9, 21), true, 56);
-        PeriodPlan second = PeriodPlan.forRun(ProblemFixtures.window(9, 21), true, 56);
+        final PeriodPlan first = PeriodPlan.forRun(ProblemFixtures.window(9, 21), true, 56);
+        final PeriodPlan second = PeriodPlan.forRun(ProblemFixtures.window(9, 21), true, 56);
         assertEquals(first.activePeriods(), second.activePeriods());
         assertEquals(first.resolve(LocalTime.of(17, 0)), second.resolve(LocalTime.of(17, 0)));
     }

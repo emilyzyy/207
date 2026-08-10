@@ -6,7 +6,9 @@ import java.util.List;
 
 /** Immutable chat-history item, including the grounded activities behind an answer. */
 public final class TripAssistantMessage {
-    public enum Role { USER, ASSISTANT }
+    public enum Role {
+        USER, ASSISTANT
+    }
 
     private final Role role;
     private final String text;
@@ -26,9 +28,15 @@ public final class TripAssistantMessage {
                 activityIds == null ? Collections.<String>emptyList() : activityIds));
     }
 
-    public Role getRole() { return role; }
+    public Role getRole() {
+        return role;
+    }
 
-    public String getText() { return text; }
+    public String getText() {
+        return text;
+    }
 
-    public List<String> getActivityIds() { return activityIds; }
+    public List<String> getActivityIds() {
+        return activityIds;
+    }
 }

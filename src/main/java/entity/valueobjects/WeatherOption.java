@@ -39,12 +39,19 @@ public final class WeatherOption {
         this.unavailableReason = unavailableReason == null ? "" : unavailableReason;
     }
 
-    /** The forecast can distinguish times, so the traveller may choose to use it. */
+    /**
+     * The forecast can distinguish times, so the traveller may choose to use it.
+     * @return the result of the operation
+     */
     public static WeatherOption available() {
         return AVAILABLE;
     }
+    /**
+     * The option cannot be offered, with the short sentence explaining why.
+     * @param reason the r ea so n value
+     * @return the result of the operation
+     */
 
-    /** The option cannot be offered, with the short sentence explaining why. */
     public static WeatherOption unavailable(String reason) {
         return new WeatherOption(false, reason);
     }
@@ -52,16 +59,20 @@ public final class WeatherOption {
     public boolean isAvailable() {
         return available;
     }
-
     /**
      * Whether the checkbox starts ticked. Weather improves a day when it can be applied at
      * all, so it defaults on wherever it is offered; the traveller can still turn it off.
+      * @return the result of the operation
      */
+
     public boolean isSelectedByDefault() {
         return available;
     }
+    /**
+     * Empty when the option is available; otherwise a sentence to show beside it.
+     * @return the result of the operation
+     */
 
-    /** Empty when the option is available; otherwise a sentence to show beside it. */
     public String getUnavailableReason() {
         return unavailableReason;
     }

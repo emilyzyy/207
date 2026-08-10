@@ -6,31 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import interface_adapter.controllers.AutoScheduleController;
-import interface_adapter.controllers.AutoScheduleSettings;
-import interface_adapter.controllers.TaskRunner;
-import interface_adapter.gateways.DistanceServiceTravelTimeEstimator;
-import interface_adapter.presenters.AutoSchedulePresenter;
-import interface_adapter.viewmodels.AutoScheduleStatus;
-import interface_adapter.viewmodels.DayPlanState;
-import interface_adapter.viewmodels.DayPlanViewModel;
-import interface_adapter.viewmodels.PreviewRowView;
-import use_case.autoschedule.AutoScheduleInteractor;
-import use_case.autoschedule.WeatherContext;
-import use_case.autoschedule.engine.ScheduleEngine;
-import use_case.autoschedule.policy.DaylightPolicy;
-import use_case.autoschedule.policy.MealWindowPolicy;
-import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.valueobjects.EventType;
-import entity.valueobjects.TransportationMode;
-import interface_adapter.mock.MockDistanceService;
-import database.persistence.InMemoryTripRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -42,8 +17,35 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+import database.persistence.InMemoryTripRepository;
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.valueobjects.EventType;
+import entity.valueobjects.TransportationMode;
+import interface_adapter.controllers.AutoScheduleController;
+import interface_adapter.controllers.AutoScheduleSettings;
+import interface_adapter.controllers.TaskRunner;
+import interface_adapter.gateways.DistanceServiceTravelTimeEstimator;
+import interface_adapter.mock.MockDistanceService;
+import interface_adapter.presenters.AutoSchedulePresenter;
+import interface_adapter.viewmodels.AutoScheduleStatus;
+import interface_adapter.viewmodels.DayPlanState;
+import interface_adapter.viewmodels.DayPlanViewModel;
+import interface_adapter.viewmodels.PreviewRowView;
+import use_case.autoschedule.AutoScheduleInteractor;
+import use_case.autoschedule.WeatherContext;
+import use_case.autoschedule.engine.ScheduleEngine;
+import use_case.autoschedule.policy.DaylightPolicy;
+import use_case.autoschedule.policy.MealWindowPolicy;
+import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
 
 /**
  * A place discovered from OpenStreetMap, all the way to a scheduled time.
@@ -73,9 +75,9 @@ class OpeningHoursProductionWiringTest {
 
     /** One place, with whatever opening_hours tag the test wants to try. */
     private Activity discover(String openingHoursTag) throws IOException {
-        String tag = openingHoursTag == null ? ""
+        final String tag = openingHoursTag == null ? ""
                 : ",\"opening_hours\":\"" + openingHoursTag + "\"";
-        String overpass = "{\"elements\":[{\"id\":900,\"lat\":43.66,\"lon\":-79.39,"
+        final String overpass = "{\"elements\":[{\"id\":900,\"lat\":43.66,\"lon\":-79.39,"
                 + "\"tags\":{\"name\":\"City Museum\",\"tourism\":\"museum\"" + tag + "}}]}";
 
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -84,8 +86,8 @@ class OpeningHoursProductionWiringTest {
         server.createContext("/interpreter", exchange -> respond(exchange, overpass));
         server.start();
 
-        String base = "http://127.0.0.1:" + server.getAddress().getPort();
-        List<Activity> found = new NominatimPlacesService(HttpClient.newHttpClient(),
+        final String base = "http://127.0.0.1:" + server.getAddress().getPort();
+        final List<Activity> found = new NominatimPlacesService(HttpClient.newHttpClient(),
                 new ObjectMapper(), URI.create(base + "/search"),
                 URI.create(base + "/interpreter")).search("Toronto", "");
         assertEquals(1, found.size(), "the stub server should have yielded one place");
@@ -93,7 +95,7 @@ class OpeningHoursProductionWiringTest {
     }
 
     private static void respond(HttpExchange exchange, String body) throws IOException {
-        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        final byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.sendResponseHeaders(200, bytes.length);
         exchange.getResponseBody().write(bytes);
         exchange.close();
@@ -109,18 +111,18 @@ class OpeningHoursProductionWiringTest {
      * schedule applied the stricter rule.</p>
      */
     private DayPlanState schedule(Activity discovered, LocalTime startAt, int minutes) {
-        Trip trip = new Trip("trip-1", "Toronto", WEDNESDAY,
+        final Trip trip = new Trip("trip-1", "Toronto", WEDNESDAY,
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING);
-        List<ScheduledEvent> events = new ArrayList<>();
+        final List<ScheduledEvent> events = new ArrayList<>();
         events.add(new ScheduledEvent("event-museum", discovered, startAt,
                 startAt.plusMinutes(minutes), EventType.ACTIVITY, ""));
         trip.replaceSchedule(events);
 
-        InMemoryTripRepository trips = new InMemoryTripRepository();
+        final InMemoryTripRepository trips = new InMemoryTripRepository();
         trips.save(trip);
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
-        AutoScheduleInteractor interactor = new AutoScheduleInteractor(trips,
+        final AutoScheduleInteractor interactor = new AutoScheduleInteractor(trips,
                 new DistanceServiceTravelTimeEstimator(new MockDistanceService()),
                 anyTrip -> WeatherContext.unavailable(),
                 new AutoSchedulePresenter(viewModel),
@@ -145,10 +147,10 @@ class OpeningHoursProductionWiringTest {
     @Test
     void hoursFromTheProviderReachTheScheduleAndMoveTheVisit() throws Exception {
         // Open 13:00-18:00; the traveller left it at 17:00 with nothing else in the day.
-        DayPlanState state = schedule(discover("Mo-Fr 13:00-18:00"), LocalTime.of(17, 0), 60);
+        final DayPlanState state = schedule(discover("Mo-Fr 13:00-18:00"), LocalTime.of(17, 0), 60);
 
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(), state.getMessage());
-        PreviewRowView museum = rowFor(state, "City Museum");
+        final PreviewRowView museum = rowFor(state, "City Museum");
         assertNotNull(museum, state.getPreviewRows().toString());
         assertEquals(LocalTime.of(13, 0), museum.getStart(),
                 "the day is free from 9am, so the earliest lawful start is the moment the "
@@ -161,10 +163,10 @@ class OpeningHoursProductionWiringTest {
         // Two shifts. A two-hour visit cannot fit the first, so it must land in the second.
         // Flattened, this reads as 10:00-19:00, so the entity is happy to hold a visit that
         // runs straight through the closure. The scheduler must not be.
-        DayPlanState state = schedule(discover("We 10:00-11:30,15:00-19:00"),
+        final DayPlanState state = schedule(discover("We 10:00-11:30,15:00-19:00"),
                 LocalTime.of(10, 30), 120);
 
-        PreviewRowView museum = rowFor(state, "City Museum");
+        final PreviewRowView museum = rowFor(state, "City Museum");
         assertNotNull(museum, state.getMessage());
         assertEquals(LocalTime.of(15, 0), museum.getStart(),
                 "a two-hour visit does not fit the 90-minute morning shift, and the gap "
@@ -174,7 +176,7 @@ class OpeningHoursProductionWiringTest {
     @Test
     void aVenueClosedOnTheTripDateIsRefusedByName() throws Exception {
         // Saturdays only, and the trip is a Wednesday.
-        DayPlanState state = schedule(discover("Sa 10:00-16:00"), LocalTime.of(10, 0), 60);
+        final DayPlanState state = schedule(discover("Sa 10:00-16:00"), LocalTime.of(10, 0), 60);
 
         assertEquals(AutoScheduleStatus.CONFLICT, state.getStatus(), state.getMessage());
         assertTrue(state.getMessage().contains("City Museum"), state.getMessage());
@@ -182,7 +184,7 @@ class OpeningHoursProductionWiringTest {
 
     @Test
     void aPlaceWithNoHoursTagIsStillScheduledAndSaysNothingAboutIt() throws Exception {
-        DayPlanState state = schedule(discover(null), LocalTime.of(10, 0), 60);
+        final DayPlanState state = schedule(discover(null), LocalTime.of(10, 0), 60);
 
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(), state.getMessage());
         assertNotNull(rowFor(state, "City Museum"),
@@ -194,7 +196,7 @@ class OpeningHoursProductionWiringTest {
 
     @Test
     void anUnreadableTagIsTreatedAsNoTagRatherThanAsAClosedDoor() throws Exception {
-        DayPlanState state = schedule(discover("Mo-Su sunrise-sunset"),
+        final DayPlanState state = schedule(discover("Mo-Su sunrise-sunset"),
                 LocalTime.of(10, 0), 60);
 
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(), state.getMessage());
@@ -210,13 +212,13 @@ class OpeningHoursProductionWiringTest {
      */
     @Test
     void theScheduleBelievesTheWeekdayRatherThanTheFlattenedWeek() throws Exception {
-        Activity discovered = discover("Mo-Fr 09:00-17:00; Sa-Su 11:00-23:00");
+        final Activity discovered = discover("Mo-Fr 09:00-17:00; Sa-Su 11:00-23:00");
         assertEquals(LocalTime.of(23, 0), discovered.getClosingTime(),
                 "precondition: the flattened window really does say 23:00");
 
-        DayPlanState state = schedule(discovered, LocalTime.of(19, 0), 120);
+        final DayPlanState state = schedule(discovered, LocalTime.of(19, 0), 120);
 
-        PreviewRowView museum = rowFor(state, "City Museum");
+        final PreviewRowView museum = rowFor(state, "City Museum");
         assertNotNull(museum, state.getMessage());
         assertFalse(museum.getEnd().isAfter(LocalTime.of(17, 0)),
                 "Wednesday closing is 17:00; the flattened 23:00 must not be believed, but "

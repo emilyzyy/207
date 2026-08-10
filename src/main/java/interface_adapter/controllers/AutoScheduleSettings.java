@@ -1,10 +1,11 @@
 package interface_adapter.controllers;
 
-import entity.valueobjects.TransportationMode;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import entity.valueobjects.TransportationMode;
 
 /**
  * What the settings dialog collected, as plain values.
@@ -28,7 +29,11 @@ public final class AutoScheduleSettings {
     private final boolean preserveMealtimes;
     private final boolean preferDaylight;
 
-    /** Everything the schedule normally weighs, with only the two usual choices given. */
+    /**
+     * Everything the schedule normally weighs, with only the two usual choices given.
+     * @param availableEnd the a va il ab le en d value
+     * @param availableStart the a va il ab le st ar t value
+     */
     public AutoScheduleSettings(LocalTime availableStart, LocalTime availableEnd,
                                 List<Window> unavailableWindows, boolean keepCurrentOrder,
                                 boolean considerWeather) {
@@ -66,8 +71,11 @@ public final class AutoScheduleSettings {
     public List<Window> getUnavailableWindows() {
         return unavailableWindows;
     }
+    /**
+     * How the traveller is getting around, possibly {@link TransportationMode#FASTEST}.
+     * @return the result of the operation
+     */
 
-    /** How the traveller is getting around, possibly {@link TransportationMode#FASTEST}. */
     public TransportationMode getTransportationMode() {
         return transportationMode;
     }
@@ -91,16 +99,17 @@ public final class AutoScheduleSettings {
     public boolean isKeepCurrentOrder() {
         return keepCurrentOrder;
     }
-
     /**
      * Whether the traveller turned on "Avoid bad weather". False whenever the switch was
      * disabled, since a disabled box is never ticked.
+      * @return the result of the operation
      */
+
     public boolean isConsiderWeather() {
         return considerWeather;
     }
-
     /** A stretch of the day the traveller is not available for anything. */
+
     public static final class Window {
         private final LocalTime start;
         private final LocalTime end;

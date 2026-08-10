@@ -3,6 +3,15 @@ package use_case.usecases;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import app.AppBuilder;
 import app.AppContainer;
 import entity.entities.Activity;
@@ -10,13 +19,6 @@ import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
 import entity.valueobjects.EventType;
 import entity.valueobjects.TransportationMode;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 
 /**
  * Travel blocks are derived from one particular arrangement of activities, so they must not
@@ -44,16 +46,16 @@ class DerivedTravelLifecycleTest {
 
     /** The shape the Day Plan is in immediately after an Autoschedule Apply. */
     private Trip withGeneratedTravel(Trip source) {
-        List<ScheduledEvent> acts = new ArrayList<>();
+        final List<ScheduledEvent> acts = new ArrayList<>();
         for (ScheduledEvent event : source.getScheduledEvents()) {
             if (event.getEventType() == EventType.ACTIVITY) {
                 acts.add(event);
             }
         }
-        List<ScheduledEvent> combined = new ArrayList<>();
+        final List<ScheduledEvent> combined = new ArrayList<>();
         for (int i = 0; i < acts.size(); i++) {
             if (i > 0) {
-                ScheduledEvent previous = acts.get(i - 1);
+                final ScheduledEvent previous = acts.get(i - 1);
                 // The identifier Autoschedule actually materialises: travel-<destination>,
                 // which is what makes "the leg into D" findable later.
                 combined.add(new ScheduledEvent("travel-" + acts.get(i).getId(), null,
@@ -72,7 +74,7 @@ class DerivedTravelLifecycleTest {
         app = new AppBuilder().buildOffline();
         trip = app.trips.save(new Trip("t", "Toronto", LocalDate.of(2026, 8, 12),
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING));
-        List<Activity> pool = app.activities.findAll();
+        final List<Activity> pool = app.activities.findAll();
         for (int i = 0; i < 3; i++) {
             trip = app.addActivityToPlan.execute("t", pool.get(i).getId(),
                     LocalTime.of(9 + i * 3, 0), LocalTime.of(10 + i * 3, 0));
@@ -91,7 +93,7 @@ class DerivedTravelLifecycleTest {
     /** Removing the first activity takes its outgoing leg and leaves the rest alone. */
     @Test
     void removingTheFirstActivityDropsOnlyItsOwnLeg() {
-        Trip after = app.removeEvent.execute("t", activities.get(0).getId());
+        final Trip after = app.removeEvent.execute("t", activities.get(0).getId());
 
         assertEquals(2, countOf(after, EventType.ACTIVITY));
         assertNoOrphanedTravel(after);
@@ -102,7 +104,7 @@ class DerivedTravelLifecycleTest {
     /** The reported case: the pair either side of the gap is joined again. */
     @Test
     void removingAMiddleActivityReplacesItsTwoLegsWithOne() {
-        Trip after = app.removeEvent.execute("t", activities.get(1).getId());
+        final Trip after = app.removeEvent.execute("t", activities.get(1).getId());
 
         assertEquals(2, countOf(after, EventType.ACTIVITY));
         assertNoOrphanedTravel(after);
@@ -113,7 +115,7 @@ class DerivedTravelLifecycleTest {
 
     @Test
     void removingTheFinalActivityDropsOnlyItsIncomingLeg() {
-        Trip after = app.removeEvent.execute("t", activities.get(2).getId());
+        final Trip after = app.removeEvent.execute("t", activities.get(2).getId());
 
         assertEquals(2, countOf(after, EventType.ACTIVITY));
         assertNoOrphanedTravel(after);
@@ -123,7 +125,7 @@ class DerivedTravelLifecycleTest {
     @Test
     void removingTwoConsecutiveActivitiesLeavesOneActivityAndNoTravel() {
         app.removeEvent.execute("t", activities.get(0).getId());
-        Trip after = app.removeEvent.execute("t", activities.get(1).getId());
+        final Trip after = app.removeEvent.execute("t", activities.get(1).getId());
 
         assertEquals(1, countOf(after, EventType.ACTIVITY));
         assertEquals(0, countOf(after, EventType.TRAVEL),
@@ -133,18 +135,18 @@ class DerivedTravelLifecycleTest {
 
     /** No journey may name a destination that is no longer in the day. */
     private static void assertNoOrphanedTravel(Trip trip) {
-        java.util.Set<String> present = new java.util.HashSet<>();
+        final java.util.Set<String> present = new java.util.HashSet<>();
         for (ScheduledEvent event : trip.getScheduledEvents()) {
             if (event.getEventType() == EventType.ACTIVITY) {
                 present.add(event.getId());
             }
         }
-        java.util.Set<String> destinations = new java.util.HashSet<>();
+        final java.util.Set<String> destinations = new java.util.HashSet<>();
         for (ScheduledEvent event : trip.getScheduledEvents()) {
             if (event.getEventType() != EventType.TRAVEL) {
                 continue;
             }
-            String destination = event.getId().replaceFirst("^travel-", "");
+            final String destination = event.getId().replaceFirst("^travel-", "");
             assertTrue(present.contains(destination),
                     "travel to a removed activity: " + event.getId() + describe(trip));
             assertTrue(destinations.add(destination),
@@ -153,7 +155,7 @@ class DerivedTravelLifecycleTest {
     }
 
     private static String describe(Trip trip) {
-        StringBuilder text = new StringBuilder("\n");
+        final StringBuilder text = new StringBuilder("\n");
         for (ScheduledEvent event : trip.getScheduledEvents()) {
             text.append("  ").append(event.getEventType()).append(' ')
                     .append(event.getStartTime()).append('-').append(event.getEndTime())
@@ -168,7 +170,7 @@ class DerivedTravelLifecycleTest {
         for (ScheduledEvent activity : activities) {
             app.removeEvent.execute("t", activity.getId());
         }
-        Trip after = app.trips.findById("t").orElseThrow();
+        final Trip after = app.trips.findById("t").orElseThrow();
 
         assertEquals(0, countOf(after, EventType.ACTIVITY));
         assertEquals(0, countOf(after, EventType.TRAVEL),
@@ -178,7 +180,7 @@ class DerivedTravelLifecycleTest {
 
     @Test
     void addingAnActivityByHandDropsTheStaleJourneys() {
-        Trip after = app.addActivityToPlan.execute("t",
+        final Trip after = app.addActivityToPlan.execute("t",
                 app.activities.findAll().get(3).getId(),
                 LocalTime.of(18, 0), LocalTime.of(19, 0));
 
@@ -189,7 +191,7 @@ class DerivedTravelLifecycleTest {
 
     @Test
     void retimingAnActivityByHandDropsTheStaleJourneys() {
-        Trip after = app.editEvent.execute("t", activities.get(1).getId(),
+        final Trip after = app.editEvent.execute("t", activities.get(1).getId(),
                 LocalTime.of(16, 0), LocalTime.of(17, 0), "moved by hand");
 
         assertEquals(3, countOf(after, EventType.ACTIVITY), "no activity is lost");
@@ -201,10 +203,10 @@ class DerivedTravelLifecycleTest {
 
     @Test
     void everyRemainingActivityKeepsItsIdentityAndDuration() {
-        Trip after = app.removeEvent.execute("t", activities.get(1).getId());
+        final Trip after = app.removeEvent.execute("t", activities.get(1).getId());
 
         for (ScheduledEvent original : List.of(activities.get(0), activities.get(2))) {
-            ScheduledEvent kept = after.findEvent(original.getId());
+            final ScheduledEvent kept = after.findEvent(original.getId());
             assertEquals(original.getStartTime(), kept.getStartTime());
             assertEquals(original.getEndTime(), kept.getEndTime());
             assertEquals(original.getActivity().getId(), kept.getActivity().getId());

@@ -11,15 +11,28 @@ public final class Location {
         this.address = address;
     }
 
-    public double getLatitude() { return latitude; }
-    public double getLongitude() { return longitude; }
-    public String getAddress() { return address; }
+    public double getLatitude() {
+        return latitude;
+    }
 
+    public double getLongitude() {
+        return longitude;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    /**
+     * Performs the c al cu la te di st an ce to operation.
+     * @param other the o th er value
+     * @return the result of the operation
+     */
     public double calculateDistanceTo(Location other) {
         final double earthRadiusKm = 6371.0;
-        double lat = Math.toRadians(other.latitude - latitude);
-        double lon = Math.toRadians(other.longitude - longitude);
-        double a = Math.sin(lat / 2) * Math.sin(lat / 2)
+        final double lat = Math.toRadians(other.latitude - latitude);
+        final double lon = Math.toRadians(other.longitude - longitude);
+        final double a = Math.sin(lat / 2) * Math.sin(lat / 2)
                 + Math.cos(Math.toRadians(latitude)) * Math.cos(Math.toRadians(other.latitude))
                 * Math.sin(lon / 2) * Math.sin(lon / 2);
         return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));

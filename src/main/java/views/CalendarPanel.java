@@ -1,9 +1,5 @@
 package views;
 
-import interface_adapter.viewmodels.CalendarState;
-import interface_adapter.viewmodels.CalendarViewMode;
-import interface_adapter.viewmodels.CalendarViewModel;
-import entity.entities.ScheduledEvent;
 import java.awt.BorderLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
@@ -14,6 +10,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Locale;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -22,6 +19,11 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+
+import entity.entities.ScheduledEvent;
+import interface_adapter.viewmodels.CalendarState;
+import interface_adapter.viewmodels.CalendarViewMode;
+import interface_adapter.viewmodels.CalendarViewModel;
 
 /** Interactive Day/Week/Month calendar backed by the active trip's shared state. */
 public final class CalendarPanel extends JPanel {
@@ -64,10 +66,10 @@ public final class CalendarPanel extends JPanel {
     }
 
     private JPanel toolbar() {
-        JPanel toolbar = new JPanel(new BorderLayout(12, 10));
+        final JPanel toolbar = new JPanel(new BorderLayout(12, 10));
         toolbar.setOpaque(false);
 
-        JPanel heading = new JPanel();
+        final JPanel heading = new JPanel();
         heading.setOpaque(false);
         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
         title.setName("calendar-title");
@@ -80,21 +82,21 @@ public final class CalendarPanel extends JPanel {
         heading.add(context);
         toolbar.add(heading, BorderLayout.CENTER);
 
-        JPanel navigation = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 6, 0));
+        final JPanel navigation = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 6, 0));
         navigation.setOpaque(false);
-        JButton previous = new JButton("‹");
+        final JButton previous = new JButton("‹");
         previous.setName("calendar-previous");
         previous.setToolTipText("Previous period");
         previous.addActionListener(event -> viewModel.previousPeriod());
         navigation.add(previous);
-        JButton today = new JButton("Today");
+        final JButton today = new JButton("Today");
         today.setName("calendar-today");
         today.addActionListener(event -> viewModel.goToToday());
         navigation.add(today);
         tripDateButton.setName("calendar-trip-date");
         tripDateButton.addActionListener(event -> viewModel.goToTripDate());
         navigation.add(tripDateButton);
-        JButton next = new JButton("›");
+        final JButton next = new JButton("›");
         next.setName("calendar-next");
         next.setToolTipText("Next period");
         next.addActionListener(event -> viewModel.nextPeriod());
@@ -141,8 +143,8 @@ public final class CalendarPanel extends JPanel {
             return DAY_TITLE.format(state.getFocusDate());
         }
         if (state.getViewMode() == CalendarViewMode.WEEK) {
-            LocalDate start = weekStart(state.getFocusDate());
-            LocalDate end = start.plusDays(6);
+            final LocalDate start = weekStart(state.getFocusDate());
+            final LocalDate end = start.plusDays(6);
             return start.format(DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH))
                     + " – " + end.format(DateTimeFormatter.ofPattern(
                             "MMM d, yyyy", Locale.ENGLISH));
@@ -154,7 +156,7 @@ public final class CalendarPanel extends JPanel {
         if (state.getTripDate() == null) {
             return "Create a trip to place it on the calendar.";
         }
-        String destination = state.getDestination().isEmpty()
+        final String destination = state.getDestination().isEmpty()
                 ? "Active trip" : state.getDestination();
         return destination + " · " + dateRange(state.getTripDates())
                 + " · Day " + (state.getActiveDayIndex() + 1) + " of "
@@ -169,41 +171,43 @@ public final class CalendarPanel extends JPanel {
         if (dates.size() == 1) {
             return DAY_TITLE.format(dates.get(0));
         }
-        DateTimeFormatter shortMonth =
+        final DateTimeFormatter shortMonth =
                 DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
         return dates.get(0).format(shortMonth) + " – "
                 + dates.get(dates.size() - 1).format(shortMonth);
     }
 
     private JPanel dayView(CalendarState state) {
-        JPanel timeline = verticalPanel();
+        final JPanel timeline = verticalPanel();
         timeline.setBorder(BorderFactory.createEmptyBorder(4, 2, 12, 2));
         if (!state.isTripDate(state.getFocusDate())) {
             timeline.add(emptyLabel("No Trippy trip is scheduled for this date."));
-        } else if (state.getEvents().isEmpty()) {
+        }
+        else if (state.getEvents().isEmpty()) {
             timeline.add(emptyLabel("This trip has no scheduled activities yet."));
-        } else {
+        }
+        else {
             for (ScheduledEvent event : state.getEvents()) {
                 timeline.add(eventCard(event));
                 timeline.add(Box.createVerticalStrut(9));
             }
         }
-        JScrollPane scroll = new JScrollPane(timeline);
+        final JScrollPane scroll = new JScrollPane(timeline);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(14);
-        JPanel wrapper = new JPanel(new BorderLayout());
+        final JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
         wrapper.add(scroll, BorderLayout.CENTER);
         return wrapper;
     }
 
     private JPanel weekView(CalendarState state) {
-        JPanel week = new JPanel(new GridLayout(1, 7, 7, 0));
+        final JPanel week = new JPanel(new GridLayout(1, 7, 7, 0));
         week.setOpaque(false);
-        LocalDate start = weekStart(state.getFocusDate());
+        final LocalDate start = weekStart(state.getFocusDate());
         for (int offset = 0; offset < 7; offset++) {
-            LocalDate date = start.plusDays(offset);
-            JPanel day = verticalPanel();
+            final LocalDate date = start.plusDays(offset);
+            final JPanel day = verticalPanel();
             day.setBackground(state.isTripDate(date)
                     ? SwingTheme.BLUE_SOFT : SwingTheme.PANEL);
             day.setBorder(date.equals(state.getFocusDate())
@@ -219,31 +223,33 @@ public final class CalendarPanel extends JPanel {
                             BorderFactory.createLineBorder(SwingTheme.BLUE),
                             BorderFactory.createEmptyBorder(10, 10, 10, 10))
                     : SwingTheme.cardBorder());
-            JButton dayButton = new JButton(SHORT_DAY.format(date));
+            final JButton dayButton = new JButton(SHORT_DAY.format(date));
             dayButton.setName("calendar-day-" + date);
             dayButton.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
             dayButton.addActionListener(event -> viewModel.selectDate(date));
             day.add(dayButton);
             day.add(Box.createVerticalStrut(8));
             if (state.isTripDate(date)) {
-                JLabel destination = new JLabel(dayHeading(state, date));
+                final JLabel destination = new JLabel(dayHeading(state, date));
                 destination.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
                 destination.setForeground(SwingTheme.BLUE);
                 day.add(destination);
                 if (state.isActiveTripDate(date)) {
                     for (ScheduledEvent event : state.getEvents()) {
                         day.add(Box.createVerticalStrut(6));
-                        JLabel eventLabel = new JLabel("<html>" + TIME.format(event.getStartTime())
+                        final JLabel eventLabel = new JLabel("<html>" + TIME.format(event.getStartTime())
                                 + "<br><b>" + escapeHtml(eventName(event)) + "</b></html>");
                         eventLabel.setFont(SwingTheme.SMALL);
                         eventLabel.setForeground(SwingTheme.NAVY);
                         day.add(eventLabel);
                     }
-                } else {
+                }
+                else {
                     day.add(Box.createVerticalStrut(4));
                     day.add(emptyLabel("Other trip day"));
                 }
-            } else {
+            }
+            else {
                 day.add(emptyLabel("No trip"));
             }
             week.add(day);
@@ -252,7 +258,7 @@ public final class CalendarPanel extends JPanel {
     }
 
     private String dayHeading(CalendarState state, LocalDate date) {
-        int dayIndex = state.getTripDates().indexOf(date);
+        final int dayIndex = state.getTripDates().indexOf(date);
         String label = "Day " + (dayIndex + 1);
         if (state.isActiveTripDate(date)) {
             label = "● " + label;
@@ -264,20 +270,20 @@ public final class CalendarPanel extends JPanel {
     }
 
     private JPanel monthView(CalendarState state) {
-        JPanel month = new JPanel(new GridLayout(7, 7, 6, 6));
+        final JPanel month = new JPanel(new GridLayout(7, 7, 6, 6));
         month.setOpaque(false);
         for (DayOfWeek day : DayOfWeek.values()) {
-            JLabel label = new JLabel(day.toString().substring(0, 3), JLabel.CENTER);
+            final JLabel label = new JLabel(day.toString().substring(0, 3), JLabel.CENTER);
             label.setFont(SwingTheme.SMALL.deriveFont(Font.BOLD));
             label.setForeground(SwingTheme.MUTED);
             month.add(label);
         }
-        YearMonth displayedMonth = YearMonth.from(state.getFocusDate());
-        LocalDate gridDate = displayedMonth.atDay(1)
+        final YearMonth displayedMonth = YearMonth.from(state.getFocusDate());
+        final LocalDate gridDate = displayedMonth.atDay(1)
                 .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         for (int index = 0; index < 42; index++) {
-            LocalDate date = gridDate.plusDays(index);
-            JButton day = new JButton(monthCellText(state, date));
+            final LocalDate date = gridDate.plusDays(index);
+            final JButton day = new JButton(monthCellText(state, date));
             day.setName("calendar-day-" + date);
             day.setToolTipText(DAY_TITLE.format(date));
             day.setFont(SwingTheme.SMALL);
@@ -301,11 +307,11 @@ public final class CalendarPanel extends JPanel {
     }
 
     private String monthCellText(CalendarState state, LocalDate date) {
-        StringBuilder text = new StringBuilder("<html><b>")
+        final StringBuilder text = new StringBuilder("<html><b>")
                 .append(date.getDayOfMonth()).append("</b>");
         if (state.isTripDate(date)) {
-            int dayIndex = state.getTripDates().indexOf(date);
-            String marker = state.isActiveTripDate(date) ? "● " : "";
+            final int dayIndex = state.getTripDates().indexOf(date);
+            final String marker = state.isActiveTripDate(date) ? "● " : "";
             text.append("<br><font color='#1f68e1'>").append(marker)
                     .append(escapeHtml(state.getDestination().isEmpty()
                             ? "Trip" : state.getDestination()))
@@ -325,13 +331,13 @@ public final class CalendarPanel extends JPanel {
     }
 
     private JPanel eventCard(ScheduledEvent event) {
-        JPanel card = new JPanel(new BorderLayout(14, 4));
+        final JPanel card = new JPanel(new BorderLayout(14, 4));
         SwingTheme.styleCard(card);
         if (event.getActivity() != null) {
             card.setBackground(SwingTheme.categorySurface(
                     event.getActivity().getCategory()));
         }
-        JLabel time = new JLabel(TIME.format(event.getStartTime())
+        final JLabel time = new JLabel(TIME.format(event.getStartTime())
                 + " – " + TIME.format(event.getEndTime()));
         time.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         time.setForeground(SwingTheme.BLUE);
@@ -341,7 +347,7 @@ public final class CalendarPanel extends JPanel {
             eventName = ActivityCategoryPresentation.decorate(
                     event.getActivity().getCategory(), eventName);
         }
-        JLabel name = new JLabel(eventName);
+        final JLabel name = new JLabel(eventName);
         name.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         name.setForeground(SwingTheme.NAVY);
         card.add(name, BorderLayout.CENTER);
@@ -357,14 +363,14 @@ public final class CalendarPanel extends JPanel {
     }
 
     private JLabel emptyLabel(String text) {
-        JLabel label = new JLabel(text);
+        final JLabel label = new JLabel(text);
         label.setFont(SwingTheme.SMALL);
         label.setForeground(SwingTheme.MUTED);
         return label;
     }
 
     private JPanel verticalPanel() {
-        JPanel panel = new JPanel();
+        final JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(SwingTheme.PANEL);
         return panel;

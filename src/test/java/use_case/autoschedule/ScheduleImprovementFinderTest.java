@@ -1,14 +1,19 @@
 package use_case.autoschedule;
 
-import static use_case.autoschedule.ProblemFixtures.at;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static use_case.autoschedule.ProblemFixtures.at;
 
-import use_case.autoschedule.policy.DaylightPolicy;
-import use_case.autoschedule.policy.MealWindowPolicy;
-import use_case.autoschedule.policy.SoftPolicy;
-import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
+import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.valueobjects.ActivityCategory;
@@ -16,13 +21,10 @@ import entity.valueobjects.EventType;
 import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
 import entity.valueobjects.WeatherSeverity;
-import java.time.LocalTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import org.junit.jupiter.api.Test;
+import use_case.autoschedule.policy.DaylightPolicy;
+import use_case.autoschedule.policy.MealWindowPolicy;
+import use_case.autoschedule.policy.SoftPolicy;
+import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
 
 /**
  * The rule that keeps the improvement cards honest: an improvement is a <em>change</em>.
@@ -46,7 +48,7 @@ class ScheduleImprovementFinderTest {
 
     private static ScheduledEvent original(String id, ActivityCategory category,
                                            IndoorOutdoorType exposure, int startHour) {
-        Activity activity = activityOf(id, category, exposure);
+        final Activity activity = activityOf(id, category, exposure);
         return new ScheduledEvent(id, activity, at(startHour, 0), at(startHour + 1, 0),
                 EventType.ACTIVITY, "");
     }
@@ -54,12 +56,12 @@ class ScheduleImprovementFinderTest {
     private static SchedulePlan planWith(String id, ActivityCategory category,
                                          IndoorOutdoorType exposure, int startHour,
                                          boolean locked) {
-        Activity activity = activityOf(id, category, exposure);
-        ScheduleTask task = locked
+        final Activity activity = activityOf(id, category, exposure);
+        final ScheduleTask task = locked
                 ? new ScheduleTask(id, activity, 60, 0,
                         new TimeWindow(at(startHour, 0), at(startHour + 1, 0)))
                 : ScheduleTask.movable(id, activity, 60, 0);
-        PlacedActivity placed = PlacedActivity.first(task, at(startHour, 0),
+        final PlacedActivity placed = PlacedActivity.first(task, at(startHour, 0),
                 at(startHour + 1, 0), 0, 0);
         return new SchedulePlan(Collections.singletonList(placed),
                 new ScheduleScore(0, 0, 0, 0, ""));
@@ -71,7 +73,7 @@ class ScheduleImprovementFinderTest {
 
     private static Map<Integer, WeatherSeverity> forecast(WeatherSeverity morning,
                                                           WeatherSeverity evening) {
-        Map<Integer, WeatherSeverity> byHour = new HashMap<>();
+        final Map<Integer, WeatherSeverity> byHour = new HashMap<>();
         for (int hour = 0; hour < 24; hour++) {
             byHour.put(hour, hour >= 18 ? evening : morning);
         }
@@ -92,17 +94,17 @@ class ScheduleImprovementFinderTest {
 
     @Test
     void waitingAndTravelAreReportedOnlyWhenTheyActuallyFell() {
-        SchedulePlan plan = planWith("a", ActivityCategory.MUSEUM,
+        final SchedulePlan plan = planWith("a", ActivityCategory.MUSEUM,
                 IndoorOutdoorType.INDOOR, 10, false);
-        List<ScheduledEvent> before = Collections.singletonList(
+        final List<ScheduledEvent> before = Collections.singletonList(
                 original("a", ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR, 10));
 
-        List<ScheduleImprovement> improved = finder.find(before, plan,
+        final List<ScheduleImprovement> improved = finder.find(before, plan,
                 preferences(WeatherContext.unavailable()), metrics(120, 200), 100, 50);
         assertEquals(150, find(improved, ScheduleImprovementType.WAITING_REDUCED).getAmount());
         assertEquals(20, find(improved, ScheduleImprovementType.TRAVEL_REDUCED).getAmount());
 
-        List<ScheduleImprovement> worse = finder.find(before, plan,
+        final List<ScheduleImprovement> worse = finder.find(before, plan,
                 preferences(WeatherContext.unavailable()), metrics(100, 50), 120, 200);
         assertFalse(has(worse, ScheduleImprovementType.WAITING_REDUCED),
                 "waiting grew, so there is nothing to celebrate");
@@ -126,7 +128,7 @@ class ScheduleImprovementFinderTest {
         }
 
         ScheduleMetrics asMetrics() {
-            List<ScheduledEvent> events = Arrays.asList(
+            final List<ScheduledEvent> events = Arrays.asList(
                     new ScheduledEvent("t", null, at(0, 0), at(0, 0).plusMinutes(travel),
                             EventType.TRAVEL, "travel"),
                     new ScheduledEvent("x", activityOf("x", ActivityCategory.MUSEUM,
@@ -142,15 +144,15 @@ class ScheduleImprovementFinderTest {
 
     @Test
     void anOutdoorActivityMovedFromDarknessIntoDaylightIsAnImprovement() {
-        List<ScheduledEvent> before = Collections.singletonList(
+        final List<ScheduledEvent> before = Collections.singletonList(
                 original("park", ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR, 21));
-        SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
+        final SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
                 IndoorOutdoorType.OUTDOOR, 13, false);
 
-        List<ScheduleImprovement> improvements = finder.find(before, after,
+        final List<ScheduleImprovement> improvements = finder.find(before, after,
                 preferences(WeatherContext.unavailable()), null, 0, 0);
 
-        ScheduleImprovement daylight = find(improvements,
+        final ScheduleImprovement daylight = find(improvements,
                 ScheduleImprovementType.MOVED_INTO_DAYLIGHT);
         assertTrue(daylight != null, "9pm to 1pm is a real daylight gain: " + improvements);
         assertEquals("park", daylight.getSubject(), "the card names the activity it is about");
@@ -158,12 +160,12 @@ class ScheduleImprovementFinderTest {
 
     @Test
     void anActivityAlreadyInDaylightEarnsNoDaylightCard() {
-        List<ScheduledEvent> before = Collections.singletonList(
+        final List<ScheduledEvent> before = Collections.singletonList(
                 original("park", ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR, 11));
-        SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
+        final SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
                 IndoorOutdoorType.OUTDOOR, 14, false);
 
-        List<ScheduleImprovement> improvements = finder.find(before, after,
+        final List<ScheduleImprovement> improvements = finder.find(before, after,
                 preferences(WeatherContext.unavailable()), null, 0, 0);
 
         assertFalse(has(improvements, ScheduleImprovementType.MOVED_INTO_DAYLIGHT),
@@ -172,12 +174,12 @@ class ScheduleImprovementFinderTest {
 
     @Test
     void anActivityPushedOutOfDaylightEarnsNoCard() {
-        List<ScheduledEvent> before = Collections.singletonList(
+        final List<ScheduledEvent> before = Collections.singletonList(
                 original("park", ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR, 13));
-        SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
+        final SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
                 IndoorOutdoorType.OUTDOOR, 21, false);
 
-        List<ScheduleImprovement> improvements = finder.find(before, after,
+        final List<ScheduleImprovement> improvements = finder.find(before, after,
                 preferences(WeatherContext.unavailable()), null, 0, 0);
 
         assertFalse(has(improvements, ScheduleImprovementType.MOVED_INTO_DAYLIGHT),
@@ -188,14 +190,14 @@ class ScheduleImprovementFinderTest {
 
     @Test
     void anOutdoorActivityMovedIntoMilderWeatherIsAnImprovement() {
-        WeatherContext hourly = WeatherContext.hourly(
+        final WeatherContext hourly = WeatherContext.hourly(
                 forecast(WeatherSeverity.LOW, WeatherSeverity.HIGH));
-        List<ScheduledEvent> before = Collections.singletonList(
+        final List<ScheduledEvent> before = Collections.singletonList(
                 original("park", ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR, 19));
-        SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
+        final SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
                 IndoorOutdoorType.OUTDOOR, 13, false);
 
-        List<ScheduleImprovement> improvements =
+        final List<ScheduleImprovement> improvements =
                 finder.find(before, after, preferences(hourly), null, 0, 0);
 
         assertTrue(has(improvements, ScheduleImprovementType.MOVED_TO_BETTER_WEATHER),
@@ -204,14 +206,14 @@ class ScheduleImprovementFinderTest {
 
     @Test
     void anUnchangedForecastEarnsNoWeatherCard() {
-        WeatherContext flat = WeatherContext.hourly(
+        final WeatherContext flat = WeatherContext.hourly(
                 forecast(WeatherSeverity.LOW, WeatherSeverity.LOW));
-        List<ScheduledEvent> before = Collections.singletonList(
+        final List<ScheduledEvent> before = Collections.singletonList(
                 original("park", ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR, 19));
-        SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
+        final SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
                 IndoorOutdoorType.OUTDOOR, 13, false);
 
-        List<ScheduleImprovement> improvements =
+        final List<ScheduleImprovement> improvements =
                 finder.find(before, after, preferences(flat), null, 0, 0);
 
         assertFalse(has(improvements, ScheduleImprovementType.MOVED_TO_BETTER_WEATHER),
@@ -220,12 +222,12 @@ class ScheduleImprovementFinderTest {
 
     @Test
     void aWholeDayForecastCannotProduceAWeatherCard() {
-        List<ScheduledEvent> before = Collections.singletonList(
+        final List<ScheduledEvent> before = Collections.singletonList(
                 original("park", ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR, 19));
-        SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
+        final SchedulePlan after = planWith("park", ActivityCategory.PARKS_NATURE,
                 IndoorOutdoorType.OUTDOOR, 13, false);
 
-        List<ScheduleImprovement> improvements = finder.find(before, after,
+        final List<ScheduleImprovement> improvements = finder.find(before, after,
                 preferences(WeatherContext.tripLevel(WeatherSeverity.HIGH)), null, 0, 0);
 
         assertFalse(has(improvements, ScheduleImprovementType.MOVED_TO_BETTER_WEATHER),
@@ -236,15 +238,15 @@ class ScheduleImprovementFinderTest {
 
     @Test
     void aMealMovedTowardItsWindowIsAnImprovementAndNamesTheActivity() {
-        List<ScheduledEvent> before = Collections.singletonList(
+        final List<ScheduledEvent> before = Collections.singletonList(
                 original("lunch", ActivityCategory.FOOD, IndoorOutdoorType.INDOOR, 16));
-        SchedulePlan after = planWith("lunch", ActivityCategory.FOOD,
+        final SchedulePlan after = planWith("lunch", ActivityCategory.FOOD,
                 IndoorOutdoorType.INDOOR, 12, false);
 
-        List<ScheduleImprovement> improvements = finder.find(before, after,
+        final List<ScheduleImprovement> improvements = finder.find(before, after,
                 preferences(WeatherContext.unavailable()), null, 0, 0);
 
-        ScheduleImprovement meal = find(improvements,
+        final ScheduleImprovement meal = find(improvements,
                 ScheduleImprovementType.MEAL_MOVED_TOWARD_WINDOW);
         assertTrue(meal != null, "4pm to noon is a real meal improvement: " + improvements);
         assertEquals("lunch", meal.getSubject());
@@ -252,9 +254,9 @@ class ScheduleImprovementFinderTest {
 
     @Test
     void aMealAlreadyInItsWindowEarnsNoCard() {
-        List<ScheduledEvent> before = Collections.singletonList(
+        final List<ScheduledEvent> before = Collections.singletonList(
                 original("lunch", ActivityCategory.FOOD, IndoorOutdoorType.INDOOR, 12));
-        SchedulePlan after = planWith("lunch", ActivityCategory.FOOD,
+        final SchedulePlan after = planWith("lunch", ActivityCategory.FOOD,
                 IndoorOutdoorType.INDOOR, 12, false);
 
         assertFalse(has(finder.find(before, after, preferences(WeatherContext.unavailable()),
@@ -265,16 +267,16 @@ class ScheduleImprovementFinderTest {
 
     @Test
     void aPinHonouredIsAnImprovementAndAPinIsNotClaimedWhenTheTimeChanged() {
-        List<ScheduledEvent> before = Collections.singletonList(
+        final List<ScheduledEvent> before = Collections.singletonList(
                 original("museum", ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR, 11));
 
-        List<ScheduleImprovement> kept = finder.find(before,
+        final List<ScheduleImprovement> kept = finder.find(before,
                 planWith("museum", ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR, 11, true),
                 preferences(WeatherContext.unavailable()), null, 0, 0);
         assertEquals("museum",
                 find(kept, ScheduleImprovementType.LOCK_PRESERVED).getSubject());
 
-        List<ScheduleImprovement> unlocked = finder.find(before,
+        final List<ScheduleImprovement> unlocked = finder.find(before,
                 planWith("museum", ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR, 11, false),
                 preferences(WeatherContext.unavailable()), null, 0, 0);
         assertFalse(has(unlocked, ScheduleImprovementType.LOCK_PRESERVED),
@@ -285,19 +287,19 @@ class ScheduleImprovementFinderTest {
 
     @Test
     void orderPreservedComparesTheRealSequenceRatherThanThePreference() {
-        Activity first = activityOf("a", ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR);
-        Activity second = activityOf("b", ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR);
-        List<ScheduledEvent> before = Arrays.asList(
+        final Activity first = activityOf("a", ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR);
+        final Activity second = activityOf("b", ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR);
+        final List<ScheduledEvent> before = Arrays.asList(
                 new ScheduledEvent("a", first, at(9, 0), at(10, 0), EventType.ACTIVITY, ""),
                 new ScheduledEvent("b", second, at(11, 0), at(12, 0), EventType.ACTIVITY, ""));
 
-        SchedulePlan sameOrder = new SchedulePlan(Arrays.asList(
+        final SchedulePlan sameOrder = new SchedulePlan(Arrays.asList(
                 PlacedActivity.first(ScheduleTask.movable("a", first, 60, 0),
                         at(13, 0), at(14, 0), 0, 0),
                 PlacedActivity.first(ScheduleTask.movable("b", second, 60, 0),
                         at(15, 0), at(16, 0), 0, 0)),
                 new ScheduleScore(0, 0, 0, 0, ""));
-        SchedulePlan swapped = new SchedulePlan(Arrays.asList(
+        final SchedulePlan swapped = new SchedulePlan(Arrays.asList(
                 PlacedActivity.first(ScheduleTask.movable("b", second, 60, 0),
                         at(13, 0), at(14, 0), 0, 0),
                 PlacedActivity.first(ScheduleTask.movable("a", first, 60, 0),

@@ -1,10 +1,11 @@
 package interface_adapter.viewmodels;
 
-import entity.entities.ScheduledEvent;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import entity.entities.ScheduledEvent;
 
 /** Immutable calendar display state derived from the active trip and day plan. */
 public final class CalendarState {
@@ -76,10 +77,20 @@ public final class CalendarState {
         return events;
     }
 
+    /**
+     * Performs the i st ri pd at e operation.
+     * @param date the d at e value
+     * @return the result of the operation
+     */
     public boolean isTripDate(LocalDate date) {
         return date != null && tripDates.contains(date);
     }
 
+    /**
+     * Performs the i sa ct iv et ri pd at e operation.
+     * @param date the d at e value
+     * @return the result of the operation
+     */
     public boolean isActiveTripDate(LocalDate date) {
         return date != null && date.equals(getTripDate());
     }

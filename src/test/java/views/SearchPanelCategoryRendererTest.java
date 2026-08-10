@@ -1,12 +1,15 @@
 package views;
 
-import entity.valueobjects.ActivityCategory;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.awt.Component;
+
 import javax.swing.JList;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import entity.valueobjects.ActivityCategory;
 
 final class SearchPanelCategoryRendererTest {
     @AfterEach
@@ -16,9 +19,9 @@ final class SearchPanelCategoryRendererTest {
 
     @Test
     void categoryOptionsUseTheirActivityCardColours() {
-        SearchPanel.CategoryFilterRenderer renderer =
+        final SearchPanel.CategoryFilterRenderer renderer =
                 new SearchPanel.CategoryFilterRenderer();
-        JList<String> list = new JList<>();
+        final JList<String> list = new JList<>();
 
         assertSurface(renderer, list, "All categories", SwingTheme.PANEL);
         assertSurface(renderer, list, "Food",
@@ -36,9 +39,9 @@ final class SearchPanelCategoryRendererTest {
     @Test
     void categoryOptionsFollowDarkModeCardColours() {
         SwingTheme.setDarkMode(true);
-        SearchPanel.CategoryFilterRenderer renderer =
+        final SearchPanel.CategoryFilterRenderer renderer =
                 new SearchPanel.CategoryFilterRenderer();
-        JList<String> list = new JList<>();
+        final JList<String> list = new JList<>();
 
         assertSurface(renderer, list, "Historic",
                 SwingTheme.categorySurface(ActivityCategory.HISTORIC));
@@ -48,7 +51,7 @@ final class SearchPanelCategoryRendererTest {
     private void assertSurface(SearchPanel.CategoryFilterRenderer renderer,
                                JList<String> list, String value,
                                java.awt.Color expected) {
-        Component component = renderer.getListCellRendererComponent(
+        final Component component = renderer.getListCellRendererComponent(
                 list, value, 0, false, false);
         assertEquals(expected, component.getBackground());
     }

@@ -1,12 +1,9 @@
 package views;
 
-import interface_adapter.controllers.TripAssistantController;
-import interface_adapter.viewmodels.TripAssistantState;
-import interface_adapter.viewmodels.TripAssistantViewModel;
-import entity.valueobjects.TripAssistantMessage;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -18,6 +15,11 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+
+import entity.valueobjects.TripAssistantMessage;
+import interface_adapter.controllers.TripAssistantController;
+import interface_adapter.viewmodels.TripAssistantState;
+import interface_adapter.viewmodels.TripAssistantViewModel;
 
 /** George's trip-aware chat view. */
 public final class TripAssistantPanel extends JPanel {
@@ -65,19 +67,19 @@ public final class TripAssistantPanel extends JPanel {
     }
 
     private JPanel header() {
-        JPanel panel = new JPanel(new BorderLayout(12, 0));
+        final JPanel panel = new JPanel(new BorderLayout(12, 0));
         panel.setOpaque(false);
-        JLabel avatar = new JLabel(GeorgeAvatar.icon(52, 48));
+        final JLabel avatar = new JLabel(GeorgeAvatar.icon(52, 48));
         avatar.getAccessibleContext().setAccessibleName("George the trip assistant");
         panel.add(avatar, BorderLayout.WEST);
 
-        JPanel words = new JPanel();
+        final JPanel words = new JPanel();
         words.setOpaque(false);
         words.setLayout(new BoxLayout(words, BoxLayout.Y_AXIS));
-        JLabel title = new JLabel("George · Trip Assistant");
+        final JLabel title = new JLabel("George · Trip Assistant");
         title.setFont(SwingTheme.HEADING);
         title.setForeground(SwingTheme.NAVY);
-        JLabel subtitle = new JLabel("Grounded in your current trip");
+        final JLabel subtitle = new JLabel("Grounded in your current trip");
         subtitle.setFont(SwingTheme.SMALL);
         subtitle.setForeground(SwingTheme.MUTED);
         words.add(Box.createVerticalGlue());
@@ -87,7 +89,7 @@ public final class TripAssistantPanel extends JPanel {
         words.add(Box.createVerticalGlue());
         panel.add(words, BorderLayout.CENTER);
 
-        JPanel controls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        final JPanel controls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         controls.setOpaque(false);
         minimize.addActionListener(event -> collapseAction.run());
         controls.add(minimize);
@@ -96,7 +98,7 @@ public final class TripAssistantPanel extends JPanel {
     }
 
     private static JButton headerButton(String text, String accessibleName) {
-        JButton button = new JButton(text);
+        final JButton button = new JButton(text);
         button.setFont(SwingTheme.BODY.deriveFont(java.awt.Font.BOLD, 16));
         button.setForeground(SwingTheme.MUTED);
         button.setBackground(SwingTheme.PANEL);
@@ -110,14 +112,14 @@ public final class TripAssistantPanel extends JPanel {
     }
 
     private JPanel composer() {
-        JPanel panel = new JPanel();
+        final JPanel panel = new JPanel();
         panel.setOpaque(false);
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         loading.setOpaque(false);
-        JProgressBar progress = new JProgressBar();
+        final JProgressBar progress = new JProgressBar();
         progress.setIndeterminate(true);
         progress.setPreferredSize(new Dimension(90, 8));
-        JLabel loadingText = new JLabel("George is checking your trip…");
+        final JLabel loadingText = new JLabel("George is checking your trip…");
         loadingText.setFont(SwingTheme.SMALL);
         loadingText.setForeground(SwingTheme.MUTED);
         loading.add(progress);
@@ -130,7 +132,7 @@ public final class TripAssistantPanel extends JPanel {
         panel.add(error);
         panel.add(Box.createVerticalStrut(5));
 
-        JPanel row = new JPanel(new BorderLayout(8, 0));
+        final JPanel row = new JPanel(new BorderLayout(8, 0));
         row.setOpaque(false);
         input.setFont(SwingTheme.BODY);
         input.setToolTipText("Ask George about this trip");
@@ -146,7 +148,7 @@ public final class TripAssistantPanel extends JPanel {
     }
 
     private void send() {
-        String question = input.getText();
+        final String question = input.getText();
         if (!question.trim().isEmpty()) {
             input.setText("");
         }
@@ -154,7 +156,7 @@ public final class TripAssistantPanel extends JPanel {
     }
 
     private void render(TripAssistantState state) {
-        StringBuilder text = new StringBuilder();
+        final StringBuilder text = new StringBuilder();
         for (TripAssistantMessage message : state.getMessages()) {
             text.append(message.getRole() == TripAssistantMessage.Role.USER ? "You" : "George")
                     .append(":\n").append(message.getText()).append("\n\n");
@@ -168,17 +170,29 @@ public final class TripAssistantPanel extends JPanel {
                 historyScroll.getVerticalScrollBar().getMaximum()));
     }
 
-    public JTextArea getHistoryArea() { return history; }
+    public JTextArea getHistoryArea() {
+        return history;
+    }
 
-    public JTextField getInputField() { return input; }
+    public JTextField getInputField() {
+        return input;
+    }
 
-    public JButton getSendButton() { return send; }
+    public JButton getSendButton() {
+        return send;
+    }
 
-    public boolean isLoadingVisible() { return loading.isVisible(); }
+    public boolean isLoadingVisible() {
+        return loading.isVisible();
+    }
 
-    public JLabel getErrorLabel() { return error; }
+    public JLabel getErrorLabel() {
+        return error;
+    }
 
-    public JButton getMinimizeButton() { return minimize; }
+    public JButton getMinimizeButton() {
+        return minimize;
+    }
 
     public void setCollapseAction(Runnable action) {
         collapseAction = action == null ? () -> { } : action;

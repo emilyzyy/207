@@ -4,6 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+import entity.valueobjects.TransportationMode;
 import use_case.autoschedule.engine.ScheduleEngine;
 import use_case.autoschedule.engine.ScheduleSearchResult;
 import use_case.autoschedule.engine.SearchBudget;
@@ -12,11 +19,6 @@ import use_case.autoschedule.policy.MealWindowPolicy;
 import use_case.autoschedule.policy.SoftPolicy;
 import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
 import use_case.autoschedule.testdoubles.FakeTravelTimeEstimator;
-import entity.valueobjects.TransportationMode;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import org.junit.jupiter.api.Test;
 
 /**
  * Evidence about how the feature behaves as a day gets bigger.
@@ -32,11 +34,11 @@ class SchedulingBenchmarkTest {
             new WeatherSuitabilityPolicy(), new MealWindowPolicy(), new DaylightPolicy());
 
     private static List<ScheduleTask> dayOf(int activityCount) {
-        List<ScheduleTask> tasks = new ArrayList<>();
+        final List<ScheduleTask> tasks = new ArrayList<>();
         for (int i = 0; i < activityCount; i++) {
             // Staggered opening hours so the day is genuinely constrained, not trivial.
-            int openHour = 9 + (i % 3);
-            int closeHour = 18 + (i % 4);
+            final int openHour = 9 + (i % 3);
+            final int closeHour = 18 + (i % 4);
             tasks.add(ProblemFixtures.task("a" + i, 45, i,
                     ProblemFixtures.at(openHour, 0), ProblemFixtures.at(closeHour, 0)));
         }
@@ -44,9 +46,9 @@ class SchedulingBenchmarkTest {
     }
 
     private static ScheduleProblem problemFor(int activityCount, FakeTravelTimeEstimator estimator) {
-        List<ScheduleTask> tasks = dayOf(activityCount);
-        TimeWindow availability = ProblemFixtures.window(9, 21);
-        TravelMatrix matrix = new TravelMatrixPrefetcher(estimator).prefetch(
+        final List<ScheduleTask> tasks = dayOf(activityCount);
+        final TimeWindow availability = ProblemFixtures.window(9, 21);
+        final TravelMatrix matrix = new TravelMatrixPrefetcher(estimator).prefetch(
                 tasks, TransportationMode.TRANSIT, ProblemFixtures.TRIP_DATE, availability);
         return new ScheduleProblem(availability, tasks, ProblemFixtures.noBlockedWindows(), matrix,
                 SchedulingPreferences.builtIn(BUILT_IN, true, PolicyContext.empty()));
@@ -63,16 +65,16 @@ class SchedulingBenchmarkTest {
                 "outcome"));
 
         for (int size : new int[] {5, 8, 12, 15}) {
-            FakeTravelTimeEstimator estimator =
+            final FakeTravelTimeEstimator estimator =
                     new FakeTravelTimeEstimator().timeSensitive(true).defaultMinutes(12);
-            ScheduleProblem problem = problemFor(size, estimator);
-            int prefetchCalls = estimator.callCount();
-            int buckets = problem.getTravel().getPeriods().size();
+            final ScheduleProblem problem = problemFor(size, estimator);
+            final int prefetchCalls = estimator.callCount();
+            final int buckets = problem.getTravel().getPeriods().size();
 
-            long started = System.nanoTime();
-            ScheduleSearchResult result =
+            final long started = System.nanoTime();
+            final ScheduleSearchResult result =
                     new ScheduleEngine().search(problem, SearchBudget.defaultBudget());
-            long millis = (System.nanoTime() - started) / 1_000_000;
+            final long millis = (System.nanoTime() - started) / 1_000_000;
 
             System.out.println(String.format("  %-11d %8d %8d %9d %9d %8d %9s %-10s",
                     size, size * (size - 1), buckets, prefetchCalls, result.getNodesExplored(),
@@ -94,10 +96,10 @@ class SchedulingBenchmarkTest {
 
     @Test
     void theSearchNeverContactsTheTravelProvider() {
-        FakeTravelTimeEstimator estimator =
+        final FakeTravelTimeEstimator estimator =
                 new FakeTravelTimeEstimator().timeSensitive(true).defaultMinutes(12);
-        ScheduleProblem problem = problemFor(8, estimator);
-        int callsAfterPrefetch = estimator.callCount();
+        final ScheduleProblem problem = problemFor(8, estimator);
+        final int callsAfterPrefetch = estimator.callCount();
 
         new ScheduleEngine().search(problem, SearchBudget.defaultBudget());
 
@@ -108,13 +110,13 @@ class SchedulingBenchmarkTest {
 
     @Test
     void largerDaysDegradeTheirDepartureBucketsAsDesigned() {
-        FakeTravelTimeEstimator small =
+        final FakeTravelTimeEstimator small =
                 new FakeTravelTimeEstimator().timeSensitive(true).defaultMinutes(12);
-        FakeTravelTimeEstimator large =
+        final FakeTravelTimeEstimator large =
                 new FakeTravelTimeEstimator().timeSensitive(true).defaultMinutes(12);
 
-        int smallBuckets = problemFor(5, small).getTravel().getPeriods().size();
-        int largeBuckets = problemFor(15, large).getTravel().getPeriods().size();
+        final int smallBuckets = problemFor(5, small).getTravel().getPeriods().size();
+        final int largeBuckets = problemFor(15, large).getTravel().getPeriods().size();
 
         System.out.println("[benchmark] buckets: 5 activities -> " + smallBuckets
                 + ", 15 activities -> " + largeBuckets);
@@ -128,14 +130,14 @@ class SchedulingBenchmarkTest {
 
     @Test
     void repeatedRunsOfTheSameDayGiveTheSameAnswer() {
-        FakeTravelTimeEstimator first =
+        final FakeTravelTimeEstimator first =
                 new FakeTravelTimeEstimator().timeSensitive(true).defaultMinutes(12);
-        FakeTravelTimeEstimator second =
+        final FakeTravelTimeEstimator second =
                 new FakeTravelTimeEstimator().timeSensitive(true).defaultMinutes(12);
 
-        ScheduleSearchResult one =
+        final ScheduleSearchResult one =
                 new ScheduleEngine().search(problemFor(8, first), SearchBudget.defaultBudget());
-        ScheduleSearchResult two =
+        final ScheduleSearchResult two =
                 new ScheduleEngine().search(problemFor(8, second), SearchBudget.defaultBudget());
 
         assertEquals(one.getPlan().orderedEventIds(), two.getPlan().orderedEventIds());
@@ -146,7 +148,7 @@ class SchedulingBenchmarkTest {
 
     @Test
     void aWalkingDayCostsExactlyOneMatrix() {
-        FakeTravelTimeEstimator walking =
+        final FakeTravelTimeEstimator walking =
                 new FakeTravelTimeEstimator().timeSensitive(false).defaultMinutes(12);
 
         problemFor(8, walking);

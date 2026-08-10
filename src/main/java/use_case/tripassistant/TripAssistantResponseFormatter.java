@@ -1,11 +1,5 @@
 package use_case.tripassistant;
 
-import entity.valueobjects.TripAssistantMessage;
-
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.WeatherWarning;
-import entity.valueobjects.IndoorOutdoorType;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -16,6 +10,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.WeatherWarning;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.TripAssistantMessage;
+
 /** Builds conversational text exclusively from validated application entities. */
 public final class TripAssistantResponseFormatter {
     private static final DateTimeFormatter TIME =
@@ -23,23 +23,27 @@ public final class TripAssistantResponseFormatter {
     private static final Pattern CONTEXTUAL_REFERENCE = Pattern.compile(
             "\\b(it|its|they|them|their|this|that|these|those)\\b");
 
+    /**
+     * Performs the f or ma t operation.
+     * @return the result of the operation
+     */
     public TripAssistantOutputData format(
             TripAssistantRequest request, TripAssistantDecision decision) {
-        Map<String, Activity> allowed = new LinkedHashMap<String, Activity>();
+        final Map<String, Activity> allowed = new LinkedHashMap<String, Activity>();
         for (Activity activity : request.getActivities()) {
             allowed.put(activity.getId(), activity);
         }
-        List<Activity> selected = new ArrayList<Activity>();
-        List<String> groundedIds = new ArrayList<String>();
+        final List<Activity> selected = new ArrayList<Activity>();
+        final List<String> groundedIds = new ArrayList<String>();
         for (String id : decision.getActivityIds()) {
-            Activity activity = allowed.get(id);
+            final Activity activity = allowed.get(id);
             if (activity != null && !groundedIds.contains(id) && groundedIds.size() < 3) {
                 groundedIds.add(id);
                 selected.add(activity);
             }
         }
 
-        StringBuilder answer = new StringBuilder();
+        final StringBuilder answer = new StringBuilder();
         if (!decision.getNotice().trim().isEmpty()) {
             answer.append(decision.getNotice().trim()).append("\n\n");
         }
@@ -64,14 +68,14 @@ public final class TripAssistantResponseFormatter {
             StringBuilder answer, TripAssistantRequest request,
             TripAssistantDecision decision, Map<String, Activity> allowed,
             List<Activity> selected, List<String> groundedIds) {
-        FollowUpSelection selection = resolveFollowUp(
+        final FollowUpSelection selection = resolveFollowUp(
                 request, allowed, selected, groundedIds);
         if (selection.needsClarification()) {
             answer.append(clarification(selection.getActivities()));
             return new TripAssistantOutputData(
                     answer.toString().trim(), selection.getActivityIds());
         }
-        Activity activity = selection.getActivities().get(0);
+        final Activity activity = selection.getActivities().get(0);
         answer.append(activityFact(request, activity, decision.getRequestedFact()));
         return new TripAssistantOutputData(
                 answer.toString().trim(), selection.getActivityIds());
@@ -81,7 +85,7 @@ public final class TripAssistantResponseFormatter {
             StringBuilder answer, TripAssistantRequest request,
             Map<String, Activity> allowed, List<Activity> selected,
             List<String> groundedIds) {
-        FollowUpSelection selection = resolveFollowUp(
+        final FollowUpSelection selection = resolveFollowUp(
                 request, allowed, selected, groundedIds);
         if (selection.needsClarification()) {
             answer.append(clarification(selection.getActivities()));
@@ -104,8 +108,8 @@ public final class TripAssistantResponseFormatter {
             List<Activity> selected, List<String> groundedIds) {
         List<Activity> activities = new ArrayList<Activity>(selected);
         List<String> ids = new ArrayList<String>(groundedIds);
-        List<Activity> recent = recentGroundedActivities(request, allowed);
-        boolean contextual = CONTEXTUAL_REFERENCE.matcher(
+        final List<Activity> recent = recentGroundedActivities(request, allowed);
+        final boolean contextual = CONTEXTUAL_REFERENCE.matcher(
                 request.getQuestion().toLowerCase(Locale.ROOT)).find();
         if (contextual) {
             activities = recent;
@@ -122,14 +126,14 @@ public final class TripAssistantResponseFormatter {
     private List<Activity> recentGroundedActivities(
             TripAssistantRequest request, Map<String, Activity> allowed) {
         for (int index = request.getHistory().size() - 1; index >= 0; index--) {
-            TripAssistantMessage message = request.getHistory().get(index);
+            final TripAssistantMessage message = request.getHistory().get(index);
             if (message.getRole() != TripAssistantMessage.Role.ASSISTANT
                     || message.getActivityIds().isEmpty()) {
                 continue;
             }
-            List<Activity> result = new ArrayList<Activity>();
+            final List<Activity> result = new ArrayList<Activity>();
             for (String id : message.getActivityIds()) {
-                Activity activity = allowed.get(id);
+                final Activity activity = allowed.get(id);
                 if (activity != null && !result.contains(activity) && result.size() < 3) {
                     result.add(activity);
                 }
@@ -140,7 +144,7 @@ public final class TripAssistantResponseFormatter {
     }
 
     private List<String> activityIds(List<Activity> activities) {
-        List<String> result = new ArrayList<String>();
+        final List<String> result = new ArrayList<String>();
         for (Activity activity : activities) {
             result.add(activity.getId());
         }
@@ -152,7 +156,7 @@ public final class TripAssistantResponseFormatter {
             return "Which activity do you mean? Mention one from this trip and I'll check "
                     + "the details Trippy has for it.";
         }
-        List<String> names = new ArrayList<String>();
+        final List<String> names = new ArrayList<String>();
         for (Activity activity : activities) {
             names.add(activity.getName());
         }
@@ -182,7 +186,7 @@ public final class TripAssistantResponseFormatter {
                 return "Trippy estimates " + activity.getEstimatedDurationMinutes()
                         + " minutes for " + activity.getName() + ".";
             case LOCATION:
-                String address = activity.getLocation().getAddress();
+                final String address = activity.getLocation().getAddress();
                 if (address == null || address.trim().isEmpty()) {
                     return "Trippy doesn't include an address for " + activity.getName()
                             + ", so I don't want to guess.";
@@ -210,7 +214,7 @@ public final class TripAssistantResponseFormatter {
 
     private String recommendationReason(
             TripAssistantRequest request, Activity activity) {
-        List<String> evidence = new ArrayList<String>();
+        final List<String> evidence = new ArrayList<String>();
         evidence.add(String.format(Locale.ROOT, "it has a %.1f rating", activity.getRating()));
         evidence.add("the visit is estimated at "
                 + activity.getEstimatedDurationMinutes() + " minutes");
@@ -227,7 +231,7 @@ public final class TripAssistantResponseFormatter {
     }
 
     private String articleAndCategory(Activity activity) {
-        String category;
+        final String category;
         switch (activity.getCategory()) {
             case COFFEE:
                 category = "café";
@@ -239,7 +243,7 @@ public final class TripAssistantResponseFormatter {
                 category = activity.getCategory().name().toLowerCase(Locale.ROOT);
                 break;
         }
-        String article = category.matches("^[aeiou].*") ? "an " : "a ";
+        final String article = category.matches("^[aeiou].*") ? "an " : "a ";
         return article + category;
     }
 
@@ -294,7 +298,7 @@ public final class TripAssistantResponseFormatter {
 
     private String rainOpening(TripAssistantRequest request) {
         for (WeatherWarning warning : request.getWeather()) {
-            String condition = warning.getWeatherCondition().toLowerCase(Locale.ROOT);
+            final String condition = warning.getWeatherCondition().toLowerCase(Locale.ROOT);
             if (condition.contains("rain") || condition.contains("shower")
                     || condition.contains("storm")) {
                 return "The forecast includes " + warning.getWeatherCondition()
@@ -310,11 +314,11 @@ public final class TripAssistantResponseFormatter {
         if (selected.isEmpty()) {
             return;
         }
-        Set<String> planned = plannedIds(request.getScheduledEvents());
+        final Set<String> planned = plannedIds(request.getScheduledEvents());
         for (int index = 0; index < selected.size(); index++) {
-            Activity activity = selected.get(index);
+            final Activity activity = selected.get(index);
             answer.append(index + 1).append(". ").append(activity.getName()).append(" — ");
-            List<String> reasons = new ArrayList<String>();
+            final List<String> reasons = new ArrayList<String>();
             if (request.getBookmarkedActivityIds().contains(activity.getId())) {
                 reasons.add("already in your bookmarks");
             }
@@ -324,7 +328,8 @@ public final class TripAssistantResponseFormatter {
             if (decision.getIntent() == TripAssistantDecision.Intent.RAIN) {
                 if (activity.getIndoorOutdoorType() == IndoorOutdoorType.INDOOR) {
                     reasons.add("recorded as indoor");
-                } else if (activity.getIndoorOutdoorType() == IndoorOutdoorType.MIXED) {
+                }
+                else if (activity.getIndoorOutdoorType() == IndoorOutdoorType.MIXED) {
                     reasons.add("recorded as mixed indoor/outdoor");
                 }
             }
@@ -340,7 +345,7 @@ public final class TripAssistantResponseFormatter {
     }
 
     private Set<String> plannedIds(List<ScheduledEvent> events) {
-        Set<String> result = new HashSet<String>();
+        final Set<String> result = new HashSet<String>();
         for (ScheduledEvent event : events) {
             if (event.getActivity() != null) {
                 result.add(event.getActivity().getId());
@@ -362,10 +367,16 @@ public final class TripAssistantResponseFormatter {
             this.clarification = clarification;
         }
 
-        private List<Activity> getActivities() { return activities; }
+        private List<Activity> getActivities() {
+            return activities;
+        }
 
-        private List<String> getActivityIds() { return activityIds; }
+        private List<String> getActivityIds() {
+            return activityIds;
+        }
 
-        private boolean needsClarification() { return clarification; }
+        private boolean needsClarification() {
+            return clarification;
+        }
     }
 }

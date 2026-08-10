@@ -1,14 +1,15 @@
 package use_case.autoschedule;
 
-import entity.entities.ScheduledEvent;
-import entity.valueobjects.EventType;
-import entity.valueobjects.TransportationMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import entity.entities.ScheduledEvent;
+import entity.valueobjects.EventType;
+import entity.valueobjects.TransportationMode;
 
 /**
  * Travel and idle totals for a schedule that already exists.
@@ -33,9 +34,11 @@ public final class ScheduleMetrics {
      * has applied. A hand-built plan has no travel rows at all, and for that
      * {@link #ofExistingSchedule(List, TravelTimeEstimator, TransportationMode, LocalDate)}
      * is the honest measure — see its note.</p>
+      * @param events the e ve nt s value
+      * @return the result of the operation
      */
     public static ScheduleMetrics ofExistingSchedule(List<ScheduledEvent> events) {
-        List<ScheduledEvent> sorted = new ArrayList<>(events);
+        final List<ScheduledEvent> sorted = new ArrayList<>(events);
         Collections.sort(sorted, (left, right) -> left.getStartTime().compareTo(right.getStartTime()));
 
         int travel = 0;
@@ -74,6 +77,8 @@ public final class ScheduleMetrics {
      *
      * <p>An estimator failure degrades to the explicit-rows reading rather than losing the
      * Preview: a missing comparison is better than no schedule.</p>
+      * @param events the e ve nt s value
+      * @return the result of the operation
      */
     public static ScheduleMetrics ofExistingSchedule(List<ScheduledEvent> events,
                                                      TravelTimeEstimator estimator,
@@ -82,7 +87,7 @@ public final class ScheduleMetrics {
         if (estimator == null || mode == null || date == null) {
             return ofExistingSchedule(events);
         }
-        List<ScheduledEvent> sorted = new ArrayList<>(events);
+        final List<ScheduledEvent> sorted = new ArrayList<>(events);
         Collections.sort(sorted,
                 (left, right) -> left.getStartTime().compareTo(right.getStartTime()));
 
@@ -102,14 +107,15 @@ public final class ScheduleMetrics {
                 continue;
             }
 
-            int gap = previousEnd != null && event.getStartTime().isAfter(previousEnd)
+            final int gap = previousEnd != null && event.getStartTime().isAfter(previousEnd)
                     ? minutes(previousEnd, event.getStartTime()) : 0;
 
             if (previousActivity != null && !travelSincePreviousActivity) {
-                int implied = estimateBetween(estimator, previousActivity, event, mode, date);
+                final int implied = estimateBetween(estimator, previousActivity, event, mode, date);
                 travel += implied;
                 idle += Math.max(0, gap - implied);
-            } else {
+            }
+            else {
                 idle += gap;
             }
 
@@ -129,11 +135,12 @@ public final class ScheduleMetrics {
             return 0;
         }
         try {
-            TravelEstimate estimate = estimator.estimate(from.getActivity().getLocation(),
+            final TravelEstimate estimate = estimator.estimate(from.getActivity().getLocation(),
                     to.getActivity().getLocation(), mode,
                     LocalDateTime.of(date, from.getEndTime()));
             return estimate == null ? 0 : Math.max(0, estimate.getMinutes());
-        } catch (RuntimeException unavailable) {
+        }
+        catch (RuntimeException unavailable) {
             return 0;
         }
     }

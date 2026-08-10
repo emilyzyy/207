@@ -1,9 +1,10 @@
 package interface_adapter.routing;
 
-import use_case.ports.DistanceService;
+import java.time.LocalDateTime;
+
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;
-import java.time.LocalDateTime;
+import use_case.ports.DistanceService;
 
 /**
  * Resolves a request for {@link TransportationMode#FASTEST} into a real answer.
