@@ -1,13 +1,14 @@
 package interface_adapter.presenters;
 
+import java.awt.image.BufferedImage;
+import java.util.Collections;
+import java.util.List;
+
 import interface_adapter.DayPlanShareImageRenderer;
 import interface_adapter.viewmodels.ShareState;
 import interface_adapter.viewmodels.ShareViewModel;
 import use_case.usecases.ShareTripOutputBoundary;
 import use_case.usecases.ShareTripOutputData;
-import java.awt.image.BufferedImage;
-import java.util.Collections;
-import java.util.List;
 
 /** Presents share results to an observable Swing state; renders day-plan PNGs here. */
 public final class ShareTripPresenter implements ShareTripOutputBoundary {
@@ -22,9 +23,9 @@ public final class ShareTripPresenter implements ShareTripOutputBoundary {
 
     @Override
     public void presentSuccess(ShareTripOutputData outputData) {
-        List<BufferedImage> dayImages = DayPlanShareImageRenderer.renderTrip(outputData.getTrip());
-        int days = dayImages.size();
-        String ready = days <= 1
+        final List<BufferedImage> dayImages = DayPlanShareImageRenderer.renderTrip(outputData.getTrip());
+        final int days = dayImages.size();
+        final String ready = days <= 1
                 ? "Day plan image ready — scroll, save, or copy the text."
                 : days + " day-plan images ready — scroll to see each day, then save or share.";
         viewModel.setState(new ShareState(

@@ -1,7 +1,5 @@
 package use_case.autoschedule;
 
-import entity.entities.Activity;
-import entity.valueobjects.TransportationMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -9,6 +7,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import entity.entities.Activity;
+import entity.valueobjects.TransportationMode;
 
 /**
  * Direct edits to an unsaved proposal.
@@ -90,8 +91,8 @@ public final class ProposalDraft {
                                          Map<String, Activity> activitiesById,
                                          TransportationMode mode, LocalDate date,
                                          TravelTimeEstimator estimator) {
-        List<ProposedEventData> activities = new ArrayList<>();
-        Map<String, ProposedEventData> legsByDestination = new LinkedHashMap<>();
+        final List<ProposedEventData> activities = new ArrayList<>();
+        final Map<String, ProposedEventData> legsByDestination = new LinkedHashMap<>();
         for (ProposedEventData row : proposedRows) {
             if (row.getKind() == ProposedEventData.Kind.TRAVEL) {
                 if (row.getEventId().startsWith(TRAVEL_ID_PREFIX)) {
@@ -103,7 +104,7 @@ public final class ProposalDraft {
             }
         }
 
-        List<ProposedEventData> remaining = new ArrayList<>();
+        final List<ProposedEventData> remaining = new ArrayList<>();
         boolean found = false;
         for (ProposedEventData activity : activities) {
             if (activity.getEventId().equals(removeEventId)) {
@@ -116,15 +117,15 @@ public final class ProposalDraft {
             return Result.refused("That activity is no longer in the proposal.");
         }
 
-        List<ProposedEventData> rebuilt = new ArrayList<>();
+        final List<ProposedEventData> rebuilt = new ArrayList<>();
         int travelMinutes = 0;
         int idleMinutes = 0;
         for (int i = 0; i < remaining.size(); i++) {
-            ProposedEventData destination = remaining.get(i);
+            final ProposedEventData destination = remaining.get(i);
             if (i > 0) {
-                ProposedEventData from = remaining.get(i - 1);
+                final ProposedEventData from = remaining.get(i - 1);
                 ProposedEventData leg = legsByDestination.get(destination.getEventId());
-                boolean stillAdjacent = leg != null
+                final boolean stillAdjacent = leg != null
                         && wasAdjacent(activities, from.getEventId(), destination.getEventId());
                 if (!stillAdjacent) {
                     leg = estimatedLeg(from, destination, activitiesById, mode, date, estimator);
@@ -170,14 +171,14 @@ public final class ProposalDraft {
                                                   Map<String, Activity> activitiesById,
                                                   TransportationMode mode, LocalDate date,
                                                   TravelTimeEstimator estimator) {
-        Activity origin = activitiesById.get(from.getEventId());
-        Activity destination = activitiesById.get(to.getEventId());
+        final Activity origin = activitiesById.get(from.getEventId());
+        final Activity destination = activitiesById.get(to.getEventId());
         if (estimator == null || origin == null || destination == null || date == null) {
             return null;
         }
-        int minutes;
+        final int minutes;
         try {
-            TravelEstimate estimate = estimator.estimate(origin.getLocation(),
+            final TravelEstimate estimate = estimator.estimate(origin.getLocation(),
                     destination.getLocation(), mode, LocalDateTime.of(date, from.getEnd()));
             minutes = estimate == null ? 0 : estimate.getMinutes();
         } catch (RuntimeException providerFailed) {
@@ -186,7 +187,7 @@ public final class ProposalDraft {
         if (minutes <= 0 || minutes > minutes(from.getEnd(), to.getStart())) {
             return null;
         }
-        LocalTime departure = to.getStart().minusMinutes(minutes);
+        final LocalTime departure = to.getStart().minusMinutes(minutes);
         return new ProposedEventData(TRAVEL_ID_PREFIX + to.getEventId(), "",
                 "Travel to " + to.getTitle(), ProposedEventData.Kind.TRAVEL,
                 departure, to.getStart(), false, false);

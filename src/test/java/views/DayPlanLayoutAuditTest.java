@@ -7,6 +7,25 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.GraphicsEnvironment;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import javax.imageio.ImageIO;
+import javax.swing.AbstractButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.entities.WeatherWarning;
@@ -25,28 +44,12 @@ import interface_adapter.viewmodels.DayPlanState;
 import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.PreviewMetricsView;
 import interface_adapter.viewmodels.PreviewRowView;
-import use_case.autoschedule.AutoScheduleApplyInputData;
 import use_case.autoschedule.AutoScheduleAppliedOutputData;
+import use_case.autoschedule.AutoScheduleApplyInputData;
 import use_case.autoschedule.AutoScheduleInputBoundary;
 import use_case.autoschedule.AutoScheduleInputData;
 import use_case.autoschedule.ProposalEditInputData;
 import use_case.autoschedule.ProposedEventData;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.GraphicsEnvironment;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import javax.imageio.ImageIO;
-import javax.swing.AbstractButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
-import org.junit.jupiter.api.Test;
 
 /**
  * Layout properties that can be proved without a person looking at the window.
@@ -83,7 +86,7 @@ class DayPlanLayoutAuditTest {
             + "Your Day Plan was not changed.";
 
     private static ScheduledEvent event(String id, int hour) {
-        Activity activity = new Activity(id, id, ActivityCategory.MUSEUM,
+        final Activity activity = new Activity(id, id, ActivityCategory.MUSEUM,
                 new Location(43.65, -79.38, id), 4.5, 60, LocalTime.of(8, 0),
                 LocalTime.of(21, 0), IndoorOutdoorType.INDOOR, "none");
         return new ScheduledEvent(id, activity, LocalTime.of(hour, 0),
@@ -92,7 +95,7 @@ class DayPlanLayoutAuditTest {
 
     private static ScheduledEvent eventNamed(String id, String name, LocalTime start,
                                              int durationMinutes) {
-        Activity activity = new Activity(id, name, ActivityCategory.MUSEUM,
+        final Activity activity = new Activity(id, name, ActivityCategory.MUSEUM,
                 new Location(43.65, -79.38, id), 4.5, durationMinutes, LocalTime.of(8, 0),
                 LocalTime.of(21, 0), IndoorOutdoorType.INDOOR, "none");
         return new ScheduledEvent(id, activity, start, start.plusMinutes(durationMinutes),
@@ -107,7 +110,7 @@ class DayPlanLayoutAuditTest {
     }
 
     private static DayPlanState previewState() {
-        List<PreviewRowView> rows = new ArrayList<>();
+        final List<PreviewRowView> rows = new ArrayList<>();
         rows.add(new PreviewRowView("a", "A Very Long Activity Name That Could Easily Overflow",
                 PreviewRowView.Kind.ACTIVITY, LocalTime.of(11, 0), LocalTime.of(12, 0),
                 false, true, "moved", Collections.singletonList("moved")));
@@ -133,12 +136,12 @@ class DayPlanLayoutAuditTest {
     }
 
     private static DayPlanState cardStressState(int travelMinutes, int activityMinutes) {
-        String longName = "A Very Long Independent Fine Food Market and Kitchen";
-        List<ScheduledEvent> saved = List.of(
+        final String longName = "A Very Long Independent Fine Food Market and Kitchen";
+        final List<ScheduledEvent> saved = List.of(
                 eventNamed("a", "First Museum", LocalTime.of(9, 0), 60),
                 eventNamed("b", longName, LocalTime.of(10, 0).plusMinutes(travelMinutes),
                         activityMinutes));
-        List<PreviewRowView> rows = List.of(
+        final List<PreviewRowView> rows = List.of(
                 new PreviewRowView("a", "First Museum", PreviewRowView.Kind.ACTIVITY,
                         LocalTime.of(9, 0), LocalTime.of(10, 0), true, false,
                         "you locked this time", List.of("you locked this time")),
@@ -151,7 +154,7 @@ class DayPlanLayoutAuditTest {
                         LocalTime.of(10, 0).plusMinutes(travelMinutes + activityMinutes),
                         false, true,
                         "moved after unavailable time", List.of("moved after unavailable time")));
-        WeatherWarning detail = new WeatherWarning(new Location(43.65, -79.38, "b"),
+        final WeatherWarning detail = new WeatherWarning(new Location(43.65, -79.38, "b"),
                 LocalTime.of(10, 0), "Rain", WeatherSeverity.MEDIUM,
                 "Bring a compact umbrella");
         return new DayPlanState("trip-1", saved, "Proposed schedule", false,
@@ -198,11 +201,11 @@ class DayPlanLayoutAuditTest {
 
     /** Writes optional human-review evidence only when the audit command requests it. */
     private static void writeEvidence(String name, BufferedImage image) throws Exception {
-        String directory = System.getProperty("finalGateEvidenceDir", "").trim();
+        final String directory = System.getProperty("finalGateEvidenceDir", "").trim();
         if (directory.isEmpty()) {
             return;
         }
-        File folder = new File(directory);
+        final File folder = new File(directory);
         assertTrue(folder.isDirectory() || folder.mkdirs(),
                 "could not create evidence directory " + folder);
         assertTrue(ImageIO.write(image, "png", new File(folder, name)),
@@ -210,7 +213,7 @@ class DayPlanLayoutAuditTest {
     }
 
     private static List<Component> all(Component root) {
-        List<Component> found = new ArrayList<>();
+        final List<Component> found = new ArrayList<>();
         collect(root, found);
         return found;
     }
@@ -235,29 +238,29 @@ class DayPlanLayoutAuditTest {
      */
     @Test
     void everyProposedCardSitsInsideTheScrollableTimeline() throws Exception {
-        List<PreviewRowView> rows = new ArrayList<>();
-        List<ScheduledEvent> saved = new ArrayList<>();
+        final List<PreviewRowView> rows = new ArrayList<>();
+        final List<ScheduledEvent> saved = new ArrayList<>();
         for (int i = 0; i < 8; i++) {
-            int hour = Math.min(9 + i * 2, 22);
+            final int hour = Math.min(9 + i * 2, 22);
             saved.add(event("e" + i, hour));
             rows.add(new PreviewRowView("e" + i, "Activity " + i,
                     PreviewRowView.Kind.ACTIVITY, LocalTime.of(hour, 0),
                     LocalTime.of(hour + 1, 0), false, true, "moved",
                     Collections.singletonList("moved")));
         }
-        DayPlanState late = new DayPlanState("trip-1", saved, "Proposed schedule", false,
+        final DayPlanState late = new DayPlanState("trip-1", saved, "Proposed schedule", false,
                 Collections.emptyList(), AutoScheduleStatus.PREVIEW, rows,
                 new PreviewMetricsView(40, 30, 100, 20, 8, 8, 120),
                 Collections.emptyList(), "Arranged for less travel", true, true, "",
                 "fingerprint", Collections.emptySet());
 
-        DayPlanViewModel viewModel = new DayPlanViewModel(late);
-        DayPlanPanel panel = panelFor(viewModel);
-        JFrame frame = host(panel, 1180);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(late);
+        final DayPlanPanel panel = panelFor(viewModel);
+        final JFrame frame = host(panel, 1180);
 
         final int[] measured = new int[2];
         SwingUtilities.invokeAndWait(() -> {
-            Container timeline = timelineIn(panel);
+            final Container timeline = timelineIn(panel);
             assertNotNull(timeline, "the schedule is drawn into a timeline");
             timeline.setSize(600, timeline.getPreferredSize().height);
             timeline.doLayout();
@@ -282,12 +285,12 @@ class DayPlanLayoutAuditTest {
             if (!(component instanceof JLabel)) {
                 continue;
             }
-            String text = ((JLabel) component).getText();
+            final String text = ((JLabel) component).getText();
             if (text == null || !text.contains(fragment) || !text.contains("width:")) {
                 continue;
             }
-            int start = text.indexOf("width:") + "width:".length();
-            int end = text.indexOf("px", start);
+            final int start = text.indexOf("width:") + "width:".length();
+            final int end = text.indexOf("px", start);
             return Integer.parseInt(text.substring(start, end));
         }
         return -1;
@@ -298,17 +301,17 @@ class DayPlanLayoutAuditTest {
      */
     @Test
     void theConflictTextReflowsWhenThePanelIsActuallyResized() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(conflictState());
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(conflictState());
+        final DayPlanPanel panel = panelFor(viewModel);
 
-        int beforeBounds = wrapWidthOf(panel, "closed on Sundays");
+        final int beforeBounds = wrapWidthOf(panel, "closed on Sundays");
         assertTrue(beforeBounds > 0,
                 "even with no bounds the message must be given a width to wrap at");
 
-        JFrame frame = host(panel, 1200);
-        int wide = wrapWidthOf(panel, "closed on Sundays");
+        final JFrame frame = host(panel, 1200);
+        final int wide = wrapWidthOf(panel, "closed on Sundays");
         resize(panel, frame, 700);
-        int narrow = wrapWidthOf(panel, "closed on Sundays");
+        final int narrow = wrapWidthOf(panel, "closed on Sundays");
         frame.dispose();
 
         assertTrue(wide > narrow,
@@ -319,13 +322,13 @@ class DayPlanLayoutAuditTest {
 
     @Test
     void theStatusTextReflowsToo() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
-        DayPlanPanel panel = panelFor(viewModel);
-        JFrame frame = host(panel, 1200);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        final DayPlanPanel panel = panelFor(viewModel);
+        final JFrame frame = host(panel, 1200);
 
-        int wide = wrapWidthOf(panel, "activities moved");
+        final int wide = wrapWidthOf(panel, "activities moved");
         resize(panel, frame, 700);
-        int narrow = wrapWidthOf(panel, "activities moved");
+        final int narrow = wrapWidthOf(panel, "activities moved");
         frame.dispose();
 
         assertTrue(wide > narrow, "status wraps with the panel (wide=" + wide
@@ -336,13 +339,13 @@ class DayPlanLayoutAuditTest {
     @Test
     void neitherTheConflictNorTheStatusIsEverTruncatedWithAnEllipsis() throws Exception {
         for (DayPlanState state : List.of(conflictState(), previewState())) {
-            DayPlanViewModel viewModel = new DayPlanViewModel(state);
-            DayPlanPanel panel = panelFor(viewModel);
-            JFrame frame = host(panel, 760);
+            final DayPlanViewModel viewModel = new DayPlanViewModel(state);
+            final DayPlanPanel panel = panelFor(viewModel);
+            final JFrame frame = host(panel, 760);
 
             for (Component component : all(panel)) {
                 if (component instanceof JLabel) {
-                    String text = ((JLabel) component).getText();
+                    final String text = ((JLabel) component).getText();
                     if (text != null && text.contains("activities mo…")) {
                         frame.dispose();
                         throw new AssertionError("status was truncated: " + text);
@@ -356,11 +359,11 @@ class DayPlanLayoutAuditTest {
     /** The whole conflict sentence has to be present, however narrow the window gets. */
     @Test
     void theWholeConflictSentenceSurvivesANarrowWindow() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(conflictState());
-        DayPlanPanel panel = panelFor(viewModel);
-        JFrame frame = host(panel, 620);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(conflictState());
+        final DayPlanPanel panel = panelFor(viewModel);
+        final JFrame frame = host(panel, 620);
 
-        StringBuilder text = new StringBuilder();
+        final StringBuilder text = new StringBuilder();
         for (Component component : all(panel)) {
             if (component instanceof JLabel && ((JLabel) component).getText() != null) {
                 text.append(((JLabel) component).getText()).append(' ');
@@ -376,9 +379,9 @@ class DayPlanLayoutAuditTest {
     /** OK must stay reachable no matter how long the message is. */
     @Test
     void theDismissButtonStaysVisibleBesideALongConflict() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(conflictState());
-        DayPlanPanel panel = panelFor(viewModel);
-        JFrame frame = host(panel, 700);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(conflictState());
+        final DayPlanPanel panel = panelFor(viewModel);
+        final JFrame frame = host(panel, 700);
 
         AbstractButton ok = null;
         for (Component component : all(panel)) {
@@ -402,9 +405,9 @@ class DayPlanLayoutAuditTest {
 
     @Test
     void conflictTextAndDismissButtonStayInsideTheBarAtANarrowWidth() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(conflictState());
-        DayPlanPanel panel = panelFor(viewModel);
-        JFrame frame = host(panel, 400);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(conflictState());
+        final DayPlanPanel panel = panelFor(viewModel);
+        final JFrame frame = host(panel, 400);
         SwingUtilities.invokeAndWait(frame::validate);
         drain();
         SwingUtilities.invokeAndWait(frame::validate);
@@ -414,7 +417,7 @@ class DayPlanLayoutAuditTest {
         JLabel detail = null;
         AbstractButton ok = null;
         for (Component component : all(panel)) {
-            String accessible = component.getAccessibleContext() == null ? null
+            final String accessible = component.getAccessibleContext() == null ? null
                     : component.getAccessibleContext().getAccessibleName();
             if (component instanceof JPanel && accessible != null
                     && accessible.startsWith("Autoschedule could not run:")) {
@@ -435,9 +438,9 @@ class DayPlanLayoutAuditTest {
         assertNotNull(detail);
         assertNotNull(ok);
 
-        java.awt.Rectangle detailBounds = SwingUtilities.convertRectangle(
+        final java.awt.Rectangle detailBounds = SwingUtilities.convertRectangle(
                 detail.getParent(), detail.getBounds(), bar);
-        java.awt.Rectangle okBounds = SwingUtilities.convertRectangle(
+        final java.awt.Rectangle okBounds = SwingUtilities.convertRectangle(
                 ok.getParent(), ok.getBounds(), bar);
         assertTrue(detailBounds.x >= 0 && detailBounds.y >= 0
                         && detailBounds.x + detailBounds.width <= bar.getWidth()
@@ -447,7 +450,7 @@ class DayPlanLayoutAuditTest {
         assertTrue(detail.getHeight() >= detail.getPreferredSize().height,
                 "wrapped lines are vertically clipped: assigned=" + detail.getBounds()
                         + " preferred=" + detail.getPreferredSize());
-        int declaredWrapWidth = wrapWidthOf(bar, "closed on Sundays");
+        final int declaredWrapWidth = wrapWidthOf(bar, "closed on Sundays");
         assertTrue(declaredWrapWidth > 0 && declaredWrapWidth <= detail.getWidth(),
                 "the HTML wrap width must fit the real text region: declared="
                         + declaredWrapWidth + " assigned=" + detail.getBounds());
@@ -460,20 +463,20 @@ class DayPlanLayoutAuditTest {
 
     @Test
     void dismissingAConflictClearsOnlyTheNoticeAndKeepsRetrySettings() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(conflictState()
+        final DayPlanViewModel viewModel = new DayPlanViewModel(conflictState()
                 .withLocks(Collections.singleton("a")));
-        AutoScheduleController controller = new AutoScheduleController(
+        final AutoScheduleController controller = new AutoScheduleController(
                 INERT, viewModel, TaskRunner.immediate());
-        AutoScheduleSettings remembered = new AutoScheduleSettings(
+        final AutoScheduleSettings remembered = new AutoScheduleSettings(
                 LocalTime.of(9, 0), LocalTime.of(18, 0),
                 Collections.singletonList(new AutoScheduleSettings.Window(
                         LocalTime.of(12, 0), LocalTime.of(13, 0))), true, true);
         // Preview owns the memory update. Restore the returned conflict as the Presenter would.
         controller.preview(remembered);
-        DayPlanState conflict = conflictState().withLocks(Collections.singleton("a"));
+        final DayPlanState conflict = conflictState().withLocks(Collections.singleton("a"));
         viewModel.setState(conflict);
 
-        DayPlanPanel panel = new DayPlanPanel(viewModel, controller);
+        final DayPlanPanel panel = new DayPlanPanel(viewModel, controller);
         AbstractButton ok = null;
         for (Component component : all(panel)) {
             if (component instanceof AbstractButton
@@ -499,15 +502,15 @@ class DayPlanLayoutAuditTest {
     @Test
     void applyAndCancelAreVisibleAtEveryWidth() throws Exception {
         for (int width : new int[]{620, 760, 900, 1200, 1600}) {
-            DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
-            DayPlanPanel panel = panelFor(viewModel);
-            JFrame frame = host(panel, width);
+            final DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+            final DayPlanPanel panel = panelFor(viewModel);
+            final JFrame frame = host(panel, width);
 
             boolean apply = false;
             boolean cancel = false;
             for (Component component : all(panel)) {
                 if (component instanceof AbstractButton) {
-                    String label = ((AbstractButton) component).getText();
+                    final String label = ((AbstractButton) component).getText();
                     apply |= "Apply".equals(label) && component.isVisible();
                     cancel |= "Cancel".equals(label) && component.isVisible();
                 }
@@ -521,16 +524,16 @@ class DayPlanLayoutAuditTest {
     /** Repeated Previews must not leave two of anything behind. */
     @Test
     void openingAPreviewRepeatedlyDoesNotAccumulatePanels() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
-        DayPlanPanel panel = panelFor(viewModel);
-        JFrame frame = host(panel, 1200);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        final DayPlanPanel panel = panelFor(viewModel);
+        final JFrame frame = host(panel, 1200);
 
-        int first = countImprovementPanels(panel);
+        final int first = countImprovementPanels(panel);
         for (int i = 0; i < 4; i++) {
             SwingUtilities.invokeAndWait(() -> viewModel.setState(previewState()));
             drain();
         }
-        int afterFive = countImprovementPanels(panel);
+        final int afterFive = countImprovementPanels(panel);
         frame.dispose();
 
         assertEquals(first, afterFive,
@@ -564,14 +567,14 @@ class DayPlanLayoutAuditTest {
      */
     @Test
     void outOfBoundsHourLabelsDoNotCollapseOntoTheBottomEdge() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 "trip-1", Collections.<ScheduledEvent>emptyList(), "", false));
-        DayPlanPanel panel = panelFor(viewModel);
-        JFrame frame = host(panel, 1200);
-        Container timeline = timelineIn(panel);
+        final DayPlanPanel panel = panelFor(viewModel);
+        final JFrame frame = host(panel, 1200);
+        final Container timeline = timelineIn(panel);
         assertNotNull(timeline);
 
-        BufferedImage image = new BufferedImage(500, 360, BufferedImage.TYPE_INT_ARGB);
+        final BufferedImage image = new BufferedImage(500, 360, BufferedImage.TYPE_INT_ARGB);
         SwingUtilities.invokeAndWait(() -> {
             timeline.setSize(500, 360);
             timeline.doLayout();
@@ -579,7 +582,7 @@ class DayPlanLayoutAuditTest {
         });
         writeEvidence("timeline-hour-labels-fixed.png", image);
 
-        int background = SwingTheme.PANEL.getRGB() & 0x00ffffff;
+        final int background = SwingTheme.PANEL.getRGB() & 0x00ffffff;
         int bottomLabelInk = 0;
         // The time-label gutter only. The one-pixel panel border is outside this box.
         for (int y = 336; y < 359; y++) {
@@ -654,7 +657,7 @@ class DayPlanLayoutAuditTest {
             if (component == card || !component.isVisible()) {
                 continue;
             }
-            java.awt.Rectangle bounds = SwingUtilities.convertRectangle(
+            final java.awt.Rectangle bounds = SwingUtilities.convertRectangle(
                     component.getParent(), component.getBounds(), card);
             assertTrue(bounds.x >= 0 && bounds.y >= 0
                             && bounds.x + bounds.width <= card.getWidth()
@@ -669,19 +672,19 @@ class DayPlanLayoutAuditTest {
 
     @Test
     void aLongPreviewCardKeepsItsFullTimeAndAllContentInsideItsBounds() throws Exception {
-        String longName = "A Very Long Independent Fine Food Market and Kitchen";
-        DayPlanPanel panel = panelFor(new DayPlanViewModel(cardStressState(10)));
-        JFrame frame = host(panel, 620);
+        final String longName = "A Very Long Independent Fine Food Market and Kitchen";
+        final DayPlanPanel panel = panelFor(new DayPlanViewModel(cardStressState(10)));
+        final JFrame frame = host(panel, 620);
         SwingUtilities.invokeAndWait(frame::validate);
         drain();
 
-        Container timeline = timelineIn(panel);
+        final Container timeline = timelineIn(panel);
         assertNotNull(timeline);
         SwingUtilities.invokeAndWait(() -> {
             timeline.setSize(500, timeline.getPreferredSize().height);
             timeline.doLayout();
         });
-        JPanel card = cardContaining(timeline, longName);
+        final JPanel card = cardContaining(timeline, longName);
         assertNotNull(card);
         SwingUtilities.invokeAndWait(card::doLayout);
 
@@ -694,7 +697,7 @@ class DayPlanLayoutAuditTest {
         int visibleControls = 0;
         for (Component component : all(card)) {
             if (component instanceof JLabel && ((JLabel) component).getText() != null) {
-                String text = ((JLabel) component).getText();
+                final String text = ((JLabel) component).getText();
                 if (text.contains(longName)) {
                     title = (JLabel) component;
                 }
@@ -721,28 +724,28 @@ class DayPlanLayoutAuditTest {
 
     @Test
     void shortTravelConnectorsStayReadableWithoutCoveringTheirDestination() throws Exception {
-        String longName = "A Very Long Independent Fine Food Market and Kitchen";
+        final String longName = "A Very Long Independent Fine Food Market and Kitchen";
         for (int travelMinutes : new int[]{2, 10, 20}) {
-            DayPlanPanel panel = panelFor(new DayPlanViewModel(cardStressState(travelMinutes)));
-            JFrame frame = host(panel, 620);
-            Container timeline = timelineIn(panel);
+            final DayPlanPanel panel = panelFor(new DayPlanViewModel(cardStressState(travelMinutes)));
+            final JFrame frame = host(panel, 620);
+            final Container timeline = timelineIn(panel);
             assertNotNull(timeline);
             SwingUtilities.invokeAndWait(() -> {
                 timeline.setSize(500, timeline.getPreferredSize().height);
                 layoutTree(timeline);
             });
 
-            JPanel travel = travelCardContaining(timeline, "Travel to " + longName);
-            JPanel destination = cardContaining(timeline, longName);
+            final JPanel travel = travelCardContaining(timeline, "Travel to " + longName);
+            final JPanel destination = cardContaining(timeline, longName);
             assertNotNull(travel, "missing " + travelMinutes + "-minute travel connector");
             assertNotNull(destination);
-            int travelBottom = travel.getY() + travel.getHeight();
+            final int travelBottom = travel.getY() + travel.getHeight();
             for (Component child : all(destination)) {
                 if (child == destination || !child.isVisible()
                         || !(child instanceof JLabel || child instanceof AbstractButton)) {
                     continue;
                 }
-                java.awt.Rectangle inTimeline = SwingUtilities.convertRectangle(
+                final java.awt.Rectangle inTimeline = SwingUtilities.convertRectangle(
                         child.getParent(), child.getBounds(), timeline);
                 assertTrue(inTimeline.y >= travelBottom,
                         travelMinutes + "-minute connector covers destination content: travel="
@@ -756,9 +759,9 @@ class DayPlanLayoutAuditTest {
 
     @Test
     void appliedTravelRemainsAVisibleNormalDayPlanRow() throws Exception {
-        ScheduledEvent first = eventNamed("a", "First Museum", LocalTime.of(9, 0), 60);
-        ScheduledEvent second = eventNamed("b", "Second Museum", LocalTime.of(12, 0), 60);
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        final ScheduledEvent first = eventNamed("a", "First Museum", LocalTime.of(9, 0), 60);
+        final ScheduledEvent second = eventNamed("b", "Second Museum", LocalTime.of(12, 0), 60);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 "trip-1", List.of(first, second), "", false));
         new AutoSchedulePresenter(viewModel).presentApplied(new AutoScheduleAppliedOutputData(
                 "trip-1", List.of(
@@ -772,9 +775,9 @@ class DayPlanLayoutAuditTest {
                         ProposedEventData.Kind.ACTIVITY, LocalTime.of(10, 20),
                         LocalTime.of(11, 20), false, true)), "saved-fingerprint"));
 
-        DayPlanPanel panel = panelFor(viewModel);
-        JFrame frame = host(panel, 760);
-        Container timeline = timelineIn(panel);
+        final DayPlanPanel panel = panelFor(viewModel);
+        final JFrame frame = host(panel, 760);
+        final Container timeline = timelineIn(panel);
         assertNotNull(timeline);
         SwingUtilities.invokeAndWait(() -> {
             timeline.setSize(620, timeline.getPreferredSize().height);
@@ -784,7 +787,7 @@ class DayPlanLayoutAuditTest {
         assertEquals(AutoScheduleStatus.APPLIED, viewModel.getState().getStatus());
         assertEquals(EventType.TRAVEL, viewModel.getState().getEvents().get(1).getEventType(),
                 "the Presenter must preserve the saved travel row");
-        JPanel travel = travelCardContaining(timeline, "Travel to Second Museum");
+        final JPanel travel = travelCardContaining(timeline, "Travel to Second Museum");
         assertNotNull(travel, "the normal Day Plan renderer must not filter applied travel");
         assertTrue(travel.isVisible() && travel.getWidth() > 0 && travel.getHeight() > 0,
                 "the applied travel row must receive visible bounds: "
@@ -794,7 +797,7 @@ class DayPlanLayoutAuditTest {
                         + "bounds=" + travel.getBounds());
         assertVisibleContentsStayInside(travel);
         int paintedLabels = 0;
-        StringBuilder labelBounds = new StringBuilder();
+        final StringBuilder labelBounds = new StringBuilder();
         for (Component child : all(travel)) {
             if (child instanceof JLabel) {
                 labelBounds.append(((JLabel) child).getText()).append('=')
@@ -808,7 +811,7 @@ class DayPlanLayoutAuditTest {
                 "the applied connector must paint both its route label and full time range: "
                         + labelBounds);
 
-        BufferedImage evidence = new BufferedImage(620, 360, BufferedImage.TYPE_INT_ARGB);
+        final BufferedImage evidence = new BufferedImage(620, 360, BufferedImage.TYPE_INT_ARGB);
         SwingUtilities.invokeAndWait(() -> timeline.paint(evidence.createGraphics()));
         writeEvidence("applied-travel-row-fixed.png", evidence);
         frame.dispose();
@@ -816,10 +819,10 @@ class DayPlanLayoutAuditTest {
 
     @Test
     void shortActivityReflowsAtNarrowAndNormalWidthsWithAllActionsPresent() throws Exception {
-        String longName = "A Very Long Independent Fine Food Market and Kitchen";
-        DayPlanPanel panel = panelFor(new DayPlanViewModel(cardStressState(10, 30)));
-        JFrame frame = host(panel, 620);
-        Container timeline = timelineIn(panel);
+        final String longName = "A Very Long Independent Fine Food Market and Kitchen";
+        final DayPlanPanel panel = panelFor(new DayPlanViewModel(cardStressState(10, 30)));
+        final JFrame frame = host(panel, 620);
+        final Container timeline = timelineIn(panel);
         assertNotNull(timeline);
 
         for (int width : new int[]{360, 720, 430}) {
@@ -827,7 +830,7 @@ class DayPlanLayoutAuditTest {
                 timeline.setSize(width, timeline.getPreferredSize().height);
                 layoutTree(timeline);
             });
-            JPanel card = cardContaining(timeline, longName);
+            final JPanel card = cardContaining(timeline, longName);
             assertNotNull(card);
             assertTrue(card.getHeight() >= card.getPreferredSize().height,
                     "short activity clips after resize to " + width + ": assigned="
@@ -839,7 +842,7 @@ class DayPlanLayoutAuditTest {
             for (Component child : all(card)) {
                 if (child instanceof AbstractButton && child.isVisible()) {
                     controls++;
-                    String accessible = child.getAccessibleContext().getAccessibleName();
+                    final String accessible = child.getAccessibleContext().getAccessibleName();
                     if (accessible != null && accessible.startsWith("Edit ")) {
                         edit = (AbstractButton) child;
                     }
@@ -855,9 +858,9 @@ class DayPlanLayoutAuditTest {
     /** Cancelling must take the whole Preview presentation away, not just the rows. */
     @Test
     void cancellingLeavesNoReasoningBehind() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
-        DayPlanPanel panel = panelFor(viewModel);
-        JFrame frame = host(panel, 1200);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        final DayPlanPanel panel = panelFor(viewModel);
+        final JFrame frame = host(panel, 1200);
         assertEquals(1, countImprovementPanels(panel), "precondition");
 
         SwingUtilities.invokeAndWait(() ->

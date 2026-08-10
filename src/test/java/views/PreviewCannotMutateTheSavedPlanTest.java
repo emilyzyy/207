@@ -5,13 +5,29 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.GraphicsEnvironment;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import javax.swing.AbstractButton;
+import javax.swing.SwingUtilities;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
-import entity.entities.Trip;
 import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
 import entity.valueobjects.ActivityCategory;
 import entity.valueobjects.EventType;
 import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
+import entity.valueobjects.TransportationMode;
+import entity.valueobjects.WeatherOption;
 import interface_adapter.controllers.AutoScheduleController;
 import interface_adapter.controllers.ManualPlanController;
 import interface_adapter.controllers.TaskRunner;
@@ -23,20 +39,7 @@ import interface_adapter.viewmodels.PreviewRowView;
 import use_case.autoschedule.AutoScheduleApplyInputData;
 import use_case.autoschedule.AutoScheduleInputBoundary;
 import use_case.autoschedule.AutoScheduleInputData;
-import entity.valueobjects.TransportationMode;
-import entity.valueobjects.WeatherOption;
 import use_case.autoschedule.testdoubles.FakeTripRepository;
-import java.time.LocalDate;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.GraphicsEnvironment;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import javax.swing.AbstractButton;
-import javax.swing.SwingUtilities;
-import org.junit.jupiter.api.Test;
 
 /**
  * A Preview is an unsaved draft, and the row controls must not be a way around that.
@@ -93,7 +96,7 @@ class PreviewCannotMutateTheSavedPlanTest {
     };
 
     private static Trip tripWith(List<ScheduledEvent> events) {
-        Trip trip = new Trip("trip-1", "Toronto", LocalDate.of(2026, 8, 12),
+        final Trip trip = new Trip("trip-1", "Toronto", LocalDate.of(2026, 8, 12),
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING);
         trip.replaceSchedule(events);
         return trip;
@@ -110,7 +113,7 @@ class PreviewCannotMutateTheSavedPlanTest {
     }
 
     private static ScheduledEvent event(String id, int hour) {
-        Activity activity = new Activity(id, id, ActivityCategory.MUSEUM,
+        final Activity activity = new Activity(id, id, ActivityCategory.MUSEUM,
                 new Location(43.65, -79.38, id), 4.5, 60,
                 LocalTime.of(8, 0), LocalTime.of(21, 0), IndoorOutdoorType.INDOOR, "none");
         return new ScheduledEvent(id, activity, LocalTime.of(hour, 0),
@@ -118,7 +121,7 @@ class PreviewCannotMutateTheSavedPlanTest {
     }
 
     private static DayPlanState previewOver(List<ScheduledEvent> saved) {
-        List<PreviewRowView> rows = new ArrayList<>();
+        final List<PreviewRowView> rows = new ArrayList<>();
         for (ScheduledEvent saveable : saved) {
             rows.add(new PreviewRowView(saveable.getId(), saveable.getActivity().getName(),
                     PreviewRowView.Kind.ACTIVITY, LocalTime.of(14, 0), LocalTime.of(15, 0),
@@ -141,7 +144,7 @@ class PreviewCannotMutateTheSavedPlanTest {
     }
 
     private static List<AbstractButton> buttonsLabelled(Component root, String text) {
-        List<AbstractButton> found = new ArrayList<>();
+        final List<AbstractButton> found = new ArrayList<>();
         collect(root, text, found);
         return found;
     }
@@ -160,12 +163,12 @@ class PreviewCannotMutateTheSavedPlanTest {
 
     @Test
     void removeEditsTheProposalAndNeverTheSavedPlan() throws Exception {
-        List<ScheduledEvent> saved = List.of(event("a", 9), event("b", 12), event("c", 15));
-        FakeTripRepository trips = new FakeTripRepository(tripWith(saved));
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewOver(saved));
-        DayPlanPanel panel = panelFor(viewModel, controllerOver(trips, viewModel));
+        final List<ScheduledEvent> saved = List.of(event("a", 9), event("b", 12), event("c", 15));
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(saved));
+        final DayPlanViewModel viewModel = new DayPlanViewModel(previewOver(saved));
+        final DayPlanPanel panel = panelFor(viewModel, controllerOver(trips, viewModel));
 
-        List<AbstractButton> removes = buttonsLabelled(panel, "Remove");
+        final List<AbstractButton> removes = buttonsLabelled(panel, "Remove");
         assertFalse(removes.isEmpty(), "the proposed rows should still show their controls");
         for (AbstractButton remove : removes) {
             assertTrue(remove.isEnabled(),
@@ -183,12 +186,12 @@ class PreviewCannotMutateTheSavedPlanTest {
 
     @Test
     void editIsInertWhileAProposalIsOnScreen() throws Exception {
-        List<ScheduledEvent> saved = List.of(event("a", 9), event("b", 12));
-        FakeTripRepository trips = new FakeTripRepository(tripWith(saved));
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewOver(saved));
-        DayPlanPanel panel = panelFor(viewModel, controllerOver(trips, viewModel));
+        final List<ScheduledEvent> saved = List.of(event("a", 9), event("b", 12));
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(saved));
+        final DayPlanViewModel viewModel = new DayPlanViewModel(previewOver(saved));
+        final DayPlanPanel panel = panelFor(viewModel, controllerOver(trips, viewModel));
 
-        List<AbstractButton> edits = buttonsLabelled(panel, "Edit");
+        final List<AbstractButton> edits = buttonsLabelled(panel, "Edit");
         assertFalse(edits.isEmpty());
         for (AbstractButton edit : edits) {
             assertFalse(edit.isEnabled(), "Edit must not act on a proposal either");
@@ -198,13 +201,13 @@ class PreviewCannotMutateTheSavedPlanTest {
     /** The saved day is what the controls are for, once there is no proposal in the way. */
     @Test
     void theSameControlsWorkNormallyOnTheSavedDayPlan() throws Exception {
-        List<ScheduledEvent> saved = List.of(event("a", 9), event("b", 12));
-        FakeTripRepository trips = new FakeTripRepository(tripWith(saved));
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("trip-1", saved,
+        final List<ScheduledEvent> saved = List.of(event("a", 9), event("b", 12));
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(saved));
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("trip-1", saved,
                 "", false, Collections.emptyList()));
-        DayPlanPanel panel = panelFor(viewModel, controllerOver(trips, viewModel));
+        final DayPlanPanel panel = panelFor(viewModel, controllerOver(trips, viewModel));
 
-        List<AbstractButton> removes = buttonsLabelled(panel, "Remove");
+        final List<AbstractButton> removes = buttonsLabelled(panel, "Remove");
         assertFalse(removes.isEmpty());
         for (AbstractButton remove : removes) {
             assertTrue(remove.isEnabled(),
@@ -215,11 +218,11 @@ class PreviewCannotMutateTheSavedPlanTest {
     /** Opening a Preview over a day whose controls were live must disarm them. */
     @Test
     void editIsDisarmedTheMomentAPreviewOpensAndRemoveStaysHarmless() throws Exception {
-        List<ScheduledEvent> saved = List.of(event("a", 9), event("b", 12));
-        FakeTripRepository trips = new FakeTripRepository(tripWith(saved));
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("trip-1", saved,
+        final List<ScheduledEvent> saved = List.of(event("a", 9), event("b", 12));
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(saved));
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("trip-1", saved,
                 "", false, Collections.emptyList()));
-        DayPlanPanel panel = panelFor(viewModel, controllerOver(trips, viewModel));
+        final DayPlanPanel panel = panelFor(viewModel, controllerOver(trips, viewModel));
         assertTrue(buttonsLabelled(panel, "Remove").get(0).isEnabled(), "precondition");
 
         SwingUtilities.invokeAndWait(() -> viewModel.setState(previewOver(saved)));

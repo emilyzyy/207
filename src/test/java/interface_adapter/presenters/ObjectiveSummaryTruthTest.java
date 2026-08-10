@@ -4,6 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
 import interface_adapter.viewmodels.DayPlanState;
 import interface_adapter.viewmodels.DayPlanViewModel;
 import use_case.autoschedule.AutoSchedulePreviewOutputData;
@@ -13,11 +20,6 @@ import use_case.autoschedule.Reason;
 import use_case.autoschedule.ScheduleImprovement;
 import use_case.autoschedule.ScheduleImprovementType;
 import use_case.autoschedule.TravelEstimateQuality;
-import java.time.LocalTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import org.junit.jupiter.api.Test;
 
 /**
  * The sentence under the proposed schedule has to describe the schedule.
@@ -62,7 +64,7 @@ class ObjectiveSummaryTruthTest {
     /** The reported defect, stated as plainly as it can be. */
     @Test
     void aScheduleThatIsWorseOnBothCountsDoesNotClaimToBeBetter() {
-        String summary = PRESENTER.objectiveSummary(outcome(40, 75, 20, 130,
+        final String summary = PRESENTER.objectiveSummary(outcome(40, 75, 20, 130,
                 Collections.<ScheduleImprovement>emptyList(), false));
 
         assertFalse(summary.contains("less travel"),
@@ -76,7 +78,7 @@ class ObjectiveSummaryTruthTest {
     /** Equal is not better. A saving of nothing is not a saving. */
     @Test
     void anUnchangedFigureIsNotAnImprovement() {
-        String summary = PRESENTER.objectiveSummary(outcome(65, 65, 90, 90,
+        final String summary = PRESENTER.objectiveSummary(outcome(65, 65, 90, 90,
                 Collections.<ScheduleImprovement>emptyList(), false));
 
         assertFalse(summary.contains("less travel"), summary);
@@ -85,7 +87,7 @@ class ObjectiveSummaryTruthTest {
 
     @Test
     void onlyTheFigureThatActuallyFellIsNamed() {
-        String summary = PRESENTER.objectiveSummary(outcome(65, 65, 295, 0,
+        final String summary = PRESENTER.objectiveSummary(outcome(65, 65, 295, 0,
                 Collections.<ScheduleImprovement>emptyList(), false));
 
         assertTrue(summary.contains("fewer wasted gaps"), summary);
@@ -95,7 +97,7 @@ class ObjectiveSummaryTruthTest {
 
     @Test
     void bothAreNamedWhenBothImproved() {
-        String summary = PRESENTER.objectiveSummary(outcome(80, 40, 200, 30,
+        final String summary = PRESENTER.objectiveSummary(outcome(80, 40, 200, 30,
                 Collections.<ScheduleImprovement>emptyList(), false));
 
         assertEquals("Arranged for less travel and fewer wasted gaps.", summary);
@@ -107,13 +109,13 @@ class ObjectiveSummaryTruthTest {
      */
     @Test
     void aSoftPreferenceIsNamedOnlyWhenItProducedAnImprovement() {
-        String withoutEvidence = PRESENTER.objectiveSummary(outcome(80, 40, 200, 30,
+        final String withoutEvidence = PRESENTER.objectiveSummary(outcome(80, 40, 200, 30,
                 Collections.<ScheduleImprovement>emptyList(), false));
         assertFalse(withoutEvidence.contains("mealtimes"),
                 "the meal preference was on, but nothing moved into a window: "
                         + withoutEvidence);
 
-        String withEvidence = PRESENTER.objectiveSummary(outcome(80, 40, 200, 30,
+        final String withEvidence = PRESENTER.objectiveSummary(outcome(80, 40, 200, 30,
                 Collections.singletonList(ScheduleImprovement.forActivity(
                         ScheduleImprovementType.MEAL_MOVED_TOWARD_WINDOW, 30, "La Zucca")),
                 false));
@@ -122,7 +124,7 @@ class ObjectiveSummaryTruthTest {
 
     @Test
     void daylightAndWeatherAreAlsoEarnedRatherThanAssumed() {
-        String summary = PRESENTER.objectiveSummary(outcome(80, 40, 200, 30, Arrays.asList(
+        final String summary = PRESENTER.objectiveSummary(outcome(80, 40, 200, 30, Arrays.asList(
                 ScheduleImprovement.forActivity(
                         ScheduleImprovementType.MOVED_INTO_DAYLIGHT, 20, "High Park"),
                 ScheduleImprovement.forActivity(
@@ -136,7 +138,7 @@ class ObjectiveSummaryTruthTest {
     /** Several clauses still read as a sentence rather than a comma splice. */
     @Test
     void theClausesReadAsEnglish() {
-        String summary = PRESENTER.objectiveSummary(outcome(80, 40, 200, 30,
+        final String summary = PRESENTER.objectiveSummary(outcome(80, 40, 200, 30,
                 Collections.singletonList(ScheduleImprovement.forActivity(
                         ScheduleImprovementType.MEAL_MOVED_TOWARD_WINDOW, 30, "La Zucca")),
                 false));
@@ -148,7 +150,7 @@ class ObjectiveSummaryTruthTest {
     /** Order preservation is a separate, independently true statement. */
     @Test
     void keepingTheOrderIsStillReportedEvenWhenNothingElseImproved() {
-        String summary = PRESENTER.objectiveSummary(outcome(40, 75, 20, 130,
+        final String summary = PRESENTER.objectiveSummary(outcome(40, 75, 20, 130,
                 Collections.<ScheduleImprovement>emptyList(), true));
 
         assertTrue(summary.contains("does not reduce travel or waiting"), summary);

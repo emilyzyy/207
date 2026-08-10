@@ -34,7 +34,7 @@ public final class AvatarSupport {
             new Color(181, 56, 48),
             new Color(146, 94, 6),
             new Color(91, 106, 123),
-            new Color(156, 39, 176)
+            new Color(156, 39, 176),
     };
 
     private AvatarSupport() {

@@ -455,7 +455,7 @@ public final class TripOptionsDialog {
             roleBox = new JComboBox<>(new String[] {
                     TripAccessRole.VIEW.displayName(),
                     TripAccessRole.EDIT.displayName(),
-                    TripAccessRole.ADMIN.displayName()
+                    TripAccessRole.ADMIN.displayName(),
             });
             roleBox.setSelectedItem(role.displayName());
             roleBox.setFont(SwingTheme.SMALL);

@@ -5,10 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
-import entity.entities.Activity;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.IndoorOutdoorType;
-import entity.valueobjects.Location;
 import java.awt.GraphicsEnvironment;
 import java.awt.image.BufferedImage;
 import java.time.LocalTime;
@@ -16,7 +12,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
 import org.junit.jupiter.api.Test;
+
+import entity.entities.Activity;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.Location;
 
 /**
  * The map's Preview state: two routes while a proposal is on screen, one the rest of the time.
@@ -36,7 +38,7 @@ class MapComparisonLifecycleTest {
     }
 
     private static List<Activity> places() {
-        List<Activity> all = new ArrayList<>();
+        final List<Activity> all = new ArrayList<>();
         for (int i = 0; i < 6; i++) {
             all.add(place("a" + i, 43.60 + i * 0.01, -79.40 + i * 0.01));
         }
@@ -45,14 +47,14 @@ class MapComparisonLifecycleTest {
 
     private static MapPanel mapWithPlaces() {
         assumeFalse(GraphicsEnvironment.isHeadless(), "these components need a display");
-        MapPanel map = new MapPanel(600, 500);
+        final MapPanel map = new MapPanel(600, 500);
         map.setActivities(places());
         return map;
     }
 
     @Test
     void anOrdinaryMapDrawsNoComparison() {
-        MapPanel map = mapWithPlaces();
+        final MapPanel map = mapWithPlaces();
 
         assertFalse(map.isComparing(), "there is no proposal, so there is nothing to compare");
         assertTrue(map.proposedRouteOrder().isEmpty());
@@ -61,7 +63,7 @@ class MapComparisonLifecycleTest {
 
     @Test
     void aPreviewDrawsBothTheSavedOrderAndTheProposedOrder() {
-        MapPanel map = mapWithPlaces();
+        final MapPanel map = mapWithPlaces();
 
         map.showComparison(Arrays.asList("a0", "a1", "a2"), Arrays.asList("a2", "a0", "a1"));
 
@@ -78,10 +80,10 @@ class MapComparisonLifecycleTest {
      */
     @Test
     void aDraftRemovalUpdatesOnlyTheProposedRoute() {
-        MapPanel map = mapWithPlaces();
+        final MapPanel map = mapWithPlaces();
         map.showComparison(Arrays.asList("a0", "a1", "a2", "a3"),
                 Arrays.asList("a0", "a1", "a2", "a3"));
-        List<String> savedBefore = new ArrayList<>(map.beforeRouteOrder());
+        final List<String> savedBefore = new ArrayList<>(map.beforeRouteOrder());
 
         map.showComparison(savedBefore, Arrays.asList("a0", "a2", "a3"));
 
@@ -92,7 +94,7 @@ class MapComparisonLifecycleTest {
 
     @Test
     void cancellingRemovesBothComparisonLayers() {
-        MapPanel map = mapWithPlaces();
+        final MapPanel map = mapWithPlaces();
         map.showComparison(Arrays.asList("a0", "a1"), Arrays.asList("a1", "a0"));
 
         map.clearComparison();
@@ -108,7 +110,7 @@ class MapComparisonLifecycleTest {
      */
     @Test
     void applyingLeavesTheOrdinaryRouteRatherThanAGreenOne() {
-        MapPanel map = mapWithPlaces();
+        final MapPanel map = mapWithPlaces();
         map.showComparison(Arrays.asList("a0", "a1"), Arrays.asList("a1", "a0"));
 
         map.clearComparison();
@@ -118,7 +120,7 @@ class MapComparisonLifecycleTest {
 
     @Test
     void repeatedPreviewsReplaceTheLinesRatherThanStackThem() {
-        MapPanel map = mapWithPlaces();
+        final MapPanel map = mapWithPlaces();
 
         for (int attempt = 0; attempt < 5; attempt++) {
             map.showComparison(Arrays.asList("a0", "a1", "a2"), Arrays.asList("a2", "a1", "a0"));
@@ -138,10 +140,10 @@ class MapComparisonLifecycleTest {
      */
     @Test
     void comparingPreservesTheLoadedResultsAndTheOrdinaryRoute() {
-        MapPanel map = mapWithPlaces();
+        final MapPanel map = mapWithPlaces();
         map.setSchedule(scheduleOf("a0", "a1", "a2"));
-        int placesBefore = map.markerDrawingOrder().size();
-        List<String> ordinaryRouteBefore = new ArrayList<>(map.routeOrder());
+        final int placesBefore = map.markerDrawingOrder().size();
+        final List<String> ordinaryRouteBefore = new ArrayList<>(map.routeOrder());
 
         map.showComparison(Arrays.asList("a0", "a1", "a2"), Arrays.asList("a2", "a1", "a0"));
         map.clearComparison();
@@ -153,7 +155,7 @@ class MapComparisonLifecycleTest {
     }
 
     private static List<entity.entities.ScheduledEvent> scheduleOf(String... ids) {
-        List<entity.entities.ScheduledEvent> events = new ArrayList<>();
+        final List<entity.entities.ScheduledEvent> events = new ArrayList<>();
         int hour = 9;
         for (String id : ids) {
             events.add(new entity.entities.ScheduledEvent(id, place(id, 43.60, -79.40),
@@ -167,7 +169,7 @@ class MapComparisonLifecycleTest {
     /** An empty proposal is not a comparison; a conflict must leave the map alone. */
     @Test
     void anEmptyProposalDrawsNothing() {
-        MapPanel map = mapWithPlaces();
+        final MapPanel map = mapWithPlaces();
 
         map.showComparison(Collections.emptyList(), Collections.emptyList());
 
@@ -177,26 +179,26 @@ class MapComparisonLifecycleTest {
 
     @Test
     void theBeforeRouteHasProjectorVisibleRedPixelsAndGreenWinsOnOverlap() {
-        MapPanel map = new MapPanel(600, 500, false);
+        final MapPanel map = new MapPanel(600, 500, false);
         map.setSize(600, 500);
         map.setActivities(places());
         map.showComparison(Arrays.asList("a0", "a2", "a4"), Collections.emptyList());
 
-        BufferedImage beforeOnly = render(map);
+        final BufferedImage beforeOnly = render(map);
         assertTrue(countDeepRed(beforeOnly, 0, beforeOnly.getHeight() - 55) > 20,
                 "the dashed Before route must remain visibly coral over a pale map, not "
                         + "blend into ordinary roads");
 
         map.showComparison(Arrays.asList("a0", "a2", "a4"),
                 Arrays.asList("a0", "a2", "a4"));
-        BufferedImage overlapping = render(map);
+        final BufferedImage overlapping = render(map);
         assertEquals(0, countDeepRed(overlapping, 0, overlapping.getHeight() - 55),
                 "on a shared segment the solid green Proposed route must paint above red");
         assertTrue(countGreen(overlapping, 0, overlapping.getHeight() - 55) > 20);
     }
 
     private static BufferedImage render(MapPanel map) {
-        BufferedImage image = new BufferedImage(
+        final BufferedImage image = new BufferedImage(
                 map.getWidth(), map.getHeight(), BufferedImage.TYPE_INT_ARGB);
         map.paint(image.createGraphics());
         return image;
@@ -206,7 +208,7 @@ class MapComparisonLifecycleTest {
         int count = 0;
         for (int y = fromY; y < toY; y++) {
             for (int x = 0; x < image.getWidth(); x++) {
-                java.awt.Color colour = new java.awt.Color(image.getRGB(x, y), true);
+                final java.awt.Color colour = new java.awt.Color(image.getRGB(x, y), true);
                 if (colour.getRed() > colour.getGreen() + 55
                         && colour.getGreen() < 130
                         && colour.getRed() > colour.getBlue() + 35) {
@@ -221,7 +223,7 @@ class MapComparisonLifecycleTest {
         int count = 0;
         for (int y = fromY; y < toY; y++) {
             for (int x = 0; x < image.getWidth(); x++) {
-                java.awt.Color colour = new java.awt.Color(image.getRGB(x, y), true);
+                final java.awt.Color colour = new java.awt.Color(image.getRGB(x, y), true);
                 if (colour.getGreen() > colour.getRed() + 40
                         && colour.getGreen() > colour.getBlue() + 15) {
                     count++;

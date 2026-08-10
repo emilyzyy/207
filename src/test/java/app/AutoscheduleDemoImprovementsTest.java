@@ -5,27 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import interface_adapter.controllers.AutoScheduleController;
-import interface_adapter.controllers.AutoScheduleSettings;
-import interface_adapter.controllers.TaskRunner;
-import interface_adapter.gateways.DistanceServiceTravelTimeEstimator;
-import interface_adapter.presenters.AutoSchedulePresenter;
-import interface_adapter.viewmodels.AutoScheduleStatus;
-import interface_adapter.viewmodels.DayPlanState;
-import interface_adapter.viewmodels.DayPlanViewModel;
-import interface_adapter.viewmodels.ImprovementView;
-import interface_adapter.viewmodels.PreviewMetricsView;
-import app.AppContainer;
-import use_case.autoschedule.AutoScheduleInteractor;
-import use_case.autoschedule.WeatherContext;
-import use_case.autoschedule.engine.ScheduleEngine;
-import use_case.autoschedule.policy.DaylightPolicy;
-import use_case.autoschedule.policy.MealWindowPolicy;
-import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
-import entity.entities.Trip;
-import entity.entities.WeatherWarning;
-import entity.valueobjects.WeatherSeverity;
-import interface_adapter.mock.MockDistanceService;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,7 +12,29 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.junit.jupiter.api.Test;
+
+import entity.entities.Trip;
+import entity.entities.WeatherWarning;
+import entity.valueobjects.WeatherSeverity;
+import interface_adapter.controllers.AutoScheduleController;
+import interface_adapter.controllers.AutoScheduleSettings;
+import interface_adapter.controllers.TaskRunner;
+import interface_adapter.gateways.DistanceServiceTravelTimeEstimator;
+import interface_adapter.mock.MockDistanceService;
+import interface_adapter.presenters.AutoSchedulePresenter;
+import interface_adapter.viewmodels.AutoScheduleStatus;
+import interface_adapter.viewmodels.DayPlanState;
+import interface_adapter.viewmodels.DayPlanViewModel;
+import interface_adapter.viewmodels.ImprovementView;
+import interface_adapter.viewmodels.PreviewMetricsView;
+import use_case.autoschedule.AutoScheduleInteractor;
+import use_case.autoschedule.WeatherContext;
+import use_case.autoschedule.engine.ScheduleEngine;
+import use_case.autoschedule.policy.DaylightPolicy;
+import use_case.autoschedule.policy.MealWindowPolicy;
+import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
 
 /**
  * The seeded demo, end to end, asserting the exact improvements it produces.
@@ -49,26 +50,26 @@ class AutoscheduleDemoImprovementsTest {
     private DayPlanViewModel viewModel;
 
     private DayPlanState runDemo() {
-        AppContainer app = new AppBuilder().buildOffline();
-        Trip trip = app.trips.save(AutoscheduleDemoTrip.inefficientDay());
-        List<WeatherWarning> hourly = AutoscheduleDemoTrip.hourlyForecast();
+        final AppContainer app = new AppBuilder().buildOffline();
+        final Trip trip = app.trips.save(AutoscheduleDemoTrip.inefficientDay());
+        final List<WeatherWarning> hourly = AutoscheduleDemoTrip.hourlyForecast();
 
         viewModel = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false, hourly));
 
-        Map<Integer, WeatherSeverity> byHour = new HashMap<>();
+        final Map<Integer, WeatherSeverity> byHour = new HashMap<>();
         for (WeatherWarning warning : hourly) {
             byHour.put(warning.getTime().getHour(), warning.getSeverity());
         }
 
-        AutoScheduleInteractor interactor = new AutoScheduleInteractor(app.trips,
+        final AutoScheduleInteractor interactor = new AutoScheduleInteractor(app.trips,
                 new DistanceServiceTravelTimeEstimator(new MockDistanceService()),
                 anyTrip -> WeatherContext.hourly(byHour),
                 new AutoSchedulePresenter(viewModel),
                 Arrays.asList(new WeatherSuitabilityPolicy(), new MealWindowPolicy(),
                         new DaylightPolicy()),
                 new ScheduleEngine());
-        AutoScheduleController controller =
+        final AutoScheduleController controller =
                 new AutoScheduleController(interactor, viewModel, TaskRunner.immediate());
 
         controller.toggleLock("event-museum");
@@ -81,7 +82,7 @@ class AutoscheduleDemoImprovementsTest {
     }
 
     private static List<String> headlines(DayPlanState state) {
-        List<String> headlines = new ArrayList<>();
+        final List<String> headlines = new ArrayList<>();
         for (ImprovementView improvement : state.getImprovements()) {
             headlines.add(improvement.getPrimary());
         }
@@ -98,13 +99,13 @@ class AutoscheduleDemoImprovementsTest {
     }
 
     private static String describe(DayPlanState state) {
-        StringBuilder text = new StringBuilder();
+        final StringBuilder text = new StringBuilder();
         for (interface_adapter.viewmodels.PreviewRowView row : state.getPreviewRows()) {
             text.append('\n').append(row.getTitle()).append(' ')
                     .append(row.getStart()).append('-').append(row.getEnd())
                     .append(" reason=").append(row.getReason());
         }
-        PreviewMetricsView metrics = state.getMetrics();
+        final PreviewMetricsView metrics = state.getMetrics();
         return text.append("\ntravel ").append(metrics.getTravelBeforeMinutes()).append(" -> ")
                 .append(metrics.getTravelAfterMinutes()).append("; idle ")
                 .append(metrics.getIdleBeforeMinutes()).append(" -> ")
@@ -113,10 +114,10 @@ class AutoscheduleDemoImprovementsTest {
 
     @Test
     void theSeededDemoSchedulesFiveActivitiesAndHonoursTheUnavailablePeriod() {
-        DayPlanState state = runDemo();
+        final DayPlanState state = runDemo();
 
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(), state.getMessage());
-        PreviewMetricsView metrics = state.getMetrics();
+        final PreviewMetricsView metrics = state.getMetrics();
         assertEquals(5, metrics.getActivityCount(), "the demo is a five-activity day");
         assertTrue(state.getPreviewRows().stream()
                         .noneMatch(row -> row.getStart().isBefore(
@@ -127,8 +128,8 @@ class AutoscheduleDemoImprovementsTest {
 
     @Test
     void theSeededDemoProducesExactlyTheImprovementsItCanProve() {
-        DayPlanState state = runDemo();
-        List<String> shown = headlines(state);
+        final DayPlanState state = runDemo();
+        final List<String> shown = headlines(state);
 
         // Four, and each is a before/after comparison the Interactor computed. The former
         // "PIN KEPT" card is gone deliberately: a lock's window is the activity's current
@@ -147,7 +148,7 @@ class AutoscheduleDemoImprovementsTest {
 
     @Test
     void eachImprovementNamesTheActivityItIsAbout() {
-        DayPlanState state = runDemo();
+        final DayPlanState state = runDemo();
 
         // The pin is a constraint respected, not an improvement, so it names itself on a chip.
         assertTrue(state.getConstraintChips().stream()
@@ -166,7 +167,7 @@ class AutoscheduleDemoImprovementsTest {
      */
     @Test
     void theDemoDoesNotClaimTheOrderWasPreservedBecauseItWasNot() {
-        DayPlanState state = runDemo();
+        final DayPlanState state = runDemo();
 
         assertTrue(state.isKeptCurrentOrder(), "the preference was asked for");
         assertFalse(headlines(state).contains("Your original order was kept"),
@@ -175,7 +176,7 @@ class AutoscheduleDemoImprovementsTest {
 
     @Test
     void thePinnedActivityIsStillAtItsOriginalTime() {
-        DayPlanState state = runDemo();
+        final DayPlanState state = runDemo();
 
         assertTrue(state.getPreviewRows().stream()
                         .anyMatch(row -> "Royal Ontario Museum".equals(row.getTitle())
@@ -187,9 +188,9 @@ class AutoscheduleDemoImprovementsTest {
 
     @Test
     void theOutdoorActivityMovesIntoBetterWeatherAndAlmostEntirelyIntoDaylight() {
-        DayPlanState state = runDemo();
+        final DayPlanState state = runDemo();
 
-        LocalTime parkStart = state.getPreviewRows().stream()
+        final LocalTime parkStart = state.getPreviewRows().stream()
                 .filter(row -> "High Park".equals(row.getTitle()))
                 .map(row -> row.getStart()).findFirst().orElse(null);
 
@@ -204,9 +205,9 @@ class AutoscheduleDemoImprovementsTest {
 
     @Test
     void theMealMovesOutOfTheMiddleOfTheAfternoon() {
-        DayPlanState state = runDemo();
+        final DayPlanState state = runDemo();
 
-        LocalTime lunchStart = state.getPreviewRows().stream()
+        final LocalTime lunchStart = state.getPreviewRows().stream()
                 .filter(row -> "St Lawrence Market".equals(row.getTitle()))
                 .map(row -> row.getStart()).findFirst().orElse(null);
 
@@ -223,8 +224,8 @@ class AutoscheduleDemoImprovementsTest {
      */
     @Test
     void beforeTravelReflectsTheJourneysTheOriginalOrderActuallyRequired() {
-        DayPlanState state = runDemo();
-        PreviewMetricsView metrics = state.getMetrics();
+        final DayPlanState state = runDemo();
+        final PreviewMetricsView metrics = state.getMetrics();
 
         assertTrue(metrics.getTravelBeforeMinutes() > 0,
                 "five activities in five different places never cost zero travel");

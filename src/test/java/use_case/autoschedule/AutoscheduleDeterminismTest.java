@@ -1,9 +1,18 @@
 package use_case.autoschedule;
 
-import static use_case.autoschedule.ProblemFixtures.at;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static use_case.autoschedule.ProblemFixtures.at;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
 
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
@@ -26,13 +35,6 @@ import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
 import use_case.autoschedule.testdoubles.FakeTravelTimeEstimator;
 import use_case.autoschedule.testdoubles.FakeTripRepository;
 import use_case.autoschedule.testdoubles.FakeWeatherContextGateway;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import org.junit.jupiter.api.Test;
 
 /**
  * The same request, asked twice, must answer the same way.
@@ -81,13 +83,13 @@ class AutoscheduleDeterminismTest {
     }
 
     private static Trip dayOf(int activityCount) {
-        List<ScheduledEvent> events = new ArrayList<>();
+        final List<ScheduledEvent> events = new ArrayList<>();
         for (int i = 0; i < activityCount; i++) {
-            String id = "e" + i;
+            final String id = "e" + i;
             events.add(new ScheduledEvent(id, place(id, 43.6 + i * 0.02, -79.4 + i * 0.02),
                     at(9 + i * 2, 0), at(10 + i * 2, 0), EventType.ACTIVITY, ""));
         }
-        Trip trip = new Trip("trip-1", "Toronto", DATE, at(9, 0), at(21, 0),
+        final Trip trip = new Trip("trip-1", "Toronto", DATE, at(9, 0), at(21, 0),
                 TransportationMode.WALKING);
         trip.replaceSchedule(events);
         return trip;
@@ -100,7 +102,7 @@ class AutoscheduleDeterminismTest {
 
     private static DayPlanState runOnce(Trip trip, TravelTimeEstimator estimator,
                                         AutoScheduleInputData input) {
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("trip-1",
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState("trip-1",
                 trip.getScheduledEvents(), "", false, Collections.emptyList()));
         new AutoScheduleInteractor(new FakeTripRepository(trip), estimator,
                 new FakeWeatherContextGateway(), new AutoSchedulePresenter(viewModel),
@@ -110,7 +112,7 @@ class AutoscheduleDeterminismTest {
 
     /** Everything about the answer that a user could see, as one comparable string. */
     private static String fingerprintOf(DayPlanState state) {
-        StringBuilder print = new StringBuilder(state.getStatus().name()).append('|');
+        final StringBuilder print = new StringBuilder(state.getStatus().name()).append('|');
         for (PreviewRowView row : state.getPreviewRows()) {
             print.append(row.getKind()).append(' ').append(row.getEventId()).append(' ')
                     .append(row.getStart()).append('-').append(row.getEnd()).append(';');
@@ -127,9 +129,9 @@ class AutoscheduleDeterminismTest {
     void identicalInputAndTravelMatrixProduceIdenticalResultsEveryTime() {
         String first = null;
         for (int attempt = 0; attempt < 12; attempt++) {
-            FakeTravelTimeEstimator estimator =
+            final FakeTravelTimeEstimator estimator =
                     new FakeTravelTimeEstimator().timeSensitive(false).defaultMinutes(11);
-            String print = fingerprintOf(runOnce(dayOf(4), estimator, request(
+            final String print = fingerprintOf(runOnce(dayOf(4), estimator, request(
                     Collections.emptyList())));
             if (first == null) {
                 first = print;
@@ -142,15 +144,15 @@ class AutoscheduleDeterminismTest {
     // same way, so no hash iteration order can decide the winner.
     @Test
     void theWinnerDoesNotDependOnTheOrderTheActivitiesArriveIn() {
-        FakeTravelTimeEstimator estimator =
+        final FakeTravelTimeEstimator estimator =
                 new FakeTravelTimeEstimator().timeSensitive(false).defaultMinutes(11);
-        Trip forwards = dayOf(4);
+        final Trip forwards = dayOf(4);
 
-        List<ScheduledEvent> shuffled = new ArrayList<>(forwards.getScheduledEvents());
+        final List<ScheduledEvent> shuffled = new ArrayList<>(forwards.getScheduledEvents());
         Collections.reverse(shuffled);
         Collections.sort(shuffled, (left, right) ->
                 left.getStartTime().compareTo(right.getStartTime()));
-        Trip rebuilt = new Trip("trip-1", "Toronto", DATE, at(9, 0), at(21, 0),
+        final Trip rebuilt = new Trip("trip-1", "Toronto", DATE, at(9, 0), at(21, 0),
                 TransportationMode.WALKING);
         rebuilt.replaceSchedule(shuffled);
 
@@ -167,10 +169,10 @@ class AutoscheduleDeterminismTest {
     // 4
     @Test
     void aProviderFailureIsReportedAsAProviderFailureNotAnImpossibleDay() {
-        DriftingEstimator failing = new DriftingEstimator();
+        final DriftingEstimator failing = new DriftingEstimator();
         failing.failing = true;
 
-        DayPlanState state = runOnce(dayOf(3), failing, request(Collections.emptyList()));
+        final DayPlanState state = runOnce(dayOf(3), failing, request(Collections.emptyList()));
 
         assertNotEquals(AutoScheduleStatus.PREVIEW, state.getStatus());
         assertTrue(state.getMessage().toLowerCase().contains("travel times are unavailable"),
@@ -187,13 +189,13 @@ class AutoscheduleDeterminismTest {
      */
     @Test
     void aFailureWhileRefiningKeepsTheScheduleTheSearchAlreadyFound() {
-        FakeTravelTimeEstimator prefetch =
+        final FakeTravelTimeEstimator prefetch =
                 new FakeTravelTimeEstimator().timeSensitive(false).defaultMinutes(11);
-        DayPlanState healthy = runOnce(dayOf(3), prefetch, request(Collections.emptyList()));
+        final DayPlanState healthy = runOnce(dayOf(3), prefetch, request(Collections.emptyList()));
         assertEquals(AutoScheduleStatus.PREVIEW, healthy.getStatus(), healthy.getMessage());
 
         // Same day, but the provider breaks after the prefetch has already succeeded.
-        TravelTimeEstimator breaksAfterPrefetch = new TravelTimeEstimator() {
+        final TravelTimeEstimator breaksAfterPrefetch = new TravelTimeEstimator() {
             private int calls;
 
             @Override
@@ -212,7 +214,7 @@ class AutoscheduleDeterminismTest {
             }
         };
 
-        DayPlanState state = runOnce(dayOf(3), breaksAfterPrefetch, request(
+        final DayPlanState state = runOnce(dayOf(3), breaksAfterPrefetch, request(
                 Collections.emptyList()));
 
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(),
@@ -226,15 +228,15 @@ class AutoscheduleDeterminismTest {
     // 10
     @Test
     void aRetainedUnavailableWindowGivesTheSameAnswerOnEveryAttempt() {
-        List<TimeWindow> unavailable = Collections.singletonList(
+        final List<TimeWindow> unavailable = Collections.singletonList(
                 new TimeWindow(at(10, 0), at(13, 0)));
 
         String first = null;
         for (int attempt = 0; attempt < 8; attempt++) {
-            FakeTravelTimeEstimator estimator =
+            final FakeTravelTimeEstimator estimator =
                     new FakeTravelTimeEstimator().timeSensitive(false).defaultMinutes(11);
-            DayPlanState state = runOnce(dayOf(3), estimator, request(unavailable));
-            String print = fingerprintOf(state);
+            final DayPlanState state = runOnce(dayOf(3), estimator, request(unavailable));
+            final String print = fingerprintOf(state);
             if (first == null) {
                 first = print;
             }
@@ -258,7 +260,7 @@ class AutoscheduleDeterminismTest {
      */
     @Test
     void oneRequestUsesOneCoherentSetOfEstimates() {
-        DayPlanState state = runOnce(dayOf(4), new DriftingEstimator(),
+        final DayPlanState state = runOnce(dayOf(4), new DriftingEstimator(),
                 request(Collections.emptyList()));
 
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(), state.getMessage());
@@ -276,15 +278,15 @@ class AutoscheduleDeterminismTest {
     // 9
     @Test
     void appliedTravelRowsAreNeverScheduledAsActivities() {
-        Trip trip = dayOf(3);
-        List<ScheduledEvent> withTravel = new ArrayList<>(trip.getScheduledEvents());
+        final Trip trip = dayOf(3);
+        final List<ScheduledEvent> withTravel = new ArrayList<>(trip.getScheduledEvents());
         withTravel.add(new ScheduledEvent("travel-e1", null, at(10, 0), at(10, 20),
                 EventType.TRAVEL, "Travel to Place e1"));
         Collections.sort(withTravel, (left, right) ->
                 left.getStartTime().compareTo(right.getStartTime()));
         trip.replaceSchedule(withTravel);
 
-        DayPlanState state = runOnce(trip, new FakeTravelTimeEstimator()
+        final DayPlanState state = runOnce(trip, new FakeTravelTimeEstimator()
                 .timeSensitive(false).defaultMinutes(11), request(Collections.emptyList()));
 
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(), state.getMessage());

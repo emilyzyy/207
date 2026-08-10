@@ -1,7 +1,5 @@
 package views;
 
-import interface_adapter.viewmodels.ShareState;
-import interface_adapter.viewmodels.ShareViewModel;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -14,6 +12,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -27,6 +26,9 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
+
+import interface_adapter.viewmodels.ShareState;
+import interface_adapter.viewmodels.ShareViewModel;
 
 /** Modeless share preview: scrollable day-plan PNGs plus text copy / save. */
 public final class ShareDialog extends JDialog {
@@ -50,14 +52,14 @@ public final class ShareDialog extends JDialog {
         setLayout(new BorderLayout(0, 12));
         getContentPane().setBackground(SwingTheme.BACKGROUND);
 
-        JPanel heading = new JPanel(new BorderLayout());
+        final JPanel heading = new JPanel(new BorderLayout());
         heading.setBackground(SwingTheme.PANEL);
         heading.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
-        JLabel title = new JLabel("Share your day plan");
+        final JLabel title = new JLabel("Share your day plan");
         title.setFont(SwingTheme.TITLE);
         title.setForeground(SwingTheme.NAVY);
         heading.add(title, BorderLayout.WEST);
-        JLabel hint = new JLabel("Scroll to see each day, then save or copy.");
+        final JLabel hint = new JLabel("Scroll to see each day, then save or copy.");
         hint.setFont(SwingTheme.SMALL);
         hint.setForeground(SwingTheme.MUTED);
         heading.add(hint, BorderLayout.SOUTH);
@@ -66,7 +68,7 @@ public final class ShareDialog extends JDialog {
         imagesPanel.setLayout(new BoxLayout(imagesPanel, BoxLayout.Y_AXIS));
         imagesPanel.setBackground(SwingTheme.BACKGROUND);
         imagesPanel.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
-        JScrollPane imageScroll = new JScrollPane(imagesPanel);
+        final JScrollPane imageScroll = new JScrollPane(imagesPanel);
         imageScroll.setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
         imageScroll.getVerticalScrollBar().setUnitIncrement(24);
         imageScroll.setPreferredSize(new Dimension(600, 420));
@@ -78,24 +80,24 @@ public final class ShareDialog extends JDialog {
         preview.setFont(SwingTheme.BODY);
         preview.setRows(5);
         preview.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
-        JScrollPane textScroll = new JScrollPane(preview);
+        final JScrollPane textScroll = new JScrollPane(preview);
         textScroll.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(SwingTheme.LINE), "Text summary"));
 
-        JPanel center = new JPanel(new BorderLayout(0, 8));
+        final JPanel center = new JPanel(new BorderLayout(0, 8));
         center.setOpaque(false);
         center.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 12));
         center.add(imageScroll, BorderLayout.CENTER);
         center.add(textScroll, BorderLayout.SOUTH);
         add(center, BorderLayout.CENTER);
 
-        JPanel actions = new JPanel(new BorderLayout(12, 0));
+        final JPanel actions = new JPanel(new BorderLayout(12, 0));
         actions.setOpaque(false);
         actions.setBorder(BorderFactory.createEmptyBorder(0, 12, 10, 12));
         status.setFont(SwingTheme.SMALL);
         actions.add(status, BorderLayout.CENTER);
 
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        final JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         buttons.setOpaque(false);
         copyTextButton.setName("copy-itinerary");
         copyTextButton.addActionListener(event -> copyTextToClipboard());
@@ -130,7 +132,7 @@ public final class ShareDialog extends JDialog {
     }
 
     private void copyFirstImageToClipboard() {
-        List<BufferedImage> images = viewModel.getState().getDayImages();
+        final List<BufferedImage> images = viewModel.getState().getDayImages();
         if (images.isEmpty()) {
             status.setText("No day-plan image to copy yet.");
             status.setForeground(SwingTheme.ERROR);
@@ -139,7 +141,7 @@ public final class ShareDialog extends JDialog {
         try {
             Toolkit.getDefaultToolkit().getSystemClipboard().setContents(
                     new ImageSelection(images.get(0)), null);
-            String note = images.size() > 1
+            final String note = images.size() > 1
                     ? "Copied day 1 image. Save PNG(s) to share every day."
                     : "Day-plan image copied — paste into Messages, Mail, or Slack.";
             status.setText(note);
@@ -151,13 +153,13 @@ public final class ShareDialog extends JDialog {
     }
 
     private void saveImages() {
-        List<BufferedImage> images = viewModel.getState().getDayImages();
+        final List<BufferedImage> images = viewModel.getState().getDayImages();
         if (images.isEmpty()) {
             status.setText("No day-plan images to save.");
             status.setForeground(SwingTheme.ERROR);
             return;
         }
-        JFileChooser chooser = new JFileChooser();
+        final JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle(images.size() == 1
                 ? "Save day-plan PNG"
                 : "Choose folder for day-plan PNGs");
@@ -184,10 +186,10 @@ public final class ShareDialog extends JDialog {
         if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
             return;
         }
-        File folder = chooser.getSelectedFile();
+        final File folder = chooser.getSelectedFile();
         try {
             for (int i = 0; i < images.size(); i++) {
-                File file = new File(folder, "trippy-day-" + (i + 1) + ".png");
+                final File file = new File(folder, "trippy-day-" + (i + 1) + ".png");
                 ImageIO.write(images.get(i), "png", file);
             }
             status.setText("Saved " + images.size() + " PNGs in " + folder.getName());
@@ -212,7 +214,7 @@ public final class ShareDialog extends JDialog {
     private void rebuildImages(List<BufferedImage> images) {
         imagesPanel.removeAll();
         if (images == null || images.isEmpty()) {
-            JLabel empty = new JLabel("Share a trip to see day-plan images here.",
+            final JLabel empty = new JLabel("Share a trip to see day-plan images here.",
                     SwingConstants.CENTER);
             empty.setFont(SwingTheme.BODY);
             empty.setForeground(SwingTheme.MUTED);
@@ -220,16 +222,16 @@ public final class ShareDialog extends JDialog {
             imagesPanel.add(empty);
         } else {
             for (int i = 0; i < images.size(); i++) {
-                BufferedImage image = images.get(i);
+                final BufferedImage image = images.get(i);
                 if (images.size() > 1) {
-                    JLabel caption = new JLabel("Day " + (i + 1));
+                    final JLabel caption = new JLabel("Day " + (i + 1));
                     caption.setFont(SwingTheme.HEADING);
                     caption.setForeground(SwingTheme.NAVY);
                     caption.setBorder(BorderFactory.createEmptyBorder(8, 0, 4, 0));
                     caption.setAlignmentX(LEFT_ALIGNMENT);
                     imagesPanel.add(caption);
                 }
-                JLabel picture = new JLabel(new ImageIcon(scaleForPreview(image)));
+                final JLabel picture = new JLabel(new ImageIcon(scaleForPreview(image)));
                 picture.setAlignmentX(LEFT_ALIGNMENT);
                 picture.setBorder(BorderFactory.createCompoundBorder(
                         BorderFactory.createLineBorder(SwingTheme.LINE),
@@ -243,15 +245,15 @@ public final class ShareDialog extends JDialog {
     }
 
     private static BufferedImage scaleForPreview(BufferedImage source) {
-        int maxWidth = 560;
+        final int maxWidth = 560;
         if (source.getWidth() <= maxWidth) {
             return source;
         }
-        double scale = maxWidth / (double) source.getWidth();
-        int width = maxWidth;
-        int height = Math.max(1, (int) Math.round(source.getHeight() * scale));
-        BufferedImage scaled = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        java.awt.Graphics2D g = scaled.createGraphics();
+        final double scale = maxWidth / (double) source.getWidth();
+        final int width = maxWidth;
+        final int height = Math.max(1, (int) Math.round(source.getHeight() * scale));
+        final BufferedImage scaled = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        final java.awt.Graphics2D g = scaled.createGraphics();
         g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
                 java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         g.drawImage(source, 0, 0, width, height, null);

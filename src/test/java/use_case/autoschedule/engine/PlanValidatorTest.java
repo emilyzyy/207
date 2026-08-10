@@ -1,5 +1,8 @@
 package use_case.autoschedule.engine;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static use_case.autoschedule.ProblemFixtures.at;
 import static use_case.autoschedule.ProblemFixtures.flatMatrix;
 import static use_case.autoschedule.ProblemFixtures.lockedTask;
@@ -7,22 +10,21 @@ import static use_case.autoschedule.ProblemFixtures.noBlockedWindows;
 import static use_case.autoschedule.ProblemFixtures.task;
 import static use_case.autoschedule.ProblemFixtures.tasks;
 import static use_case.autoschedule.ProblemFixtures.window;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
-import use_case.autoschedule.PlacedActivity;
-import use_case.autoschedule.SchedulePlan;
-import use_case.autoschedule.ScheduleConflict;
-import use_case.autoschedule.ScheduleProblem;
-import use_case.autoschedule.ScheduleTask;
-import use_case.autoschedule.SchedulingPreferences;
-import use_case.autoschedule.TimeWindow;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
 import org.junit.jupiter.api.Test;
+
+import use_case.autoschedule.PlacedActivity;
+import use_case.autoschedule.ScheduleConflict;
+import use_case.autoschedule.SchedulePlan;
+import use_case.autoschedule.ScheduleProblem;
+import use_case.autoschedule.ScheduleTask;
+import use_case.autoschedule.SchedulingPreferences;
+import use_case.autoschedule.TimeWindow;
 
 /**
  * The validator is the last thing standing between a wrong schedule and the traveller.
@@ -55,11 +57,11 @@ class PlanValidatorTest {
 
     @Test
     void aSoundPlanPasses() {
-        ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
-        ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));
-        ScheduleProblem problem = problemFor(tasks(first, second), noBlockedWindows());
+        final ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
+        final ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));
+        final ScheduleProblem problem = problemFor(tasks(first, second), noBlockedWindows());
 
-        SchedulePlan plan = planOf(placed(first, at(9, 0), null, 0),
+        final SchedulePlan plan = planOf(placed(first, at(9, 0), null, 0),
                 placed(second, at(10, 10), at(10, 0), 10));
 
         assertNull(validator.validate(problem, plan));
@@ -67,7 +69,7 @@ class PlanValidatorTest {
 
     @Test
     void aMissingPlanIsAConflictRatherThanACrash() {
-        ScheduleProblem problem = problemFor(
+        final ScheduleProblem problem = problemFor(
                 tasks(task("a", 60, 0, at(9, 0), at(21, 0))), noBlockedWindows());
 
         assertNotNull(validator.validate(problem, null));
@@ -75,11 +77,11 @@ class PlanValidatorTest {
 
     @Test
     void anActivityLeftOutIsCaught() {
-        ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
-        ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));
-        ScheduleProblem problem = problemFor(tasks(first, second), noBlockedWindows());
+        final ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
+        final ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));
+        final ScheduleProblem problem = problemFor(tasks(first, second), noBlockedWindows());
 
-        ScheduleConflict conflict = validator.validate(problem,
+        final ScheduleConflict conflict = validator.validate(problem,
                 planOf(placed(first, at(9, 0), null, 0)));
 
         assertNotNull(conflict, "every activity must appear; one was dropped");
@@ -88,10 +90,10 @@ class PlanValidatorTest {
 
     @Test
     void anActivityScheduledTwiceIsCaught() {
-        ScheduleTask only = task("a", 60, 0, at(9, 0), at(21, 0));
-        ScheduleProblem problem = problemFor(tasks(only), noBlockedWindows());
+        final ScheduleTask only = task("a", 60, 0, at(9, 0), at(21, 0));
+        final ScheduleProblem problem = problemFor(tasks(only), noBlockedWindows());
 
-        ScheduleConflict conflict = validator.validate(problem,
+        final ScheduleConflict conflict = validator.validate(problem,
                 planOf(placed(only, at(9, 0), null, 0), placed(only, at(11, 0), at(10, 0), 10)));
 
         assertNotNull(conflict);
@@ -100,8 +102,8 @@ class PlanValidatorTest {
 
     @Test
     void anActivityOutsideTheAvailableHoursIsCaught() {
-        ScheduleTask only = task("a", 60, 0, at(0, 0), at(23, 59));
-        ScheduleProblem problem = problemFor(tasks(only), noBlockedWindows());
+        final ScheduleTask only = task("a", 60, 0, at(0, 0), at(23, 59));
+        final ScheduleProblem problem = problemFor(tasks(only), noBlockedWindows());
 
         assertNotNull(validator.validate(problem, planOf(placed(only, at(22, 0), null, 0))),
                 "22:00 is outside the 09:00-21:00 window");
@@ -109,8 +111,8 @@ class PlanValidatorTest {
 
     @Test
     void anActivityOutsideItsOpeningHoursIsCaught() {
-        ScheduleTask only = task("a", 60, 0, at(14, 0), at(16, 0));
-        ScheduleProblem problem = problemFor(tasks(only), noBlockedWindows());
+        final ScheduleTask only = task("a", 60, 0, at(14, 0), at(16, 0));
+        final ScheduleProblem problem = problemFor(tasks(only), noBlockedWindows());
 
         assertNotNull(validator.validate(problem, planOf(placed(only, at(10, 0), null, 0))),
                 "the venue is shut at 10:00");
@@ -118,11 +120,11 @@ class PlanValidatorTest {
 
     @Test
     void anActivityOverlappingAnUnavailablePeriodIsCaught() {
-        ScheduleTask only = task("a", 60, 0, at(9, 0), at(21, 0));
-        ScheduleProblem problem = problemFor(tasks(only),
+        final ScheduleTask only = task("a", 60, 0, at(9, 0), at(21, 0));
+        final ScheduleProblem problem = problemFor(tasks(only),
                 Arrays.asList(new TimeWindow(at(12, 0), at(13, 0))));
 
-        ScheduleConflict conflict = validator.validate(problem,
+        final ScheduleConflict conflict = validator.validate(problem,
                 planOf(placed(only, at(12, 30), null, 0)));
 
         assertNotNull(conflict);
@@ -131,13 +133,13 @@ class PlanValidatorTest {
 
     @Test
     void travelRunningThroughAnUnavailablePeriodIsCaught() {
-        ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
-        ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));
-        ScheduleProblem problem = problemFor(tasks(first, second),
+        final ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
+        final ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));
+        final ScheduleProblem problem = problemFor(tasks(first, second),
                 Arrays.asList(new TimeWindow(at(10, 0), at(11, 0))));
 
         // The journey leaves at 10:00, straight into the blocked hour.
-        ScheduleConflict conflict = validator.validate(problem,
+        final ScheduleConflict conflict = validator.validate(problem,
                 planOf(placed(first, at(9, 0), null, 0),
                         placed(second, at(11, 30), at(10, 0), 30)));
 
@@ -146,14 +148,14 @@ class PlanValidatorTest {
 
     @Test
     void arrivingBeforeAndWaitingAtTheDestinationThroughUnavailableTimeIsCaught() {
-        ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
-        ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));
-        ScheduleProblem problem = problemFor(tasks(first, second),
+        final ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
+        final ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));
+        final ScheduleProblem problem = problemFor(tasks(first, second),
                 Arrays.asList(new TimeWindow(at(10, 30), at(13, 0))));
 
         // Neither row overlaps the block by itself, but the journey reaches B at 10:30 and
         // leaves the traveller waiting there through the entire unavailable period.
-        ScheduleConflict conflict = validator.validate(problem,
+        final ScheduleConflict conflict = validator.validate(problem,
                 planOf(placed(first, at(9, 0), null, 0),
                         placed(second, at(13, 0), at(10, 10), 20)));
 
@@ -164,12 +166,12 @@ class PlanValidatorTest {
 
     @Test
     void anActivityStartingBeforeItsTravelHasArrivedIsCaught() {
-        ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
-        ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));
-        ScheduleProblem problem = problemFor(tasks(first, second), noBlockedWindows());
+        final ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
+        final ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));
+        final ScheduleProblem problem = problemFor(tasks(first, second), noBlockedWindows());
 
         // 40 minutes of travel leaving at 10:00 cannot deliver anyone by 10:20.
-        ScheduleConflict conflict = validator.validate(problem,
+        final ScheduleConflict conflict = validator.validate(problem,
                 planOf(placed(first, at(9, 0), null, 0),
                         placed(second, at(10, 20), at(10, 0), 40)));
 
@@ -179,11 +181,11 @@ class PlanValidatorTest {
 
     @Test
     void twoActivitiesOverlappingEachOtherIsCaught() {
-        ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
-        ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));
-        ScheduleProblem problem = problemFor(tasks(first, second), noBlockedWindows());
+        final ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
+        final ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));
+        final ScheduleProblem problem = problemFor(tasks(first, second), noBlockedWindows());
 
-        ScheduleConflict conflict = validator.validate(problem,
+        final ScheduleConflict conflict = validator.validate(problem,
                 planOf(placed(first, at(9, 0), null, 0),
                         placed(second, at(9, 30), at(9, 0), 0)));
 
@@ -192,12 +194,12 @@ class PlanValidatorTest {
 
     @Test
     void travelStartingBeforeThePreviousActivityEndsIsCaught() {
-        ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
-        ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));
-        ScheduleProblem problem = problemFor(tasks(first, second), noBlockedWindows());
+        final ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
+        final ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));
+        final ScheduleProblem problem = problemFor(tasks(first, second), noBlockedWindows());
 
         // Leaving at 09:30 while the first activity runs until 10:00.
-        ScheduleConflict conflict = validator.validate(problem,
+        final ScheduleConflict conflict = validator.validate(problem,
                 planOf(placed(first, at(9, 0), null, 0),
                         placed(second, at(10, 30), at(9, 30), 20)));
 
@@ -206,10 +208,10 @@ class PlanValidatorTest {
 
     @Test
     void aLockedActivityMovedFromItsPinnedTimeIsCaught() {
-        ScheduleTask locked = lockedTask("dinner", 60, 0, at(9, 0), at(22, 0), at(18, 0));
-        ScheduleProblem problem = problemFor(tasks(locked), noBlockedWindows());
+        final ScheduleTask locked = lockedTask("dinner", 60, 0, at(9, 0), at(22, 0), at(18, 0));
+        final ScheduleProblem problem = problemFor(tasks(locked), noBlockedWindows());
 
-        ScheduleConflict conflict = validator.validate(problem,
+        final ScheduleConflict conflict = validator.validate(problem,
                 planOf(placed(locked, at(15, 0), null, 0)));
 
         assertNotNull(conflict, "a pinned activity must stay pinned");
@@ -217,16 +219,16 @@ class PlanValidatorTest {
 
     @Test
     void aLockedActivityLeftAtItsPinnedTimePasses() {
-        ScheduleTask locked = lockedTask("dinner", 60, 0, at(9, 0), at(22, 0), at(18, 0));
-        ScheduleProblem problem = problemFor(tasks(locked), noBlockedWindows());
+        final ScheduleTask locked = lockedTask("dinner", 60, 0, at(9, 0), at(22, 0), at(18, 0));
+        final ScheduleProblem problem = problemFor(tasks(locked), noBlockedWindows());
 
         assertNull(validator.validate(problem, planOf(placed(locked, at(18, 0), null, 0))));
     }
 
     @Test
     void anEmptyBlockedListIsHandledWithoutSpecialCasing() {
-        ScheduleTask only = task("a", 60, 0, at(9, 0), at(21, 0));
-        ScheduleProblem problem = new ScheduleProblem(window(9, 21), tasks(only),
+        final ScheduleTask only = task("a", 60, 0, at(9, 0), at(21, 0));
+        final ScheduleProblem problem = new ScheduleProblem(window(9, 21), tasks(only),
                 Collections.emptyList(), flatMatrix(tasks(only), window(9, 21), 10));
 
         assertNull(validator.validate(problem, planOf(placed(only, at(9, 0), null, 0))));

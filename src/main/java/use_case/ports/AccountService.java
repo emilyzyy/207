@@ -1,14 +1,15 @@
 package use_case.ports;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import entity.entities.Friendship;
 import entity.entities.TripParticipant;
 import entity.entities.User;
 import entity.valueobjects.TripAccessLevel;
 import entity.valueobjects.TripAccessRole;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 /** Profiles and friendships for signed-in Supabase accounts. */
 public interface AccountService {
@@ -46,7 +47,7 @@ public interface AccountService {
 
     /** Profiles of accepted friends (no friendship ids). */
     default List<User> listFriends() {
-        List<User> friends = new java.util.ArrayList<User>();
+        final List<User> friends = new java.util.ArrayList<User>();
         for (Friendship friendship : listAcceptedFriendships()) {
             friends.add(friendship.getOtherUser());
         }
@@ -61,7 +62,7 @@ public interface AccountService {
 
     /** Convenience: share with friends at Edit access. */
     default void setTripMembers(String tripId, List<String> memberUserIds) {
-        Map<String, TripAccessRole> roles = new LinkedHashMap<>();
+        final Map<String, TripAccessRole> roles = new LinkedHashMap<>();
         if (memberUserIds != null) {
             for (String memberId : memberUserIds) {
                 if (memberId == null || memberId.trim().isEmpty()) {
@@ -84,7 +85,7 @@ public interface AccountService {
 
     /** Friends currently on the trip (profiles only). */
     default List<User> listTripMembers(String tripId) {
-        List<User> members = new java.util.ArrayList<>();
+        final List<User> members = new java.util.ArrayList<>();
         for (TripParticipant participant : listTripParticipants(tripId)) {
             if (!participant.isOwner()) {
                 members.add(participant.getUser());

@@ -6,6 +6,25 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.junit.jupiter.api.Test;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.EventType;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.Location;
+import entity.valueobjects.TransportationMode;
+import entity.valueobjects.WeatherSeverity;
 import use_case.autoschedule.engine.ScheduleEngine;
 import use_case.autoschedule.policy.DaylightPolicy;
 import use_case.autoschedule.policy.MealWindowPolicy;
@@ -15,23 +34,6 @@ import use_case.autoschedule.testdoubles.FakeTravelTimeEstimator;
 import use_case.autoschedule.testdoubles.FakeTripRepository;
 import use_case.autoschedule.testdoubles.FakeWeatherContextGateway;
 import use_case.autoschedule.testdoubles.RecordingPresenter;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.IndoorOutdoorType;
-import entity.valueobjects.Location;
-import entity.valueobjects.EventType;
-import entity.valueobjects.TransportationMode;
-import entity.valueobjects.WeatherSeverity;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import org.junit.jupiter.api.Test;
 
 class AutoScheduleInteractorTest {
 
@@ -43,15 +45,15 @@ class AutoScheduleInteractorTest {
     private final FakeWeatherContextGateway weather = new FakeWeatherContextGateway();
 
     private static Trip tripWith(ScheduledEvent... events) {
-        Trip trip = new Trip("trip-1", "Toronto", ProblemFixtures.TRIP_DATE,
+        final Trip trip = new Trip("trip-1", "Toronto", ProblemFixtures.TRIP_DATE,
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING);
         trip.replaceSchedule(Arrays.asList(events));
         return trip;
     }
 
     private static ScheduledEvent activityEvent(String id, int startHour, int durationMinutes) {
-        Activity activity = ProblemFixtures.activity(id, LocalTime.of(9, 0), LocalTime.of(21, 0));
-        LocalTime start = LocalTime.of(startHour, 0);
+        final Activity activity = ProblemFixtures.activity(id, LocalTime.of(9, 0), LocalTime.of(21, 0));
+        final LocalTime start = LocalTime.of(startHour, 0);
         return new ScheduledEvent(id, activity, start, start.plusMinutes(durationMinutes),
                 EventType.ACTIVITY, "");
     }
@@ -59,10 +61,10 @@ class AutoScheduleInteractorTest {
     /** An activity at its own coordinates, for checks that turn on two places differing. */
     private static ScheduledEvent activityEventAt(String id, int startHour, int durationMinutes,
                                                   double latitude, double longitude) {
-        Activity activity = new Activity(id, id, ActivityCategory.MUSEUM,
+        final Activity activity = new Activity(id, id, ActivityCategory.MUSEUM,
                 new Location(latitude, longitude, id), 4.5, 60,
                 LocalTime.of(9, 0), LocalTime.of(21, 0), IndoorOutdoorType.INDOOR, "none");
-        LocalTime start = LocalTime.of(startHour, 0);
+        final LocalTime start = LocalTime.of(startHour, 0);
         return new ScheduledEvent(id, activity, start, start.plusMinutes(durationMinutes),
                 EventType.ACTIVITY, "");
     }
@@ -85,7 +87,7 @@ class AutoScheduleInteractorTest {
 
     @Test
     void previewProducesRowsWithoutSavingAnything() {
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(activityEvent("a", 9, 60), activityEvent("b", 12, 60)));
 
         interactorFor(trips).preview(simpleInput());
@@ -97,12 +99,12 @@ class AutoScheduleInteractorTest {
 
     @Test
     void previewKeepsEveryActivityExactlyOnce() {
-        FakeTripRepository trips = new FakeTripRepository(tripWith(
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(
                 activityEvent("a", 9, 60), activityEvent("b", 11, 60), activityEvent("c", 14, 60)));
 
         interactorFor(trips).preview(simpleInput());
 
-        List<String> activityIds = new ArrayList<>();
+        final List<String> activityIds = new ArrayList<>();
         for (ProposedEventData row : presenter.getPreview().getRows()) {
             if (row.getKind() == ProposedEventData.Kind.ACTIVITY) {
                 activityIds.add(row.getEventId());
@@ -115,7 +117,7 @@ class AutoScheduleInteractorTest {
 
     @Test
     void previewOutputCarriesNoEntities() {
-        FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
 
         interactorFor(trips).preview(simpleInput());
 
@@ -127,7 +129,7 @@ class AutoScheduleInteractorTest {
         // Trip, Activity or ScheduledEvent anywhere on the preview output.
         for (java.lang.reflect.Method method
                 : AutoSchedulePreviewOutputData.class.getDeclaredMethods()) {
-            String returned = method.getReturnType().getName();
+            final String returned = method.getReturnType().getName();
             assertFalse(returned.startsWith("entity.entities"),
                     method.getName() + " leaks an entity across the output boundary");
         }
@@ -136,12 +138,12 @@ class AutoScheduleInteractorTest {
     @Test
     void generatesTravelBlocksBetweenActivities() {
         estimator.defaultMinutes(20);
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(activityEvent("a", 9, 60), activityEvent("b", 12, 60)));
 
         interactorFor(trips).preview(simpleInput());
 
-        long travelRows = presenter.getPreview().getRows().stream()
+        final long travelRows = presenter.getPreview().getRows().stream()
                 .filter(row -> row.getKind() == ProposedEventData.Kind.TRAVEL).count();
         assertEquals(1, travelRows, "two activities need one journey between them");
         assertEquals(20, presenter.getPreview().getTravelAfterMinutes());
@@ -149,7 +151,7 @@ class AutoScheduleInteractorTest {
 
     @Test
     void reportsAnEmptyDayPlanAsAFailureNotAConflict() {
-        Trip empty = new Trip("trip-1", "Toronto", ProblemFixtures.TRIP_DATE,
+        final Trip empty = new Trip("trip-1", "Toronto", ProblemFixtures.TRIP_DATE,
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING);
 
         interactorFor(new FakeTripRepository(empty)).preview(simpleInput());
@@ -169,8 +171,8 @@ class AutoScheduleInteractorTest {
 
     @Test
     void refusesAvailabilityWiderThanTheTripsOwnHours() {
-        FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
-        AutoScheduleInputData widened = new AutoScheduleInputData("trip-1",
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
+        final AutoScheduleInputData widened = new AutoScheduleInputData("trip-1",
                 LocalTime.of(6, 0), LocalTime.of(23, 0), TransportationMode.WALKING,
                 Collections.emptySet(), Collections.emptyList(), true, true);
 
@@ -183,22 +185,22 @@ class AutoScheduleInteractorTest {
 
     @Test
     void acceptsAvailabilityThatNarrowsTheDay() {
-        FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
-        AutoScheduleInputData narrowed = new AutoScheduleInputData("trip-1",
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
+        final AutoScheduleInputData narrowed = new AutoScheduleInputData("trip-1",
                 LocalTime.of(10, 0), LocalTime.of(16, 0), TransportationMode.WALKING,
                 Collections.emptySet(), Collections.emptyList(), true, true);
 
         interactorFor(trips).preview(narrowed);
 
         assertNotNull(presenter.getPreview());
-        ProposedEventData row = presenter.getPreview().getRows().get(0);
+        final ProposedEventData row = presenter.getPreview().getRows().get(0);
         assertFalse(row.getStart().isBefore(LocalTime.of(10, 0)));
     }
 
     @Test
     void reportsAnInvertedAvailabilityWindow() {
-        FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
-        AutoScheduleInputData inverted = new AutoScheduleInputData("trip-1",
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
+        final AutoScheduleInputData inverted = new AutoScheduleInputData("trip-1",
                 LocalTime.of(16, 0), LocalTime.of(10, 0), TransportationMode.WALKING,
                 Collections.emptySet(), Collections.emptyList(), true, true);
 
@@ -209,7 +211,7 @@ class AutoScheduleInteractorTest {
 
     @Test
     void reportsALockThatIsNoLongerInThePlan() {
-        FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
 
         interactorFor(trips).preview(input("trip-1",
                 new LinkedHashSet<>(Arrays.asList("deleted-event")), Collections.emptyList(),
@@ -222,23 +224,23 @@ class AutoScheduleInteractorTest {
 
     @Test
     void keepsALockedActivityAtItsOriginalTime() {
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(activityEvent("a", 9, 60), activityEvent("dinner", 18, 60)));
 
         interactorFor(trips).preview(input("trip-1",
                 new LinkedHashSet<>(Arrays.asList("dinner")), Collections.emptyList(),
                 true));
 
-        ProposedEventData dinner = rowFor(presenter.getPreview(), "dinner");
+        final ProposedEventData dinner = rowFor(presenter.getPreview(), "dinner");
         assertEquals(LocalTime.of(18, 0), dinner.getStart());
         assertTrue(dinner.isLocked());
     }
 
     @Test
     void travelFailureStopsBeforeSearchingAndSavesNothing() {
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(activityEvent("a", 9, 60), activityEvent("b", 12, 60)));
-        TravelTimeEstimator failing = new TravelTimeEstimator() {
+        final TravelTimeEstimator failing = new TravelTimeEstimator() {
             @Override
             public TravelEstimate estimate(entity.valueobjects.Location from,
                                            entity.valueobjects.Location to,
@@ -264,7 +266,7 @@ class AutoScheduleInteractorTest {
     @Test
     void anUnavailableForecastStillProducesAScheduleWithAWarning() {
         weather.returning(WeatherContext.unavailable());
-        FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
 
         interactorFor(trips).preview(input("trip-1", Collections.emptySet(),
                 Collections.emptyList(), true));
@@ -276,7 +278,7 @@ class AutoScheduleInteractorTest {
 
     @Test
     void aWeatherGatewayThatThrowsIsStillSurvivable() {
-        FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
 
         new AutoScheduleInteractor(trips, estimator, new FakeWeatherContextGateway().thatFails(),
                 presenter, REGISTERED, new ScheduleEngine())
@@ -291,7 +293,7 @@ class AutoScheduleInteractorTest {
     @Test
     void aWholeDayForecastSaysSoRatherThanImplyingItShapedTheTiming() {
         weather.returning(WeatherContext.tripLevel(WeatherSeverity.LOW));
-        FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
 
         interactorFor(trips).preview(input("trip-1", Collections.emptySet(),
                 Collections.emptyList(), true));
@@ -303,12 +305,12 @@ class AutoScheduleInteractorTest {
 
     @Test
     void anHourlyForecastNeedsNoCaveat() {
-        java.util.Map<Integer, WeatherSeverity> byHour = new java.util.HashMap<>();
+        final java.util.Map<Integer, WeatherSeverity> byHour = new java.util.HashMap<>();
         for (int hour = 9; hour < 21; hour++) {
             byHour.put(hour, WeatherSeverity.LOW);
         }
         weather.returning(WeatherContext.hourly(byHour));
-        FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
 
         interactorFor(trips).preview(input("trip-1", Collections.emptySet(),
                 Collections.emptyList(), true));
@@ -322,7 +324,7 @@ class AutoScheduleInteractorTest {
 
     @Test
     void reportsTheBuiltInObjectivesAndWhetherOrderWasKept() {
-        FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
 
         interactorFor(trips).preview(input("trip-1", Collections.emptySet(),
                 Collections.emptyList(), true));
@@ -337,7 +339,7 @@ class AutoScheduleInteractorTest {
 
     @Test
     void turningOffKeepMyOrderIsReflectedInTheOutput() {
-        FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
 
         interactorFor(trips).preview(input("trip-1", Collections.emptySet(),
                 Collections.emptyList(), false));
@@ -348,7 +350,7 @@ class AutoScheduleInteractorTest {
 
     @Test
     void discloseTravelQualityHonestlyWhenTheProviderCannotSay() {
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(activityEvent("a", 9, 60), activityEvent("b", 12, 60)));
 
         interactorFor(trips).preview(simpleInput());
@@ -359,18 +361,18 @@ class AutoScheduleInteractorTest {
 
     @Test
     void applySavesExactlyThePreviewedSchedule() {
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(activityEvent("a", 9, 60), activityEvent("b", 12, 60)));
-        AutoScheduleInteractor interactor = interactorFor(trips);
+        final AutoScheduleInteractor interactor = interactorFor(trips);
         interactor.preview(simpleInput());
-        AutoSchedulePreviewOutputData preview = presenter.getPreview();
+        final AutoSchedulePreviewOutputData preview = presenter.getPreview();
 
         interactor.apply(new AutoScheduleApplyInputData("trip-1",
                 preview.getScheduleFingerprint(), preview.getRows()));
 
         assertNotNull(presenter.getApplied());
         assertEquals(1, trips.getSaveCount());
-        List<ScheduledEvent> saved = trips.current().getScheduledEvents();
+        final List<ScheduledEvent> saved = trips.current().getScheduledEvents();
         assertEquals(preview.getRows().size(), saved.size());
         for (int i = 0; i < saved.size(); i++) {
             assertEquals(preview.getRows().get(i).getStart(), saved.get(i).getStartTime());
@@ -383,13 +385,13 @@ class AutoScheduleInteractorTest {
         estimator.defaultMinutes(20);
         // Genuinely separated venues: "two different places with no journey between them" is
         // now decided from the coordinates rather than by re-asking the routing provider.
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(activityEventAt("a", 9, 60, 43.6447, -79.3733),
                         activityEventAt("b", 12, 60, 43.6563, -79.3806)));
-        AutoScheduleInteractor interactor = interactorFor(trips);
+        final AutoScheduleInteractor interactor = interactorFor(trips);
         interactor.preview(simpleInput());
-        AutoSchedulePreviewOutputData preview = presenter.getPreview();
-        List<ProposedEventData> withoutTravel = new ArrayList<>();
+        final AutoSchedulePreviewOutputData preview = presenter.getPreview();
+        final List<ProposedEventData> withoutTravel = new ArrayList<>();
         for (ProposedEventData row : preview.getRows()) {
             if (row.getKind() != ProposedEventData.Kind.TRAVEL) {
                 withoutTravel.add(row);
@@ -407,16 +409,16 @@ class AutoScheduleInteractorTest {
     @Test
     void applyRefusesATravelRowThatCannotFitBetweenItsNeighbours() {
         estimator.defaultMinutes(20);
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(activityEventAt("a", 9, 60, 43.6447, -79.3733),
                         activityEventAt("b", 12, 60, 43.6563, -79.3806)));
-        AutoScheduleInteractor interactor = interactorFor(trips);
+        final AutoScheduleInteractor interactor = interactorFor(trips);
         interactor.preview(simpleInput());
-        AutoSchedulePreviewOutputData preview = presenter.getPreview();
+        final AutoSchedulePreviewOutputData preview = presenter.getPreview();
 
         // A journey stretched past the activity it leads to. This is arithmetic on the rows,
         // so it is caught without asking anyone.
-        List<ProposedEventData> overrunning = new ArrayList<>();
+        final List<ProposedEventData> overrunning = new ArrayList<>();
         for (ProposedEventData row : preview.getRows()) {
             if (row.getKind() == ProposedEventData.Kind.TRAVEL) {
                 overrunning.add(new ProposedEventData(row.getEventId(), row.getActivityId(),
@@ -436,15 +438,15 @@ class AutoScheduleInteractorTest {
 
     @Test
     void applyRejectsAPreviewMadeBeforeThePlanChanged() {
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(activityEvent("a", 9, 60), activityEvent("b", 12, 60)));
-        AutoScheduleInteractor interactor = interactorFor(trips);
+        final AutoScheduleInteractor interactor = interactorFor(trips);
         interactor.preview(simpleInput());
-        AutoSchedulePreviewOutputData stale = presenter.getPreview();
+        final AutoSchedulePreviewOutputData stale = presenter.getPreview();
 
         // The user edits the Day Plan after previewing.
         trips.save(tripWith(activityEvent("a", 10, 60), activityEvent("b", 13, 60)));
-        int savesBefore = trips.getSaveCount();
+        final int savesBefore = trips.getSaveCount();
 
         interactor.apply(new AutoScheduleApplyInputData("trip-1",
                 stale.getScheduleFingerprint(), stale.getRows()));
@@ -455,7 +457,7 @@ class AutoScheduleInteractorTest {
 
     @Test
     void applyWithNothingToSaveIsRejected() {
-        FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(activityEvent("a", 9, 60)));
 
         interactorFor(trips).apply(new AutoScheduleApplyInputData("trip-1", "",
                 Collections.emptyList()));
@@ -466,7 +468,7 @@ class AutoScheduleInteractorTest {
 
     @Test
     void cancellingSimplyMeansNeverCallingApply() {
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(activityEvent("a", 9, 60), activityEvent("b", 12, 60)));
 
         interactorFor(trips).preview(simpleInput());
@@ -478,15 +480,15 @@ class AutoScheduleInteractorTest {
 
     @Test
     void refusesMoreActivitiesThanOneDayCanSensiblyHold() {
-        List<ScheduledEvent> many = new ArrayList<>();
+        final List<ScheduledEvent> many = new ArrayList<>();
         for (int i = 0; i < 16; i++) {
-            Activity activity = ProblemFixtures.activity("a" + i,
+            final Activity activity = ProblemFixtures.activity("a" + i,
                     LocalTime.of(9, 0), LocalTime.of(21, 0));
-            LocalTime start = LocalTime.of(9, 0).plusMinutes(i * 45L);
+            final LocalTime start = LocalTime.of(9, 0).plusMinutes(i * 45L);
             many.add(new ScheduledEvent("a" + i, activity, start, start.plusMinutes(30),
                     EventType.ACTIVITY, ""));
         }
-        Trip trip = new Trip("trip-1", "Toronto", ProblemFixtures.TRIP_DATE,
+        final Trip trip = new Trip("trip-1", "Toronto", ProblemFixtures.TRIP_DATE,
                 LocalTime.of(9, 0), LocalTime.of(23, 0), TransportationMode.WALKING);
         trip.replaceSchedule(many);
 

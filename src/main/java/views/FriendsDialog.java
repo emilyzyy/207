@@ -1,14 +1,10 @@
 package views;
 
-import entity.entities.Friendship;
-import entity.entities.User;
-import interface_adapter.controllers.FriendsController;
-import interface_adapter.viewmodels.FriendsState;
-import interface_adapter.viewmodels.FriendsViewModel;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -21,6 +17,12 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
+
+import entity.entities.Friendship;
+import entity.entities.User;
+import interface_adapter.controllers.FriendsController;
+import interface_adapter.viewmodels.FriendsState;
+import interface_adapter.viewmodels.FriendsViewModel;
 
 /** Friends hub View: delegates all actions to {@link FriendsController}. */
 public final class FriendsDialog extends JDialog {
@@ -43,16 +45,16 @@ public final class FriendsDialog extends JDialog {
         setMinimumSize(new Dimension(460, 420));
         setPreferredSize(new Dimension(520, 480));
 
-        JPanel root = new JPanel(new BorderLayout(0, 10));
+        final JPanel root = new JPanel(new BorderLayout(0, 10));
         root.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
         root.setBackground(SwingTheme.PANEL);
 
-        JLabel title = new JLabel("Friends");
+        final JLabel title = new JLabel("Friends");
         title.setFont(SwingTheme.HEADING);
         title.setForeground(SwingTheme.NAVY);
         root.add(title, BorderLayout.NORTH);
 
-        JTabbedPane tabs = new JTabbedPane();
+        final JTabbedPane tabs = new JTabbedPane();
         tabs.setFont(SwingTheme.BODY);
         buildAddTab();
         requestsPanel.setLayout(new BoxLayout(requestsPanel, BoxLayout.Y_AXIS));
@@ -66,12 +68,12 @@ public final class FriendsDialog extends JDialog {
 
         status.setFont(SwingTheme.SMALL);
         status.setForeground(SwingTheme.MUTED);
-        JPanel footer = new JPanel(new BorderLayout());
+        final JPanel footer = new JPanel(new BorderLayout());
         footer.setOpaque(false);
         footer.add(status, BorderLayout.CENTER);
-        JButton close = SwingTheme.primaryButton("Close");
+        final JButton close = SwingTheme.primaryButton("Close");
         close.addActionListener(event -> dispose());
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        final JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         right.setOpaque(false);
         right.add(close);
         footer.add(right, BorderLayout.EAST);
@@ -87,16 +89,16 @@ public final class FriendsDialog extends JDialog {
     private void buildAddTab() {
         addPanel.setOpaque(false);
         addPanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        JLabel help = new JLabel("Send a friend request using a unique username.");
+        final JLabel help = new JLabel("Send a friend request using a unique username.");
         help.setFont(SwingTheme.BODY);
         help.setForeground(SwingTheme.MUTED);
         addPanel.add(help, BorderLayout.NORTH);
 
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        final JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         row.setOpaque(false);
         row.add(new JLabel("Username"));
         row.add(usernameField);
-        JButton send = SwingTheme.primaryButton("Send request");
+        final JButton send = SwingTheme.primaryButton("Send request");
         send.addActionListener(event -> {
             controller.sendRequest(usernameField.getText());
             if (!viewModel.getState().isError()) {
@@ -157,30 +159,30 @@ public final class FriendsDialog extends JDialog {
     }
 
     private JPanel incomingRow(Friendship request) {
-        JPanel row = listRow();
+        final JPanel row = listRow();
         row.add(avatarAndName(request.getOtherUser()), BorderLayout.CENTER);
-        JButton accept = SwingTheme.primaryButton("Accept");
+        final JButton accept = SwingTheme.primaryButton("Accept");
         accept.addActionListener(event -> controller.accept(request.getId()));
         row.add(accept, BorderLayout.EAST);
         return row;
     }
 
     private JPanel outgoingRow(Friendship request) {
-        JPanel row = listRow();
+        final JPanel row = listRow();
         row.add(avatarAndName(request.getOtherUser()), BorderLayout.CENTER);
-        JButton cancel = SwingTheme.secondaryButton("Cancel");
+        final JButton cancel = SwingTheme.secondaryButton("Cancel");
         cancel.addActionListener(event -> controller.cancel(request.getId()));
         row.add(cancel, BorderLayout.EAST);
         return row;
     }
 
     private JPanel friendRow(Friendship friendship) {
-        User friend = friendship.getOtherUser();
-        JPanel row = listRow();
+        final User friend = friendship.getOtherUser();
+        final JPanel row = listRow();
         row.add(avatarAndName(friend), BorderLayout.CENTER);
-        JButton remove = SwingTheme.secondaryButton("Remove");
+        final JButton remove = SwingTheme.secondaryButton("Remove");
         remove.addActionListener(event -> {
-            int choice = JOptionPane.showConfirmDialog(
+            final int choice = JOptionPane.showConfirmDialog(
                     FriendsDialog.this,
                     "Remove @" + friend.getUsername() + " from your friends?\n"
                             + "You can send them a new request later if you change your mind.",
@@ -196,7 +198,7 @@ public final class FriendsDialog extends JDialog {
     }
 
     private static JPanel listRow() {
-        JPanel row = new JPanel(new BorderLayout(10, 0));
+        final JPanel row = new JPanel(new BorderLayout(10, 0));
         row.setOpaque(true);
         row.setBackground(SwingTheme.BACKGROUND);
         row.setBorder(BorderFactory.createCompoundBorder(
@@ -208,10 +210,10 @@ public final class FriendsDialog extends JDialog {
     }
 
     private static JPanel avatarAndName(User user) {
-        JPanel info = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        final JPanel info = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         info.setOpaque(false);
         info.add(new JLabel(AvatarSupport.iconFor(user, 32)));
-        JLabel name = new JLabel("@" + user.getUsername());
+        final JLabel name = new JLabel("@" + user.getUsername());
         name.setFont(SwingTheme.BODY);
         name.setForeground(SwingTheme.NAVY);
         info.add(name);
@@ -219,7 +221,7 @@ public final class FriendsDialog extends JDialog {
     }
 
     private static JLabel sectionLabel(String text) {
-        JLabel label = new JLabel(text);
+        final JLabel label = new JLabel(text);
         label.setFont(SwingTheme.BODY.deriveFont(java.awt.Font.BOLD));
         label.setForeground(SwingTheme.NAVY);
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -228,7 +230,7 @@ public final class FriendsDialog extends JDialog {
     }
 
     private static JLabel mutedRow(String text) {
-        JLabel label = new JLabel(text);
+        final JLabel label = new JLabel(text);
         label.setFont(SwingTheme.SMALL);
         label.setForeground(SwingTheme.MUTED);
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -237,7 +239,7 @@ public final class FriendsDialog extends JDialog {
     }
 
     private static JScrollPane wrapScroll(JPanel panel) {
-        JScrollPane scroll = new JScrollPane(panel);
+        final JScrollPane scroll = new JScrollPane(panel);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(12);
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);

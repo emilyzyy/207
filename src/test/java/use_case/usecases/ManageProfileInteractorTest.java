@@ -1,5 +1,15 @@
 package use_case.usecases;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Friendship;
 import entity.entities.TripParticipant;
 import entity.entities.User;
@@ -8,24 +18,16 @@ import entity.valueobjects.TripAccessRole;
 import use_case.ports.AccountService;
 import use_case.ports.AuthService;
 import use_case.ports.AuthSession;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class ManageProfileInteractorTest {
 
     @Test
     void updatesProfileAndValidatesPasswordChange() {
-        FakeAccount account = new FakeAccount();
+        final FakeAccount account = new FakeAccount();
         account.profile = new User("me", "bianca", "b@example.com");
-        FakeAuth auth = new FakeAuth();
-        RecordingOutput output = new RecordingOutput();
-        ManageProfileInteractor interactor = new ManageProfileInteractor(account, auth, output);
+        final FakeAuth auth = new FakeAuth();
+        final RecordingOutput output = new RecordingOutput();
+        final ManageProfileInteractor interactor = new ManageProfileInteractor(account, auth, output);
 
         interactor.execute(ManageProfileInputData.update(
                 "bianca2", "b2@example.com", "#FFFFFF", null,
@@ -44,11 +46,11 @@ final class ManageProfileInteractorTest {
 
     @Test
     void signsOutThroughAuthPort() {
-        FakeAccount account = new FakeAccount();
+        final FakeAccount account = new FakeAccount();
         account.profile = new User("me", "bianca", "b@example.com");
-        FakeAuth auth = new FakeAuth();
-        RecordingOutput output = new RecordingOutput();
-        ManageProfileInteractor interactor = new ManageProfileInteractor(account, auth, output);
+        final FakeAuth auth = new FakeAuth();
+        final RecordingOutput output = new RecordingOutput();
+        final ManageProfileInteractor interactor = new ManageProfileInteractor(account, auth, output);
 
         interactor.execute(ManageProfileInputData.signOut());
 

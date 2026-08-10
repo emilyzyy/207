@@ -1,7 +1,8 @@
 package interface_adapter.controllers;
 
-import use_case.usecases.ShareTripInputBoundary;
 import java.util.function.Supplier;
+
+import use_case.usecases.ShareTripInputBoundary;
 
 /** Converts the active Swing trip selection into a share-use-case request. */
 public final class ShareTripController {

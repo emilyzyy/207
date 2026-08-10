@@ -96,11 +96,11 @@ public final class NewItineraryDialog extends JDialog {
         suggestionScroll.setMinimumSize(new Dimension(320, CELL_HEIGHT * VISIBLE_ROWS + 8));
         suggestionScroll.setVisible(false);
 
-        JPanel form = new JPanel(new GridBagLayout());
+        final JPanel form = new JPanel(new GridBagLayout());
         form.setBackground(SwingTheme.BACKGROUND);
         form.setBorder(BorderFactory.createEmptyBorder(20, 22, 10, 22));
 
-        GridBagConstraints gbc = new GridBagConstraints();
+        final GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1;
@@ -140,7 +140,7 @@ public final class NewItineraryDialog extends JDialog {
 
             gbc.gridy = nextRow++;
             gbc.insets = new Insets(0, 0, 6, 0);
-            JLabel friendsHint = new JLabel(
+            final JLabel friendsHint = new JLabel(
                     "Select friends to share this itinerary. They can view and edit it when signed in.");
             friendsHint.setFont(SwingTheme.SMALL);
             friendsHint.setForeground(SwingTheme.MUTED);
@@ -151,19 +151,19 @@ public final class NewItineraryDialog extends JDialog {
             form.add(buildFriendsPicker(), gbc);
         }
 
-        JButton cancel = new JButton("Cancel");
+        final JButton cancel = new JButton("Cancel");
         cancel.setFont(SwingTheme.BODY);
         cancel.addActionListener(e -> dispose());
 
         okButton.setEnabled(false);
         okButton.addActionListener(e -> confirm());
 
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        final JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttons.setOpaque(false);
         buttons.add(cancel);
         buttons.add(okButton);
 
-        JPanel content = new JPanel(new BorderLayout(0, 8));
+        final JPanel content = new JPanel(new BorderLayout(0, 8));
         content.setBackground(SwingTheme.BACKGROUND);
         content.setBorder(BorderFactory.createEmptyBorder(0, 0, 16, 0));
         content.add(form, BorderLayout.CENTER);
@@ -177,13 +177,15 @@ public final class NewItineraryDialog extends JDialog {
 
         cityField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { onCityTyped(); }
+
             @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { onCityTyped(); }
+
             @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { onCityTyped(); }
         });
         suggestionList.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                int index = suggestionList.locationToIndex(e.getPoint());
+                final int index = suggestionList.locationToIndex(e.getPoint());
                 if (index >= 0 && index < suggestions.size()) {
                     select(suggestions.get(index));
                 }
@@ -206,7 +208,7 @@ public final class NewItineraryDialog extends JDialog {
                     moveHighlight(-1);
                     e.consume();
                 } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    int index = suggestionList.getSelectedIndex();
+                    final int index = suggestionList.getSelectedIndex();
                     if (index >= 0 && index < suggestions.size()) {
                         select(suggestions.get(index));
                     } else {
@@ -234,7 +236,7 @@ public final class NewItineraryDialog extends JDialog {
 
     /** Friends selected to share/edit this itinerary. */
     public List<User> getSelectedFriends() {
-        List<User> selectedFriends = new ArrayList<>();
+        final List<User> selectedFriends = new ArrayList<>();
         for (User friend : friends) {
             if (selectedFriendIds.contains(friend.getId())) {
                 selectedFriends.add(friend);
@@ -248,7 +250,7 @@ public final class NewItineraryDialog extends JDialog {
     }
 
     private JScrollPane buildFriendsPicker() {
-        JPanel list = new JPanel();
+        final JPanel list = new JPanel();
         list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
         list.setBackground(SwingTheme.PANEL);
         list.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
@@ -256,7 +258,7 @@ public final class NewItineraryDialog extends JDialog {
             list.add(new FriendRow(friend));
             list.add(Box.createVerticalStrut(6));
         }
-        JScrollPane scroll = new JScrollPane(list);
+        final JScrollPane scroll = new JScrollPane(list);
         scroll.setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
         scroll.setPreferredSize(new Dimension(520, 140));
         scroll.setMinimumSize(new Dimension(320, 140));
@@ -277,7 +279,7 @@ public final class NewItineraryDialog extends JDialog {
             setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
             add(new CircularCheck(this));
             add(new JLabel(AvatarSupport.iconFor(friend, 28)));
-            JLabel name = new JLabel("@" + friend.getUsername());
+            final JLabel name = new JLabel("@" + friend.getUsername());
             name.setFont(SwingTheme.BODY);
             name.setForeground(SwingTheme.NAVY);
             add(name);
@@ -317,11 +319,11 @@ public final class NewItineraryDialog extends JDialog {
 
         @Override
         protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
+            final Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            int size = Math.min(getWidth(), getHeight()) - 2;
-            int x = (getWidth() - size) / 2;
-            int y = (getHeight() - size) / 2;
+            final int size = Math.min(getWidth(), getHeight()) - 2;
+            final int x = (getWidth() - size) / 2;
+            final int y = (getHeight() - size) / 2;
             if (row.isSelectedFriend()) {
                 g2.setColor(SwingTheme.BLUE);
                 g2.fill(new Ellipse2D.Float(x, y, size, size));
@@ -342,7 +344,7 @@ public final class NewItineraryDialog extends JDialog {
         if (programmaticUpdate) return;
         selected = null;
         okButton.setEnabled(false);
-        String query = cityField.getText().trim();
+        final String query = cityField.getText().trim();
         if (query.isEmpty()) {
             suggestionModel.clear();
             suggestions = Collections.emptyList();
@@ -418,12 +420,12 @@ public final class NewItineraryDialog extends JDialog {
     }
 
     private void moveHighlight(int delta) {
-        int size = suggestionModel.size();
+        final int size = suggestionModel.size();
         if (size == 0) {
             return;
         }
-        int index = suggestionList.getSelectedIndex();
-        int next = index < 0 ? 0 : Math.max(0, Math.min(size - 1, index + delta));
+        final int index = suggestionList.getSelectedIndex();
+        final int next = index < 0 ? 0 : Math.max(0, Math.min(size - 1, index + delta));
         suggestionList.setSelectedIndex(next);
         suggestionList.ensureIndexIsVisible(next);
     }
@@ -438,7 +440,7 @@ public final class NewItineraryDialog extends JDialog {
     }
 
     private JLabel label(String text) {
-        JLabel label = new JLabel(text);
+        final JLabel label = new JLabel(text);
         label.setFont(SwingTheme.BODY.deriveFont(java.awt.Font.BOLD));
         label.setForeground(SwingTheme.NAVY);
         return label;
@@ -449,7 +451,7 @@ public final class NewItineraryDialog extends JDialog {
         if (name == null || name.isBlank()) {
             name = "Unknown";
         }
-        StringBuilder b = new StringBuilder(name);
+        final StringBuilder b = new StringBuilder(name);
         if (candidate.getRegion() != null && !candidate.getRegion().isBlank()
                 && !candidate.getRegion().equalsIgnoreCase(name)) {
             b.append(", ").append(candidate.getRegion());

@@ -18,7 +18,7 @@ public final class ProfileViewModel {
     }
 
     public void setState(ProfileState updatedState) {
-        ProfileState oldState = state;
+        final ProfileState oldState = state;
         state = Objects.requireNonNull(updatedState, "Profile state is required");
         changes.firePropertyChange("state", oldState, state);
     }

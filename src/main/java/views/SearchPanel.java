@@ -58,10 +58,10 @@ public final class SearchPanel extends JPanel {
     private final JTextField search = new JTextField();
     private final JComboBox<String> category = new JComboBox<>(new String[]{
         "All categories", "Food", "Museum", "Shopping", "Coffee", "Attraction",
-        "Entertainment", "Parks/Nature", "Historic", "Sports/Recreation", "Arts/Culture"
+        "Entertainment", "Parks/Nature", "Historic", "Sports/Recreation", "Arts/Culture",
     });
     private final JComboBox<String> type = new JComboBox<>(new String[]{
-        "Any setting", "Indoor", "Outdoor"
+        "Any setting", "Indoor", "Outdoor",
     });
     private final JButton searchButton = SwingTheme.primaryButton("Search");
     private final JLabel feedback = new JLabel(" ");

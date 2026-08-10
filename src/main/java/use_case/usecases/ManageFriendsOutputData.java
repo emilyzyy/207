@@ -1,10 +1,11 @@
 package use_case.usecases;
 
-import entity.entities.Friendship;
-import entity.entities.User;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import entity.entities.Friendship;
+import entity.entities.User;
 
 /** Snapshot of friends hub data after a manage-friends action. */
 public final class ManageFriendsOutputData {
@@ -57,7 +58,7 @@ public final class ManageFriendsOutputData {
     }
 
     public List<User> getFriendProfiles() {
-        List<User> profiles = new ArrayList<User>();
+        final List<User> profiles = new ArrayList<User>();
         for (Friendship friendship : accepted) {
             profiles.add(friendship.getOtherUser());
         }

@@ -13,16 +13,26 @@ final class ActivityCategoryPresentation {
             return "";
         }
         switch (category) {
-            case FOOD: return "\uD83C\uDF74"; // fork and knife
-            case MUSEUM: return "\uD83C\uDFDB"; // classical building
-            case SHOPPING: return "\uD83D\uDECD"; // shopping bags
-            case COFFEE: return "\u2615"; // hot beverage
-            case ATTRACTION: return "\u2605"; // star
-            case ENTERTAINMENT: return "\uD83C\uDFAD"; // performing arts
-            case PARKS_NATURE: return "\uD83C\uDF33"; // deciduous tree
-            case HISTORIC: return "\uD83C\uDFF0"; // castle
-            case SPORTS_RECREATION: return "\u26BD"; // ball
-            case ARTS_CULTURE: return "\uD83C\uDFA8"; // artist palette
+            // fork and knife
+            case FOOD: return "\uD83C\uDF74";
+            // classical building
+            case MUSEUM: return "\uD83C\uDFDB";
+            // shopping bags
+            case SHOPPING: return "\uD83D\uDECD";
+            // hot beverage
+            case COFFEE: return "\u2615";
+            // star
+            case ATTRACTION: return "\u2605";
+            // performing arts
+            case ENTERTAINMENT: return "\uD83C\uDFAD";
+            // deciduous tree
+            case PARKS_NATURE: return "\uD83C\uDF33";
+            // castle
+            case HISTORIC: return "\uD83C\uDFF0";
+            // ball
+            case SPORTS_RECREATION: return "\u26BD";
+            // artist palette
+            case ARTS_CULTURE: return "\uD83C\uDFA8";
             default: return "";
         }
     }

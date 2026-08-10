@@ -9,8 +9,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import entity.entities.Activity;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.IndoorOutdoorType;
 import use_case.ports.ActivitySearchGateway;
 import use_case.ports.DestinationGeocoder;
 import use_case.ports.NamedPlaceSearch;

@@ -1,17 +1,5 @@
 package database.supabase;
 
-import use_case.ports.AccountService;
-import use_case.ports.AuthService;
-import use_case.ports.AuthSession;
-import entity.entities.Friendship;
-import entity.entities.TripParticipant;
-import entity.entities.User;
-import entity.valueobjects.TripAccessLevel;
-import entity.valueobjects.TripAccessRole;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -26,6 +14,19 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import entity.entities.Friendship;
+import entity.entities.TripParticipant;
+import entity.entities.User;
+import entity.valueobjects.TripAccessLevel;
+import entity.valueobjects.TripAccessRole;
+import use_case.ports.AccountService;
+import use_case.ports.AuthService;
+import use_case.ports.AuthSession;
 
 /** PostgREST-backed profiles and friendships. */
 public final class SupabaseAccountClient implements AccountService {
@@ -61,16 +62,16 @@ public final class SupabaseAccountClient implements AccountService {
 
     @Override
     public User ensureProfile(String preferredUsername) {
-        AuthSession session = requireSession();
-        Optional<User> existing = findById(session.getUserId());
+        final AuthSession session = requireSession();
+        final Optional<User> existing = findById(session.getUserId());
         if (existing.isPresent()) {
             return existing.get();
         }
         RuntimeException lastFailure = null;
         for (int attempt = 0; attempt < 8; attempt++) {
-            String username = chooseUsername(preferredUsername, session.getEmail(),
+            final String username = chooseUsername(preferredUsername, session.getEmail(),
                     session.getUserId(), attempt);
-            ObjectNode row = mapper.createObjectNode();
+            final ObjectNode row = mapper.createObjectNode();
             row.put("id", session.getUserId());
             row.put("username", username);
             row.put("email", session.getEmail() == null ? "" : session.getEmail());
@@ -84,7 +85,7 @@ public final class SupabaseAccountClient implements AccountService {
                         new IllegalStateException("Could not create your profile."));
             } catch (RuntimeException exception) {
                 lastFailure = exception;
-                String message = exception.getMessage() == null ? "" : exception.getMessage();
+                final String message = exception.getMessage() == null ? "" : exception.getMessage();
                 // Username collision — try another generated name.
                 if (message.toLowerCase(Locale.ROOT).contains("already taken")
                         || message.toLowerCase(Locale.ROOT).contains("duplicate")
@@ -112,24 +113,24 @@ public final class SupabaseAccountClient implements AccountService {
             String password,
             String avatarColor,
             String avatarImage) {
-        AuthSession session = requireSession();
-        String cleanedUsername = requireValidUsername(username);
+        final AuthSession session = requireSession();
+        final String cleanedUsername = requireValidUsername(username);
         if (!cleanedUsername.equalsIgnoreCase(
                 currentProfile().map(User::getUsername).orElse(""))) {
-            Optional<User> taken = findByUsername(cleanedUsername);
+            final Optional<User> taken = findByUsername(cleanedUsername);
             if (taken.isPresent() && !taken.get().getId().equals(session.getUserId())) {
                 throw new IllegalStateException("That username is already taken.");
             }
         }
         // Blank password means "keep current password" — do not re-submit it to Auth.
-        String nextPassword = password == null ? "" : password;
-        String currentEmail = session.getEmail() == null ? "" : session.getEmail();
-        boolean emailChanged = email != null && !email.trim().equalsIgnoreCase(currentEmail);
+        final String nextPassword = password == null ? "" : password;
+        final String currentEmail = session.getEmail() == null ? "" : session.getEmail();
+        final boolean emailChanged = email != null && !email.trim().equalsIgnoreCase(currentEmail);
         if (emailChanged || !nextPassword.isEmpty()) {
             auth.updateCredentials(email, nextPassword);
         }
 
-        ObjectNode row = mapper.createObjectNode();
+        final ObjectNode row = mapper.createObjectNode();
         row.put("id", session.getUserId());
         row.put("username", cleanedUsername);
         row.put("email", email == null ? "" : email.trim());
@@ -144,9 +145,9 @@ public final class SupabaseAccountClient implements AccountService {
         row.put("updated_at", java.time.Instant.now().toString());
         request("POST", "/rest/v1/profiles?on_conflict=id", row.toString(),
                 "resolution=merge-duplicates,return=minimal");
-        String savedColor = avatarColor == null || avatarColor.trim().isEmpty()
+        final String savedColor = avatarColor == null || avatarColor.trim().isEmpty()
                 ? User.DEFAULT_AVATAR_COLOR : avatarColor.trim();
-        String savedImage = avatarImage == null || avatarImage.trim().isEmpty()
+        final String savedImage = avatarImage == null || avatarImage.trim().isEmpty()
                 ? null : avatarImage.trim();
         // Return the values just written so the corner avatar updates immediately.
         return new User(
@@ -162,10 +163,10 @@ public final class SupabaseAccountClient implements AccountService {
         if (username == null || username.trim().isEmpty()) {
             return Optional.empty();
         }
-        String body = request("GET",
+        final String body = request("GET",
                 "/rest/v1/profiles?username=ilike." + enc(username.trim()) + "&select=*&limit=1",
                 null, null);
-        JsonNode array = readArray(body);
+        final JsonNode array = readArray(body);
         if (!array.isArray() || array.size() == 0) {
             return Optional.empty();
         }
@@ -174,22 +175,22 @@ public final class SupabaseAccountClient implements AccountService {
 
     @Override
     public Friendship sendFriendRequest(String username) {
-        AuthSession session = requireSession();
+        final AuthSession session = requireSession();
         ensureProfile(null);
-        User target = findByUsername(username).orElseThrow(() ->
+        final User target = findByUsername(username).orElseThrow(() ->
                 new IllegalStateException("No user found with that username."));
         // Friendship rules (self / already friends / pending) live in ManageFriendsInteractor.
-        ObjectNode row = mapper.createObjectNode();
+        final ObjectNode row = mapper.createObjectNode();
         row.put("requester_id", session.getUserId());
         row.put("addressee_id", target.getId());
         row.put("status", "pending");
-        String body = request("POST", "/rest/v1/friendships", row.toString(),
+        final String body = request("POST", "/rest/v1/friendships", row.toString(),
                 "return=representation");
-        JsonNode array = readArray(body);
+        final JsonNode array = readArray(body);
         if (!array.isArray() || array.size() == 0) {
             throw new IllegalStateException("Could not send the friend request.");
         }
-        JsonNode created = array.get(0);
+        final JsonNode created = array.get(0);
         return new Friendship(
                 text(created, "id"),
                 text(created, "requester_id"),
@@ -200,8 +201,8 @@ public final class SupabaseAccountClient implements AccountService {
 
     @Override
     public void acceptFriendRequest(String friendshipId) {
-        AuthSession session = requireSession();
-        ObjectNode patch = mapper.createObjectNode();
+        final AuthSession session = requireSession();
+        final ObjectNode patch = mapper.createObjectNode();
         patch.put("status", "accepted");
         request("PATCH",
                 "/rest/v1/friendships?id=eq." + enc(friendshipId)
@@ -213,7 +214,7 @@ public final class SupabaseAccountClient implements AccountService {
 
     @Override
     public void cancelFriendRequest(String friendshipId) {
-        AuthSession session = requireSession();
+        final AuthSession session = requireSession();
         request("DELETE",
                 "/rest/v1/friendships?id=eq." + enc(friendshipId)
                         + "&requester_id=eq." + enc(session.getUserId())
@@ -223,7 +224,7 @@ public final class SupabaseAccountClient implements AccountService {
 
     @Override
     public void removeFriend(String friendshipId) {
-        AuthSession session = requireSession();
+        final AuthSession session = requireSession();
         request("DELETE",
                 "/rest/v1/friendships?id=eq." + enc(friendshipId)
                         + "&or=(requester_id.eq." + enc(session.getUserId())
@@ -234,8 +235,8 @@ public final class SupabaseAccountClient implements AccountService {
 
     @Override
     public List<Friendship> listIncomingRequests() {
-        AuthSession session = requireSession();
-        String body = request("GET",
+        final AuthSession session = requireSession();
+        final String body = request("GET",
                 "/rest/v1/friendships?addressee_id=eq." + enc(session.getUserId())
                         + "&status=eq.pending&select=*",
                 null, null);
@@ -244,8 +245,8 @@ public final class SupabaseAccountClient implements AccountService {
 
     @Override
     public List<Friendship> listOutgoingRequests() {
-        AuthSession session = requireSession();
-        String body = request("GET",
+        final AuthSession session = requireSession();
+        final String body = request("GET",
                 "/rest/v1/friendships?requester_id=eq." + enc(session.getUserId())
                         + "&status=eq.pending&select=*",
                 null, null);
@@ -254,8 +255,8 @@ public final class SupabaseAccountClient implements AccountService {
 
     @Override
     public List<Friendship> listAcceptedFriendships() {
-        AuthSession session = requireSession();
-        String body = request("GET",
+        final AuthSession session = requireSession();
+        final String body = request("GET",
                 "/rest/v1/friendships?status=eq.accepted&or=(requester_id.eq."
                         + enc(session.getUserId()) + ",addressee_id.eq."
                         + enc(session.getUserId()) + ")&select=*",
@@ -269,23 +270,23 @@ public final class SupabaseAccountClient implements AccountService {
             throw new IllegalArgumentException("Trip id is required");
         }
         requireSession();
-        String ownerId = getTripOwnerId(tripId.trim()).orElse(null);
+        final String ownerId = getTripOwnerId(tripId.trim()).orElse(null);
         request("DELETE", "/rest/v1/trip_members?trip_id=eq." + enc(tripId.trim()), null, null);
         if (memberRoles == null || memberRoles.isEmpty()) {
             return;
         }
-        ArrayNode rows = mapper.createArrayNode();
+        final ArrayNode rows = mapper.createArrayNode();
         for (Map.Entry<String, TripAccessRole> entry : memberRoles.entrySet()) {
-            String memberId = entry.getKey();
+            final String memberId = entry.getKey();
             if (memberId == null || memberId.trim().isEmpty()) {
                 continue;
             }
-            String trimmed = memberId.trim();
+            final String trimmed = memberId.trim();
             if (ownerId != null && trimmed.equals(ownerId)) {
                 continue;
             }
-            TripAccessRole role = entry.getValue() == null ? TripAccessRole.EDIT : entry.getValue();
-            ObjectNode row = mapper.createObjectNode();
+            final TripAccessRole role = entry.getValue() == null ? TripAccessRole.EDIT : entry.getValue();
+            final ObjectNode row = mapper.createObjectNode();
             row.put("trip_id", tripId.trim());
             row.put("user_id", trimmed);
             row.put("role", role.toDb());
@@ -301,17 +302,17 @@ public final class SupabaseAccountClient implements AccountService {
         if (tripId == null || tripId.trim().isEmpty()) {
             return new ArrayList<>();
         }
-        AuthSession session = requireSession();
-        String body = request("GET",
+        final AuthSession session = requireSession();
+        final String body = request("GET",
                 "/rest/v1/trip_members?trip_id=eq." + enc(tripId.trim()) + "&select=user_id,role",
                 null, null);
-        JsonNode array = readArray(body);
-        List<String> usernames = new ArrayList<>();
+        final JsonNode array = readArray(body);
+        final List<String> usernames = new ArrayList<>();
         if (!array.isArray()) {
             return usernames;
         }
         for (JsonNode node : array) {
-            String memberId = text(node, "user_id");
+            final String memberId = text(node, "user_id");
             if (memberId == null || memberId.equals(session.getUserId())) {
                 continue;
             }
@@ -323,26 +324,26 @@ public final class SupabaseAccountClient implements AccountService {
 
     @Override
     public List<TripParticipant> listTripParticipants(String tripId) {
-        List<TripParticipant> participants = new ArrayList<>();
+        final List<TripParticipant> participants = new ArrayList<>();
         if (tripId == null || tripId.trim().isEmpty()) {
             return participants;
         }
         requireSession();
         getTripOwner(tripId).ifPresent(owner -> participants.add(TripParticipant.owner(owner)));
-        String body = request("GET",
+        final String body = request("GET",
                 "/rest/v1/trip_members?trip_id=eq." + enc(tripId.trim()) + "&select=user_id,role",
                 null, null);
-        JsonNode array = readArray(body);
+        final JsonNode array = readArray(body);
         if (!array.isArray()) {
             return participants;
         }
-        List<TripParticipant> members = new ArrayList<>();
+        final List<TripParticipant> members = new ArrayList<>();
         for (JsonNode node : array) {
-            String memberId = text(node, "user_id");
+            final String memberId = text(node, "user_id");
             if (memberId == null || memberId.isEmpty()) {
                 continue;
             }
-            TripAccessRole role = TripAccessRole.fromDb(text(node, "role"));
+            final TripAccessRole role = TripAccessRole.fromDb(text(node, "role"));
             findById(memberId).ifPresent(user ->
                     members.add(TripParticipant.member(user, role)));
         }
@@ -357,24 +358,24 @@ public final class SupabaseAccountClient implements AccountService {
         if (tripId == null || tripId.trim().isEmpty()) {
             return TripAccessLevel.NONE;
         }
-        AuthSession session = requireSession();
-        Optional<String> ownerId = getTripOwnerId(tripId.trim());
+        final AuthSession session = requireSession();
+        final Optional<String> ownerId = getTripOwnerId(tripId.trim());
         if (!ownerId.isPresent()) {
             return TripAccessLevel.NONE;
         }
         if (ownerId.get().equals(session.getUserId())) {
             return TripAccessLevel.OWNER;
         }
-        String body = request("GET",
+        final String body = request("GET",
                 "/rest/v1/trip_members?trip_id=eq." + enc(tripId.trim())
                         + "&user_id=eq." + enc(session.getUserId())
                         + "&select=role&limit=1",
                 null, null);
-        JsonNode array = readArray(body);
+        final JsonNode array = readArray(body);
         if (!array.isArray() || array.size() == 0) {
             return TripAccessLevel.NONE;
         }
-        TripAccessRole role = TripAccessRole.fromDb(text(array.get(0), "role"));
+        final TripAccessRole role = TripAccessRole.fromDb(text(array.get(0), "role"));
         switch (role) {
             case ADMIN:
                 return TripAccessLevel.ADMIN;
@@ -395,14 +396,14 @@ public final class SupabaseAccountClient implements AccountService {
         if (tripId == null || tripId.trim().isEmpty()) {
             return Optional.empty();
         }
-        String body = request("GET",
+        final String body = request("GET",
                 "/rest/v1/trips?id=eq." + enc(tripId.trim()) + "&select=user_id&limit=1",
                 null, null);
-        JsonNode array = readArray(body);
+        final JsonNode array = readArray(body);
         if (!array.isArray() || array.size() == 0) {
             return Optional.empty();
         }
-        String ownerId = text(array.get(0), "user_id");
+        final String ownerId = text(array.get(0), "user_id");
         if (ownerId == null || ownerId.isEmpty()) {
             return Optional.empty();
         }
@@ -410,20 +411,20 @@ public final class SupabaseAccountClient implements AccountService {
     }
 
     private List<Friendship> mapFriendships(String body, String currentUserId, boolean pendingOnly) {
-        JsonNode array = readArray(body);
-        List<Friendship> result = new ArrayList<>();
+        final JsonNode array = readArray(body);
+        final List<Friendship> result = new ArrayList<>();
         if (!array.isArray()) {
             return result;
         }
         for (JsonNode node : array) {
-            String requesterId = text(node, "requester_id");
-            String addresseeId = text(node, "addressee_id");
-            String otherId = currentUserId.equals(requesterId) ? addresseeId : requesterId;
-            Optional<User> other = findById(otherId);
+            final String requesterId = text(node, "requester_id");
+            final String addresseeId = text(node, "addressee_id");
+            final String otherId = currentUserId.equals(requesterId) ? addresseeId : requesterId;
+            final Optional<User> other = findById(otherId);
             if (!other.isPresent()) {
                 continue;
             }
-            Friendship.Status status = "accepted".equalsIgnoreCase(text(node, "status"))
+            final Friendship.Status status = "accepted".equalsIgnoreCase(text(node, "status"))
                     ? Friendship.Status.ACCEPTED : Friendship.Status.PENDING;
             if (pendingOnly && status != Friendship.Status.PENDING) {
                 continue;
@@ -438,10 +439,10 @@ public final class SupabaseAccountClient implements AccountService {
         if (userId == null || userId.trim().isEmpty()) {
             return Optional.empty();
         }
-        String body = request("GET",
+        final String body = request("GET",
                 "/rest/v1/profiles?id=eq." + enc(userId) + "&select=*&limit=1",
                 null, null);
-        JsonNode array = readArray(body);
+        final JsonNode array = readArray(body);
         if (!array.isArray() || array.size() == 0) {
             return Optional.empty();
         }
@@ -449,7 +450,7 @@ public final class SupabaseAccountClient implements AccountService {
     }
 
     private User mapUser(JsonNode node) {
-        String image = text(node, "avatar_image");
+        final String image = text(node, "avatar_image");
         return new User(
                 text(node, "id"),
                 text(node, "username"),
@@ -460,7 +461,7 @@ public final class SupabaseAccountClient implements AccountService {
 
     private String chooseUsername(String preferred, String email, String userId, int attempt) {
         if (attempt == 0 && preferred != null && !preferred.trim().isEmpty()) {
-            String cleaned = sanitizeUsername(preferred.trim());
+            final String cleaned = sanitizeUsername(preferred.trim());
             if (isValidUsername(cleaned)) {
                 return cleaned;
             }
@@ -472,8 +473,8 @@ public final class SupabaseAccountClient implements AccountService {
         if (base.length() > 12) {
             base = base.substring(0, 12);
         }
-        String idPart = userId == null ? "" : userId.replace("-", "");
-        String suffix;
+        final String idPart = userId == null ? "" : userId.replace("-", "");
+        final String suffix;
         if (attempt <= 0 && idPart.length() >= 6) {
             suffix = idPart.substring(0, 6);
         } else if (idPart.length() >= 4) {
@@ -499,7 +500,7 @@ public final class SupabaseAccountClient implements AccountService {
         if (email == null || email.trim().isEmpty()) {
             return "user";
         }
-        int at = email.indexOf('@');
+        final int at = email.indexOf('@');
         return at > 0 ? email.substring(0, at) : email;
     }
 
@@ -515,7 +516,7 @@ public final class SupabaseAccountClient implements AccountService {
         if (username == null || username.trim().isEmpty()) {
             throw new IllegalArgumentException("Username is required.");
         }
-        String cleaned = username.trim();
+        final String cleaned = username.trim();
         if (!isValidUsername(cleaned)) {
             throw new IllegalArgumentException(
                     "Username must be 3–24 characters: letters, numbers, or underscore.");
@@ -537,8 +538,8 @@ public final class SupabaseAccountClient implements AccountService {
 
     private String request(String method, String path, String jsonBody, String prefer) {
         try {
-            AuthSession session = requireSession();
-            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl + path))
+            final AuthSession session = requireSession();
+            final HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl + path))
                     .timeout(Duration.ofSeconds(20))
                     .header("apikey", anonKey)
                     .header("Authorization", "Bearer " + session.getAccessToken())
@@ -558,7 +559,7 @@ public final class SupabaseAccountClient implements AccountService {
             } else {
                 throw new IllegalArgumentException("Unsupported method: " + method);
             }
-            HttpResponse<String> response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            final HttpResponse<String> response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw new IllegalStateException(friendlyError(response.statusCode(), response.body()));
             }
@@ -573,7 +574,7 @@ public final class SupabaseAccountClient implements AccountService {
     }
 
     private String friendlyError(int status, String body) {
-        String lower = body == null ? "" : body.toLowerCase(Locale.ROOT);
+        final String lower = body == null ? "" : body.toLowerCase(Locale.ROOT);
         if (status == 404 || lower.contains("pgrst205") || lower.contains("schema cache")
                 || (lower.contains("could not find") && lower.contains("profiles"))) {
             return "Profiles table not found. In Supabase → SQL Editor, run docs/supabase/schema.sql "
@@ -593,7 +594,7 @@ public final class SupabaseAccountClient implements AccountService {
             if (body == null || body.trim().isEmpty()) {
                 return mapper.createArrayNode();
             }
-            JsonNode node = mapper.readTree(body);
+            final JsonNode node = mapper.readTree(body);
             if (node.isArray()) {
                 return node;
             }
@@ -605,7 +606,7 @@ public final class SupabaseAccountClient implements AccountService {
     }
 
     private static String text(JsonNode node, String field) {
-        JsonNode value = node.get(field);
+        final JsonNode value = node.get(field);
         return value == null || value.isNull() ? null : value.asText();
     }
 

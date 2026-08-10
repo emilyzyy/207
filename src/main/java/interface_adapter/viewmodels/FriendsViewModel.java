@@ -18,7 +18,7 @@ public final class FriendsViewModel {
     }
 
     public void setState(FriendsState updatedState) {
-        FriendsState oldState = state;
+        final FriendsState oldState = state;
         state = Objects.requireNonNull(updatedState, "Friends state is required");
         changes.firePropertyChange("state", oldState, state);
     }

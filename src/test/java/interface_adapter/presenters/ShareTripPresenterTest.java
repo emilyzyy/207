@@ -1,28 +1,30 @@
 package interface_adapter.presenters;
 
-import interface_adapter.viewmodels.ShareState;
-import interface_adapter.viewmodels.ShareViewModel;
-import entity.entities.Trip;
-import entity.entities.TripDay;
-import entity.valueobjects.TransportationMode;
-import use_case.usecases.ShareTripOutputData;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.Arrays;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Arrays;
+
+import org.junit.jupiter.api.Test;
+
+import entity.entities.Trip;
+import entity.entities.TripDay;
+import entity.valueobjects.TransportationMode;
+import interface_adapter.viewmodels.ShareState;
+import interface_adapter.viewmodels.ShareViewModel;
+import use_case.usecases.ShareTripOutputData;
 
 final class ShareTripPresenterTest {
 
     @Test
     void exposesCopyableSuccessAndNonCopyableFailure() {
-        ShareViewModel viewModel = new ShareViewModel(
+        final ShareViewModel viewModel = new ShareViewModel(
                 new ShareState("", "", false));
-        ShareTripPresenter presenter = new ShareTripPresenter(viewModel);
-        Trip trip = new Trip(
+        final ShareTripPresenter presenter = new ShareTripPresenter(viewModel);
+        final Trip trip = new Trip(
                 "t1", "Toronto", LocalDate.of(2026, 8, 10),
                 LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING);
 
@@ -40,10 +42,10 @@ final class ShareTripPresenterTest {
 
     @Test
     void storesDayImagesForMultiDayShare() {
-        ShareViewModel viewModel = new ShareViewModel(
+        final ShareViewModel viewModel = new ShareViewModel(
                 new ShareState("", "", false));
-        ShareTripPresenter presenter = new ShareTripPresenter(viewModel);
-        Trip trip = new Trip(
+        final ShareTripPresenter presenter = new ShareTripPresenter(viewModel);
+        final Trip trip = new Trip(
                 "trip-md",
                 "Toronto",
                 TransportationMode.WALKING,

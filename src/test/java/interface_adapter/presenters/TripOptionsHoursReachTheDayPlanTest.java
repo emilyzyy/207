@@ -2,6 +2,12 @@ package interface_adapter.presenters;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Collections;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Trip;
 import entity.valueobjects.TransportationMode;
 import interface_adapter.viewmodels.DashboardState;
@@ -10,10 +16,6 @@ import interface_adapter.viewmodels.DayPlanState;
 import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.TripOptionsState;
 import interface_adapter.viewmodels.TripOptionsViewModel;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.Collections;
-import org.junit.jupiter.api.Test;
 
 /**
  * Extending the day's hours in Trip Options must reach the Day Plan timeline straight away.
@@ -41,16 +43,16 @@ class TripOptionsHoursReachTheDayPlanTest {
 
     @Test
     void theTimelineRedrawsWithTheHoursTheTravellerJustSaved() {
-        Trip trip = new Trip("t", "Toronto", DATE, LocalTime.of(9, 0), LocalTime.of(17, 0),
+        final Trip trip = new Trip("t", "Toronto", DATE, LocalTime.of(9, 0), LocalTime.of(17, 0),
                 TransportationMode.WALKING);
-        DashboardViewModel dashboard = new DashboardViewModel(
+        final DashboardViewModel dashboard = new DashboardViewModel(
                 new DashboardState("Toronto", DATE, "", ""));
-        DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState("t",
+        final DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState("t",
                 Collections.emptyList(), "", false, Collections.emptyList()));
-        TripOptionsViewModel options = new TripOptionsViewModel(
+        final TripOptionsViewModel options = new TripOptionsViewModel(
                 TripOptionsState.fromTrip(trip, "", false));
 
-        PanelHours panel = new PanelHours();
+        final PanelHours panel = new PanelHours();
         // Exactly the two AppBuilder listeners: one caches the hours, one redraws the timeline.
         options.addPropertyChangeListener(event -> {
             panel.start = options.getState().getStartTime();
@@ -76,13 +78,13 @@ class TripOptionsHoursReachTheDayPlanTest {
     /** And the hours the panel is left holding are the saved ones, whatever the order. */
     @Test
     void theSavedHoursAreTheOnesLeftInPlace() {
-        Trip trip = new Trip("t", "Toronto", DATE, LocalTime.of(9, 0), LocalTime.of(17, 0),
+        final Trip trip = new Trip("t", "Toronto", DATE, LocalTime.of(9, 0), LocalTime.of(17, 0),
                 TransportationMode.WALKING);
-        DashboardViewModel dashboard = new DashboardViewModel(
+        final DashboardViewModel dashboard = new DashboardViewModel(
                 new DashboardState("Toronto", DATE, "", ""));
-        DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState("t",
+        final DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState("t",
                 Collections.emptyList(), "", false, Collections.emptyList()));
-        TripOptionsViewModel options = new TripOptionsViewModel(
+        final TripOptionsViewModel options = new TripOptionsViewModel(
                 TripOptionsState.fromTrip(trip, "", false));
 
         trip.updateOptionsPreservingSchedule("Toronto", DATE,

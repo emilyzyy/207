@@ -1,11 +1,24 @@
 package use_case.autoschedule.engine;
 
-import static use_case.autoschedule.ProblemFixtures.at;
-import static use_case.autoschedule.ProblemFixtures.noBlockedWindows;
-import static use_case.autoschedule.ProblemFixtures.window;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static use_case.autoschedule.ProblemFixtures.at;
+import static use_case.autoschedule.ProblemFixtures.noBlockedWindows;
+import static use_case.autoschedule.ProblemFixtures.window;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
+import org.junit.jupiter.api.Test;
 
 import entity.entities.Activity;
 import entity.valueobjects.ActivityCategory;
@@ -25,17 +38,6 @@ import use_case.autoschedule.policy.DaylightPolicy;
 import use_case.autoschedule.policy.MealWindowPolicy;
 import use_case.autoschedule.policy.SoftPolicy;
 import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import org.junit.jupiter.api.Test;
 
 /**
  * An oracle that finds the best schedule without asking the search how.
@@ -62,13 +64,13 @@ class IndependentOracleTest {
     // --- fixtures ---------------------------------------------------------------------
 
     private static OpeningHours hours(String... spans) {
-        List<OpeningHours.TimeInterval> intervals = new ArrayList<>();
+        final List<OpeningHours.TimeInterval> intervals = new ArrayList<>();
         for (String span : spans) {
-            String[] halves = span.split("-");
+            final String[] halves = span.split("-");
             intervals.add(new OpeningHours.TimeInterval(
                     LocalTime.parse(halves[0]), LocalTime.parse(halves[1])));
         }
-        Map<DayOfWeek, List<OpeningHours.TimeInterval>> week = new EnumMap<>(DayOfWeek.class);
+        final Map<DayOfWeek, List<OpeningHours.TimeInterval>> week = new EnumMap<>(DayOfWeek.class);
         for (DayOfWeek day : DayOfWeek.values()) {
             week.put(day, intervals);
         }
@@ -91,9 +93,9 @@ class IndependentOracleTest {
     /** One period, so the oracle and the engine cannot disagree about which bucket applies. */
     private static TravelMatrix matrixOf(List<ScheduleTask> tasks, TimeWindow availability,
                                          int[][] minutes) {
-        PeriodPlan plan = PeriodPlan.forRun(availability, false,
+        final PeriodPlan plan = PeriodPlan.forRun(availability, false,
                 Math.max(1, tasks.size() * (tasks.size() - 1)));
-        TravelMatrix.Builder builder = TravelMatrix.builder(plan);
+        final TravelMatrix.Builder builder = TravelMatrix.builder(plan);
         for (int from = 0; from < tasks.size(); from++) {
             for (int to = 0; to < tasks.size(); to++) {
                 if (from == to) {
@@ -112,12 +114,12 @@ class IndependentOracleTest {
 
     /** Every legal complete schedule, found by enumeration rather than by search. */
     private List<List<PlacedActivity>> allLegalSchedules(ScheduleProblem problem) {
-        List<List<ScheduleTask>> orders = new ArrayList<>();
+        final List<List<ScheduleTask>> orders = new ArrayList<>();
         permute(new ArrayList<>(problem.allTasks()), new ArrayList<>(), orders);
 
-        List<List<PlacedActivity>> legal = new ArrayList<>();
+        final List<List<PlacedActivity>> legal = new ArrayList<>();
         for (List<ScheduleTask> order : orders) {
-            List<PlacedActivity> placed = placeIndependently(problem, order);
+            final List<PlacedActivity> placed = placeIndependently(problem, order);
             if (placed != null) {
                 legal.add(placed);
             }
@@ -132,8 +134,8 @@ class IndependentOracleTest {
             return;
         }
         for (int i = 0; i < remaining.size(); i++) {
-            List<ScheduleTask> rest = new ArrayList<>(remaining);
-            ScheduleTask chosen = rest.remove(i);
+            final List<ScheduleTask> rest = new ArrayList<>(remaining);
+            final ScheduleTask chosen = rest.remove(i);
             prefix.add(chosen);
             permute(rest, prefix, out);
             prefix.remove(prefix.size() - 1);
@@ -149,7 +151,7 @@ class IndependentOracleTest {
      */
     private List<PlacedActivity> placeIndependently(ScheduleProblem problem,
                                                     List<ScheduleTask> order) {
-        List<PlacedActivity> placements = new ArrayList<>();
+        final List<PlacedActivity> placements = new ArrayList<>();
         LocalTime cursor = problem.getAvailability().getStart();
         ScheduleTask previous = null;
 
@@ -160,7 +162,7 @@ class IndependentOracleTest {
             // and sets out once it has passed.
             LocalTime departure = cursor;
             for (int guard = 0; guard < 8 && travel > 0; guard++) {
-                LocalTime landing = departure.plusMinutes(travel);
+                final LocalTime landing = departure.plusMinutes(travel);
                 LocalTime pushed = departure;
                 for (TimeWindow blocked : problem.getUnavailableWindows()) {
                     if (blocked.overlaps(new TimeWindow(departure, landing))) {
@@ -192,7 +194,7 @@ class IndependentOracleTest {
                 if (previous != null && travel > 0) {
                     for (int guard = 0;
                          guard <= problem.getUnavailableWindows().size(); guard++) {
-                        LocalTime resume = blockedWaitEnd(
+                        final LocalTime resume = blockedWaitEnd(
                                 arrival, start, problem.getUnavailableWindows());
                         if (resume == null) {
                             break;
@@ -202,7 +204,7 @@ class IndependentOracleTest {
                              travelGuard++) {
                             travel = problem.getTravel().estimateAt(previous.getEventId(),
                                     task.getEventId(), departure).getMinutes();
-                            LocalTime landing = departure.plusMinutes(travel);
+                            final LocalTime landing = departure.plusMinutes(travel);
                             LocalTime pushed = departure;
                             for (TimeWindow blocked : problem.getUnavailableWindows()) {
                                 if (blocked.overlaps(new TimeWindow(departure, landing))) {
@@ -223,7 +225,7 @@ class IndependentOracleTest {
                     }
                 }
             }
-            LocalTime end = start.plusMinutes(task.getDurationMinutes());
+            final LocalTime end = start.plusMinutes(task.getDurationMinutes());
             if (end.isAfter(problem.getAvailability().getEnd())
                     || start.isBefore(problem.getAvailability().getStart())
                     || !insideOneOpeningInterval(task, start, end)
@@ -231,9 +233,9 @@ class IndependentOracleTest {
                 return null;
             }
 
-            int idle = minutesBetween(cursor, start) - travel;
-            LocalTime setOutAt = departure;
-            int avoidable = avoidableIdle(task, arrival, start, problem);
+            final int idle = minutesBetween(cursor, start) - travel;
+            final LocalTime setOutAt = departure;
+            final int avoidable = avoidableIdle(task, arrival, start, problem);
             placements.add(new PlacedActivity(task, start, end,
                     previous == null ? null : setOutAt, travel, Math.max(0, idle), avoidable));
             cursor = end;
@@ -248,7 +250,7 @@ class IndependentOracleTest {
             return null;
         }
         LocalTime resume = null;
-        TimeWindow wait = new TimeWindow(arrival, start);
+        final TimeWindow wait = new TimeWindow(arrival, start);
         for (TimeWindow window : blocked) {
             if (window.overlaps(wait) && (resume == null || window.getEnd().isAfter(resume))) {
                 resume = window.getEnd();
@@ -262,11 +264,11 @@ class IndependentOracleTest {
         LocalTime candidate = arrival.isBefore(problem.getAvailability().getStart())
                 ? problem.getAvailability().getStart() : arrival;
         for (int guard = 0; guard < 16; guard++) {
-            LocalTime intoHours = intoAnOpeningInterval(task, candidate);
+            final LocalTime intoHours = intoAnOpeningInterval(task, candidate);
             if (intoHours == null) {
                 return null;
             }
-            LocalTime end = intoHours.plusMinutes(task.getDurationMinutes());
+            final LocalTime end = intoHours.plusMinutes(task.getDurationMinutes());
             LocalTime pushed = intoHours;
             for (TimeWindow blocked : problem.getUnavailableWindows()) {
                 if (blocked.overlaps(new TimeWindow(intoHours, end))) {
@@ -284,7 +286,7 @@ class IndependentOracleTest {
     private LocalTime intoAnOpeningInterval(ScheduleTask task, LocalTime earliest) {
         LocalTime best = null;
         for (TimeWindow open : task.getOpeningWindows()) {
-            LocalTime candidate = earliest.isBefore(open.getStart()) ? open.getStart() : earliest;
+            final LocalTime candidate = earliest.isBefore(open.getStart()) ? open.getStart() : earliest;
             if (!candidate.plusMinutes(task.getDurationMinutes()).isAfter(open.getEnd())
                     && (best == null || candidate.isBefore(best))) {
                 best = candidate;
@@ -314,21 +316,21 @@ class IndependentOracleTest {
 
     private int avoidableIdle(ScheduleTask task, LocalTime arrival, LocalTime start,
                               ScheduleProblem problem) {
-        LocalTime opens = task.getOpeningWindows().isEmpty()
+        final LocalTime opens = task.getOpeningWindows().isEmpty()
                 ? task.getOpeningTime() : task.openingWindowFor(start,
                         start.plusMinutes(task.getDurationMinutes())) == null
                         ? task.getOpeningTime()
                         : task.openingWindowFor(start,
                                 start.plusMinutes(task.getDurationMinutes())).getStart();
-        LocalTime from = arrival.isBefore(opens) ? opens : arrival;
+        final LocalTime from = arrival.isBefore(opens) ? opens : arrival;
         if (!start.isAfter(from)) {
             return 0;
         }
-        int total = minutesBetween(from, start);
+        final int total = minutesBetween(from, start);
         int blocked = 0;
         for (TimeWindow window : problem.getUnavailableWindows()) {
-            LocalTime overlapStart = window.getStart().isAfter(from) ? window.getStart() : from;
-            LocalTime overlapEnd = window.getEnd().isBefore(start) ? window.getEnd() : start;
+            final LocalTime overlapStart = window.getStart().isAfter(from) ? window.getStart() : from;
+            final LocalTime overlapEnd = window.getEnd().isBefore(start) ? window.getEnd() : start;
             if (overlapEnd.isAfter(overlapStart)) {
                 blocked += minutesBetween(overlapStart, overlapEnd);
             }
@@ -342,10 +344,10 @@ class IndependentOracleTest {
         int idle = 0;
         int penalty = 0;
         int displacement = 0;
-        List<PlacedActivity> ordered = new ArrayList<>(placements);
+        final List<PlacedActivity> ordered = new ArrayList<>(placements);
         Collections.sort(ordered, (left, right) -> left.getStart().compareTo(right.getStart()));
         for (int position = 0; position < ordered.size(); position++) {
-            PlacedActivity placed = ordered.get(position);
+            final PlacedActivity placed = ordered.get(position);
             travel += placed.getTravelMinutesBefore();
             idle += placed.getAvoidableIdleMinutes();
             for (SoftPolicy policy : preferences.getPolicies()) {
@@ -368,8 +370,8 @@ class IndependentOracleTest {
 
     /** Asserts the search found a schedule costing exactly what the best legal one costs. */
     private void assertMatchesOracle(ScheduleProblem problem, String scenario) {
-        List<List<PlacedActivity>> legal = allLegalSchedules(problem);
-        ScheduleSearchResult found = engine.search(problem, SearchBudget.defaultBudget());
+        final List<List<PlacedActivity>> legal = allLegalSchedules(problem);
+        final ScheduleSearchResult found = engine.search(problem, SearchBudget.defaultBudget());
 
         if (legal.isEmpty()) {
             assertTrue(!found.isFound(),
@@ -380,7 +382,7 @@ class IndependentOracleTest {
         int best = Integer.MAX_VALUE;
         List<PlacedActivity> bestPlan = null;
         for (List<PlacedActivity> candidate : legal) {
-            int cost = costOf(candidate, problem.getPreferences());
+            final int cost = costOf(candidate, problem.getPreferences());
             if (cost < best) {
                 best = cost;
                 bestPlan = candidate;
@@ -395,7 +397,7 @@ class IndependentOracleTest {
     }
 
     private static String describe(List<PlacedActivity> placements) {
-        StringBuilder text = new StringBuilder("\n");
+        final StringBuilder text = new StringBuilder("\n");
         if (placements == null) {
             return text.append("    no schedule").toString();
         }
@@ -416,7 +418,7 @@ class IndependentOracleTest {
         if (!result.isFound()) {
             return " (no schedule)";
         }
-        StringBuilder text = new StringBuilder("\n");
+        final StringBuilder text = new StringBuilder("\n");
         for (PlacedActivity placed : result.getPlan().getPlacements()) {
             text.append("    ").append(placed.getTask().getEventId()).append(' ')
                     .append(placed.getStart()).append('-').append(placed.getEnd())
@@ -437,8 +439,8 @@ class IndependentOracleTest {
 
     @Test
     void oneLockedActivityAmongThree() {
-        TimeWindow availability = window(9, 21);
-        List<ScheduleTask> tasks = Arrays.asList(
+        final TimeWindow availability = window(9, 21);
+        final List<ScheduleTask> tasks = Arrays.asList(
                 task("a", 60, 0, hours("08:00-20:00"), null,
                         ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR),
                 task("pinned", 60, 1, hours("08:00-20:00"),
@@ -446,7 +448,7 @@ class IndependentOracleTest {
                         ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR),
                 task("c", 60, 2, hours("08:00-20:00"), null,
                         ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR));
-        int[][] travel = {{0, 20, 35}, {20, 0, 15}, {35, 15, 0}};
+        final int[][] travel = {{0, 20, 35}, {20, 0, 15}, {35, 15, 0}};
 
         assertMatchesOracle(new ScheduleProblem(availability, tasks, noBlockedWindows(),
                 matrixOf(tasks, availability, travel)), "one lock among three");
@@ -454,8 +456,8 @@ class IndependentOracleTest {
 
     @Test
     void twoLockedActivitiesLeaveOnlyOneThingToDecide() {
-        TimeWindow availability = window(9, 21);
-        List<ScheduleTask> tasks = Arrays.asList(
+        final TimeWindow availability = window(9, 21);
+        final List<ScheduleTask> tasks = Arrays.asList(
                 task("free", 60, 0, hours("08:00-20:00"), null,
                         ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR),
                 task("pin1", 60, 1, hours("08:00-20:00"),
@@ -464,7 +466,7 @@ class IndependentOracleTest {
                 task("pin2", 60, 2, hours("08:00-20:00"),
                         new TimeWindow(at(16, 0), at(17, 0)),
                         ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR));
-        int[][] travel = {{0, 10, 25}, {10, 0, 30}, {25, 30, 0}};
+        final int[][] travel = {{0, 10, 25}, {10, 0, 30}, {25, 30, 0}};
 
         assertMatchesOracle(new ScheduleProblem(availability, tasks, noBlockedWindows(),
                 matrixOf(tasks, availability, travel)), "two locks");
@@ -472,15 +474,15 @@ class IndependentOracleTest {
 
     @Test
     void splitOpeningHoursCannotBeStraddled() {
-        TimeWindow availability = window(9, 21);
-        List<ScheduleTask> tasks = Arrays.asList(
+        final TimeWindow availability = window(9, 21);
+        final List<ScheduleTask> tasks = Arrays.asList(
                 task("split", 90, 0, hours("11:00-14:30", "18:00-22:00"), null,
                         ActivityCategory.FOOD, IndoorOutdoorType.INDOOR),
                 task("open", 60, 1, hours("08:00-20:00"), null,
                         ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR),
                 task("other", 60, 2, hours("08:00-20:00"), null,
                         ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR));
-        int[][] travel = {{0, 12, 30}, {12, 0, 18}, {30, 18, 0}};
+        final int[][] travel = {{0, 12, 30}, {12, 0, 18}, {30, 18, 0}};
 
         assertMatchesOracle(new ScheduleProblem(availability, tasks, noBlockedWindows(),
                 matrixOf(tasks, availability, travel)), "split hours");
@@ -488,15 +490,15 @@ class IndependentOracleTest {
 
     @Test
     void anEarlyClosingVenueForcesTheOrder() {
-        TimeWindow availability = window(9, 21);
-        List<ScheduleTask> tasks = Arrays.asList(
+        final TimeWindow availability = window(9, 21);
+        final List<ScheduleTask> tasks = Arrays.asList(
                 task("closesEarly", 60, 0, hours("08:00-11:30"), null,
                         ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR),
                 task("late", 60, 1, hours("14:00-20:00"), null,
                         ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR),
                 task("any", 60, 2, hours("08:00-20:00"), null,
                         ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR));
-        int[][] travel = {{0, 25, 15}, {25, 0, 20}, {15, 20, 0}};
+        final int[][] travel = {{0, 25, 15}, {25, 0, 20}, {15, 20, 0}};
 
         assertMatchesOracle(new ScheduleProblem(availability, tasks, noBlockedWindows(),
                 matrixOf(tasks, availability, travel)), "early closing");
@@ -504,17 +506,17 @@ class IndependentOracleTest {
 
     @Test
     void twoUnavailableWindowsInOneDay() {
-        TimeWindow availability = window(9, 21);
-        List<ScheduleTask> tasks = Arrays.asList(
+        final TimeWindow availability = window(9, 21);
+        final List<ScheduleTask> tasks = Arrays.asList(
                 task("a", 60, 0, hours("08:00-20:00"), null,
                         ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR),
                 task("b", 60, 1, hours("08:00-20:00"), null,
                         ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR),
                 task("c", 60, 2, hours("08:00-20:00"), null,
                         ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR));
-        List<TimeWindow> blocked = Arrays.asList(
+        final List<TimeWindow> blocked = Arrays.asList(
                 new TimeWindow(at(10, 0), at(11, 0)), new TimeWindow(at(14, 0), at(16, 0)));
-        int[][] travel = {{0, 15, 20}, {15, 0, 10}, {20, 10, 0}};
+        final int[][] travel = {{0, 15, 20}, {15, 0, 10}, {20, 10, 0}};
 
         assertMatchesOracle(new ScheduleProblem(availability, tasks, blocked,
                 matrixOf(tasks, availability, travel)), "two unavailable windows");
@@ -522,19 +524,19 @@ class IndependentOracleTest {
 
     @Test
     void eachSoftPolicyOnItsOwn() {
-        SoftPolicy[] policies = {
+        final SoftPolicy[] policies = {
             new MealWindowPolicy(), new DaylightPolicy(), new WeatherSuitabilityPolicy(),
         };
         for (SoftPolicy policy : policies) {
-            TimeWindow availability = window(9, 21);
-            List<ScheduleTask> tasks = Arrays.asList(
+            final TimeWindow availability = window(9, 21);
+            final List<ScheduleTask> tasks = Arrays.asList(
                     task("meal", 60, 0, hours("08:00-20:00"), null,
                             ActivityCategory.FOOD, IndoorOutdoorType.INDOOR),
                     task("outdoor", 60, 1, hours("08:00-20:00"), null,
                             ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR),
                     task("indoor", 60, 2, hours("08:00-20:00"), null,
                             ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR));
-            int[][] travel = {{0, 18, 24}, {18, 0, 12}, {24, 12, 0}};
+            final int[][] travel = {{0, 18, 24}, {18, 0, 12}, {24, 12, 0}};
             assertMatchesOracle(new ScheduleProblem(availability, tasks, noBlockedWindows(),
                             matrixOf(tasks, availability, travel), with(policy)),
                     "policy " + policy.id());
@@ -543,15 +545,15 @@ class IndependentOracleTest {
 
     @Test
     void allThreeSoftPoliciesTogether() {
-        TimeWindow availability = window(9, 21);
-        List<ScheduleTask> tasks = Arrays.asList(
+        final TimeWindow availability = window(9, 21);
+        final List<ScheduleTask> tasks = Arrays.asList(
                 task("meal", 60, 0, hours("08:00-20:00"), null,
                         ActivityCategory.FOOD, IndoorOutdoorType.INDOOR),
                 task("outdoor", 60, 1, hours("08:00-20:00"), null,
                         ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR),
                 task("indoor", 60, 2, hours("08:00-20:00"), null,
                         ActivityCategory.MUSEUM, IndoorOutdoorType.INDOOR));
-        int[][] travel = {{0, 18, 24}, {18, 0, 12}, {24, 12, 0}};
+        final int[][] travel = {{0, 18, 24}, {18, 0, 12}, {24, 12, 0}};
 
         assertMatchesOracle(new ScheduleProblem(availability, tasks, noBlockedWindows(),
                         matrixOf(tasks, availability, travel),
@@ -568,36 +570,36 @@ class IndependentOracleTest {
     void seededRandomDaysAlwaysMatchTheOracle() {
         int compared = 0;
         for (long seed = 1; seed <= 120; seed++) {
-            Random random = new Random(seed);
-            int count = 2 + random.nextInt(3);
-            List<ScheduleTask> tasks = new ArrayList<>();
+            final Random random = new Random(seed);
+            final int count = 2 + random.nextInt(3);
+            final List<ScheduleTask> tasks = new ArrayList<>();
             for (int i = 0; i < count; i++) {
-                boolean splitHours = random.nextInt(4) == 0;
-                OpeningHours openingHours = splitHours
+                final boolean splitHours = random.nextInt(4) == 0;
+                final OpeningHours openingHours = splitHours
                         ? hours("09:00-12:00", "15:00-20:00") : hours("08:00-20:00");
                 // Only locks the Interactor would actually forward. ProblemValidator refuses a
                 // lock that falls outside its venue's opening windows or inside an unavailable
                 // period, so generating one here would compare the engine against a problem it
                 // is never given; the refusals themselves are pinned separately below.
-                boolean lockable = !splitHours && (10 + i) != 13 && random.nextInt(6) == 0;
-                TimeWindow lockedAt = lockable
+                final boolean lockable = !splitHours && (10 + i) != 13 && random.nextInt(6) == 0;
+                final TimeWindow lockedAt = lockable
                         ? new TimeWindow(at(10 + i, 0), at(11 + i, 0)) : null;
                 tasks.add(task("t" + i, 60, i, openingHours, lockedAt,
                         i % 2 == 0 ? ActivityCategory.FOOD : ActivityCategory.MUSEUM,
                         i % 3 == 0 ? IndoorOutdoorType.OUTDOOR : IndoorOutdoorType.INDOOR));
             }
-            int[][] travel = new int[count][count];
+            final int[][] travel = new int[count][count];
             for (int from = 0; from < count; from++) {
                 for (int to = 0; to < count; to++) {
                     // Asymmetric on purpose: a matrix that is its own transpose hides bugs.
                     travel[from][to] = from == to ? 0 : random.nextInt(40);
                 }
             }
-            TimeWindow availability = window(9, 21);
-            List<TimeWindow> blocked = random.nextBoolean()
+            final TimeWindow availability = window(9, 21);
+            final List<TimeWindow> blocked = random.nextBoolean()
                     ? Collections.singletonList(new TimeWindow(at(13, 0), at(14, 0)))
                     : noBlockedWindows();
-            ScheduleProblem problem = new ScheduleProblem(availability, tasks, blocked,
+            final ScheduleProblem problem = new ScheduleProblem(availability, tasks, blocked,
                     matrixOf(tasks, availability, travel),
                     with(new MealWindowPolicy(), new DaylightPolicy()));
 

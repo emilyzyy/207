@@ -6,24 +6,26 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import use_case.autoschedule.engine.ScheduleEngine;
-import use_case.autoschedule.engine.ScheduleSearchResult;
-import use_case.autoschedule.engine.SearchBudget;
-import use_case.autoschedule.testdoubles.FakeTripRepository;
-import use_case.autoschedule.testdoubles.FakeWeatherContextGateway;
-import use_case.autoschedule.testdoubles.RecordingPresenter;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
 import entity.valueobjects.EventType;
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import org.junit.jupiter.api.Test;
+import use_case.autoschedule.engine.ScheduleEngine;
+import use_case.autoschedule.engine.ScheduleSearchResult;
+import use_case.autoschedule.engine.SearchBudget;
+import use_case.autoschedule.testdoubles.FakeTripRepository;
+import use_case.autoschedule.testdoubles.FakeWeatherContextGateway;
+import use_case.autoschedule.testdoubles.RecordingPresenter;
 
 /**
  * The search compares orders using estimates prefetched for a few departure periods; the
@@ -59,7 +61,7 @@ class ExactTimeRefinementTest {
         public TravelEstimate estimate(Location from, Location to, TransportationMode mode,
                                        LocalDateTime departure) {
             calls++;
-            boolean prefetchSample = BUCKET_SAMPLES.contains(departure.toLocalTime());
+            final boolean prefetchSample = BUCKET_SAMPLES.contains(departure.toLocalTime());
             return TravelEstimate.routed(prefetchSample ? bucketMinutes : actualMinutes);
         }
 
@@ -74,14 +76,14 @@ class ExactTimeRefinementTest {
     }
 
     private static Trip tripWith(ScheduledEvent... events) {
-        Trip trip = new Trip("trip-1", "Toronto", ProblemFixtures.TRIP_DATE,
+        final Trip trip = new Trip("trip-1", "Toronto", ProblemFixtures.TRIP_DATE,
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.TRANSIT);
         trip.replaceSchedule(Arrays.asList(events));
         return trip;
     }
 
     private static ScheduledEvent event(String id, LocalTime start, int durationMinutes) {
-        Activity activity = ProblemFixtures.activity(id, LocalTime.of(9, 0), LocalTime.of(21, 0));
+        final Activity activity = ProblemFixtures.activity(id, LocalTime.of(9, 0), LocalTime.of(21, 0));
         return new ScheduledEvent(id, activity, start, start.plusMinutes(durationMinutes),
                 EventType.ACTIVITY, "");
     }
@@ -101,13 +103,13 @@ class ExactTimeRefinementTest {
     @Test
     void thePreviewShowsTheTravelTimeTheTravellerWillActuallyExperience() {
         // Activities of 100 minutes mean departures never land on a bucket sample.
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(event("a", LocalTime.of(9, 0), 100),
                         event("b", LocalTime.of(13, 0), 100)));
 
         interactorWith(new OptimisticBucketEstimator(20, 35), trips).preview(input());
 
-        AutoSchedulePreviewOutputData preview = presenter.getPreview();
+        final AutoSchedulePreviewOutputData preview = presenter.getPreview();
         assertNotNull(preview);
         assertEquals(35, preview.getTravelAfterMinutes(),
                 "the Preview should show the refined time, not the bucketed guess");
@@ -115,14 +117,14 @@ class ExactTimeRefinementTest {
 
     @Test
     void refinedTimesAreReflectedInTheRowsThemselves() {
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(event("a", LocalTime.of(9, 0), 100),
                         event("b", LocalTime.of(13, 0), 100)));
 
         interactorWith(new OptimisticBucketEstimator(20, 35), trips).preview(input());
 
-        List<ProposedEventData> rows = presenter.getPreview().getRows();
-        ProposedEventData travel = rows.stream()
+        final List<ProposedEventData> rows = presenter.getPreview().getRows();
+        final ProposedEventData travel = rows.stream()
                 .filter(row -> row.getKind() == ProposedEventData.Kind.TRAVEL)
                 .findFirst().orElseThrow(AssertionError::new);
         assertEquals(35, (travel.getEnd().toSecondOfDay() - travel.getStart().toSecondOfDay()) / 60);
@@ -130,10 +132,10 @@ class ExactTimeRefinementTest {
 
     @Test
     void refinementLengthensTravelAndMovesTheUnlockedDestinationWithIt() {
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(event("a", LocalTime.of(9, 0), 90),
                         event("b", LocalTime.of(13, 0), 60)));
-        AutoScheduleInputData request = new AutoScheduleInputData("trip-1",
+        final AutoScheduleInputData request = new AutoScheduleInputData("trip-1",
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.TRANSIT,
                 Collections.singleton("a"),
                 Collections.singletonList(new TimeWindow(
@@ -141,13 +143,13 @@ class ExactTimeRefinementTest {
 
         interactorWith(new OptimisticBucketEstimator(10, 20), trips).preview(request);
 
-        AutoSchedulePreviewOutputData preview = presenter.getPreview();
+        final AutoSchedulePreviewOutputData preview = presenter.getPreview();
         assertNotNull(preview, presenter.getConflict() == null
                 ? "no Preview or conflict was produced" : presenter.getConflict().getKind().name());
-        ProposedEventData travel = preview.getRows().stream()
+        final ProposedEventData travel = preview.getRows().stream()
                 .filter(row -> row.getKind() == ProposedEventData.Kind.TRAVEL)
                 .findFirst().orElseThrow(AssertionError::new);
-        ProposedEventData destination = preview.getRows().stream()
+        final ProposedEventData destination = preview.getRows().stream()
                 .filter(row -> "b".equals(row.getEventId()))
                 .findFirst().orElseThrow(AssertionError::new);
 
@@ -161,18 +163,18 @@ class ExactTimeRefinementTest {
 
     @Test
     void aScheduleIsNeverShownWithOverlapsOrTooLittleTravelTime() {
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(event("a", LocalTime.of(9, 0), 100),
                         event("b", LocalTime.of(13, 0), 100)));
 
         interactorWith(new OptimisticBucketEstimator(10, 90), trips).preview(input());
 
-        AutoSchedulePreviewOutputData preview = presenter.getPreview();
+        final AutoSchedulePreviewOutputData preview = presenter.getPreview();
         if (preview == null) {
             assertNotNull(presenter.getConflict());
             return;
         }
-        List<ProposedEventData> rows = preview.getRows();
+        final List<ProposedEventData> rows = preview.getRows();
         for (int i = 1; i < rows.size(); i++) {
             assertFalse(rows.get(i).getStart().isBefore(rows.get(i - 1).getEnd()),
                     "rows overlap: " + rows.get(i - 1).getEnd() + " then " + rows.get(i).getStart());
@@ -182,7 +184,7 @@ class ExactTimeRefinementTest {
     @Test
     void whenRealTravelTimesBreakTheDayTheUserGetsAConflictNotABadSchedule() {
         // Three 100-minute activities and ten-hour journeys: nothing can be salvaged.
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(event("a", LocalTime.of(9, 0), 100),
                         event("b", LocalTime.of(13, 0), 100),
                         event("c", LocalTime.of(17, 0), 100)));
@@ -199,33 +201,33 @@ class ExactTimeRefinementTest {
 
     @Test
     void refinementIsBoundedRatherThanLoopingForever() {
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(event("a", LocalTime.of(9, 0), 100),
                         event("b", LocalTime.of(13, 0), 100),
                         event("c", LocalTime.of(17, 0), 100)));
-        OptimisticBucketEstimator estimator = new OptimisticBucketEstimator(5, 600);
+        final OptimisticBucketEstimator estimator = new OptimisticBucketEstimator(5, 600);
 
         interactorWith(estimator, trips).preview(input());
 
-        int prefetch = 3 * 2 * 4;
-        int refinementCalls = estimator.callCount() - prefetch;
+        final int prefetch = 3 * 2 * 4;
+        final int refinementCalls = estimator.callCount() - prefetch;
         assertTrue(refinementCalls <= 2 * (AutoScheduleInteractor.MAX_REFINEMENT_ROUNDS + 1) + 2,
                 "refinement should stop after the bounded rounds, made " + refinementCalls);
     }
 
     @Test
     void theSearchItselfNeverAsksTheEstimatorForAnything() {
-        List<ScheduleTask> items = ProblemFixtures.tasks(
+        final List<ScheduleTask> items = ProblemFixtures.tasks(
                 ProblemFixtures.task("a", 60, 0, LocalTime.of(9, 0), LocalTime.of(21, 0)),
                 ProblemFixtures.task("b", 60, 1, LocalTime.of(9, 0), LocalTime.of(21, 0)),
                 ProblemFixtures.task("c", 60, 2, LocalTime.of(9, 0), LocalTime.of(21, 0)));
-        OptimisticBucketEstimator estimator = new OptimisticBucketEstimator(15, 15);
-        TravelMatrix matrix = new TravelMatrixPrefetcher(estimator).prefetch(items,
+        final OptimisticBucketEstimator estimator = new OptimisticBucketEstimator(15, 15);
+        final TravelMatrix matrix = new TravelMatrixPrefetcher(estimator).prefetch(items,
                 TransportationMode.TRANSIT, ProblemFixtures.TRIP_DATE,
                 ProblemFixtures.window(9, 21));
-        int callsAfterPrefetch = estimator.callCount();
+        final int callsAfterPrefetch = estimator.callCount();
 
-        ScheduleSearchResult result = new ScheduleEngine().search(
+        final ScheduleSearchResult result = new ScheduleEngine().search(
                 new ScheduleProblem(ProblemFixtures.window(9, 21), items,
                         ProblemFixtures.noBlockedWindows(), matrix),
                 SearchBudget.defaultBudget());
@@ -237,12 +239,12 @@ class ExactTimeRefinementTest {
 
     @Test
     void prefetchAsksForEachLegOncePerBucketAndNoMore() {
-        List<ScheduleTask> items = ProblemFixtures.tasks(
+        final List<ScheduleTask> items = ProblemFixtures.tasks(
                 ProblemFixtures.task("a", 60, 0, LocalTime.of(9, 0), LocalTime.of(21, 0)),
                 ProblemFixtures.task("b", 60, 1, LocalTime.of(9, 0), LocalTime.of(21, 0)));
-        OptimisticBucketEstimator estimator = new OptimisticBucketEstimator(15, 15);
+        final OptimisticBucketEstimator estimator = new OptimisticBucketEstimator(15, 15);
 
-        TravelMatrix matrix = new TravelMatrixPrefetcher(estimator).prefetch(items,
+        final TravelMatrix matrix = new TravelMatrixPrefetcher(estimator).prefetch(items,
                 TransportationMode.TRANSIT, ProblemFixtures.TRIP_DATE,
                 ProblemFixtures.window(9, 21));
 
@@ -251,10 +253,10 @@ class ExactTimeRefinementTest {
 
     @Test
     void whenTheBucketedGuessWasAlreadyRightNothingIsRecomputed() {
-        FakeTripRepository trips = new FakeTripRepository(
+        final FakeTripRepository trips = new FakeTripRepository(
                 tripWith(event("a", LocalTime.of(9, 0), 100),
                         event("b", LocalTime.of(13, 0), 100)));
-        OptimisticBucketEstimator agreeing = new OptimisticBucketEstimator(20, 20);
+        final OptimisticBucketEstimator agreeing = new OptimisticBucketEstimator(20, 20);
 
         interactorWith(agreeing, trips).preview(input());
 
