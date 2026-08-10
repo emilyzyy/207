@@ -125,7 +125,8 @@ public final class ShareDialog extends JDialog {
                     new java.awt.datatransfer.StringSelection(preview.getText()), null);
             status.setText("Text copied to clipboard.");
             status.setForeground(SwingTheme.SUCCESS);
-        } catch (IllegalStateException exception) {
+        }
+        catch (IllegalStateException exception) {
             status.setText("Clipboard is busy. Please try again.");
             status.setForeground(SwingTheme.ERROR);
         }
@@ -146,7 +147,8 @@ public final class ShareDialog extends JDialog {
                     : "Day-plan image copied — paste into Messages, Mail, or Slack.";
             status.setText(note);
             status.setForeground(SwingTheme.SUCCESS);
-        } catch (IllegalStateException exception) {
+        }
+        catch (IllegalStateException exception) {
             status.setText("Clipboard is busy. Please try again.");
             status.setForeground(SwingTheme.ERROR);
         }
@@ -176,7 +178,8 @@ public final class ShareDialog extends JDialog {
                 ImageIO.write(images.get(0), "png", file);
                 status.setText("Saved " + file.getName());
                 status.setForeground(SwingTheme.SUCCESS);
-            } catch (IOException exception) {
+            }
+            catch (IOException exception) {
                 status.setText("Could not save PNG: " + exception.getMessage());
                 status.setForeground(SwingTheme.ERROR);
             }
@@ -194,7 +197,8 @@ public final class ShareDialog extends JDialog {
             }
             status.setText("Saved " + images.size() + " PNGs in " + folder.getName());
             status.setForeground(SwingTheme.SUCCESS);
-        } catch (IOException exception) {
+        }
+        catch (IOException exception) {
             status.setText("Could not save PNGs: " + exception.getMessage());
             status.setForeground(SwingTheme.ERROR);
         }
@@ -220,7 +224,8 @@ public final class ShareDialog extends JDialog {
             empty.setForeground(SwingTheme.MUTED);
             empty.setAlignmentX(LEFT_ALIGNMENT);
             imagesPanel.add(empty);
-        } else {
+        }
+        else {
             for (int i = 0; i < images.size(); i++) {
                 final BufferedImage image = images.get(i);
                 if (images.size() > 1) {

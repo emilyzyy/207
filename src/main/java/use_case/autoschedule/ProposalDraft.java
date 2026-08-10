@@ -99,7 +99,8 @@ public final class ProposalDraft {
                     legsByDestination.put(
                             row.getEventId().substring(TRAVEL_ID_PREFIX.length()), row);
                 }
-            } else {
+            }
+            else {
                 activities.add(row);
             }
         }
@@ -109,7 +110,8 @@ public final class ProposalDraft {
         for (ProposedEventData activity : activities) {
             if (activity.getEventId().equals(removeEventId)) {
                 found = true;
-            } else {
+            }
+            else {
                 remaining.add(activity);
             }
         }
@@ -181,7 +183,8 @@ public final class ProposalDraft {
             final TravelEstimate estimate = estimator.estimate(origin.getLocation(),
                     destination.getLocation(), mode, LocalDateTime.of(date, from.getEnd()));
             minutes = estimate == null ? 0 : estimate.getMinutes();
-        } catch (RuntimeException providerFailed) {
+        }
+        catch (RuntimeException providerFailed) {
             return null;
         }
         if (minutes <= 0 || minutes > minutes(from.getEnd(), to.getStart())) {

@@ -446,7 +446,8 @@ public final class AppBuilder {
         try {
             return new FallbackTripAssistantGateway(
                     OpenAiTripAssistantGateway.viaProxy(URI.create(endpoint), model), offline);
-        } catch (IllegalArgumentException exception) {
+        }
+        catch (IllegalArgumentException exception) {
             return offline;
         }
     }
@@ -545,7 +546,8 @@ public final class AppBuilder {
                 SwingUtilities.invokeLater(() ->
                         tripAccessViewModel.setAccess(
                                 access.canEditItinerary(), access.canManagePeople()));
-            } catch (RuntimeException exception) {
+            }
+            catch (RuntimeException exception) {
                 // Keep default editable until access loads, or user retries.
             }
         }, "Trip-Access-" + tripId);
@@ -578,7 +580,8 @@ public final class AppBuilder {
     private List<WeatherWarning> weatherWarningsFor(AppContainer app, Trip trip) {
         try {
             return app.weatherWarning.executeHourly(trip.getId());
-        } catch (Exception exception) {
+        }
+        catch (Exception exception) {
             System.err.println("[AppBuilder] Weather preview unavailable for " + trip.getDestination()
                     + ": " + exception.getMessage());
             return Collections.singletonList(new WeatherWarning(
@@ -638,7 +641,8 @@ public final class AppBuilder {
                     new SupabaseItineraryDataAccess(url, anonKey, auth, hydrator);
             trips = new DualModeItineraryDataAccess(local, remote, auth);
             account = new SupabaseAccountClient(url, anonKey, auth);
-        } else {
+        }
+        else {
             trips = new InMemoryItineraryDataAccessObject();
         }
 

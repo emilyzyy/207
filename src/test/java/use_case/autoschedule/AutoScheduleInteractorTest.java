@@ -424,7 +424,8 @@ class AutoScheduleInteractorTest {
                 overrunning.add(new ProposedEventData(row.getEventId(), row.getActivityId(),
                         row.getTitle(), row.getKind(), row.getStart(),
                         row.getEnd().plusMinutes(90), row.isLocked(), row.isMoved()));
-            } else {
+            }
+            else {
                 overrunning.add(row);
             }
         }

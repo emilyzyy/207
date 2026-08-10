@@ -45,7 +45,8 @@ public final class ThemeToggleButton extends JToggleButton {
         if (isSelected()) {
             drawMoon(g, cx, cy, diameter / 3);
 
-        } else {
+        }
+        else {
 
             drawSun(g, cx, cy, diameter / 4);
         }

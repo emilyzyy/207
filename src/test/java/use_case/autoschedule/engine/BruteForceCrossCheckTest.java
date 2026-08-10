@@ -126,7 +126,8 @@ class BruteForceCrossCheckTest {
 
             if (exhaustive == null) {
                 assertTrue(!searched.isFound());
-            } else {
+            }
+            else {
                 assertTrue(searched.isFound());
                 assertEquals(exhaustive, searched.getPlan().getScore());
             }

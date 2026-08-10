@@ -326,7 +326,8 @@ class AddToPlanAutoscheduleIntegrationTest {
         for (java.io.File child : children) {
             if (child.isDirectory()) {
                 collectOffenders(child, names, offenders);
-            } else if (child.getName().endsWith(".java")) {
+            }
+            else if (child.getName().endsWith(".java")) {
                 final String body = readFile(child.getPath());
                 for (String name : names) {
                     if (body.contains(name)) {
@@ -341,7 +342,8 @@ class AddToPlanAutoscheduleIntegrationTest {
         try {
             return new String(java.nio.file.Files.readAllBytes(
                     java.nio.file.Paths.get(path)), java.nio.charset.StandardCharsets.UTF_8);
-        } catch (java.io.IOException exception) {
+        }
+        catch (java.io.IOException exception) {
             throw new IllegalStateException("could not read " + path, exception);
         }
     }

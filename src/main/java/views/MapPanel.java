@@ -372,7 +372,8 @@ public final class MapPanel extends JPanel {
         if (activity != null) {
             zoom = Math.max(zoom, 15);
             flyTo(activity.getLocation().getLatitude(), activity.getLocation().getLongitude());
-        } else {
+        }
+        else {
             repaint();
         }
     }
@@ -530,7 +531,8 @@ public final class MapPanel extends JPanel {
                 try {
                     found = viewportLoader.load(cellSouth, cellWest,
                             cellNorth, cellEast, perCell);
-                } catch (Exception ignored) {
+                }
+                catch (Exception ignored) {
                     // A failed public lookup leaves the current markers intact.
                 }
                 final List<Activity> completed = found;
@@ -561,7 +563,8 @@ public final class MapPanel extends JPanel {
         if (next == null) {
             notifyPlacesLoading(false);
             schedulePrefetch(completed);
-        } else {
+        }
+        else {
             loadViewport(next);
         }
     }
@@ -637,7 +640,8 @@ public final class MapPanel extends JPanel {
         }
         try {
             viewportLoader.load(south, west, north, east, perCell);
-        } catch (Exception ignored) {
+        }
+        catch (Exception ignored) {
             // A failed background prefetch must never disturb the map or the UI thread.
         }
     }
@@ -912,7 +916,8 @@ public final class MapPanel extends JPanel {
                 final BufferedImage tile = tileLoadingEnabled ? tileCache.get(key) : null;
                 if (tile != null) {
                     g2.drawImage(tile, px, py, null);
-                } else {
+                }
+                else {
                     g2.setColor(new Color(230, 236, 242));
                     g2.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                     g2.setColor(new Color(200, 210, 220));
@@ -1196,9 +1201,11 @@ public final class MapPanel extends JPanel {
             if (bookmarked) {
                 drawBookmarkBadge(g2, sx + radius - 4, sy - radius + 3);
             }
-        } else if (bookmarked) {
+        }
+        else if (bookmarked) {
             drawBookmarkGlyph(g2, sx, sy, radius);
-        } else {
+        }
+        else {
             g2.setColor(Color.WHITE);
             g2.fillOval(sx - 4, sy - 4, 8, 8);
         }
@@ -1261,10 +1268,13 @@ public final class MapPanel extends JPanel {
                     }
                 }
                 response.body().close();
-            } catch (InterruptedException exception) {
+            }
+            catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
-            } catch (Exception ignored) {
-            } finally {
+            }
+            catch (Exception ignored) {
+            }
+            finally {
                 pendingLoads.remove(key);
             }
         });

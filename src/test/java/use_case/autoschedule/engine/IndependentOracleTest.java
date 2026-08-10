@@ -183,7 +183,8 @@ class IndependentOracleTest {
                         arrival, start, problem.getUnavailableWindows()) != null) {
                     return null;
                 }
-            } else {
+            }
+            else {
                 start = earliestLegalStart(task, problem, arrival);
                 if (start == null) {
                     return null;
@@ -605,7 +606,8 @@ class IndependentOracleTest {
 
             try {
                 assertMatchesOracle(problem, "seed " + seed);
-            } catch (AssertionError failure) {
+            }
+            catch (AssertionError failure) {
                 fail("seed " + seed + " · " + count + " activities · travel "
                         + Arrays.deepToString(travel) + " · blocked " + blocked + "\n"
                         + failure.getMessage());

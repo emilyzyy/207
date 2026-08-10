@@ -50,9 +50,11 @@ public final class ManageProfileInteractor implements ManageProfileInputBoundary
                 default:
                     throw new IllegalArgumentException("Unknown profile action");
             }
-        } catch (IllegalArgumentException | IllegalStateException exception) {
+        }
+        catch (IllegalArgumentException | IllegalStateException exception) {
             output.present(ManageProfileOutputData.failure(exception.getMessage()));
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             output.present(ManageProfileOutputData.failure(
                     exception.getMessage() == null
                             ? "Could not update profile."

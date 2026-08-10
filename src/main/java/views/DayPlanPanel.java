@@ -251,7 +251,8 @@ public final class DayPlanPanel extends JPanel {
     private static void onEventThread(Runnable action) {
         if (SwingUtilities.isEventDispatchThread()) {
             action.run();
-        } else {
+        }
+        else {
             SwingUtilities.invokeLater(action);
         }
     }
@@ -506,7 +507,8 @@ public final class DayPlanPanel extends JPanel {
         if (busy) {
             status.setFont(SwingTheme.HEADING.deriveFont(15f));
             status.setForeground(SwingTheme.NAVY);
-        } else {
+        }
+        else {
             status.setFont(SwingTheme.BODY);
         }
         // Exactly one primary is visible in any state: Autoschedule while idle, Apply while
@@ -516,7 +518,8 @@ public final class DayPlanPanel extends JPanel {
         autoscheduleButton.setVisible(!previewing);
         if (!editable) {
             autoscheduleButton.setToolTipText("View only — you cannot change this itinerary");
-        } else {
+        }
+        else {
             autoscheduleButton.setToolTipText("Suggest a better order and times for this day");
         }
         applyButton.setEnabled(previewing && !busy && editable);
@@ -610,7 +613,8 @@ public final class DayPlanPanel extends JPanel {
         narrowSlot.setVisible(!wide);
         if (wide) {
             sidebarSlot.add(column, BorderLayout.NORTH);
-        } else {
+        }
+        else {
             column.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE,
                     column.getPreferredSize().height));
             // BorderLayout.NORTH, so the column takes the full width and its own height.
@@ -769,9 +773,11 @@ public final class DayPlanPanel extends JPanel {
         final String change;
         if (difference > 0) {
             change = "<font color='#1A7F53'>" + difference + " min " + betterWord + "</font>";
-        } else if (difference < 0) {
+        }
+        else if (difference < 0) {
             change = "<font color='#925E06'>" + (-difference) + " min " + worseWord + "</font>";
-        } else {
+        }
+        else {
             change = "<font color='#5B6A7B'>unchanged</font>";
         }
         final JLabel line = new JLabel("<html><b>" + escape(name) + "</b> &nbsp; Before "
@@ -803,7 +809,8 @@ public final class DayPlanPanel extends JPanel {
             // Three signals, so this never depends on telling two greys apart.
             card.setBackground(SwingTheme.TRAVEL_SURFACE);
             card.setBorder(BorderFactory.createEmptyBorder(7, 26, 7, 14));
-        } else {
+        }
+        else {
             SwingTheme.styleCard(card);
         }
 
@@ -826,7 +833,8 @@ public final class DayPlanPanel extends JPanel {
             badge.setIcon(new LockIcon(true, 11));
             badge.setIconTextGap(4);
             centre.add(badge);
-        } else if (row.isMoved()) {
+        }
+        else if (row.isMoved()) {
             centre.add(SwingTheme.badge("Moved", SwingTheme.MUTED, SwingTheme.BACKGROUND));
         }
         card.add(centre, BorderLayout.CENTER);
@@ -1263,7 +1271,8 @@ public final class DayPlanPanel extends JPanel {
                 // top inset, leaving its labels a negative height and therefore invisible.
                 if (event.getEventType() == EventType.ACTIVITY) {
                     reserveConnectorSpace(card);
-                } else {
+                }
+                else {
                     card.setBorder((Border) card.getClientProperty("trippy.baseBorder"));
                 }
                 final int start = signedMinutesBetween(viewStart, event.getStartTime());

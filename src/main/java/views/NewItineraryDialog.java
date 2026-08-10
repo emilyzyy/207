@@ -204,14 +204,17 @@ public final class NewItineraryDialog extends JDialog {
                 if (e.getKeyCode() == KeyEvent.VK_DOWN) {
                     moveHighlight(1);
                     e.consume();
-                } else if (e.getKeyCode() == KeyEvent.VK_UP) {
+                }
+                else if (e.getKeyCode() == KeyEvent.VK_UP) {
                     moveHighlight(-1);
                     e.consume();
-                } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                }
+                else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     final int index = suggestionList.getSelectedIndex();
                     if (index >= 0 && index < suggestions.size()) {
                         select(suggestions.get(index));
-                    } else {
+                    }
+                    else {
                         statusLabel.setText("Pick a city from the list, then create the itinerary.");
                     }
                     e.consume();
@@ -296,7 +299,8 @@ public final class NewItineraryDialog extends JDialog {
             if (selectedFriend) {
                 selectedFriendIds.add(friend.getId());
                 setBackground(SwingTheme.BLUE_SOFT);
-            } else {
+            }
+            else {
                 selectedFriendIds.remove(friend.getId());
                 setBackground(SwingTheme.BACKGROUND);
             }
@@ -330,7 +334,8 @@ public final class NewItineraryDialog extends JDialog {
                 g2.setColor(Color.WHITE);
                 g2.drawLine(x + 5, y + size / 2, x + size / 2 - 1, y + size - 5);
                 g2.drawLine(x + size / 2 - 1, y + size - 5, x + size - 5, y + 5);
-            } else {
+            }
+            else {
                 g2.setColor(SwingTheme.PANEL);
                 g2.fill(new Ellipse2D.Float(x, y, size, size));
                 g2.setColor(SwingTheme.LINE);
@@ -384,7 +389,8 @@ public final class NewItineraryDialog extends JDialog {
         if (results.isEmpty()) {
             statusLabel.setText("No matches for \"" + query + "\".");
             setSuggestionsVisible(false);
-        } else {
+        }
+        else {
             statusLabel.setText(results.size() + " match(es). Click a city to select it.");
             suggestionList.clearSelection();
             setSuggestionsVisible(true);

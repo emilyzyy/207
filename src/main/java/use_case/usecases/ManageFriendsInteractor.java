@@ -48,13 +48,16 @@ public final class ManageFriendsInteractor implements ManageFriendsInputBoundary
                     throw new IllegalArgumentException("Unknown friends action");
             }
             output.present(snapshot(message, false));
-        } catch (IllegalArgumentException | IllegalStateException exception) {
+        }
+        catch (IllegalArgumentException | IllegalStateException exception) {
             try {
                 output.present(snapshot(exception.getMessage(), true));
-            } catch (RuntimeException ignored) {
+            }
+            catch (RuntimeException ignored) {
                 output.present(ManageFriendsOutputData.failure(exception.getMessage()));
             }
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             output.present(ManageFriendsOutputData.failure(
                     exception.getMessage() == null
                             ? "Could not update friends."

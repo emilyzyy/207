@@ -67,7 +67,8 @@ public final class ScheduleImprovementsPanel extends JPanel {
             none.setAlignmentX(Component.LEFT_ALIGNMENT);
             none.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 2));
             add(none);
-        } else {
+        }
+        else {
             add(tileGrid(improvements));
         }
         add(javax.swing.Box.createVerticalGlue());
