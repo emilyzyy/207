@@ -3,6 +3,9 @@ package interface_adapter.presenters;
 import interface_adapter.viewmodels.ShareState;
 import interface_adapter.viewmodels.ShareViewModel;
 import use_case.usecases.ShareTripOutputBoundary;
+import java.awt.image.BufferedImage;
+import java.util.Collections;
+import java.util.List;
 
 /** Presents share results to an observable Swing state. */
 public final class ShareTripPresenter implements ShareTripOutputBoundary {
@@ -17,10 +20,16 @@ public final class ShareTripPresenter implements ShareTripOutputBoundary {
 
     @Override
     public void presentSuccess(String shareText) {
-        viewModel.setState(new ShareState(
-                shareText,
-                "Itinerary ready to copy and share.",
-                false));
+        presentSuccess(shareText, Collections.<BufferedImage>emptyList());
+    }
+
+    @Override
+    public void presentSuccess(String shareText, List<BufferedImage> dayImages) {
+        int days = dayImages == null ? 0 : dayImages.size();
+        String ready = days <= 1
+                ? "Day plan image ready — scroll, save, or copy the text."
+                : days + " day-plan images ready — scroll to see each day, then save or share.";
+        viewModel.setState(new ShareState(shareText, ready, false, dayImages));
     }
 
     @Override
