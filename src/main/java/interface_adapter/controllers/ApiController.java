@@ -155,7 +155,7 @@ public final class ApiController implements HttpHandler {
                         && "hourly".equals(parts[5]) && "GET".equals(method)) {
                     respond(exchange, 200,
                             presenter.hourlyWeather(app.hourlyWeather(tripId)));
-                            return;
+                    return;
                 }
             }
             respond(exchange, 404, presenter.error("Route not found"));

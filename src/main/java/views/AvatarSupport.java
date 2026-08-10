@@ -27,14 +27,14 @@ import entity.entities.User;
 /** Circular avatar rendering and image helpers for profile UI. */
 public final class AvatarSupport {
     public static final Color[] SOLID_COLORS = {
-            Color.WHITE,
-            new Color(31, 104, 225),
-            new Color(13, 35, 64),
-            new Color(26, 127, 83),
-            new Color(181, 56, 48),
-            new Color(146, 94, 6),
-            new Color(91, 106, 123),
-            new Color(156, 39, 176),
+        Color.WHITE,
+        new Color(31, 104, 225),
+        new Color(13, 35, 64),
+        new Color(26, 127, 83),
+        new Color(181, 56, 48),
+        new Color(146, 94, 6),
+        new Color(91, 106, 123),
+        new Color(156, 39, 176),
     };
 
     private AvatarSupport() {

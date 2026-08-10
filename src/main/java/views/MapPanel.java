@@ -148,7 +148,8 @@ public final class MapPanel extends JPanel {
     private final ConcurrentHashMap<String, BufferedImage> tileCache = new ConcurrentHashMap<>();
     private final Set<String> pendingLoads = ConcurrentHashMap.newKeySet();
     private final ExecutorService tileLoader = Executors.newFixedThreadPool(2,
-            r -> { final Thread t = new Thread(r, "TileLoader"); t.setDaemon(true); return t; });
+            r -> {
+                final Thread t = new Thread(r, "TileLoader"); t.setDaemon(true); return t; });
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(java.time.Duration.ofSeconds(8)).build();
     private final boolean tileLoadingEnabled;
@@ -157,9 +158,11 @@ public final class MapPanel extends JPanel {
     private Timer prefetchTimer;
     private ViewportRequest prefetchPending;
     private final ExecutorService viewportLoaderExecutor = Executors.newFixedThreadPool(3,
-            r -> { final Thread t = new Thread(r, "ViewportLoader"); t.setDaemon(true); return t; });
+            r -> {
+                final Thread t = new Thread(r, "ViewportLoader"); t.setDaemon(true); return t; });
     private final ExecutorService prefetchExecutor = Executors.newSingleThreadExecutor(
-            r -> { final Thread t = new Thread(r, "ViewportPrefetch"); t.setDaemon(true); return t; });
+            r -> {
+                final Thread t = new Thread(r, "ViewportPrefetch"); t.setDaemon(true); return t; });
 
     private ViewportPlacesLoader viewportLoader;
     private boolean viewportLoadRunning;
@@ -661,10 +664,10 @@ public final class MapPanel extends JPanel {
         for (int row = 0; row < grid.rows; row++) {
             for (int col = 0; col < grid.cols; col++) {
                 cells.add(new double[]{
-                        grid.south + row * grid.stepLat,
-                        grid.west + col * grid.stepLng,
-                        grid.south + (row + 1) * grid.stepLat,
-                        grid.west + (col + 1) * grid.stepLng});
+                    grid.south + row * grid.stepLat,
+                    grid.west + col * grid.stepLng,
+                    grid.south + (row + 1) * grid.stepLat,
+                    grid.west + (col + 1) * grid.stepLng});
             }
         }
         return cells;
@@ -772,8 +775,10 @@ public final class MapPanel extends JPanel {
         double east = clampLng(pixelXToLng(eastPixel));
         double north = pixelYToLat(visiblePixelY(northPixel));
         double south = pixelYToLat(visiblePixelY(southPixel));
-        if (south > north) { final double t = south; south = north; north = t; }
-        if (west > east) { final double t = east; east = west; west = t; }
+        if (south > north) {
+            final double t = south; south = north; north = t; }
+        if (west > east) {
+            final double t = east; east = west; west = t; }
         return new double[][]{{south, west}, {north, east}};
     }
 
@@ -1063,8 +1068,8 @@ public final class MapPanel extends JPanel {
                 final double px = latLngToPixelX(activity.getLocation().getLongitude());
                 final double py = latLngToPixelY(activity.getLocation().getLatitude());
                 points.add(new int[] {
-                        (int) (w / 2.0 + (px - centerPixelX)),
-                        (int) (h / 2.0 + (py - centerPixelY))});
+                    (int) (w / 2.0 + (px - centerPixelX)),
+                    (int) (h / 2.0 + (py - centerPixelY))});
                 break;
             }
         }
@@ -1082,8 +1087,8 @@ public final class MapPanel extends JPanel {
                 final double px = latLngToPixelX(activity.getLocation().getLongitude());
                 final double py = latLngToPixelY(activity.getLocation().getLatitude());
                 points.add(new int[] {
-                        (int) (w / 2.0 + (px - centerPixelX)),
-                        (int) (h / 2.0 + (py - centerPixelY))});
+                    (int) (w / 2.0 + (px - centerPixelX)),
+                    (int) (h / 2.0 + (py - centerPixelY))});
                 break;
             }
         }

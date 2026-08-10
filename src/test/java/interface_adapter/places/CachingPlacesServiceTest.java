@@ -26,7 +26,7 @@ final class CachingPlacesServiceTest {
                 cache.findById(results.get(0).getId()).orElseThrow().getId());
     }
 
-@Test
+    @Test
     void delegatesInBoundsSearchAndCachesResults() {
         final CachedPlacesRepository cache = new CachedPlacesRepository();
         final CachingPlacesService service =
@@ -34,7 +34,7 @@ final class CachingPlacesServiceTest {
 
         final List<Activity> results = service.searchInBounds(43.0, -79.5, 44.0, -79.0, 100);
 
-assertTrue(!results.isEmpty());
+        assertTrue(!results.isEmpty());
         assertEquals(results.size(), cache.findAll().size());
     }
 }

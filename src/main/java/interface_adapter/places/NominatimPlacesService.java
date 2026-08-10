@@ -624,9 +624,9 @@ public final class NominatimPlacesService implements PlacesService {
         return type == IndoorOutdoorType.INDOOR ? "Low" : "Medium";
     }
 
-private static String encode(String value) {
-    return URLEncoder.encode(value, StandardCharsets.UTF_8);
-}
+    private static String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
 
     private static final class OverpassBusyException extends IOException {
         private final long retryAfterMillis;

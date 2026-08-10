@@ -798,7 +798,7 @@ public final class DayPlanPanel extends JPanel {
         return label;
     }
 
-        private JPanel previewCard(PreviewRowView row) {
+    private JPanel previewCard(PreviewRowView row) {
         final boolean travel = row.getKind() == PreviewRowView.Kind.TRAVEL;
         final JPanel card = new JPanel(new BorderLayout(12, 4));
         card.setAlignmentX(Component.LEFT_ALIGNMENT);

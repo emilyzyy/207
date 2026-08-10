@@ -429,8 +429,8 @@ public final class SearchPanel extends JPanel {
 
         @Override public int getScrollableUnitIncrement(Rectangle visible, int orientation,
                                                          int direction) {
-                                                             return 16;
-                                                         }
+            return 16;
+        }
 
         @Override public int getScrollableBlockIncrement(Rectangle visible, int orientation,
                                                           int direction) {
