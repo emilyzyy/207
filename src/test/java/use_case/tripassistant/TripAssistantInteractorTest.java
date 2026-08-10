@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class TripAssistantInteractorTest {
@@ -79,6 +80,59 @@ final class TripAssistantInteractorTest {
 
         assertEquals("The current trip could not be found", presenter.failure);
         assertEquals(null, gateway.request);
+    }
+
+    @Test
+    void rejectsBlankQuestionOrTripAndNullDependencies() {
+        assertThrows(IllegalArgumentException.class, () -> new TripAssistantInteractor(
+                null, new CachedPlacesRepository(), ignored -> Collections.emptyList(),
+                ignored -> null, new RecordingPresenter()));
+
+        RecordingPresenter presenter = new RecordingPresenter();
+        TripAssistantInteractor interactor = new TripAssistantInteractor(
+                new InMemoryTripRepository(), new CachedPlacesRepository(),
+                ignored -> Collections.emptyList(), ignored -> null, presenter);
+
+        interactor.execute(new TripAssistantInputData("trip-1", "  ", Collections.emptyList()));
+        assertEquals("Type a question for George", presenter.failure);
+
+        interactor.execute(new TripAssistantInputData(" ", "Hello", Collections.emptyList()));
+        assertEquals("Open or create a trip before asking George", presenter.failure);
+    }
+
+    @Test
+    void weatherFailureUsesEmptyWarningsAndGatewayRuntimeBecomesFriendlyFailure() {
+        Activity museum = activity("museum", "Actual Museum", IndoorOutdoorType.INDOOR, 4.8);
+        Trip trip = trip();
+        // No discovered places: falls back to the activity repository catalogue.
+        InMemoryTripRepository trips = new InMemoryTripRepository();
+        trips.save(trip);
+        CachedPlacesRepository activities = new CachedPlacesRepository();
+        activities.addAll(Collections.singletonList(museum));
+        CapturingGateway gateway = new CapturingGateway();
+        RecordingPresenter presenter = new RecordingPresenter();
+        TripAssistantInteractor interactor = new TripAssistantInteractor(
+                trips, activities,
+                ignored -> {
+                    throw new IllegalStateException("weather down");
+                },
+                gateway, presenter);
+
+        interactor.execute(new TripAssistantInputData(
+                trip.getId(), "Any ideas?", Collections.emptyList()));
+
+        assertTrue(gateway.request.getWeather().isEmpty());
+        assertEquals(1, gateway.request.getActivities().size());
+
+        TripAssistantInteractor failing = new TripAssistantInteractor(
+                trips, activities, ignored -> Collections.emptyList(),
+                ignored -> {
+                    throw new RuntimeException("provider offline");
+                },
+                presenter);
+        failing.execute(new TripAssistantInputData(
+                trip.getId(), "Any ideas?", Collections.emptyList()));
+        assertEquals("George couldn't answer right now. Please try again.", presenter.failure);
     }
 
     @Test

@@ -14,8 +14,35 @@ import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 final class EditItineraryInteractorTest {
+
+    @Test
+    void rejectsNullDependenciesAndInvalidInput() {
+        assertThrows(IllegalArgumentException.class, () -> new EditItineraryInteractor(null));
+
+        InMemoryItineraryDataAccessObject dataAccess = new InMemoryItineraryDataAccessObject();
+        EditItineraryInteractor interactor = new EditItineraryInteractor(dataAccess);
+
+        assertThrows(IllegalArgumentException.class, () -> interactor.execute(null));
+        assertThrows(IllegalArgumentException.class, () -> interactor.execute(
+                new EditItineraryInputData(" ", "Toronto", LocalDate.of(2026, 8, 1),
+                        LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING)));
+        assertThrows(IllegalArgumentException.class, () -> interactor.execute(
+                new EditItineraryInputData("id", " ", LocalDate.of(2026, 8, 1),
+                        LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING)));
+        assertThrows(IllegalArgumentException.class, () -> interactor.execute(
+                new EditItineraryInputData("id", "Toronto", null,
+                        LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING)));
+        assertThrows(IllegalArgumentException.class, () -> interactor.execute(
+                new EditItineraryInputData("id", "Toronto", LocalDate.of(2026, 8, 1),
+                        LocalTime.of(18, 0), LocalTime.of(9, 0), TransportationMode.WALKING)));
+        assertThrows(IllegalArgumentException.class, () -> interactor.execute(
+                new EditItineraryInputData("missing", "Toronto", LocalDate.of(2026, 8, 1),
+                        LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING)));
+    }
+
 
     @Test
     void executeUpdatesExistingItineraryOptionsAndPersistsThem() {
