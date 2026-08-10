@@ -18,8 +18,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -92,21 +92,24 @@ final class OverviewPanelMapTest {
         double[] home = StaticTileLoader.latLngForCity(destination);
         assertNotNull(home);
 
-        // setViewportLoader schedules an immediate reload on the EDT while the map is still
-        // on the trip city. Ignore those loads so this test only asserts the far-from-home skip.
-        AtomicBoolean armed = new AtomicBoolean(false);
-        CountDownLatch loaded = new CountDownLatch(1);
+        // Count only loads whose viewport is far from the trip city. Home-city reloads from
+        // setViewportLoader / flyTo races must not fail the assertion (they are allowed).
+        AtomicInteger farLoads = new AtomicInteger();
         map.setViewportLoader((south, west, north, east, max) -> {
-            if (armed.get()) {
-                loaded.countDown();
+            double midLat = (south + north) / 2.0;
+            double midLng = (west + east) / 2.0;
+            if (Math.hypot(midLat - home[0], midLng - home[1]) > 1.0) {
+                farLoads.incrementAndGet();
             }
-            return new MockPlacesService().findAll();
+            return Collections.emptyList();
         });
         map.flyTo(home[0] + 5, home[1]);
-        armed.set(true);
         map.reloadViewport();
+        SwingUtilities.invokeAndWait(() -> { });
+        // In-flight executor work from a near-home reload may still finish; give it a moment.
+        Thread.sleep(300);
 
-        assertFalse(loaded.await(1, TimeUnit.SECONDS));
+        assertEquals(0, farLoads.get());
         assertEquals(0, map.getActivityCount());
     }
 
