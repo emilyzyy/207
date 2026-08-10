@@ -1,7 +1,6 @@
 package use_case.autoschedule;
 
 import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -69,9 +68,9 @@ public final class TravelLegPlanner {
      * longer and miss the arrival; each period offers one candidate departure, the one that
      * lands exactly on {@code arriveBy} at that period's cost, and only candidates that
      * really fall inside their own period are eligible. Unavailable windows are re-checked,
-     * because sliding a journey later can push it into one — and when one sits across the
-     * journey, arriving just before it is offered as a second candidate, so a traveller busy
-     * from two until three still travels at ten to two rather than at half past one.</p>
+     * because sliding a journey later can push it into one. If the only way to reach this
+     * particular start is to arrive before an unavailable period, the caller moves an unlocked
+     * destination with a new post-window journey or refuses a locked one.</p>
      *
      * @param earliest the feasibility leg, returned unchanged when nothing later works
      * @return the leg to actually travel; never null when {@code earliest} is non-null
@@ -82,40 +81,25 @@ public final class TravelLegPlanner {
         if (earliest == null || fromId == null || arriveBy == null) {
             return earliest;
         }
-        // Landing exactly on the start is ideal, but an unavailable window can sit across
-        // that journey — the traveller is busy from two until three and the activity begins
-        // at three. Arriving just before such a window is the next best thing and still far
-        // later than setting out at the first opportunity, so each one offers its own
-        // candidate arrival.
-        List<LocalTime> arrivals = new ArrayList<>();
-        arrivals.add(arriveBy);
-        for (TimeWindow window : blocked.getWindows()) {
-            if (window.getStart().isAfter(cursor) && !window.getStart().isAfter(arriveBy)) {
-                arrivals.add(window.getStart());
-            }
-        }
-
         TravelLeg best = earliest;
-        for (LocalTime arrival : arrivals) {
-            for (DeparturePeriod period : DeparturePeriod.values()) {
-                int minutes = travel.estimateAt(fromId, toId, period.getStart()).getMinutes();
-                LocalTime departure = arrival.minusMinutes(minutes);
-                if (minutes > 0 && !departure.isBefore(arrival)) {
-                    continue;
-                }
-                if (departure.isBefore(cursor) || !departure.isAfter(best.getDeparture())) {
-                    continue;
-                }
-                // The cost used to place this departure has to be the cost of departing then,
-                // or the leg would be priced from one period and travelled in another.
-                if (travel.estimateAt(fromId, toId, departure).getMinutes() != minutes) {
-                    continue;
-                }
-                if (minutes > 0 && blocked.blocks(departure, departure.plusMinutes(minutes))) {
-                    continue;
-                }
-                best = TravelLeg.of(departure, minutes);
+        for (DeparturePeriod period : DeparturePeriod.values()) {
+            int minutes = travel.estimateAt(fromId, toId, period.getStart()).getMinutes();
+            LocalTime departure = arriveBy.minusMinutes(minutes);
+            if (minutes > 0 && !departure.isBefore(arriveBy)) {
+                continue;
             }
+            if (departure.isBefore(cursor) || !departure.isAfter(best.getDeparture())) {
+                continue;
+            }
+            // The cost used to place this departure has to be the cost of departing then,
+            // or the leg would be priced from one period and travelled in another.
+            if (travel.estimateAt(fromId, toId, departure).getMinutes() != minutes) {
+                continue;
+            }
+            if (minutes > 0 && blocked.blocks(departure, departure.plusMinutes(minutes))) {
+                continue;
+            }
+            best = TravelLeg.of(departure, minutes);
         }
         return best;
     }

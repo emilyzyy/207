@@ -60,6 +60,7 @@ public final class AutoScheduleSettingsDialog extends JDialog {
     private final ToggleSwitch considerWeather = new ToggleSwitch("Avoid bad weather");
     private final JLabel weatherNote = new JLabel(CHECKING_WEATHER);
     private final JPanel unavailableRows = new JPanel();
+    private boolean resetRequested;
     private final List<TimeRangeRow> rows = new ArrayList<>();
     private final AutoScheduleSettingsValidator validator = new AutoScheduleSettingsValidator();
     private final LocalTime tripStart;
@@ -334,10 +335,61 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         return label;
     }
 
+    /**
+     * Fills every control from what this day was last scheduled with.
+     *
+     * <p>The point is that a remembered constraint is <em>on screen</em>: the traveller can see
+     * the unavailable period they entered an hour ago, change it, or press its Remove button.
+     * A remembered value that shaped the answer while staying hidden would be worse than not
+     * remembering at all.</p>
+     */
+    public void applySettings(AutoScheduleSettings settings) {
+        if (settings == null) {
+            return;
+        }
+        availableFrom.setTime(settings.getAvailableStart());
+        availableUntil.setTime(settings.getAvailableEnd());
+        mode.setSelectedItem(settings.getTransportationMode());
+        minimizeTravel.setSelected(settings.isMinimizeTravel());
+        minimizeGaps.setSelected(settings.isMinimizeGaps());
+        preserveMealtimes.setSelected(settings.isPreserveMealtimes());
+        preferDaylight.setSelected(settings.isPreferDaylight());
+        keepOrder.setSelected(settings.isKeepCurrentOrder());
+        considerWeather.setSelected(settings.isConsiderWeather());
+
+        for (TimeRangeRow existing : new java.util.ArrayList<>(rows)) {
+            rows.remove(existing);
+            unavailableRows.remove(existing.panel);
+        }
+        for (AutoScheduleSettings.Window window : settings.getUnavailableWindows()) {
+            addUnavailableRow(window.getStart(), window.getEnd());
+        }
+        unavailableRows.revalidate();
+        pack();
+    }
+
     private void addUnavailableRow() {
+        addUnavailableRow(LocalTime.of(12, 0), LocalTime.of(13, 0));
+    }
+
+    /** Whether the traveller explicitly cleared this day's remembered settings. */
+    public boolean wasResetRequested() {
+        return resetRequested;
+    }
+
+    /** A fresh form: the trip's own hours, no unavailable periods, every preference on. */
+    private AutoScheduleSettings defaults() {
+        return new AutoScheduleSettings(
+                tripStart == null ? LocalTime.of(9, 0) : tripStart,
+                tripEnd == null ? LocalTime.of(21, 0) : tripEnd,
+                TransportationMode.FASTEST, java.util.Collections.emptyList(),
+                true, considerWeather.isEnabled(), true, true, true, true);
+    }
+
+    private void addUnavailableRow(LocalTime start, LocalTime end) {
         // A readable example beats an empty box: it shows the expected clock before the
         // traveller types, rather than correcting them afterwards.
-        TimeRangeRow row = new TimeRangeRow(LocalTime.of(12, 0), LocalTime.of(13, 0));
+        TimeRangeRow row = new TimeRangeRow(start, end);
         rows.add(row);
         unavailableRows.add(row.panel);
         row.remove.addActionListener(event -> {
@@ -352,9 +404,23 @@ public final class AutoScheduleSettingsDialog extends JDialog {
     }
 
     private JPanel buttons() {
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        JPanel buttons = new JPanel(new java.awt.BorderLayout());
         buttons.setOpaque(false);
         buttons.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        right.setOpaque(false);
+        // Reset is on the left, away from the two buttons that close the dialog: it clears
+        // the form rather than the plan, and confusing it with Cancel would be expensive.
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        left.setOpaque(false);
+        JButton reset = SwingTheme.secondaryButton("Reset to defaults");
+        reset.setToolTipText("Clear every remembered setting for this day");
+        reset.addActionListener(event -> {
+            resetRequested = true;
+            applySettings(defaults());
+        });
+        left.add(reset);
+
         JButton cancel = SwingTheme.secondaryButton("Cancel");
         cancel.addActionListener(event -> {
             result = null;
@@ -362,8 +428,10 @@ public final class AutoScheduleSettingsDialog extends JDialog {
         });
         JButton generate = SwingTheme.primaryButton("Generate Preview");
         generate.addActionListener(event -> submit());
-        buttons.add(cancel);
-        buttons.add(generate);
+        right.add(cancel);
+        right.add(generate);
+        buttons.add(left, java.awt.BorderLayout.WEST);
+        buttons.add(right, java.awt.BorderLayout.EAST);
         getRootPane().setDefaultButton(generate);
         return buttons;
     }

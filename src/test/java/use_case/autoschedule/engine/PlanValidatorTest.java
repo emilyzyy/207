@@ -145,6 +145,24 @@ class PlanValidatorTest {
     }
 
     @Test
+    void arrivingBeforeAndWaitingAtTheDestinationThroughUnavailableTimeIsCaught() {
+        ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
+        ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));
+        ScheduleProblem problem = problemFor(tasks(first, second),
+                Arrays.asList(new TimeWindow(at(10, 30), at(13, 0))));
+
+        // Neither row overlaps the block by itself, but the journey reaches B at 10:30 and
+        // leaves the traveller waiting there through the entire unavailable period.
+        ScheduleConflict conflict = validator.validate(problem,
+                planOf(placed(first, at(9, 0), null, 0),
+                        placed(second, at(13, 0), at(10, 10), 20)));
+
+        assertNotNull(conflict,
+                "a finished plan may not hide unavailable time in a destination wait");
+        assertEquals(ScheduleConflict.Kind.REFINED_TRAVEL_INFEASIBLE, conflict.getKind());
+    }
+
+    @Test
     void anActivityStartingBeforeItsTravelHasArrivedIsCaught() {
         ScheduleTask first = task("a", 60, 0, at(9, 0), at(21, 0));
         ScheduleTask second = task("b", 60, 1, at(9, 0), at(21, 0));

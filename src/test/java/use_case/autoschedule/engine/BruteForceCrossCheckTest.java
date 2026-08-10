@@ -61,7 +61,8 @@ class BruteForceCrossCheckTest {
             assertTrue(searched.isFound(),
                     "exhaustive enumeration found a schedule the pruned search missed");
             assertEquals(exhaustive, searched.getPlan().getScore(),
-                    "pruning changed the answer on trial " + trial);
+                    "pruning changed the answer on trial " + trial
+                            + describe(problem, searched));
             compared++;
         }
         assertTrue(compared > 20, "expected a meaningful number of feasible trials, got " + compared);
@@ -92,7 +93,8 @@ class BruteForceCrossCheckTest {
             assertTrue(searched.isFound(),
                     "exhaustive enumeration found a schedule the pruned search missed");
             assertEquals(exhaustive, searched.getPlan().getScore(),
-                    "pruning changed the answer on trial " + trial);
+                    "pruning changed the answer on trial " + trial
+                            + describe(problem, searched));
 
             for (PlacedActivity placed : searched.getPlan().getPlacements()) {
                 assertTrue(!placed.window().overlaps(blocked.get(0)),
@@ -268,53 +270,39 @@ class BruteForceCrossCheckTest {
         List<TimeWindow> blocked = problem.getUnavailableWindows();
 
         for (ScheduleTask task : order) {
-            LocalTime departure = null;
-            int travel = 0;
-            LocalTime arrival = cursor;
-
-            if (previous != null) {
-                LocalTime bestArrival = null;
-                for (LocalTime option : departureOptions(cursor, blocked)) {
-                    int minutes = problem.getTravel()
-                            .estimateAt(previous.getEventId(), task.getEventId(), option).getMinutes();
-                    LocalTime landed = option.plusMinutes(minutes);
-                    if (minutes > 0 && overlapsAny(option, landed, blocked)) {
-                        continue;
-                    }
-                    if (landed.isAfter(problem.getAvailability().getEnd())) {
-                        continue;
-                    }
-                    if (bestArrival == null || landed.isBefore(bestArrival)) {
-                        bestArrival = landed;
-                        departure = option;
-                        travel = minutes;
-                    }
-                }
-                if (bestArrival == null) {
-                    return null;
-                }
-                arrival = bestArrival;
+            IndependentLeg leg = previous == null
+                    ? new IndependentLeg(null, cursor, 0)
+                    : earliestLeg(problem, previous, task, cursor, blocked);
+            if (leg == null) {
+                return null;
+            }
+            LocalTime arrival = leg.arrival;
+            LocalTime start = earliestStart(problem, task, arrival, blocked);
+            if (start == null) {
+                return null;
             }
 
-            LocalTime start = arrival.isBefore(task.getOpeningTime()) ? task.getOpeningTime() : arrival;
-            if (start.isBefore(problem.getAvailability().getStart())) {
-                start = problem.getAvailability().getStart();
+            // Once a block pushes the activity to its far side, an earlier journey is not
+            // retained. Re-plan from the end of the crossed block and move the unlocked
+            // destination with that journey, independently mirroring the public rule.
+            if (previous != null) {
+                for (int guard = 0; guard <= blocked.size(); guard++) {
+                    LocalTime resume = blockedWaitEnd(arrival, start, blocked);
+                    if (resume == null) {
+                        break;
+                    }
+                    leg = earliestLeg(problem, previous, task, resume, blocked);
+                    if (leg == null) {
+                        return null;
+                    }
+                    arrival = leg.arrival;
+                    start = earliestStart(problem, task, arrival, blocked);
+                    if (start == null) {
+                        return null;
+                    }
+                }
             }
             LocalTime end = start.plusMinutes(task.getDurationMinutes());
-
-            for (int guard = 0; guard <= blocked.size() + 1; guard++) {
-                LocalTime pushed = start;
-                for (TimeWindow window : blocked) {
-                    if (window.overlaps(new TimeWindow(start, end))) {
-                        pushed = pushed.isAfter(window.getEnd()) ? pushed : window.getEnd();
-                    }
-                }
-                if (pushed.equals(start)) {
-                    break;
-                }
-                start = pushed;
-                end = start.plusMinutes(task.getDurationMinutes());
-            }
 
             if (end.isAfter(task.getClosingTime()) || end.isAfter(problem.getAvailability().getEnd())
                     || !end.isAfter(start) || overlapsAny(start, end, blocked)) {
@@ -322,7 +310,7 @@ class BruteForceCrossCheckTest {
             }
 
             int idle = Math.max(0,
-                    (start.toSecondOfDay() - cursor.toSecondOfDay()) / 60 - travel);
+                    (start.toSecondOfDay() - cursor.toSecondOfDay()) / 60 - leg.minutes);
             // avoidable waiting is still measured from the earliest arrival: departing later
             // relocates dead time, it does not remove it.
             LocalTime avoidableFrom = arrival.isBefore(task.getOpeningTime())
@@ -337,44 +325,108 @@ class BruteForceCrossCheckTest {
             // The journey is then slid as late as it will go while still arriving by the
             // start, worked out here from scratch rather than by calling the planner, so the
             // two sides of this comparison stay genuinely independent.
-            List<LocalTime> arrivals = new ArrayList<>();
-            arrivals.add(start);
-            for (TimeWindow window : blocked) {
-                if (window.getStart().isAfter(cursor) && !window.getStart().isAfter(start)) {
-                    arrivals.add(window.getStart());
-                }
-            }
             if (previous != null) {
-                for (LocalTime arriveBy : arrivals) {
                 for (DeparturePeriod period : DeparturePeriod.values()) {
                     int minutes = problem.getTravel().estimateAt(previous.getEventId(),
                             task.getEventId(), period.getStart()).getMinutes();
-                    LocalTime candidate = arriveBy.minusMinutes(minutes);
+                    LocalTime candidate = start.minusMinutes(minutes);
                     boolean sameCost = problem.getTravel().estimateAt(previous.getEventId(),
                             task.getEventId(), candidate).getMinutes() == minutes;
-                    if (minutes > 0 && !candidate.isBefore(arriveBy)) {
+                    if (minutes > 0 && !candidate.isBefore(start)) {
                         continue;
                     }
-                    if (candidate.isBefore(cursor) || !candidate.isAfter(departure) || !sameCost) {
+                    if (candidate.isBefore(cursor) || !candidate.isAfter(leg.departure)
+                            || !sameCost) {
                         continue;
                     }
                     if (minutes > 0 && overlapsAny(candidate, candidate.plusMinutes(minutes),
                             blocked)) {
                         continue;
                     }
-                    departure = candidate;
-                    travel = minutes;
-                }
+                    leg = new IndependentLeg(candidate, start, minutes);
                 }
                 idle = Math.max(0,
-                        (start.toSecondOfDay() - cursor.toSecondOfDay()) / 60 - travel);
+                        (start.toSecondOfDay() - cursor.toSecondOfDay()) / 60 - leg.minutes);
             }
 
-            placements.add(new PlacedActivity(task, start, end, departure, travel, idle, avoidable));
+            placements.add(new PlacedActivity(task, start, end,
+                    leg.departure, leg.minutes, idle, avoidable));
             cursor = end;
             previous = task;
         }
         return placements;
+    }
+
+    private IndependentLeg earliestLeg(ScheduleProblem problem, ScheduleTask previous,
+                                       ScheduleTask task, LocalTime cursor,
+                                       List<TimeWindow> blocked) {
+        IndependentLeg best = null;
+        for (LocalTime option : departureOptions(cursor, blocked)) {
+            int minutes = problem.getTravel()
+                    .estimateAt(previous.getEventId(), task.getEventId(), option).getMinutes();
+            LocalTime landed = option.plusMinutes(minutes);
+            if (minutes > 0 && overlapsAny(option, landed, blocked)) {
+                continue;
+            }
+            if (landed.isAfter(problem.getAvailability().getEnd())) {
+                continue;
+            }
+            if (best == null || landed.isBefore(best.arrival)) {
+                best = new IndependentLeg(option, landed, minutes);
+            }
+        }
+        return best;
+    }
+
+    private LocalTime earliestStart(ScheduleProblem problem, ScheduleTask task,
+                                    LocalTime arrival, List<TimeWindow> blocked) {
+        LocalTime start = arrival.isBefore(task.getOpeningTime())
+                ? task.getOpeningTime() : arrival;
+        if (start.isBefore(problem.getAvailability().getStart())) {
+            start = problem.getAvailability().getStart();
+        }
+        LocalTime end = start.plusMinutes(task.getDurationMinutes());
+        for (int guard = 0; guard <= blocked.size() + 1; guard++) {
+            LocalTime pushed = start;
+            for (TimeWindow window : blocked) {
+                if (window.overlaps(new TimeWindow(start, end))) {
+                    pushed = pushed.isAfter(window.getEnd()) ? pushed : window.getEnd();
+                }
+            }
+            if (pushed.equals(start)) {
+                return start;
+            }
+            start = pushed;
+            end = start.plusMinutes(task.getDurationMinutes());
+        }
+        return null;
+    }
+
+    private LocalTime blockedWaitEnd(LocalTime arrival, LocalTime start,
+                                     List<TimeWindow> blocked) {
+        if (!start.isAfter(arrival)) {
+            return null;
+        }
+        LocalTime resume = null;
+        TimeWindow wait = new TimeWindow(arrival, start);
+        for (TimeWindow window : blocked) {
+            if (window.overlaps(wait) && (resume == null || window.getEnd().isAfter(resume))) {
+                resume = window.getEnd();
+            }
+        }
+        return resume;
+    }
+
+    private static final class IndependentLeg {
+        private final LocalTime departure;
+        private final LocalTime arrival;
+        private final int minutes;
+
+        private IndependentLeg(LocalTime departure, LocalTime arrival, int minutes) {
+            this.departure = departure;
+            this.arrival = arrival;
+            this.minutes = minutes;
+        }
     }
 
     private List<LocalTime> departureOptions(LocalTime cursor, List<TimeWindow> blocked) {
@@ -416,5 +468,39 @@ class BruteForceCrossCheckTest {
             }
         }
         return total;
+    }
+
+    private String describe(ScheduleProblem problem, ScheduleSearchResult result) {
+        StringBuilder text = new StringBuilder("\nblocked=")
+                .append(problem.getUnavailableWindows()).append('\n');
+        for (ScheduleTask task : problem.allTasks()) {
+            text.append(task.getEventId()).append(" duration=")
+                    .append(task.getDurationMinutes()).append(" hours=")
+                    .append(task.getOpeningWindows()).append('\n');
+        }
+        for (ScheduleTask from : problem.allTasks()) {
+            for (ScheduleTask to : problem.allTasks()) {
+                if (from == to) {
+                    continue;
+                }
+                text.append(from.getEventId()).append("->").append(to.getEventId())
+                        .append(':');
+                for (DeparturePeriod period : DeparturePeriod.values()) {
+                    text.append(' ').append(period).append('=')
+                            .append(problem.getTravel().estimateAt(from.getEventId(),
+                                    to.getEventId(), period.getStart()).getMinutes());
+                }
+                text.append('\n');
+            }
+        }
+        if (result.isFound()) {
+            for (PlacedActivity placed : result.getPlan().getPlacements()) {
+                text.append("engine ").append(placed).append(" travel=")
+                        .append(placed.getTravelMinutesBefore()).append(" depart=")
+                        .append(placed.getTravelDeparture()).append(" avoidable=")
+                        .append(placed.getAvoidableIdleMinutes()).append('\n');
+            }
+        }
+        return text.toString();
     }
 }

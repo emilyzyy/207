@@ -14,6 +14,7 @@ import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
 import entity.valueobjects.EventType;
 import entity.valueobjects.TransportationMode;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -124,9 +125,14 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         TransportationMode mode = inputData.getTransportationMode() == null
                 ? trip.getTransportationMode() : inputData.getTransportationMode();
 
+        // One conversation with the provider per request: the bulk prefetch and the exact
+        // refinement below both go through this, so a request cannot search against one set of
+        // live estimates and validate against another.
+        RequestScopedTravel travelForThisRequest = new RequestScopedTravel(travelEstimator);
         TravelMatrix matrix;
         try {
-            matrix = prefetcher.prefetch(tasks, mode, trip.getDate(), availability);
+            matrix = new TravelMatrixPrefetcher(travelForThisRequest)
+                    .prefetch(tasks, mode, trip.getDate(), availability);
         } catch (RuntimeException exception) {
             presenter.presentFailure(
                     "Travel times are unavailable right now, so no schedule was produced. "
@@ -144,7 +150,8 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
                 inputData.isMinimizeTravel(), inputData.isMinimizeGaps());
 
         RefinementOutcome outcome = searchWithExactTravel(availability, tasks,
-                inputData.getUnavailableWindows(), matrix, preferences, mode, trip.getDate());
+                inputData.getUnavailableWindows(), matrix, preferences, mode, trip.getDate(),
+                travelForThisRequest);
 
         if (outcome.plan == null) {
             presenter.presentConflict(new AutoScheduleConflictOutputData(outcome.conflict));
@@ -218,7 +225,8 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
                                                     TravelMatrix matrix,
                                                     SchedulingPreferences preferences,
                                                     TransportationMode mode,
-                                                    java.time.LocalDate date) {
+                                                    java.time.LocalDate date,
+                                                    RequestScopedTravel snapshot) {
         TravelMatrix currentMatrix = matrix;
         ScheduleConflict lastConflict = ScheduleConflict.noFeasibleOrder();
         boolean withinLimit = true;
@@ -232,7 +240,8 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
                 return RefinementOutcome.conflict(result.getConflict());
             }
 
-            Map<TravelLegKey, TravelEstimate> exact = exactEstimatesFor(result.getPlan(), mode, date);
+            Map<TravelLegKey, TravelEstimate> exact =
+                    exactEstimatesFor(result.getPlan(), mode, date, snapshot);
             if (exact.isEmpty()) {
                 return RefinementOutcome.plan(result.getPlan(), problem, withinLimit);
             }
@@ -258,7 +267,8 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
      */
     private Map<TravelLegKey, TravelEstimate> exactEstimatesFor(SchedulePlan plan,
                                                                 TransportationMode mode,
-                                                                java.time.LocalDate date) {
+                                                                java.time.LocalDate date,
+                                                                RequestScopedTravel snapshot) {
         Map<TravelLegKey, TravelEstimate> changed = new HashMap<>();
         List<PlacedActivity> placements = plan.getPlacements();
         for (int i = 1; i < placements.size(); i++) {
@@ -269,14 +279,82 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
             ScheduleTask from = placements.get(i - 1).getTask();
             ScheduleTask to = current.getTask();
             LocalTime departure = current.getTravelDeparture();
-            TravelEstimate exact = travelEstimator.estimate(
-                    from.getActivity().getLocation(), to.getActivity().getLocation(), mode,
-                    LocalDateTime.of(date, departure));
-            if (exact.getMinutes() != current.getTravelMinutesBefore()) {
+            // Refinement asks the provider again, for the exact moment each leg is travelled.
+            // A failure here is a statement about the provider, not about whether the day can
+            // be arranged: left to propagate it aborted the request, and treated as a huge
+            // number it turned into "no arrangement of this day fits your available hours".
+            // Keeping the bucketed estimate is the honest degradation -- the schedule stands,
+            // and the Preview already discloses that travel times may be estimates.
+            TravelEstimate exact;
+            try {
+                exact = snapshot.estimate(
+                        from.getActivity().getLocation(), to.getActivity().getLocation(), mode,
+                        LocalDateTime.of(date, departure));
+            } catch (RuntimeException providerFailed) {
+                snapshot.recordFailure(from.getEventId() + " to " + to.getEventId()
+                        + " at " + departure + ": " + providerFailed.getMessage());
+                continue;
+            }
+            if (exact != null && exact.getMinutes() != current.getTravelMinutesBefore()) {
                 changed.put(new TravelLegKey(from.getEventId(), to.getEventId(), departure), exact);
             }
         }
         return changed;
+    }
+
+    /**
+     * Takes one activity out of the proposal on screen, without re-solving the day.
+     *
+     * <p>The remaining activities keep the times and the order the search gave them. Journeys
+     * that still join the same two activities are kept exactly as they were; the leg into the
+     * removed activity and the leg out of it go, and the pair they leave adjacent gets one
+     * freshly estimated journey.</p>
+     *
+     * <p>Refuses rather than improvises when the replacement journey will not fit in the gap
+     * the fixed times leave: silently sliding the rest of the day would be a schedule the
+     * traveller never asked for, and a zero-minute journey would be a lie. The proposal on
+     * screen is left as it was and the reason is reported.</p>
+     */
+    @Override
+    public void removeFromProposal(ProposalEditInputData inputData) {
+        if (inputData == null || inputData.getRemoveEventId().isEmpty()) {
+            return;
+        }
+        Trip trip = trips.findById(inputData.getTripId()).orElse(null);
+        if (trip == null) {
+            presenter.presentFailure("That trip is no longer open.");
+            return;
+        }
+
+        Map<String, Activity> activitiesById = new HashMap<>();
+        for (ScheduledEvent event : activityEventsOf(trip)) {
+            activitiesById.put(event.getId(), event.getActivity());
+        }
+
+        TransportationMode mode = inputData.getMode() == null
+                ? trip.getTransportationMode() : inputData.getMode();
+        ProposalDraft.Result edited = ProposalDraft.withoutActivity(inputData.getProposedRows(),
+                inputData.getRemoveEventId(), activitiesById, mode, trip.getDate(),
+                travelEstimator);
+
+        if (!edited.isSuccessful()) {
+            presenter.presentDraftEditRefused(edited.getReason());
+            return;
+        }
+
+        // The comparison is still against the saved day, so "before" keeps meaning what it
+        // meant when the proposal was generated.
+        ScheduleMetrics before = ScheduleMetrics.ofExistingSchedule(trip.getScheduledEvents(),
+                travelEstimator, mode, trip.getDate());
+        presenter.presentEditedPreview(new AutoSchedulePreviewOutputData(edited.getRows(),
+                before.getTravelMinutes(), edited.getTravelMinutes(),
+                before.getIdleMinutes(), edited.getIdleMinutes(),
+                edited.getMovedCount(), edited.getActivityCount(),
+                Collections.<Reason>emptyList(), Collections.<String>emptyList(),
+                Collections.<PolicyId>emptyList(), inputData.getPreviewFingerprint(),
+                true, TravelEstimateQuality.ESTIMATED, true,
+                Collections.<ScheduleImprovement>emptyList(), 0),
+                inputData.getRemoveEventId());
     }
 
     @Override
@@ -306,6 +384,21 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
             activitiesByEventId.put(event.getId(), event.getActivity());
         }
 
+        for (ProposedEventData row : inputData.getProposedEvents()) {
+            if (row.getKind() == ProposedEventData.Kind.ACTIVITY
+                    && !activitiesByEventId.containsKey(row.getEventId())) {
+                presenter.presentFailure("This Preview refers to an activity that is no longer "
+                        + "in the Day Plan. Run Autoschedule again.");
+                return;
+            }
+        }
+        String travelProblem = appliedTravelProblem(inputData.getProposedEvents(),
+                activitiesByEventId, trip);
+        if (travelProblem != null) {
+            presenter.presentFailure(travelProblem);
+            return;
+        }
+
         List<ScheduledEvent> events = new ArrayList<>();
         for (ProposedEventData row : inputData.getProposedEvents()) {
             if (row.getKind() == ProposedEventData.Kind.TRAVEL) {
@@ -314,11 +407,6 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
                 continue;
             }
             Activity activity = activitiesByEventId.get(row.getEventId());
-            if (activity == null) {
-                presenter.presentFailure("This Preview refers to an activity that is no longer "
-                        + "in the Day Plan. Run Autoschedule again.");
-                return;
-            }
             events.add(new ScheduledEvent(row.getEventId(), activity, row.getStart(), row.getEnd(),
                     EventType.ACTIVITY, ""));
         }
@@ -335,6 +423,83 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         presenter.presentApplied(new AutoScheduleAppliedOutputData(saved.getId(),
                 inputData.getProposedEvents(),
                 ScheduleFingerprint.of(saved.getScheduledEvents()).getValue()));
+    }
+
+    /**
+     * Final integrity gate for the exact rows Apply received.
+     *
+     * <p>The generated Preview already contains travel refined against exact departure
+     * estimates. Apply still cannot assume every adapter and ViewModel preserved those rows:
+     * silently saving two different places with only an empty gap would leave the normal Day
+     * Plan unable to explain how the traveller gets between them.</p>
+     *
+     * <p>Every check here is arithmetic on the rows themselves. It deliberately does <em>not</em>
+     * re-ask the routing provider. It used to, and refused the Preview whenever the fresh
+     * answer came back even a minute longer than the one the traveller had just approved —
+     * which live traffic does routinely. Approving a schedule and being told it "no longer
+     * fits" is the outside world moving, not a corrupted proposal, and the user cannot act on
+     * it: pressing Autoschedule again simply re-rolls the same dice. Genuine drift is picked
+     * up the next time the day is scheduled.</p>
+     */
+    /** Whether a journey is needed at all, decided by coordinates rather than by a lookup. */
+    private static boolean atDifferentPlaces(Activity from, Activity to) {
+        if (from == null || to == null || from.getLocation() == null
+                || to.getLocation() == null) {
+            return false;
+        }
+        return Double.compare(from.getLocation().getLatitude(),
+                        to.getLocation().getLatitude()) != 0
+                || Double.compare(from.getLocation().getLongitude(),
+                        to.getLocation().getLongitude()) != 0;
+    }
+
+    private String appliedTravelProblem(List<ProposedEventData> rows,
+                                        Map<String, Activity> activitiesByEventId,
+                                        Trip trip) {
+        ProposedEventData previousActivity = null;
+        ProposedEventData pendingTravel = null;
+        for (ProposedEventData row : rows) {
+            if (row.getKind() == ProposedEventData.Kind.TRAVEL) {
+                if (previousActivity == null || pendingTravel != null) {
+                    return "This Preview contains an unexplained travel row. Run Autoschedule "
+                            + "again; your Day Plan was not changed.";
+                }
+                pendingTravel = row;
+                continue;
+            }
+            if (previousActivity != null) {
+                Activity from = activitiesByEventId.get(previousActivity.getEventId());
+                Activity to = activitiesByEventId.get(row.getEventId());
+                // Two different places with no journey between them is a structural hole,
+                // and it can be recognised from the coordinates alone.
+                if (pendingTravel == null && atDifferentPlaces(from, to)) {
+                    return "This Preview is missing the required travel between "
+                            + from.getName() + " and " + to.getName()
+                            + ". Run Autoschedule again; your Day Plan was not changed.";
+                }
+                if (pendingTravel != null) {
+                    int shown = (int) Duration.between(
+                            pendingTravel.getStart(), pendingTravel.getEnd()).toMinutes();
+                    int gap = (int) Duration.between(
+                            previousActivity.getEnd(), row.getStart()).toMinutes();
+                    boolean outsideGap = pendingTravel.getStart().isBefore(
+                            previousActivity.getEnd())
+                            || pendingTravel.getEnd().isAfter(row.getStart());
+                    if (outsideGap || shown > gap) {
+                        return "The travel shown between " + from.getName() + " and "
+                                + to.getName() + " does not fit between them. Run Autoschedule "
+                                + "again; your Day Plan was not changed.";
+                    }
+                }
+            }
+            previousActivity = row;
+            pendingTravel = null;
+        }
+        if (pendingTravel != null) {
+            return "This Preview ends with an unexplained travel row. Run Autoschedule again; "
+                    + "your Day Plan was not changed.";
+        }
+        return null;
     }
 
     private Trip findTrip(String tripId) {

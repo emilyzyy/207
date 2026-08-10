@@ -91,6 +91,23 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
                 outputData.getMovedActivityCount(), outputData.getActivityCount(),
                 outputData.getPracticalCostMinutes());
 
+        if (nothingWorthChanging(outputData)) {
+            // The search agreed with the day already on screen. Presenting that as a proposal
+            // would put an Apply button under a schedule identical to the saved one and invite
+            // the traveller to accept a change that does not exist.
+            viewModel.setState(new DayPlanState(current.getTripId(), current.getEvents(),
+                    "Your Day Plan is already well arranged. Autoschedule found nothing worth "
+                            + "changing.", false, current.getHourlyWeather(),
+                    AutoScheduleStatus.NO_BENEFICIAL_CHANGE,
+                    java.util.Collections.<PreviewRowView>emptyList(), metrics,
+                    outputData.getWarnings(), "", outputData.isKeptCurrentOrder(), true,
+                    travelQualityNote(outputData.getTravelQuality()), "",
+                    current.getLockedEventIds(),
+                    java.util.Collections.<ImprovementView>emptyList(),
+                    current.getTripDates(), current.getActiveDayIndex()));
+            return;
+        }
+
         viewModel.setState(new DayPlanState(current.getTripId(), current.getEvents(),
                 previewHeadline(outputData), false, current.getHourlyWeather(),
                 AutoScheduleStatus.PREVIEW, rows, metrics,
@@ -242,7 +259,11 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
                 return new ImprovementView("\u2192",
                         improvement.getAmount() + " MIN", "less travel");
             case LOCK_PRESERVED:
-                return new ImprovementView("\u26bf", "PIN KEPT", improvement.getSubject());
+                // Not a tile. A lock's window is the activity's current time, so honouring one
+                // is never a change the traveller did not already have -- every pinned day
+                // would claim a benefit for standing still. It is a constraint respected, and
+                // it already appears as a chip saying exactly that.
+                return null;
             case MOVED_INTO_DAYLIGHT:
                 return new ImprovementView("\u2600", "DAYLIGHT", improvement.getSubject());
             case MOVED_TO_BETTER_WEATHER:
@@ -284,6 +305,146 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
                 java.util.Collections.<String>emptyList(), "", current.isKeptCurrentOrder(),
                 true, "", "", current.getLockedEventIds(),
                 current.getTripDates(), current.getActiveDayIndex()));
+    }
+
+    /**
+     * A hand-edited proposal, rendered by carrying its explanations forward.
+     *
+     * <p>Nothing is re-derived that has not changed. The remaining activities kept the times
+     * the search chose, so their row reasons, their pins, their meal and daylight improvements
+     * and their constraint chips are all still true; only what named the removed activity goes.
+     * The two measurable tiles are recomputed from the new figures, because those genuinely
+     * moved.</p>
+     */
+    @Override
+    public void presentEditedPreview(AutoSchedulePreviewOutputData outputData,
+                                     String removedEventId) {
+        DayPlanState current = viewModel.getState();
+        Map<String, PreviewRowView> priorRows = new HashMap<>();
+        for (PreviewRowView row : current.getPreviewRows()) {
+            priorRows.put(row.getEventId(), row);
+        }
+
+        List<PreviewRowView> rows = new ArrayList<>();
+        for (ProposedEventData row : outputData.getRows()) {
+            PreviewRowView prior = priorRows.get(row.getEventId());
+            boolean isActivity = row.getKind() != ProposedEventData.Kind.TRAVEL;
+            rows.add(new PreviewRowView(row.getEventId(), row.getTitle(),
+                    isActivity ? PreviewRowView.Kind.ACTIVITY : PreviewRowView.Kind.TRAVEL,
+                    row.getStart(), row.getEnd(), row.isLocked(), row.isMoved(),
+                    prior == null ? "" : prior.getReason(),
+                    prior == null ? java.util.Collections.<String>emptyList()
+                            : prior.getAllReasons()));
+        }
+
+        PreviewMetricsView metrics = new PreviewMetricsView(
+                outputData.getTravelBeforeMinutes(), outputData.getTravelAfterMinutes(),
+                outputData.getIdleBeforeMinutes(), outputData.getIdleAfterMinutes(),
+                outputData.getMovedActivityCount(), outputData.getActivityCount(),
+                outputData.getPracticalCostMinutes());
+
+        String removedName = priorRows.containsKey(removedEventId)
+                ? priorRows.get(removedEventId).getTitle() : "";
+        List<ImprovementView> tiles = carriedTiles(current.getImprovements(), metrics, removedName);
+        List<ConstraintChipView> chips = carriedChips(current.getConstraintChips(), removedName,
+                outputData.getActivityCount());
+
+        viewModel.setState(new DayPlanState(current.getTripId(), current.getEvents(),
+                "Proposed schedule: " + outputData.getMovedActivityCount() + " of "
+                        + outputData.getActivityCount()
+                        + " activities moved. Nothing changes until you choose Apply.",
+                false, current.getHourlyWeather(), AutoScheduleStatus.PREVIEW, rows, metrics,
+                current.getWarnings(), current.getObjectiveSummary(),
+                current.isKeptCurrentOrder(), current.isSearchCompletedWithinLimit(),
+                current.getTravelQualityNote(), current.getPreviewFingerprint(),
+                current.getLockedEventIds(), tiles,
+                current.getTripDates(), current.getActiveDayIndex())
+                .withReasoning(chips, tradeOffFor(metrics, chips)));
+    }
+
+    /**
+     * Re-derived from the edited figures, never carried forward.
+     *
+     * <p>A trade-off is a claim about an exchange this particular schedule made. Removing an
+     * activity changes both sides of it, and a sentence that was true of the original proposal
+     * can be plainly false of the edited one — "four extra travel minutes to keep your pinned
+     * lunch" survives the lunch being deleted unless it is recomputed.</p>
+     */
+    private static String tradeOffFor(PreviewMetricsView metrics,
+                                      List<ConstraintChipView> chips) {
+        int extraTravel = -metrics.getTravelSavedMinutes();
+        int waitingRemoved = metrics.getIdleSavedMinutes();
+        if (extraTravel <= 0 || waitingRemoved <= 0) {
+            return "";
+        }
+        for (ConstraintChipView chip : chips) {
+            if (chip.getLabel().contains("kept at your time")) {
+                return "Trade-off: " + extraTravel + " extra travel minutes to keep "
+                        + chip.getLabel().replace(" kept at your time", "")
+                        + " at the time you pinned.";
+            }
+        }
+        return "Trade-off: " + extraTravel + " extra travel minutes to remove "
+                + waitingRemoved + " minutes of waiting.";
+    }
+
+    /** The old tiles minus anything about the removed activity, with the figures refreshed. */
+    private static List<ImprovementView> carriedTiles(List<ImprovementView> prior,
+                                                      PreviewMetricsView metrics,
+                                                      String removedName) {
+        List<ImprovementView> tiles = new ArrayList<>();
+        if (metrics.getIdleSavedMinutes() > 0) {
+            tiles.add(new ImprovementView("\u25f4",
+                    metrics.getIdleSavedMinutes() + " MIN", "waiting removed"));
+        }
+        if (metrics.getTravelSavedMinutes() > 0) {
+            tiles.add(new ImprovementView("\u2192",
+                    metrics.getTravelSavedMinutes() + " MIN", "less travel"));
+        }
+        for (ImprovementView tile : prior) {
+            boolean measurable = "waiting removed".equals(tile.getSecondary())
+                    || "less travel".equals(tile.getSecondary());
+            boolean aboutTheRemoved = !removedName.isEmpty()
+                    && tile.getSecondary().contains(removedName);
+            if (!measurable && !aboutTheRemoved) {
+                tiles.add(tile);
+            }
+        }
+        return tiles;
+    }
+
+    private static List<ConstraintChipView> carriedChips(List<ConstraintChipView> prior,
+                                                         String removedName, int activityCount) {
+        List<ConstraintChipView> chips = new ArrayList<>();
+        for (ConstraintChipView chip : prior) {
+            boolean aboutTheRemoved = !removedName.isEmpty()
+                    && chip.getLabel().contains(removedName);
+            boolean isTheCountChip = chip.getLabel().startsWith("All ");
+            if (!aboutTheRemoved && !isTheCountChip) {
+                chips.add(chip);
+            }
+        }
+        if (activityCount > 1) {
+            chips.add(new ConstraintChipView("\u2713", "All " + activityCount + " kept"));
+        }
+        return chips;
+    }
+
+    /**
+     * A refused draft edit: the proposal stays exactly where it is and says why it could not
+     * change. Deliberately not a failure state — the Preview is still valid and still
+     * applicable, so Apply and Cancel remain available.
+     */
+    @Override
+    public void presentDraftEditRefused(String reason) {
+        DayPlanState current = viewModel.getState();
+        viewModel.setState(new DayPlanState(current.getTripId(), current.getEvents(),
+                reason, true, current.getHourlyWeather(), AutoScheduleStatus.PREVIEW,
+                current.getPreviewRows(), current.getMetrics(), current.getWarnings(),
+                current.getObjectiveSummary(), current.isKeptCurrentOrder(),
+                current.isSearchCompletedWithinLimit(), current.getTravelQualityNote(),
+                current.getPreviewFingerprint(), current.getLockedEventIds(),
+                current.getImprovements(), current.getTripDates(), current.getActiveDayIndex()));
     }
 
     @Override
@@ -428,6 +589,16 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
             return "Two things you locked overlap each other (" + subject + ")." + unchanged;
         }
         if (conflict.getKind() == ScheduleConflict.Kind.LOCK_INSIDE_UNAVAILABLE_PERIOD) {
+            if (conflict.getLockedWindow() != null && conflict.getUnavailableWindow() != null) {
+                return subject + " is locked from "
+                        + TimeDisplay.format(conflict.getLockedWindow().getStart()) + " to "
+                        + TimeDisplay.format(conflict.getLockedWindow().getEnd())
+                        + ", which overlaps the time you marked as unavailable from "
+                        + TimeDisplay.format(conflict.getUnavailableWindow().getStart()) + " to "
+                        + TimeDisplay.format(conflict.getUnavailableWindow().getEnd())
+                        + ". Unlock it, change the unavailable period, or move the activity."
+                        + unchanged;
+            }
             return subject + " is locked to a time you marked as unavailable." + unchanged;
         }
         if (conflict.getKind() == ScheduleConflict.Kind.LOCK_NOT_IN_PLAN) {
@@ -442,6 +613,33 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
                 + "these activities is included." + unchanged;
     }
 
+    /**
+     * Whether this proposal is simply the day that is already saved.
+     *
+     * <p>Nothing moved, and no figure improved. The engine reaching the same arrangement is the
+     * right answer — it means the traveller had already arranged the day well — but it is an
+     * answer, not an offer.</p>
+     *
+     * <p>A proposal that moves something is never suppressed, however its figures look: a day
+     * rearranged to clear a newly declared unavailable period is worth showing even when it
+     * costs travel, and the trade-off strip is there to say so.</p>
+     */
+    private static boolean nothingWorthChanging(AutoSchedulePreviewOutputData data) {
+        if (data.getMovedActivityCount() > 0) {
+            return false;
+        }
+        if (data.getTravelAfterMinutes() < data.getTravelBeforeMinutes()
+                || data.getIdleAfterMinutes() < data.getIdleBeforeMinutes()) {
+            return false;
+        }
+        for (ScheduleImprovement improvement : data.getImprovements()) {
+            if (improvement.getType() != ScheduleImprovementType.ORDER_PRESERVED) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private String previewHeadline(AutoSchedulePreviewOutputData data) {
         String headline = data.getMovedActivityCount() == 0
                 ? "Your Day Plan is already well arranged."
@@ -453,18 +651,77 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
         return headline + " Nothing changes until you choose Apply.";
     }
 
-    /** One sentence naming what the schedule was arranged for. */
+    /**
+     * One sentence naming what this schedule actually achieved.
+     *
+     * <p>It used to be assembled from which preferences were switched <em>on</em>, so it
+     * announced "Arranged for less travel, fewer wasted gaps" whatever came out — including
+     * over a proposal whose own figures, printed directly above it, showed more travel and
+     * more waiting than the day it replaced. Every other claim on the screen has to be earned;
+     * this one asserted the objective and called it the outcome.</p>
+     *
+     * <p>So each clause is now conditional on the evidence, and a schedule that improved
+     * nothing measurable says so rather than reaching for the same words.</p>
+     */
     String objectiveSummary(AutoSchedulePreviewOutputData data) {
-        StringBuilder summary = new StringBuilder(
-                "Arranged for less travel, fewer wasted gaps, sensible mealtimes");
-        if (data.getActivePolicies().contains(PolicyId.DAYLIGHT)) {
-            summary.append(" and daylight for outdoor activities");
+        List<String> achieved = new ArrayList<>();
+        if (data.getTravelBeforeMinutes() > data.getTravelAfterMinutes()) {
+            achieved.add("less travel");
         }
-        summary.append('.');
+        if (data.getIdleBeforeMinutes() > data.getIdleAfterMinutes()) {
+            achieved.add("fewer wasted gaps");
+        }
+        for (ScheduleImprovement improvement : data.getImprovements()) {
+            switch (improvement.getType()) {
+                case MEAL_MOVED_TOWARD_WINDOW:
+                    addOnce(achieved, "sensible mealtimes");
+                    break;
+                case MOVED_INTO_DAYLIGHT:
+                    addOnce(achieved, "daylight for outdoor activities");
+                    break;
+                case MOVED_TO_BETTER_WEATHER:
+                    addOnce(achieved, "better weather");
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        StringBuilder summary = new StringBuilder();
+        if (achieved.isEmpty()) {
+            // The honest empty case. A day can be worth proposing for the constraints it
+            // respects even when no figure improves, and saying that is better than
+            // borrowing the words for gains it did not make.
+            summary.append("This arrangement respects your constraints; it does not reduce "
+                    + "travel or waiting.");
+        } else {
+            summary.append("Arranged for ").append(join(achieved)).append('.');
+        }
         if (data.isKeptCurrentOrder()) {
             summary.append(" Your original order was kept where possible.");
         }
         return summary.toString();
+    }
+
+    private static void addOnce(List<String> into, String clause) {
+        if (!into.contains(clause)) {
+            into.add(clause);
+        }
+    }
+
+    /** "a", "a and b", "a, b and c" — read aloud rather than comma-spliced. */
+    private static String join(List<String> parts) {
+        if (parts.size() == 1) {
+            return parts.get(0);
+        }
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < parts.size(); i++) {
+            if (i > 0) {
+                text.append(i == parts.size() - 1 ? " and " : ", ");
+            }
+            text.append(parts.get(i));
+        }
+        return text.toString();
     }
 
     private String travelQualityNote(TravelEstimateQuality quality) {

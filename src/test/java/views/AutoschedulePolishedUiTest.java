@@ -55,6 +55,13 @@ class AutoschedulePolishedUiTest {
     /** Records what the panel asked the use case to do, without scheduling anything. */
     private static final class RecordingUseCase implements AutoScheduleInputBoundary {
         @Override
+        public void removeFromProposal(use_case.autoschedule.ProposalEditInputData inputData) {
+            removedFromProposal.add(inputData == null ? "" : inputData.getRemoveEventId());
+        }
+
+        final java.util.List<String> removedFromProposal = new java.util.ArrayList<>();
+
+        @Override
         public void preview(AutoScheduleInputData inputData) {
         }
 

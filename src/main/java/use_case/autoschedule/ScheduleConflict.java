@@ -49,20 +49,32 @@ public final class ScheduleConflict {
     private final int availableMinutes;
     /** Extra wording a kind needs, such as the weekday a venue is shut. Never null. */
     private final String detail;
+    /** Exact pin involved in an unavailable-time conflict; null for other kinds. */
+    private final TimeWindow lockedWindow;
+    /** Exact unavailable period involved in a lock conflict; null for other kinds. */
+    private final TimeWindow unavailableWindow;
 
     private ScheduleConflict(Kind kind, String blockingEventId, String subject,
                              int requiredMinutes, int availableMinutes) {
-        this(kind, blockingEventId, subject, requiredMinutes, availableMinutes, "");
+        this(kind, blockingEventId, subject, requiredMinutes, availableMinutes, "", null, null);
     }
 
     private ScheduleConflict(Kind kind, String blockingEventId, String subject,
                              int requiredMinutes, int availableMinutes, String detail) {
+        this(kind, blockingEventId, subject, requiredMinutes, availableMinutes, detail, null, null);
+    }
+
+    private ScheduleConflict(Kind kind, String blockingEventId, String subject,
+                             int requiredMinutes, int availableMinutes, String detail,
+                             TimeWindow lockedWindow, TimeWindow unavailableWindow) {
         this.detail = detail == null ? "" : detail;
         this.kind = kind;
         this.blockingEventId = blockingEventId == null ? "" : blockingEventId;
         this.subject = subject == null ? "" : subject;
         this.requiredMinutes = requiredMinutes;
         this.availableMinutes = availableMinutes;
+        this.lockedWindow = lockedWindow;
+        this.unavailableWindow = unavailableWindow;
     }
 
     public static ScheduleConflict activityCannotFit(String eventId, String activityName,
@@ -91,6 +103,16 @@ public final class ScheduleConflict {
         return new ScheduleConflict(Kind.REFINED_TRAVEL_INFEASIBLE, "", "", 0, 0);
     }
 
+    /** A named pin and the exact unavailable interval it overlaps. */
+    public static ScheduleConflict lockedInsideUnavailable(String eventId, String activityName,
+                                                           TimeWindow lock,
+                                                           TimeWindow unavailable) {
+        String windows = lock == null || unavailable == null ? ""
+                : "lock " + lock + "; unavailable " + unavailable;
+        return new ScheduleConflict(Kind.LOCK_INSIDE_UNAVAILABLE_PERIOD, eventId, activityName,
+                0, 0, windows, lock, unavailable);
+    }
+
     public static ScheduleConflict of(Kind kind, String eventId, String subject) {
         return new ScheduleConflict(kind, eventId, subject, 0, 0);
     }
@@ -117,6 +139,14 @@ public final class ScheduleConflict {
         return availableMinutes;
     }
 
+    public TimeWindow getLockedWindow() {
+        return lockedWindow;
+    }
+
+    public TimeWindow getUnavailableWindow() {
+        return unavailableWindow;
+    }
+
     @Override
     public boolean equals(Object other) {
         if (this == other) {
@@ -128,12 +158,15 @@ public final class ScheduleConflict {
         ScheduleConflict that = (ScheduleConflict) other;
         return kind == that.kind && blockingEventId.equals(that.blockingEventId)
                 && subject.equals(that.subject) && requiredMinutes == that.requiredMinutes
-                && availableMinutes == that.availableMinutes;
+                && availableMinutes == that.availableMinutes && detail.equals(that.detail)
+                && Objects.equals(lockedWindow, that.lockedWindow)
+                && Objects.equals(unavailableWindow, that.unavailableWindow);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(kind, blockingEventId, subject, requiredMinutes, availableMinutes);
+        return Objects.hash(kind, blockingEventId, subject, requiredMinutes, availableMinutes,
+                detail, lockedWindow, unavailableWindow);
     }
 
     @Override

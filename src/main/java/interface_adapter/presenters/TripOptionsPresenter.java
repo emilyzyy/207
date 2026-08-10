@@ -32,11 +32,15 @@ public final class TripOptionsPresenter implements TripOptionsOutputBoundary {
         dashboard.setState(new DashboardState(
                 trip.getDestination(), trip.getDate(),
                 currentDashboard.getWeatherCondition(), currentDashboard.getWeatherMessage()));
+        // The trip's hours must be published before the schedule is. The Day Plan takes its
+        // timeline window from the Trip Options state and redraws on its own state, so
+        // announcing the schedule first repaints the day against hours that have not arrived
+        // yet — and nothing repaints it again afterwards.
+        options.setState(TripOptionsState.fromTrip(trip, message, false));
         DayPlanState currentPlan = dayPlan.getState();
         dayPlan.setState(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), message, false,
                 currentPlan.getHourlyWeather(), trip.getTripDates(), trip.getActiveDayIndex()));
-        options.setState(TripOptionsState.fromTrip(trip, message, false));
     }
 
     @Override

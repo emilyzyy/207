@@ -82,6 +82,67 @@ class UnavailableWindowTest {
     }
 
     @Test
+    void travelMayEndExactlyWhenUnavailableTimeBegins() {
+        BlockedPeriods blocked = BlockedPeriods.of(
+                Arrays.asList(new TimeWindow(at(10, 30), at(13, 0))));
+
+        assertFalse(blocked.blocks(at(10, 0), at(10, 30)),
+                "unavailable windows are half-open: touching the start is not overlap");
+    }
+
+    @Test
+    void travelMayBeginExactlyWhenUnavailableTimeEnds() {
+        BlockedPeriods blocked = BlockedPeriods.of(
+                Arrays.asList(new TimeWindow(at(10, 30), at(13, 0))));
+
+        assertFalse(blocked.blocks(at(13, 0), at(13, 20)),
+                "the traveller becomes available at the window's exact end");
+    }
+
+    /**
+     * Reaching the destination before an appointment and waiting there through it is not a
+     * legal substitute for travelling afterwards. The destination is movable, so the journey
+     * and the visit must move together.
+     */
+    @Test
+    void anUnlockedDestinationMovesWithTravelToAfterAnUnavailablePeriod() {
+        List<ScheduleTask> items = tasks(
+                lockedTask("a", 60, 0, at(9, 0), at(21, 0), at(9, 0)),
+                task("b", 60, 1, at(9, 0), at(21, 0)));
+        TimeWindow blocked = new TimeWindow(at(10, 30), at(13, 0));
+        ScheduleProblem problem = new ScheduleProblem(window(9, 21), items,
+                Arrays.asList(blocked), flatMatrix(items, window(9, 21), 20));
+
+        ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
+
+        assertTrue(result.isFound());
+        PlacedActivity destination = result.getPlan().getPlacements().get(1);
+        assertEquals(at(13, 0), destination.getTravelDeparture(),
+                "travel should begin when the unavailable period ends");
+        assertEquals(at(13, 20), destination.getStart(),
+                "the unlocked destination must move with its 20-minute journey");
+        assertEquals(destination.getStart(), destination.travelWindow().getEnd(),
+                "the traveller should arrive just in time, not wait at the destination");
+    }
+
+    /** A locked destination cannot move, so arriving before and waiting through a block fails. */
+    @Test
+    void aLockedDestinationAfterTheBlockIsAConflictWhenTravelCannotFitJustBeforeIt() {
+        List<ScheduleTask> items = tasks(
+                lockedTask("a", 60, 0, at(9, 0), at(21, 0), at(9, 0)),
+                lockedTask("b", 60, 1, at(9, 0), at(21, 0), at(13, 0)));
+        TimeWindow blocked = new TimeWindow(at(10, 30), at(13, 0));
+        ScheduleProblem problem = new ScheduleProblem(window(9, 21), items,
+                Arrays.asList(blocked), flatMatrix(items, window(9, 21), 20));
+
+        ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
+
+        assertFalse(result.isFound(),
+                "a locked 1:00 PM destination cannot be reached by travelling through the block "
+                        + "or by waiting at the destination from 10:30 AM");
+    }
+
+    @Test
     void waitingOutABlockedPeriodIsNotCountedAsWastedTime() {
         List<ScheduleTask> items = tasks(
                 task("a", 60, 0, at(9, 0), at(21, 0)),
@@ -148,6 +209,8 @@ class UnavailableWindowTest {
         assertNotNull(conflict);
         assertEquals(ScheduleConflict.Kind.LOCK_INSIDE_UNAVAILABLE_PERIOD, conflict.getKind());
         assertEquals("dinner", conflict.getBlockingEventId());
+        assertEquals("lock 12:30-13:30; unavailable 12:00-13:00", conflict.getDetail(),
+                "the Presenter needs both exact windows; the validator must not discard them");
     }
 
     @Test

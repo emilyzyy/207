@@ -128,6 +128,44 @@ class JustInTimeDepartureTest {
                 "seven minutes before, so the waiting sits where the traveller actually is");
     }
 
+    @Test
+    void preserveOrderStillMovesAManuallyTimedButUnlockedDestination() {
+        Activity first = place("first", "First stop", ActivityCategory.MUSEUM,
+                43.65, -79.38, at(9, 0), at(21, 0));
+        Activity second = place("second", "Second stop", ActivityCategory.MUSEUM,
+                43.66, -79.39, at(9, 0), at(21, 0));
+        Trip trip = new Trip("trip-preserved", "Toronto", DATE, at(9, 0), at(21, 0),
+                TransportationMode.WALKING);
+        // The 1:00 PM manual time is only an input to Autoschedule. Only "first" is pinned.
+        trip.replaceSchedule(Arrays.asList(
+                scheduled("first", first, at(9, 0)),
+                scheduled("second", second, at(13, 0))));
+        FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false)
+                .route("first", "second", 20).route("second", "first", 20);
+        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(trip.getId(),
+                trip.getScheduledEvents(), "", false, Collections.emptyList()));
+
+        new AutoScheduleInteractor(new FakeTripRepository(trip), estimator,
+                new FakeWeatherContextGateway(), new AutoSchedulePresenter(viewModel),
+                Collections.emptyList(), new ScheduleEngine())
+                .preview(new AutoScheduleInputData(trip.getId(), at(9, 0), at(21, 0),
+                        TransportationMode.WALKING, Collections.singleton("first"),
+                        Collections.singletonList(new TimeWindow(at(10, 30), at(13, 0))),
+                        true, true));
+
+        DayPlanState state = viewModel.getState();
+        PreviewRowView travel = rowTitled(state, PreviewRowView.Kind.TRAVEL,
+                "Travel to Second stop");
+        PreviewRowView destination = rowTitled(state, PreviewRowView.Kind.ACTIVITY,
+                "Second stop");
+        assertNotNull(travel);
+        assertNotNull(destination);
+        assertEquals(at(13, 0), travel.getStart());
+        assertEquals(at(13, 20), destination.getStart(),
+                "preserving order does not freeze an unlocked activity's manual time");
+        assertEquals(travel.getEnd(), destination.getStart());
+    }
+
     /**
      * The waiting has not disappeared — it moved to the near side of the journey — so the
      * figures must still own up to it.

@@ -53,6 +53,13 @@ class HourlyWeatherAndAutoscheduleTest {
 
     private static final class RecordingUseCase implements AutoScheduleInputBoundary {
         @Override
+        public void removeFromProposal(use_case.autoschedule.ProposalEditInputData inputData) {
+            removedFromProposal.add(inputData == null ? "" : inputData.getRemoveEventId());
+        }
+
+        final java.util.List<String> removedFromProposal = new java.util.ArrayList<>();
+
+        @Override
         public void preview(AutoScheduleInputData inputData) {
         }
 

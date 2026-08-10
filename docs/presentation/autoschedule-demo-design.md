@@ -1,5 +1,11 @@
 # Autoschedule presentation demo — design and evidence
 
+> **SUPERSEDED as a demo spec — 2026-08-09.** The demo that will be presented is the certified
+> **Toronto, Wed 5 Aug 2026** scenario in
+> [`presentation-assets/autoschedule-demo-runbook.md`](../../presentation-assets/autoschedule-demo-runbook.md).
+> Everything below describes an earlier **Venice, Wed 12 Aug 2026** design against a much older
+> commit. Keep it for the venue and weather analysis; do not take venues, dates, or times from it.
+
 **Audited commit:** `857bc91c4ddbc9883da8ed2d0b76db9ba560b84c` (`main`, "Merge pull request #24").
 Working tree clean; `git pull --ff-only` was a no-op. Nothing was implemented in this phase —
 analysis only, using a throwaway harness outside the repository.

@@ -244,6 +244,13 @@ final class SwingPanelStructureTest {
     private static final class RecordingAutoSchedule
             implements use_case.autoschedule.AutoScheduleInputBoundary {
         @Override
+        public void removeFromProposal(use_case.autoschedule.ProposalEditInputData inputData) {
+            removedFromProposal.add(inputData == null ? "" : inputData.getRemoveEventId());
+        }
+
+        final java.util.List<String> removedFromProposal = new java.util.ArrayList<>();
+
+        @Override
         public void preview(use_case.autoschedule.AutoScheduleInputData inputData) {
         }
 

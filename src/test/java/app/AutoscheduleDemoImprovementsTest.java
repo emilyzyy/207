@@ -97,6 +97,20 @@ class AutoscheduleDemoImprovementsTest {
         return null;
     }
 
+    private static String describe(DayPlanState state) {
+        StringBuilder text = new StringBuilder();
+        for (interface_adapter.viewmodels.PreviewRowView row : state.getPreviewRows()) {
+            text.append('\n').append(row.getTitle()).append(' ')
+                    .append(row.getStart()).append('-').append(row.getEnd())
+                    .append(" reason=").append(row.getReason());
+        }
+        PreviewMetricsView metrics = state.getMetrics();
+        return text.append("\ntravel ").append(metrics.getTravelBeforeMinutes()).append(" -> ")
+                .append(metrics.getTravelAfterMinutes()).append("; idle ")
+                .append(metrics.getIdleBeforeMinutes()).append(" -> ")
+                .append(metrics.getIdleAfterMinutes()).toString();
+    }
+
     @Test
     void theSeededDemoSchedulesFiveActivitiesAndHonoursTheUnavailablePeriod() {
         DayPlanState state = runDemo();
@@ -116,25 +130,30 @@ class AutoscheduleDemoImprovementsTest {
         DayPlanState state = runDemo();
         List<String> shown = headlines(state);
 
-        // Six, and each is a before/after comparison the Interactor computed.
-        // Waiting is now reported as all of it, so the saving is measured against the
-        // waiting the timeline still shows rather than against the smaller "avoidable"
-        // figure the ranking uses. Most of this day's waiting was never reclaimable.
-        assertTrue(shown.contains("3 MIN"), shown.toString());
+        // Four, and each is a before/after comparison the Interactor computed. The former
+        // "PIN KEPT" card is gone deliberately: a lock's window is the activity's current
+        // time, so honouring one is never a benefit the day did not already have. It appears
+        // among the constraints respected instead. The former
+        // "3 MIN waiting removed" card depended on travelling before the unavailable hour
+        // and waiting at the destination through it. Under the real unavailability rule the
+        // journey moves after that hour, so claiming a waiting reduction would be false.
         assertTrue(shown.contains("8 MIN"), shown.toString());
-        assertTrue(shown.contains("PIN KEPT"), shown.toString());
         assertTrue(shown.contains("BETTER MEAL TIME"), shown.toString());
-        assertTrue(shown.contains("DAYLIGHT"), shown.toString());
-        assertTrue(shown.contains("WEATHER IMPROVED"), shown.toString());
-        assertEquals(6, shown.size(), "no other card should appear: " + shown);
+        assertTrue(shown.contains("DAYLIGHT"), shown + describe(state));
+        assertTrue(shown.contains("WEATHER IMPROVED"),
+                shown + describe(state));
+        assertEquals(4, shown.size(), "no other card should appear: " + shown);
     }
 
     @Test
     void eachImprovementNamesTheActivityItIsAbout() {
         DayPlanState state = runDemo();
 
-        assertEquals("Royal Ontario Museum",
-                subjectOf(state, "PIN KEPT"));
+        // The pin is a constraint respected, not an improvement, so it names itself on a chip.
+        assertTrue(state.getConstraintChips().stream()
+                        .anyMatch(chip -> chip.getLabel().contains("Royal Ontario Museum")),
+                "the honoured pin should name its activity on a chip: "
+                        + state.getConstraintChips());
         assertEquals("St Lawrence Market", subjectOf(state, "BETTER MEAL TIME"));
         assertEquals("High Park", subjectOf(state, "DAYLIGHT"));
         assertEquals("High Park", subjectOf(state, "WEATHER IMPROVED"));
@@ -167,7 +186,7 @@ class AutoscheduleDemoImprovementsTest {
     }
 
     @Test
-    void theOutdoorActivityLeavesTheEveningRainAndTheDarkness() {
+    void theOutdoorActivityMovesIntoBetterWeatherAndAlmostEntirelyIntoDaylight() {
         DayPlanState state = runDemo();
 
         LocalTime parkStart = state.getPreviewRows().stream()
@@ -175,9 +194,12 @@ class AutoscheduleDemoImprovementsTest {
                 .map(row -> row.getStart()).findFirst().orElse(null);
 
         assertNotNull(parkStart);
-        assertTrue(parkStart.isBefore(LocalTime.of(18, 0)),
-                "the forecast turns at 6pm and dark follows; High Park started at 7:30pm "
-                        + "and must end up earlier, but was placed at " + parkStart);
+        assertTrue(parkStart.isBefore(LocalTime.of(19, 0)),
+                "High Park started at 7:30pm in severe rain and darkness; the legal proposal "
+                        + "must move it into the earlier, milder period, but placed it at "
+                        + parkStart + describe(state));
+        assertTrue(headlines(state).contains("DAYLIGHT"));
+        assertTrue(headlines(state).contains("WEATHER IMPROVED"));
     }
 
     @Test
