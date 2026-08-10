@@ -71,6 +71,13 @@
                         <exclude>views/**</exclude>
                         <!-- Opt-in live adapters: covered by tests that require network access. -->
                         <exclude>interface_adapter/web/**</exclude>
+                        <!--
+                            Optional cloud auth/persistence (GoTrue + PostgREST HttpClient
+                            adapters). No scheduling or itinerary business rules; default
+                            mode is in-memory and use cases are tested against ports/fakes.
+                            Live cloud checks need credentials and network.
+                        -->
+                        <exclude>database/supabase/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>

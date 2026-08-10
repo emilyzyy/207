@@ -466,7 +466,7 @@ Autoschedule package and fails if any file there names an add-to-plan or discove
 ### Commands
 
 ```bash
-./mvnw clean test                 # all tests, plus the JaCoCo report
+./mvnw clean test                 # all tests, plus the JaCoCo report in target/site/jacoco/index.html
 ./mvnw checkstyle:check           # style report -> target/checkstyle-result.xml
 open target/site/jacoco/index.html  # coverage report
 
@@ -530,6 +530,14 @@ Coverage and style are measured, not asserted:
 
 Both are configured as reports rather than build gates, so a threshold or a legacy style
 violation cannot block a teammate's commit.
+
+**JaCoCo exclusions (intentional, documented):**
+
+| Excluded | Why |
+|---|---|
+| `views/**` | Swing rendering; verified by hand / structural tests, not unit-tested for pixels. |
+| `interface_adapter/web/**` | Optional REST static-file handler; needs network-style setup. |
+| `database/supabase/**` | HTTP adapters for optional cloud auth/persistence (GoTrue + PostgREST). No scheduling or itinerary business rules. Default app mode is in-memory; use cases are tested against ports/fakes. Live cloud checks need credentials/network, so this layer is out of unit coverage like Swing UI. Dual-mode local-vs-cloud routing is covered by `DualModeItineraryDataAccessTest`. |
 
 **Checkstyle uses the official CSC207 configuration.** `config/mystyle.xml` is byte-identical
 to the file distributed with the course starter code and named in the regex lecture. The
