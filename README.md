@@ -1,575 +1,277 @@
-# CloseAI
+# Trippy
 
-CloseAI is a Java 11 CSC207 prototype for planning a one-day trip. The backend follows Clean Architecture: domain and application code have no HTTP, JSON, Swing, or infrastructure dependencies, while concrete services are assembled at the outer `AppBuilder` composition root.
+Trippy is a Java 11 desktop trip planner built for CSC207. Travellers can create an
+itinerary, discover nearby activities, bookmark places, build a Day Plan, check weather,
+and automatically improve the order and timing of scheduled activities.
 
-The default application is a Java Swing dashboard. It starts without a seeded trip: the Trip Setup tab creates the active trip, and the same form edits that trip later. The retained web frontend is available as a secondary prototype through `Main --web`.
+The project follows Clean Architecture. Entities and use cases do not depend on Swing,
+HTTP, JSON, Supabase, or other infrastructure details; concrete implementations are wired
+together in the outer `app.AppBuilder` composition root.
 
-## Build and test
+## Table of contents
 
-Requirement: JDK 11. The checked-in Maven Wrapper downloads the pinned Maven runtime.
+- [Features](#features)
+- [Requirements](#requirements)
+- [Run the application](#run-the-application)
+- [Configuration](#configuration)
+- [Activity discovery](#activity-discovery)
+- [Day Plan and autoschedule](#day-plan-and-autoschedule)
+- [George trip assistant](#george-trip-assistant)
+- [Architecture](#architecture)
+- [Testing and reports](#testing-and-reports)
+- [External services and limitations](#external-services-and-limitations)
+- [Web prototype](#web-prototype)
+
+## Features
+
+- Create, open, and delete single- or multi-day itineraries.
+- Discover activities through OpenStreetMap using Nominatim named-place search and
+  Overpass nearby discovery.
+- Filter activities by category and indoor/outdoor setting.
+- View activities on an interactive OpenStreetMap map and select matching cards and pins.
+- Bookmark activities and manually add them to the Day Plan.
+- Edit, remove, and drag scheduled activities in 15-minute increments.
+- Change a day's date and available hours from the Day Plan **Options** dialog.
+- Preview and apply an autoscheduled plan using travel, opening hours, availability,
+  mealtimes, daylight, weather, and locked activities.
+- Review the plan in Day, Week, and Month calendar views.
+- View current and hourly weather from Open-Meteo.
+- Ask George, the grounded trip assistant, about the open itinerary.
+- Use light or dark mode, category colours and icons, keyboard-accessible controls, and
+  confirmation prompts for destructive actions.
+- Optionally sign in with Supabase, manage friends, share itineraries, and assign View,
+  Edit, or Admin access.
+
+## Requirements
+
+- JDK 11 or newer
+- Internet access for live places, maps, weather, and George
+- Optional Supabase credentials for accounts and cloud persistence
+- Optional TomTom API key for traffic-aware driving estimates
+
+Maven does not need to be installed separately; the repository includes the Maven Wrapper.
+
+## Run the application
+
+From the repository root:
+
+### Windows PowerShell
+
+```powershell
+.\mvnw.cmd clean test
+.\mvnw.cmd compile exec:java
+```
+
+### macOS or Linux
 
 ```bash
 ./mvnw clean test
+./mvnw compile exec:java
 ```
 
-The normal suite is deterministic and does not call the public internet. It uses JUnit 5 fakes plus loopback-only HTTP servers for Open-Meteo and Nominatim/Overpass response and error tests.
+The Maven configuration already points to `app.Main`, so no `-Dexec.mainClass` argument is
+required. The application opens on **My Trips**. Without Supabase configuration, trips use
+in-memory persistence for the current run.
 
-Run the app in offline mode (the default):
+## Configuration
 
-```bash
-./mvnw compile exec:java -Dexec.mainClass=closeai.Main
-```
+Trippy reads configuration in this order:
 
-Select real Open-Meteo weather at runtime:
+1. Java system properties passed with `-D...`
+2. Operating-system environment variables
+3. A gitignored `.env` file in the repository root
 
-```bash
-./mvnw compile exec:java -Dexec.mainClass=closeai.Main -Dcloseai.weather.mode=open-meteo
-```
-
-Real places and OpenStreetMap tiles are separate, explicit opt-ins:
-
-```bash
-./mvnw compile exec:java -Dexec.mainClass=closeai.Main \
-  -Dcloseai.places.mode=nominatim \
-  -Dcloseai.map.tiles.mode=osm
-```
-
-### Supabase persistence (per-user save / reopen)
-
-1. Create a Supabase project and run the SQL in [`docs/supabase/schema.sql`](docs/supabase/schema.sql).
-2. Copy [`.env.example`](.env.example) to `.env` and fill in Project URL + anon key from Supabase → Project Settings → API.
-3. For local demos, Authentication → Providers → Email → disable **Confirm email**.
-4. Run from the project root (so `.env` is found):
-
-```bash
-./mvnw compile exec:java -Dexec.mainClass=trippy.Main \
-  -Dtrippy.persistence.mode=supabase \
-  -Dtrippy.weather.mode=open-meteo \
-  -Dtrippy.places.mode=nominatim \
-  -Dtrippy.map.tiles.mode=osm
-```
-
-`.env` is gitignored. Resolution order: `-D` system properties, then real env vars, then `.env`.
-
-Sign in is optional: the app opens on **My Trips**. Use **Sign in** (gallery or trip header) anytime. While signed out, itineraries stay local to the session; after sign-in the current trip is saved to your account and prior cloud trips load. When signed in, the corner shows your **profile picture** (default white) and a **Friends** button. Open the avatar to edit username, email, password, and picture (solid colours or upload), then **Save**; use **Sign out** from the profile dialog. Friends supports sending requests by username, accepting/cancelling requests, and viewing current friends. When creating an itinerary while signed in, you can multi-select friends to share it. In **Trip Options**, the owner appears as `@username (Owner)` and cannot be removed; each shared person has a **View** / **Edit** / **Admin** dropdown (View = see only, Edit = change the itinerary, Admin = also manage people). Changes sync while a shared trip is open. Re-run the full [`docs/supabase/schema.sql`](docs/supabase/schema.sql) so `trip_members.role` and related policies exist.
-
-The places and weather refresh runs in a `SwingWorker`, not on the Swing event-dispatch thread. If either service fails, the created trip remains valid and the UI retains its cached mock places.
-
-## Trip Assistant (George)
-
-Open a trip and select George's circular avatar in the bottom-right corner to expand the chat.
-The avatar remains available while you move between planner tabs, and collapsing the panel keeps
-the conversation ready for the next time you open it. George automatically receives the current
-destination and date, trip hours, transportation mode, available activities, bookmarks, Day Plan,
-and hourly weather. Useful questions include:
-
-- `What activities do you recommend for this trip?`
-- `What should I do if it rains?`
-- `Which activity fits into my afternoon?`
-- `Which of my bookmarked activities should I visit?`
-- `Why is this activity a good choice?`
-- `What is your name?`
-- `What is 3 + 3?`
-
-George uses the project's public Cloudflare Worker proxy by default. The OpenAI key stays in the
-Worker secret store and is never distributed with the desktop app or committed to Git. If the
-live service is unavailable, George automatically falls back to deterministic offline
-recommendations.
-
-Run the app with the default proxy mode:
-
-```bash
-./mvnw compile exec:java -Dexec.mainClass=closeai.Main
-```
-
-The checked-in default endpoint is
-`https://closeai-george-proxy.power-feast.workers.dev/v1/responses`. It is an account-owned
-Cloudflare Worker for the course demo, backed by an OpenAI project with a 5 USD monthly hard
-spend limit.
-
-To force fully offline behavior:
-
-```bash
-./mvnw compile exec:java -Dexec.mainClass=closeai.Main \
-  -Dcloseai.chatbot.mode=offline
-```
-
-Developers can point the app at another compatible proxy without rebuilding it:
-
-```bash
-./mvnw compile exec:java -Dexec.mainClass=closeai.Main \
-  -Dcloseai.ai.proxy.url=https://your-worker.example/v1/responses
-```
-
-Direct OpenAI mode remains available only for local development. Put the key in the gitignored
-`.env` file (or export it as a real environment variable), then explicitly opt in:
+Create `.env` manually only for the services you want to enable:
 
 ```dotenv
+# Optional account, friend, sharing, and cloud-persistence support
+TRIPPY_SUPABASE_URL=https://your-project.supabase.co
+TRIPPY_SUPABASE_ANON_KEY=your-anon-key
+
+# Optional traffic-aware driving routes
+TOMTOM_API_KEY=your-tomtom-key
+
+# Optional custom George proxy
+TRIPPY_AI_PROXY_URL=https://your-worker.example/v1/responses
+
+# Optional direct OpenAI development mode only
 OPENAI_API_KEY=your-project-key
-# Optional; the current default is gpt-5.4-mini
 OPENAI_MODEL=gpt-5.4-mini
 ```
 
-```bash
-./mvnw compile exec:java -Dexec.mainClass=closeai.Main \
-  -Dcloseai.chatbot.mode=openai
+Do not add quotation marks or placeholder asterisks around values. Never commit `.env` or
+API keys.
+
+### Supabase setup
+
+1. Create a Supabase project.
+2. Run [`docs/supabase/schema.sql`](docs/supabase/schema.sql) in its SQL editor.
+3. Add `TRIPPY_SUPABASE_URL` and `TRIPPY_SUPABASE_ANON_KEY` to `.env`.
+4. Run Trippy from the repository root so `.env` can be found.
+
+When both credentials are present, Supabase mode is enabled automatically. For a classroom
+demo, disable email confirmation under **Authentication > Providers > Email** so newly
+created accounts can sign in immediately.
+
+### Runtime modes
+
+The desktop entry point defaults to live Nominatim/Overpass places, OpenStreetMap tiles,
+Open-Meteo weather, and the configured George proxy. These modes can be overridden:
+
+| Property | Example value | Purpose |
+|---|---|---|
+| `trippy.places.mode` | `mock` or `nominatim` | Offline fixtures or live place discovery |
+| `trippy.weather.mode` | `mock` or `open-meteo` | Offline fixtures or live weather |
+| `trippy.map.tiles.mode` | `offline` or `osm` | Offline map or OpenStreetMap tiles |
+| `trippy.persistence.mode` | `memory` or `supabase` | Session-only or cloud persistence |
+| `trippy.chatbot.mode` | `offline`, `proxy`, or `openai` | George implementation |
+| `trippy.nominatim.endpoint` | URL | Override the named-search endpoint |
+| `trippy.overpass.endpoint` | URL | Override the nearby-discovery endpoint |
+
+For example, a deterministic offline run in PowerShell is:
+
+```powershell
+.\mvnw.cmd compile exec:java `
+  "-Dtrippy.places.mode=mock" `
+  "-Dtrippy.weather.mode=mock" `
+  "-Dtrippy.map.tiles.mode=offline" `
+  "-Dtrippy.persistence.mode=memory" `
+  "-Dtrippy.chatbot.mode=offline"
 ```
 
-The live gateway calls the Responses API with `store: false` and a strict Structured Outputs
-schema. OpenAI can answer ordinary questions directly or select only activity IDs supplied by the
-current trip. General replies are displayed as AI text; activity names and recommendation details
-are rendered from CloseAI entities, so the model cannot introduce an unrecognized recommended
-place. A live API, authentication, timeout, or schema failure is shown in the answer and
-automatically falls back to the deterministic offline gateway.
-All gateway and weather work runs through a background `SwingWorker`, never on Swing's event-
-dispatch thread. The default desktop client does not read or send an OpenAI API key.
+## Activity discovery
 
-### Deploying the George proxy
+Activity Discovery separates two operations:
 
-The Worker lives in [`george-proxy`](george-proxy). It fixes the model to `gpt-5.4-mini`, caps
-output at 300 tokens, validates and trims trip context, accepts only grounded activity IDs, and
-rate-limits requests. From that directory:
+- An empty query discovers nearby activities through Overpass.
+- A text query finds named places through Nominatim and merges them with indexed local
+  results.
 
-```bash
-pnpm install
-pnpm test
-pnpm exec wrangler login
-pnpm exec wrangler deploy --secrets-file ../.env.proxy
-```
+`SearchActivitiesUseCase` coordinates the search through application-facing gateways.
+Infrastructure adapters handle remote APIs, mapping, caching, stable ordering, partial
+results, rate limits, and service failures. Nodes, ways, and relations use type-aware OSM
+identities so unrelated objects with the same numeric ID are not merged.
 
-`../.env.proxy` must contain only the server-side secret and is ignored by Git:
+OpenStreetMap does not provide a standardized review rating, so Trippy does not invent or
+display ratings. Category and indoor/outdoor values are inferred from OSM tags; incomplete
+source data can therefore produce unknown or imperfect classifications.
 
-```dotenv
-OPENAI_API_KEY=your-project-key
-```
+## Day Plan and autoschedule
 
-After deployment, set `DEFAULT_PROXY_ENDPOINT` in `AppBuilder` to the Worker's
-`/v1/responses` URL. OpenAI spending limits are project-wide, so use a dedicated OpenAI project
-for this Worker before setting a 5 USD hard project limit.
+Activities can be added manually from Search or Bookmarks. The add dialog proposes the
+earliest available interval and also shows the existing plan for drag-and-drop placement.
+The Day Plan supports editing, removal, locking, and 15-minute drag rescheduling while
+preventing overlaps and keeping events inside the day's available hours.
 
-Current limitations:
+Autoschedule operates only on activities already in the Day Plan. It produces a preview
+before changing saved data and observes these hard constraints:
 
-- Fallback recommendations use a small deterministic ranking heuristic rather than natural-language
-  reasoning.
-- Live AI answers general questions directly. For travel recommendations it selects grounded
-  activity IDs, while final place names and details are generated from application data to enforce
-  the no-invented-places guarantee.
-- George uses the existing activity setting value but does not classify or change indoor/outdoor
-  data.
-- Transportation mode is included as context, but this MVP does not ask the routing service to
-  calculate a new travel-time matrix for each chat turn.
+- day boundaries and user-unavailable periods;
+- no overlapping activities or travel;
+- locked activities remain at their exact times;
+- parsed venue opening hours when available; and
+- feasible travel between activities.
 
-Run the web prototype and open [http://localhost:8080](http://localhost:8080):
+It then compares valid schedules using travel time, avoidable waiting, mealtime placement,
+daylight, weather when usable, and the user's preference to preserve order. **Apply** saves
+the preview; **Cancel** leaves the original plan unchanged.
 
-```bash
-./mvnw compile exec:java -Dexec.mainClass=closeai.Main -Dexec.args=--web
-```
+More detail and the complete autoschedule diagram are in
+[`docs/autoschedule/architecture.md`](docs/autoschedule/architecture.md) and
+[`docs/autoschedule/diagrams/`](docs/autoschedule/diagrams/).
 
-No API key or secret is used.
+## George trip assistant
+
+Select George's circular avatar after opening a trip. George receives grounded context from
+the current itinerary: destination, date, hours, activities, bookmarks, Day Plan, travel
+mode, and weather. The default proxy keeps the OpenAI key outside the desktop application.
+If the live assistant is unavailable, Trippy falls back to deterministic offline guidance.
+
+The Cloudflare Worker source is in [`george-proxy`](george-proxy). Direct OpenAI mode is
+intended only for local development and must be explicitly enabled with
+`-Dtrippy.chatbot.mode=openai`.
 
 ## Architecture
 
 ```text
-domain
+entity
   Trip, Activity, ScheduledEvent, WeatherWarning, value objects
-        ↑
-application
-  use cases, ports, ActivityScoringPolicy
-        ↑
-adapters / infrastructure
-  HTTP controller, persistence, mocks, Open-Meteo HTTP + DTO/JSON mapping
-        ↑
-closeai.AppBuilder / Main
-  concrete dependency assembly and live/offline selection
+      ^
+use_case
+  interactors, input/output boundaries, repository and service interfaces
+      ^
+interface_adapter
+  controllers, presenters, view models, API and persistence adapters
+      ^
+views / app / database
+  Swing UI, composition root, concrete external services
 ```
 
-- `AutoScheduleTripUseCase` depends only on application ports and domain objects.
-- `CreateTripUseCase` implements `CreateTripInputBoundary`, validates immutable `CreateTripInputData`, and saves through `TripRepository`.
-- `EditItineraryInteractor` depends on `ItineraryDataAccessInterface`, not concrete persistence.
-- `ActivityScoringPolicy` is injectable; `DefaultActivityScoringPolicy` owns the default rule.
-- `OpenMeteoWeatherService` implements the existing `WeatherService` port. Its API DTOs and Jackson mapping remain in `infrastructure.weather`.
-- `InMemoryItineraryDataAccessObject` implements both `ItineraryDataAccessInterface` and `TripRepository` so create and edit share one in-memory store.
-- `application.AppContainer` receives abstractions and constructs use cases; it does not instantiate infrastructure.
-- `MockWeatherService` remains the default for offline development and deterministic tests.
-- `MockPlacesService` and the offline map remain the defaults. `NominatimPlacesService`, Overpass, and OpenStreetMap tiles require explicit runtime modes.
-
-## Create Trip and Trip Setup
-
-- Swing starts with no active trip and disables Optimize until creation succeeds.
-- `TripSetupController` chooses Create Trip when there is no active trip and Edit Itinerary afterward.
-- `TripSetupPresenter` updates Dashboard, Trip Options, Bookmarks, and the Day Plan with the same saved trip ID.
-- Destination weather and place refresh happens asynchronously; failure never rolls back a successfully created trip.
-- The Overview weather card opens a modeless hourly forecast window. It shows every available hour for the trip date and refreshes automatically when the shared weather state changes.
-
-## Edit Itinerary
-
-After a trip/itinerary exists, `EditItineraryInteractor` updates its destination, date, trip window, and transportation mode through `ItineraryDataAccessInterface`.
-
-- Input is carried by immutable `EditItineraryInputData`; callers depend on `EditItineraryInputBoundary`.
-- Changes that would push scheduled events outside the new trip window are rejected before save.
-- `PUT /api/trips/{tripId}` and the Options tab “Save trip options” action use this interactor so an existing itinerary is updated in place instead of replaced by a new trip.
-
-## Share Trip
-
-The header Share action is enabled only after an active trip exists. It runs through
-`ShareTripController`, the `ShareTripInputBoundary`, and `ShareTripPresenter` before opening a
-modeless preview. The user can copy a portable itinerary containing the destination, date, trip
-window, transportation mode, and scheduled events to the system clipboard. Validation failures
-are presented in the dialog instead of leaking Swing or clipboard classes into the application
-layer. The existing `GET /api/trips/{tripId}/share` endpoint uses the same share use case.
-
-## Interactive Calendar
-
-The Calendar View is backed by a dedicated `CalendarViewModel` that observes the same immutable
-Dashboard and Day Plan states used by the rest of Swing. It does not create a second trip or
-schedule source.
-
-- Day, Week, and Month views can be selected at runtime.
-- Previous/next navigation advances by the selected time scale.
-- Today and Trip date actions provide predictable navigation anchors.
-- Month and Week dates are clickable, with the active trip and scheduled-item count highlighted.
-- Trip edits and schedule changes immediately update the open calendar.
-
-Because the current domain aggregate represents a one-day trip, events appear on the trip date;
-the expanded calendar provides surrounding week/month context without pretending that events
-have dates the domain model does not store.
-
-## Auto Schedule (bookmark selection)
-
-> This section describes the bookmark-selection scheduler, which chooses activities from
-> the bookmark list. It is distinct from **Autoschedule (Day Plan)** below, which reorders
-> and retimes activities the traveller has already added to the Day Plan.
-
-For every scheduling step, each remaining feasible activity is scored using:
+Representative flows include:
 
 ```text
-score = 2.0 × rating − 0.05 × travelMinutes − severityPenalty × exposure
-
-severityPenalty: LOW = 0.4, MEDIUM = 2.0, HIGH = 4.0
-exposure:        INDOOR = 0.0, MIXED = 0.5, OUTDOOR = 1.0
+SearchPanel
+  -> ActivityDiscoveryController
+  -> SearchActivitiesUseCase
+  -> ActivitySearchGateway
+  -> ActivityDiscoveryPresenter
+  -> SearchViewModel
 ```
-
-The scheduler then:
-
-1. Uses the destination coordinates resolved by `WeatherService` as the trip's initial location; there is no Toronto coordinate in the use case.
-2. Calculates travel for the first activity and every later activity using the selected transportation mode.
-3. Allows arrival before opening time by leaving a waiting gap, then starts at opening time.
-4. Rejects candidates whose travel/activity interval crosses the trip window or whose activity crosses its opening/closing time.
-5. Scores each candidate with the worst weather severity among every forecast hour overlapped by that activity. A 10:30–12:30 activity therefore uses the 10:00, 11:00, and 12:00 forecast points.
-6. Chooses the highest-scoring feasible candidate; equal scores use activity ID as a stable tie-break.
-7. Inserts a travel event when travel time is positive and generates deterministic event IDs from the trip, sequence, type, activity, and times.
-8. Validates that all events are sorted, inside the trip window, and non-overlapping before saving a separate scheduled trip copy.
-
-An empty bookmark list raises a clear `IllegalArgumentException`. If none of the bookmarks is feasible, scheduling raises `IllegalStateException` and preserves the previous schedule. If at least one activity fits, the legal greedy subset is saved and infeasible bookmarks remain bookmarked. Any weather, distance, scoring, or validation failure occurs before the repository receives the new aggregate, so no partial schedule is left behind.
-
-## Autoschedule (Day Plan)
-
-Autoschedule rearranges the activities already in the Day Plan. It never adds an activity,
-never drops one, and never changes anything until the traveller chooses **Apply**.
-
-### Running it
-
-Open the **Day Plan** tab, then choose **Autoschedule**. The settings dialog asks only for
-what cannot be worked out automatically:
-
-- **Available from / until** - prefilled from the trip's own hours. These may narrow the
-  day but not widen it, because the `Trip` entity refuses to hold events outside its stored
-  window.
-- **Getting around by** - walking, driving or transit, prefilled from the trip.
-- **Times I am not available** - optional. Nothing is scheduled in these, *including
-  travel*: the traveller waits until the period ends before setting out.
-- **Keep my current order where possible** - on by default.
-- **Consider weather** - offered only when the forecast can tell one time of day from
-  another. Since the hourly forecast landed this is the normal case: the box is **enabled and
-  ticked by default** and may be unticked. When only one hour is known, or no forecast can be
-  obtained, the box is disabled and unticked and the reason is shown in words beneath it
-  ("Hourly weather is not available for this trip date."). The state is never signalled by
-  colour alone, and the checkbox stays keyboard-reachable.
-
-Individual activities can be pinned with the **Lock** checkbox on their row. A pinned
-activity keeps its exact time and everything else is arranged around it. Pins last as long
-as the application is open and are never written to the trip.
-
-### Schedule improvements
-
-The Preview reports what it can prove. Each card is a before/after comparison computed in the
-use case — waiting removed, travel saved, a pin honoured, a meal moved toward its window, an
-outdoor activity moved into daylight or milder weather, an order genuinely preserved.
-
-A card appears only when the comparison supports it. An activity already in daylight earns
-nothing, a whole-day forecast cannot produce a weather card, and "order preserved" compares
-the actual sequence rather than the preference you set. Anything that got *worse* is not
-dressed as an achievement: trade-offs and the complete before/after figures sit under
-**Why this schedule?**. When nothing improved, it says so.
-
-The cards stack beside the schedule on a wide window and below it on a narrow one.
-
-### Opening hours
-
-Opening hours are a **hard constraint**, in the same class as the traveller's own unavailable
-periods. An activity is placed entirely inside one of its venue's opening intervals, never
-across the gap between two — a museum open 09:00–12:00 and 14:00–18:00 offers a visitor two
-shifts, not a nine-hour day. Travel is deliberately free to happen outside them, because
-walking to a museum before it opens is how anyone gets there.
-
-Hours come from the venue's OpenStreetMap `opening_hours` tag. `NominatimPlacesService`
-reads the tag and keeps it verbatim on the activity, and derives a single coarse window
-spanning the whole week so that any code knowing only about one always has something valid.
-`OpeningHoursParser` then reads the same text a second way, into per-weekday intervals, in
-the infrastructure layer — so no scheduling code has to know that
-`Mo-Fr 09:00-17:00; Sa 10:00-14:00; Su off` is a syntax. Weekday selectors and ranges,
-several intervals in a day, `off`/`closed`, `24/7`, and spans past midnight are all handled;
-the trip's own date decides which day's hours apply.
-
-The two readings are kept side by side on purpose, and they disagree. For
-`Mo-Fr 09:00-17:00; Sa-Su 11:00-23:00` the coarse window is 09:00–23:00 — the earliest
-opening anywhere in the week to the latest closing anywhere — which is wrong about both
-Wednesday's closing and Saturday's opening. **Autoschedule uses the per-weekday reading.**
-The coarse window remains the guard the `Trip` entity applies (it cannot hold an event
-outside it) and the fallback whenever the parser returns unknown, so nothing is ever less
-schedulable than it was before hours were parsed at all.
-
-Three outcomes, and the last is the one that matters:
-
-| The provider says | Autoschedule does |
-|---|---|
-| Real hours for the trip date | Places the activity inside one interval; a pin outside one is a named conflict |
-| The venue is shut that day | Refuses to schedule it, naming the venue and reporting zero minutes available |
-| **Nothing, or something unreadable** | **Schedules it inside its general daily window** |
-
-The third row is the common one: most OpenStreetMap places carry no `opening_hours` tag, and
-treating silence as "shut" would refuse to plan almost any real day. So those venues fall
-back to the single opening/closing window the activity already carries, which is still
-enforced — and the preview says nothing about it, because a caution that appears on almost
-every schedule only teaches people to ignore the ones that matter. Anything the parser cannot
-fully understand — month ranges, `sunrise`/`sunset`, free text — is treated the same way
-rather than guessed at.
-
-### Preview and Apply
-
-Generating a preview shows the proposal underneath the unchanged Day Plan, with before and
-after figures for travel and waiting, how many activities moved, one short reason on the
-rows that have one, and a keyboard-accessible **Why these times?** panel listing every
-explanation. **Apply** saves it; **Cancel** discards it. If the Day Plan changed after the
-preview was produced, Apply is refused rather than overwriting the newer version.
-
-### What it optimises for
-
-These are built in and always applied - they are what the feature is for, not options:
-
-| Objective | Behaviour |
-|---|---|
-| Travel | Minimise total travel time for the chosen mode |
-| Wasted waiting | Reduce idle time that is not caused by opening hours or an unavailable period |
-| Mealtimes | Prefer customary lunch/dinner windows for `FOOD` activities |
-| Daylight | Prefer daylight for `OUTDOOR` activities |
-
-Weather is the one soft objective the traveller decides about, because it is the one that
-cannot always be honoured: a whole-day forecast scores every candidate time alike and so
-has nothing to say about *when*. When selected and usable it prefers better conditions for
-exposed activities. It remains soft and capped like the rest — it can shift timing, but it
-can never make a day unschedulable and never overrides a hard rule. If the forecast turns
-out to be coarse or unavailable after all, it contributes zero, the preview says so, and
-the schedule is still produced.
-
-Valid schedules are ranked by a single practical cost in minutes: travel + avoidable idle +
-capped meal/daylight/weather penalties, plus a small capped charge for disturbing the
-traveller's order when they asked to keep it. Every soft penalty is capped, which is what
-guarantees a minor improvement in one of them can never justify a large detour. Hard rules
-- opening hours, availability, unavailable periods, pins, travel feasibility, no overlaps -
-are never traded against anything.
-
-### Configuration and secrets
-
-No configuration is required; the defaults work offline.
-
-| Variable / property | Effect |
-|---|---|
-| `TOMTOM_API_KEY` or `-Dtomtom.api.key=...` | Enables traffic-aware driving via TomTom. Without it, driving uses OSRM and is not traffic-aware. |
-| `-Dcloseai.weather.mode=open-meteo` | Live forecast instead of the mock. |
-| `-Dcloseai.places.mode=nominatim` | Live place discovery instead of the mock. |
-
-**No API key is ever committed.** Keys are read from the environment or a system property.
-`origin/main` also added a `.env` fallback, so `.env` and `.env.*` are in `.gitignore`;
-never commit one. Keys are never logged or printed, and no authenticated URL is written to
-output.
-
-### Current limitations
-
-- ~~The weather preference cannot be offered yet.~~ **Resolved.** Shiyuan's hourly forecast
-  landed, so `WeatherService.getHourlyWarnings` supplies a severity per hour,
-  `canDistinguishTimes()` is true, and "Consider weather" is **enabled and ticked by default**
-  in production. Activating it took one adapter change and nothing else — no engine, Interactor,
-  Controller or dialog edit — which is what the inward-facing contract was for. The disabled
-  path is still exercised, because a provider can always fail.
-- **Travel confidence is reported as unknown.** The shared `DistanceService` returns a plain
-  number and cannot distinguish a real route from its own distance-based fallback, so the
-  preview says travel times may include estimates instead of claiming more.
-- **Transit departure times use the JVM's default time zone**, which is correct for a local
-  trip and wrong for a trip in another zone. `Trip` has no time-zone field.
-- **Driving is not live-verified.** The TomTom request was corrected to send
-  `latitude,longitude` and is unit-tested against a stubbed HTTP client, including a
-  regression test that fails against the old order. No key has been available in any
-  verification run, so no real TomTom route has ever been obtained and **no traffic-aware
-  claim should be made**. `TomTomLiveVerificationTest` will settle it in one command once a
-  credential is present — it calls the fallback-free TomTom path directly, so it cannot be
-  satisfied by an OSRM fallback. Walking (OSRM) and transit (Transitous) are live-verified.
-- **Public holidays are not known.** A `PH`/`SH` rule in an `opening_hours` tag is skipped
-  rather than rejected, so `Mo-Fr 09:00-17:00; PH off` still yields ordinary weekday hours —
-  but a public holiday is then treated as an ordinary weekday. Rejecting the whole tag would
-  have been worse: it would have discarded good hours for every venue that bothers to record
-  a holiday.
-- **Only the common `opening_hours` shapes are parsed.** Month and date ranges
-  (`Jan-Mar 09:00-17:00`), week selectors, nth-weekday selectors (`Mo[1]`),
-  `sunrise`/`sunset` times and quoted comments all yield *unknown*, which is permissive and
-  stated, never a guess. A midnight closing time is held as 23:59, costing at most one
-  minute, because the scheduler works in whole minutes inside a single day.
-- **Hours are only as good as OpenStreetMap.** Nothing verifies them against the venue, and
-  the mock places provider supplies none at all, so an offline run warns about every activity.
-- Single day only, one transportation mode per run, and travel between activities only -
-  there is no hotel or origin leg because `Trip` has no origin coordinate.
-
-### Architecture
 
 ```text
-DayPlanPanel  ->  AutoScheduleController  ->  AutoScheduleInputBoundary
-                                                      |
-                                          AutoScheduleInteractor
-                                          |     |        |        |
-                                    TripRepo  Travel  Weather  ScheduleEngine
-                                              gateway gateway   (+ policies)
-                                                      |
-                                          AutoScheduleOutputBoundary
-                                                      |
-                        AutoSchedulePresenter -> DayPlanViewModel -> Day Plan + Calendar
+DayPlanPanel
+  -> AutoScheduleController
+  -> AutoScheduleInteractor
+  -> trip, routing, weather, and scheduling boundaries
+  -> AutoSchedulePresenter
+  -> DayPlanViewModel
 ```
 
-The engine is a pure function: no repository, no network, no Swing. Travel estimates are
-fetched before the search and refined afterwards, so the recursion never makes a network
-call. Full diagram and data flow: [`docs/autoschedule/architecture.md`](docs/autoschedule/architecture.md).
+The dependency rule points inward: use cases depend on abstractions, while HTTP clients,
+JSON mapping, Swing, Supabase, and API-specific behavior remain outside the core.
 
-### How add-to-plan connects later
+## Testing and reports
 
-Autoschedule reads `Trip.getScheduledEvents()` and writes through `Trip.copyWithSchedule`.
-It does not care how activities arrived.
+The normal test suite is deterministic and does not require public internet services.
+External API behavior is tested with fakes and loopback HTTP servers; explicitly named live
+smoke tests are skipped by default.
 
-**This is now wired end to end.** Alex's discovery, bookmark and manual add/edit/remove
-workflow (`ActivityDiscoveryController`, `BookmarkController`, `ManualPlanController`) writes
-through the same `TripRepository`. An activity found in Search can be added to the Day Plan
-and then autoscheduled, with no seeded demo trip involved and **no Autoschedule code change**
-— the two use cases meet only at the Trip.
-
-`AddToPlanAutoscheduleIntegrationTest` runs that whole path through
-`AppBuilder.buildOffline()` and the real controllers, and one of its tests reads the
-Autoschedule package and fails if any file there names an add-to-plan or discovery class.
-
-### Commands
-
-```bash
-./mvnw clean test                 # all tests, plus the JaCoCo report
-./mvnw checkstyle:check           # style report -> target/checkstyle-result.xml
-open target/site/jacoco/index.html  # coverage report
-
-# opt-in live checks (network required)
-RUN_LIVE_AUTOSCHEDULE_TEST=true ./mvnw test -Dtest=AutoScheduleLiveVerificationTest
-
-# conclusive live TomTom driving check (also needs a credential in the environment)
-RUN_LIVE_TOMTOM_TEST=true ./mvnw test -Dtest=TomTomLiveVerificationTest
+```powershell
+.\mvnw.cmd clean test
+.\mvnw.cmd checkstyle:check
 ```
 
-The class diagram for the full use case is in
-[`docs/autoschedule/diagrams/`](docs/autoschedule/diagrams/) (PlantUML source plus rendered
-SVG and PNG).
+Generated reports:
 
-## Open-Meteo adapter
+- JaCoCo coverage: `target/site/jacoco/index.html`
+- Checkstyle: `target/checkstyle-result.xml`
+- Surefire test results: `target/surefire-reports/`
 
-`OpenMeteoWeatherService` performs two key-free requests:
+## External services and limitations
 
-1. `https://geocoding-api.open-meteo.com/v1/search` resolves `Trip.destination` to latitude/longitude.
-2. `https://api.open-meteo.com/v1/forecast` requests local hourly `weather_code`, `temperature_2m`, `precipitation_probability`, and `wind_speed_10m` for the trip date.
+- Nominatim performs geocoding and named-place search.
+- Overpass discovers nearby OpenStreetMap activities.
+- OpenStreetMap supplies map tiles.
+- Open-Meteo supplies geocoding and hourly weather.
+- OSRM supplies key-free route estimates; TomTom can provide traffic-aware driving when a
+  key is configured.
+- Supabase supplies optional authentication, friends, sharing, and persistence.
+- Public services can time out, reject traffic, or rate-limit requests. Trippy reports this
+  separately from a genuine zero-result search and may show cached partial results.
+- Search results depend on the quality and completeness of OpenStreetMap data.
+- Venue hours are only as reliable as their OSM `opening_hours` tags.
+- The domain uses local dates and times and does not yet model destination time zones.
+- Trips are planned one day at a time; a multi-day itinerary contains separate Day Plans.
+- There is no hotel/home origin, so routing starts from the destination centre or the prior
+  scheduled activity.
 
-One forecast request supplies the full trip date. The adapter preserves every valid hourly point instead of collapsing the response to the trip-start hour. The dashboard still shows the hour nearest the trip start, while each Day Plan activity lists every hour it overlaps.
+## Web prototype
 
-It uses Java `HttpClient` with a 5-second connect timeout and an 8-second request timeout. It converts WMO weather codes, precipitation probability, and wind speed into `LOW`, `MEDIUM`, or `HIGH` severity. Non-2xx responses, no geocoding result, missing/misaligned hourly data, malformed JSON, interruption, timeout, and network failure become `WeatherServiceException`; interrupted threads retain their interrupt flag.
+A retained secondary web prototype can be started with:
 
-The public forecast API normally covers only a limited future horizon. Trips outside the provider's supported range will produce a handled service error rather than mock data.
-
-### Explicit live smoke test
-
-The live test is opt-in and is skipped by ordinary `./mvnw clean test`:
-
-```bash
-RUN_LIVE_OPEN_METEO_TEST=true ./mvnw -Dtest=OpenMeteoWeatherServiceLiveTest test
+```powershell
+.\mvnw.cmd compile exec:java "-Dexec.args=--web"
 ```
 
-This makes a real geocoding request for Toronto and a real forecast request for tomorrow.
-
-## Test coverage
-
-- empty bookmarks and no feasible activity
-- first-leg travel and walking/driving/transit timing
-- waiting for opening time
-- trip window and opening/closing constraints
-- per-activity hourly weather selection, multi-hour worst-severity scoring, and injectable scoring
-- event ordering, non-overlap, deterministic output, and failure atomicity
-- edit itinerary options update and persistence through `InMemoryItineraryDataAccessObject`
-- Create Trip validation, persistence, controller parsing, presenter state propagation, and the create/edit/optimize Swing path
-- Nominatim/Overpass success mapping, empty results, non-2xx, malformed JSON, caching, and map ViewModel updates
-- Open-Meteo full-hour mapping, nearest-hour dashboard preview, non-2xx, empty results, malformed/misaligned JSON, and connection failure
-- separate opt-in live Open-Meteo request
-- Share Trip input validation, summary formatting, controller/output behavior, and copyable state
-- Calendar trip/schedule synchronization, Day/Week/Month navigation, date selection, and Swing controls
-- Autoschedule: hard constraints, pins, unavailable periods blocking activities and travel, the built-in objectives and their caps, preview side-effect freedom, stale-Apply protection, exact-time travel refinement, presenter wording, Calendar compatibility, background execution, and a brute-force cross-check that the search's pruning never changes the answer
-
-Coverage and style are measured, not asserted:
-
-```bash
-./mvnw clean test        # JaCoCo report at target/site/jacoco/index.html
-./mvnw checkstyle:check  # report at target/checkstyle-result.xml
-```
-
-Both are configured as reports rather than build gates, so a threshold or a legacy style
-violation cannot block a teammate's commit.
-
-**Checkstyle uses the official CSC207 configuration.** `config/mystyle.xml` is byte-identical
-to the file distributed with the course starter code and named in the regex lecture. The
-course ships it for the IntelliJ Checkstyle plugin rather than as a build gate — its own
-starter code produces 62 warnings under it — so this project runs it through Maven for
-reproducible evidence with `failOnViolation=false`. `pom.xml` pins Checkstyle 10.21.4
-because the plugin's bundled version predates two modules the course file uses.
-
-**JaCoCo is 0.8.13 or newer.** 0.8.12 cannot instrument Java 24 class files (major version
-68) and floods the build with `IllegalClassFormatException`. Only JDK classes were affected,
-so coverage numbers were never wrong, but the noise made the output unreadable.
-
-## Known limitations
-
-- The current `Trip` model has a destination but no separate hotel/home origin. The geocoded destination centre is therefore the initial scheduling location.
-- The model uses same-day `LocalTime`; overnight trips and overnight opening hours are not supported.
-- Greedy scoring is deterministic but does not guarantee a globally optimal itinerary.
-- Distance estimates and persistence remain mock/in-memory implementations.
-- Live place discovery is optional and uses public Nominatim/Overpass services; offline mode remains the supported default.
-- Autoschedule's own limitations are listed under [Autoschedule (Day Plan)](#autoschedule-day-plan): day-wide weather, unknown travel provenance, JVM-default transit time zone, and driving not yet live-verified.
-
-## REST API
-
-- `POST /api/trips`
-- `GET /api/trips/{tripId}`
-- `PUT /api/trips/{tripId}` — edit itinerary options (destination, date, window, transportation)
-- `GET /api/activities`
-- `POST|DELETE /api/trips/{tripId}/bookmarks/{activityId}`
-- `POST /api/trips/{tripId}/plan/manual`
-- `POST /api/trips/{tripId}/plan/autoschedule`
-- `PUT|DELETE /api/trips/{tripId}/plan/{eventId}`
-- `GET /api/trips/{tripId}/summary`
-- `GET /api/trips/{tripId}/share`
-- `GET /api/trips/{tripId}/weather`
-- `GET /api/trips/{tripId}/weather/hourly`
-
-## Contribution
-
-Shiyuan (Dennis) Lyu: Share Trip Clean Architecture flow and clipboard-ready Swing preview; interactive Day/Week/Month calendar expansion and synchronized navigation; related unit, Swing structure, and application integration tests; Create Trip input boundary/interactor validation and tests; Trip Setup create/edit Swing workflow; active-trip composition; offline-by-default service selection; reviewed integration and tests for Raashid's map/place branch; Auto Schedule, scoring policy, schedule invariants, weather weighting, Open-Meteo adapter, Maven/JUnit 5 configuration, and documentation.
-
-Bianca: Edit Itinerary interactor (`EditItineraryInteractor`), `ItineraryDataAccessInterface`, `InMemoryItineraryDataAccessObject`, Options/API wiring for in-place itinerary updates, and related unit test.
-
-Raashid: interactive Swing map, Nominatim/Overpass place discovery, cached-place repository, and web map integration.
+Then open [http://localhost:8080](http://localhost:8080). The Swing application is the main
+and actively developed interface.
