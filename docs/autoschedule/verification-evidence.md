@@ -64,8 +64,9 @@ acceptable metric. The Autoschedule slice as a whole also reaches 90.4%.
 
 | Excluded | Reason |
 |---|---|
-| `closeai/adapters/views/**` | Swing rendering. Verified by hand (§5) and through structural tests; unit-testing pixel layout would measure nothing useful. |
-| `closeai/infrastructure/web/**` | Static file handler for the optional REST path, unrelated to this feature. |
+| `views/**` | Swing rendering. Verified by hand (§5) and through structural tests; unit-testing pixel layout would measure nothing useful. |
+| `interface_adapter/web/**` | Static file handler for the optional REST path, unrelated to this feature. |
+| `database/supabase/**` | HTTP adapters for optional cloud auth/persistence (GoTrue + PostgREST). No scheduling or itinerary business rules. Default app mode is in-memory; use cases are tested against ports/fakes. Live cloud checks need credentials/network, so this layer is out of unit coverage like Swing UI. Dual-mode routing above it is covered by `DualModeItineraryDataAccessTest`. |
 
 **No scheduling logic is excluded.** The engine, policies, validators, interactor,
 presenter, controller and gateway adapters are all measured.

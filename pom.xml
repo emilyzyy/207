@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>closeai</groupId>
-    <artifactId>closeai-trip-planner</artifactId>
+    <groupId>trippy</groupId>
+    <artifactId>trippy-trip-planner</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <properties>
@@ -68,9 +68,16 @@
                 <configuration>
                     <excludes>
                         <!-- Swing rendering: exercised by hand, not meaningfully unit-testable. -->
-                        <exclude>closeai/adapters/views/**</exclude>
+                        <exclude>views/**</exclude>
                         <!-- Opt-in live adapters: covered by tests that require network access. -->
-                        <exclude>closeai/infrastructure/web/**</exclude>
+                        <exclude>interface_adapter/web/**</exclude>
+                        <!--
+                            Optional cloud auth/persistence (GoTrue + PostgREST HttpClient
+                            adapters). No scheduling or itinerary business rules; default
+                            mode is in-memory and use cases are tested against ports/fakes.
+                            Live cloud checks need credentials and network.
+                        -->
+                        <exclude>database/supabase/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>
@@ -124,7 +131,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.6.3</version>
                 <configuration>
-                    <mainClass>trippy.Main</mainClass>
+                    <mainClass>app.Main</mainClass>
                 </configuration>
             </plugin>
         </plugins>
