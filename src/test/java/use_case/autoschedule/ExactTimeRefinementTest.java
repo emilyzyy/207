@@ -129,6 +129,37 @@ class ExactTimeRefinementTest {
     }
 
     @Test
+    void refinementLengthensTravelAndMovesTheUnlockedDestinationWithIt() {
+        FakeTripRepository trips = new FakeTripRepository(
+                tripWith(event("a", LocalTime.of(9, 0), 90),
+                        event("b", LocalTime.of(13, 0), 60)));
+        AutoScheduleInputData request = new AutoScheduleInputData("trip-1",
+                LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.TRANSIT,
+                Collections.singleton("a"),
+                Collections.singletonList(new TimeWindow(
+                        LocalTime.of(10, 40), LocalTime.of(13, 0))), true, true);
+
+        interactorWith(new OptimisticBucketEstimator(10, 20), trips).preview(request);
+
+        AutoSchedulePreviewOutputData preview = presenter.getPreview();
+        assertNotNull(preview, presenter.getConflict() == null
+                ? "no Preview or conflict was produced" : presenter.getConflict().getKind().name());
+        ProposedEventData travel = preview.getRows().stream()
+                .filter(row -> row.getKind() == ProposedEventData.Kind.TRAVEL)
+                .findFirst().orElseThrow(AssertionError::new);
+        ProposedEventData destination = preview.getRows().stream()
+                .filter(row -> "b".equals(row.getEventId()))
+                .findFirst().orElseThrow(AssertionError::new);
+
+        assertEquals(LocalTime.of(13, 0), travel.getStart(),
+                "the refined journey must leave after unavailable time");
+        assertEquals(LocalTime.of(13, 20), travel.getEnd(),
+                "the exact estimate is ten minutes longer than the prefetched estimate");
+        assertEquals(travel.getEnd(), destination.getStart(),
+                "refinement must move the unlocked destination with its journey");
+    }
+
+    @Test
     void aScheduleIsNeverShownWithOverlapsOrTooLittleTravelTime() {
         FakeTripRepository trips = new FakeTripRepository(
                 tripWith(event("a", LocalTime.of(9, 0), 100),

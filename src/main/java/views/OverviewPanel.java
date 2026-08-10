@@ -209,7 +209,61 @@ public final class OverviewPanel extends JPanel {
         mapPanel.setActivities(new ArrayList<>(merged.values()));
         mapPanel.setHighlightedIds(state.getBookmarkedIds(), state.getScheduledIds());
         mapPanel.setSchedule(events);
+        applyPreviewComparison();
         selectCurrentActivity();
+    }
+
+    /**
+     * Turns the before/after comparison on for a live Preview and off for everything else.
+     *
+     * <p>Driven from the Day Plan state rather than from a button, so every way out of a
+     * Preview — Apply, Cancel, a conflict, switching trips — puts the map back without anyone
+     * having to remember to. A conflict deliberately does not enter comparison mode: there is
+     * no proposal to compare against.</p>
+     */
+    private void applyPreviewComparison() {
+        if (dayPlanViewModel == null) {
+            return;
+        }
+        interface_adapter.viewmodels.DayPlanState state = dayPlanViewModel.getState();
+        boolean previewing = state.getStatus()
+                == interface_adapter.viewmodels.AutoScheduleStatus.PREVIEW
+                && !state.getPreviewRows().isEmpty();
+        if (!previewing) {
+            mapPanel.clearComparison();
+            return;
+        }
+
+        List<String> saved = new ArrayList<>();
+        for (ScheduledEvent event : state.getEvents()) {
+            if (event.getActivity() != null && !saved.contains(event.getActivity().getId())) {
+                saved.add(event.getActivity().getId());
+            }
+        }
+        // The proposal's own order, including any Preview-only removals: the green line has to
+        // be the timeline on screen, not the one the search first produced.
+        List<String> proposed = new ArrayList<>();
+        for (interface_adapter.viewmodels.PreviewRowView row : state.getPreviewRows()) {
+            if (row.getKind() != interface_adapter.viewmodels.PreviewRowView.Kind.ACTIVITY) {
+                continue;
+            }
+            String activityId = activityIdForEvent(state, row.getEventId());
+            if (!activityId.isEmpty() && !proposed.contains(activityId)) {
+                proposed.add(activityId);
+            }
+        }
+        mapPanel.showComparison(saved, proposed);
+    }
+
+    /** Preview rows carry event ids; the map speaks activity ids. */
+    private static String activityIdForEvent(interface_adapter.viewmodels.DayPlanState state,
+                                             String eventId) {
+        for (ScheduledEvent event : state.getEvents()) {
+            if (event.getId().equals(eventId) && event.getActivity() != null) {
+                return event.getActivity().getId();
+            }
+        }
+        return "";
     }
 
     private void selectCurrentActivity() {

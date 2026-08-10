@@ -15,6 +15,8 @@ public final class AutoScheduleConflictOutputData {
     private final int requiredMinutes;
     private final int availableMinutes;
     private final String detail;
+    private final TimeWindow lockedWindow;
+    private final TimeWindow unavailableWindow;
 
     public AutoScheduleConflictOutputData(ScheduleConflict conflict) {
         this.kind = conflict.getKind();
@@ -23,6 +25,8 @@ public final class AutoScheduleConflictOutputData {
         this.requiredMinutes = conflict.getRequiredMinutes();
         this.availableMinutes = conflict.getAvailableMinutes();
         this.detail = conflict.getDetail();
+        this.lockedWindow = conflict.getLockedWindow();
+        this.unavailableWindow = conflict.getUnavailableWindow();
     }
 
     public ScheduleConflict.Kind getKind() {
@@ -48,5 +52,13 @@ public final class AutoScheduleConflictOutputData {
 
     public int getAvailableMinutes() {
         return availableMinutes;
+    }
+
+    public TimeWindow getLockedWindow() {
+        return lockedWindow;
+    }
+
+    public TimeWindow getUnavailableWindow() {
+        return unavailableWindow;
     }
 }

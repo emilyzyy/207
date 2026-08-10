@@ -90,11 +90,37 @@ public final class MapPanel extends JPanel {
     /** Muted so the numbered pins stay the thing you read first. */
     private static final Color ROUTE_COLOR = new Color(74, 134, 196, 150);
 
+    /** The day as it stands: clearly coral, but dashed and lighter than the proposal. */
+    private static final Color BEFORE_ROUTE_COLOR = new Color(183, 54, 70, 225);
+
+    /** A subtle light edge keeps the dash readable across roads, parks and dark labels. */
+    private static final Color BEFORE_ROUTE_HALO_COLOR = new Color(255, 255, 255, 175);
+
+    private static final Stroke BEFORE_ROUTE_HALO_STROKE = new BasicStroke(
+            6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
+            1f, new float[] {9f, 5f}, 0f);
+
+    private static final Stroke BEFORE_ROUTE_STROKE = new BasicStroke(
+            3.25f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
+            1f, new float[] {9f, 5f}, 0f);
+
+    /** The proposal: the thing the traveller is being asked to look at. */
+    private static final Color PROPOSED_ROUTE_COLOR = new Color(30, 150, 90, 235);
+
+    private static final Stroke PROPOSED_ROUTE_STROKE = new BasicStroke(
+            4.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+
+    /** Unrelated discovery pins fade to this while a comparison is on screen. */
+    private static final Color MUTED_PIN_COLOR = new Color(150, 160, 172, 90);
+
     private List<Activity> activities = new ArrayList<>();
     private String city = "the area";
     private Set<String> bookmarkedIds = Collections.emptySet();
     private Set<String> scheduledIds = Collections.emptySet();
     private List<String> scheduledActivityIds = Collections.emptyList();
+    /** Non-empty only while a Preview is on screen; see {@link #showComparison}. */
+    private List<String> beforeRoute = Collections.emptyList();
+    private List<String> proposedRoute = Collections.emptyList();
     private String selectedActivityId = "";
     private boolean showHighlightedOnly = false;
 
@@ -275,6 +301,47 @@ public final class MapPanel extends JPanel {
         this.bookmarkedIds = (bookmarked == null) ? Collections.emptySet() : new HashSet<>(bookmarked);
         this.scheduledIds = (scheduled == null) ? Collections.emptySet() : new HashSet<>(scheduled);
         repaint();
+    }
+
+    /**
+     * Draws the saved day and the proposal together, for as long as the Preview lasts.
+     *
+     * <p>Two lines answer "is this actually better?" faster than any number can: a day that
+     * crosses the city three times looks like one, and the proposal comes out as a sweep. The
+     * saved route is deliberately the quieter of the two — it is what the traveller already
+     * knows; the green one is the thing being offered.</p>
+     *
+     * <p>This is presentation only, and temporary. No search results are discarded, no pins are
+     * removed, the centre and zoom are untouched, and calling it again replaces the two lines
+     * rather than adding a third. Nothing here writes to the itinerary.</p>
+     */
+    public void showComparison(List<String> savedOrder, List<String> proposedOrder) {
+        beforeRoute = savedOrder == null ? Collections.emptyList() : new ArrayList<>(savedOrder);
+        proposedRoute = proposedOrder == null
+                ? Collections.emptyList() : new ArrayList<>(proposedOrder);
+        repaint();
+    }
+
+    /** Returns to the ordinary single-route map. Safe to call when not comparing. */
+    public void clearComparison() {
+        beforeRoute = Collections.emptyList();
+        proposedRoute = Collections.emptyList();
+        repaint();
+    }
+
+    /** Whether the before/after comparison is currently drawn. */
+    public boolean isComparing() {
+        return !proposedRoute.isEmpty() || !beforeRoute.isEmpty();
+    }
+
+    /** The proposed order currently drawn in green, for tests and for the legend. */
+    List<String> proposedRouteOrder() {
+        return Collections.unmodifiableList(proposedRoute);
+    }
+
+    /** The saved order currently drawn in red. */
+    List<String> beforeRouteOrder() {
+        return Collections.unmodifiableList(beforeRoute);
     }
 
     /** Supplies ordered Day Plan activities so scheduled pins use itinerary numbering. */
@@ -894,6 +961,10 @@ public final class MapPanel extends JPanel {
      */
     private void drawRoute(Graphics2D g2, int w, int h,
                            double centerPixelX, double centerPixelY) {
+        if (isComparing()) {
+            drawComparison(g2, w, h, centerPixelX, centerPixelY);
+            return;
+        }
         List<int[]> points = routePoints(w, h, centerPixelX, centerPixelY);
         if (points.size() < 2) {
             return;
@@ -908,6 +979,95 @@ public final class MapPanel extends JPanel {
             g2.drawLine(from[0], from[1], to[0], to[1]);
         }
         g2.setStroke(oldStroke);
+    }
+
+    /** The saved day dashed and secondary, the proposal solid and painted above it. */
+    private void drawComparison(Graphics2D g2, int w, int h,
+                                double centerPixelX, double centerPixelY) {
+        Stroke oldStroke = g2.getStroke();
+        drawBeforePath(g2, pointsFor(beforeRoute, w, h, centerPixelX, centerPixelY));
+        // Second, so where the two overlap the proposal is what is legible.
+        drawPath(g2, pointsFor(proposedRoute, w, h, centerPixelX, centerPixelY),
+                PROPOSED_ROUTE_COLOR, PROPOSED_ROUTE_STROKE);
+        g2.setStroke(oldStroke);
+        drawComparisonLegend(g2);
+    }
+
+    private void drawBeforePath(Graphics2D g2, List<int[]> points) {
+        if (points.size() < 2) {
+            return;
+        }
+        for (int i = 1; i < points.size(); i++) {
+            int[] from = points.get(i - 1);
+            int[] to = points.get(i);
+            drawBeforeSegment(g2, from[0], from[1], to[0], to[1]);
+        }
+    }
+
+    /** Used by both map and legend, so the key cannot drift from the real route style. */
+    private void drawBeforeSegment(Graphics2D g2, int x1, int y1, int x2, int y2) {
+        g2.setColor(BEFORE_ROUTE_HALO_COLOR);
+        g2.setStroke(BEFORE_ROUTE_HALO_STROKE);
+        g2.drawLine(x1, y1, x2, y2);
+        g2.setColor(BEFORE_ROUTE_COLOR);
+        g2.setStroke(BEFORE_ROUTE_STROKE);
+        g2.drawLine(x1, y1, x2, y2);
+    }
+
+    private void drawPath(Graphics2D g2, List<int[]> points, Color colour, Stroke stroke) {
+        if (points.size() < 2) {
+            return;
+        }
+        g2.setColor(colour);
+        g2.setStroke(stroke);
+        for (int i = 1; i < points.size(); i++) {
+            g2.drawLine(points.get(i - 1)[0], points.get(i - 1)[1],
+                    points.get(i)[0], points.get(i)[1]);
+        }
+    }
+
+    /** Small, flat, bottom-left: enough to name the two colours and nothing more. */
+    private void drawComparisonLegend(Graphics2D g2) {
+        int boxWidth = 108;
+        int boxHeight = 42;
+        int x = 10;
+        int y = getHeight() - boxHeight - 10;
+        g2.setColor(new Color(255, 255, 255, 225));
+        g2.fillRoundRect(x, y, boxWidth, boxHeight, 8, 8);
+        g2.setColor(new Color(216, 224, 232));
+        g2.drawRoundRect(x, y, boxWidth, boxHeight, 8, 8);
+
+        Stroke oldStroke = g2.getStroke();
+        g2.setFont(getFont().deriveFont(11f));
+        drawBeforeSegment(g2, x + 8, y + 14, x + 30, y + 14);
+        g2.setColor(new Color(60, 70, 82));
+        g2.drawString("Before", x + 38, y + 18);
+
+        g2.setStroke(PROPOSED_ROUTE_STROKE);
+        g2.setColor(PROPOSED_ROUTE_COLOR);
+        g2.drawLine(x + 8, y + 30, x + 30, y + 30);
+        g2.setColor(new Color(60, 70, 82));
+        g2.drawString("Proposed", x + 38, y + 34);
+        g2.setStroke(oldStroke);
+    }
+
+    private List<int[]> pointsFor(List<String> order, int w, int h,
+                                  double centerPixelX, double centerPixelY) {
+        List<int[]> points = new ArrayList<>();
+        for (String id : order) {
+            for (Activity activity : activities) {
+                if (!activity.getId().equals(id) || activity.getLocation() == null) {
+                    continue;
+                }
+                double px = latLngToPixelX(activity.getLocation().getLongitude());
+                double py = latLngToPixelY(activity.getLocation().getLatitude());
+                points.add(new int[] {
+                        (int) (w / 2.0 + (px - centerPixelX)),
+                        (int) (h / 2.0 + (py - centerPixelY))});
+                break;
+            }
+        }
+        return points;
     }
 
     /** Screen positions of the scheduled stops, in Day Plan order. */
@@ -999,6 +1159,16 @@ public final class MapPanel extends JPanel {
     }
 
     private void drawMarker(Graphics2D g2, String activityId, int sx, int sy) {
+        // While a comparison is on screen, a pin that is in neither route is context rather
+        // than content: faded to a dot so the two lines stay readable through a field of blue.
+        // The pins themselves are untouched — this is how they are drawn, not what they are.
+        if (isComparing() && !beforeRoute.contains(activityId)
+                && !proposedRoute.contains(activityId)
+                && !activityId.equals(selectedActivityId)) {
+            g2.setColor(MUTED_PIN_COLOR);
+            g2.fillOval(sx - 3, sy - 3, 6, 6);
+            return;
+        }
         boolean selected = activityId.equals(selectedActivityId);
         boolean bookmarked = bookmarkedIds.contains(activityId);
         int scheduleIndex = scheduledActivityIds.indexOf(activityId);

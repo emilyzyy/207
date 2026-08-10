@@ -19,6 +19,7 @@ import use_case.autoschedule.Reason;
 import use_case.autoschedule.ReasonCode;
 import use_case.autoschedule.ScheduleConflict;
 import use_case.autoschedule.ScheduleImprovement;
+import use_case.autoschedule.TimeWindow;
 import use_case.autoschedule.TravelEstimateQuality;
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
@@ -199,19 +200,37 @@ class AutoSchedulePresenterTest {
         assertEquals("", viewModel.getState().getTravelQualityNote());
     }
 
+    /**
+     * The summary names what the schedule achieved, not what it was asked to try for.
+     *
+     * <p>It used to be assembled from the enabled preferences, so it claimed less travel and
+     * sensible mealtimes over a proposal that had improved neither. This fixture improves
+     * nothing measurable, so the only clause it may keep is the one that is independently
+     * true.</p>
+     */
     @Test
-    void theObjectiveSummaryNamesWhatWasOptimisedFor() {
+    void theObjectiveSummaryNamesWhatWasActuallyAchieved() {
         DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
 
         new AutoSchedulePresenter(viewModel).presentPreview(preview(
                 Arrays.asList(activityRow("a", 10, true)), Collections.emptyList(),
                 Collections.emptyList(), true, true, TravelEstimateQuality.ROUTED));
 
-        String summary = viewModel.getState().getObjectiveSummary();
-        assertTrue(summary.contains("less travel"));
-        assertTrue(summary.contains("mealtimes"));
-        assertTrue(summary.contains("daylight"));
-        assertTrue(summary.contains("original order was kept"));
+        DayPlanState state = viewModel.getState();
+        String summary = state.getObjectiveSummary();
+        // Every clause has to be backed by the figures printed above it.
+        assertEquals(state.getMetrics().getTravelBeforeMinutes()
+                        > state.getMetrics().getTravelAfterMinutes(),
+                summary.contains("less travel"),
+                "travel claim must match the travel figures: " + summary);
+        assertEquals(state.getMetrics().getIdleBeforeMinutes()
+                        > state.getMetrics().getIdleAfterMinutes(),
+                summary.contains("fewer wasted gaps"),
+                "waiting claim must match the waiting figures: " + summary);
+        assertFalse(summary.contains("mealtimes"),
+                "no meal moved into a window in this fixture: " + summary);
+        assertTrue(summary.contains("original order was kept"),
+                "which remains independently true: " + summary);
     }
 
     @Test
@@ -262,6 +281,24 @@ class AutoSchedulePresenterTest {
         assertTrue(state.getMessage().contains("90 minutes"));
         assertTrue(state.getMessage().contains("not changed"));
         assertEquals(before, state.getEvents());
+    }
+
+    @Test
+    void aLockedUnavailableConflictNamesBothExactWindowsAndValidRemedies() {
+        DayPlanViewModel viewModel = viewModelWith(existingEvent("a", 9));
+        AutoSchedulePresenter presenter = new AutoSchedulePresenter(viewModel);
+
+        presenter.presentConflict(new AutoScheduleConflictOutputData(
+                ScheduleConflict.lockedInsideUnavailable("a",
+                        "A Very Long Independent Market Name",
+                        new TimeWindow(LocalTime.of(12, 0), LocalTime.of(13, 0)),
+                        new TimeWindow(LocalTime.of(12, 30), LocalTime.of(13, 30)))));
+
+        assertEquals("A Very Long Independent Market Name is locked from 12:00 PM to 1:00 PM, "
+                        + "which overlaps the time you marked as unavailable from 12:30 PM to "
+                        + "1:30 PM. Unlock it, change the unavailable period, or move the "
+                        + "activity. Your Day Plan was not changed.",
+                viewModel.getState().getMessage());
     }
 
     @Test

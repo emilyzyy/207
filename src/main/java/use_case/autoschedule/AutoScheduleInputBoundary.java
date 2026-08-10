@@ -29,4 +29,18 @@ public interface AutoScheduleInputBoundary {
      * <p>Never throws. An unanswerable question yields an unavailable option.</p>
      */
     WeatherOption weatherOptionFor(String tripId);
+
+    /**
+     * Removes one activity from the unsaved proposal, leaving everything else where it is.
+     *
+     * <p>Deliberately not a re-run of the search. The traveller took one thing out of a
+     * proposal they were reading; re-solving would hand back a different day and lose the
+     * arrangement they had just decided they liked. So the remaining activities keep their
+     * proposed times and order, and only the journeys either side of the removed activity are
+     * rebuilt.</p>
+     *
+     * <p>Nothing is saved. The repository is untouched, Apply still has to be pressed, and
+     * Cancel still restores the day exactly as it was.</p>
+     */
+    void removeFromProposal(ProposalEditInputData inputData);
 }

@@ -69,9 +69,8 @@ public final class ProblemValidator {
             if (unavailableWindows != null) {
                 for (TimeWindow blocked : unavailableWindows) {
                     if (blocked.overlaps(lock)) {
-                        return ScheduleConflict.of(
-                                ScheduleConflict.Kind.LOCK_INSIDE_UNAVAILABLE_PERIOD,
-                                task.getEventId(), name);
+                        return ScheduleConflict.lockedInsideUnavailable(
+                                task.getEventId(), name, lock, blocked);
                     }
                 }
             }

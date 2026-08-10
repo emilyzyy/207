@@ -73,6 +73,10 @@ public final class PlanValidator {
                 if (travel.getEnd().isAfter(window.getStart())) {
                     return ScheduleConflict.refinedTravelInfeasible();
                 }
+                if (travel.getEnd().isBefore(window.getStart())
+                        && unavailable.blocks(travel.getEnd(), window.getStart())) {
+                    return ScheduleConflict.refinedTravelInfeasible();
+                }
                 if (previous != null && travel.getStart().isBefore(previous.getEnd())) {
                     return ScheduleConflict.refinedTravelInfeasible();
                 }

@@ -18,6 +18,9 @@ import use_case.autoschedule.testdoubles.RecordingPresenter;
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.Location;
 import entity.valueobjects.EventType;
 import entity.valueobjects.TransportationMode;
 import entity.valueobjects.WeatherSeverity;
@@ -48,6 +51,17 @@ class AutoScheduleInteractorTest {
 
     private static ScheduledEvent activityEvent(String id, int startHour, int durationMinutes) {
         Activity activity = ProblemFixtures.activity(id, LocalTime.of(9, 0), LocalTime.of(21, 0));
+        LocalTime start = LocalTime.of(startHour, 0);
+        return new ScheduledEvent(id, activity, start, start.plusMinutes(durationMinutes),
+                EventType.ACTIVITY, "");
+    }
+
+    /** An activity at its own coordinates, for checks that turn on two places differing. */
+    private static ScheduledEvent activityEventAt(String id, int startHour, int durationMinutes,
+                                                  double latitude, double longitude) {
+        Activity activity = new Activity(id, id, ActivityCategory.MUSEUM,
+                new Location(latitude, longitude, id), 4.5, 60,
+                LocalTime.of(9, 0), LocalTime.of(21, 0), IndoorOutdoorType.INDOOR, "none");
         LocalTime start = LocalTime.of(startHour, 0);
         return new ScheduledEvent(id, activity, start, start.plusMinutes(durationMinutes),
                 EventType.ACTIVITY, "");
@@ -362,6 +376,62 @@ class AutoScheduleInteractorTest {
             assertEquals(preview.getRows().get(i).getStart(), saved.get(i).getStartTime());
             assertEquals(preview.getRows().get(i).getEnd(), saved.get(i).getEndTime());
         }
+    }
+
+    @Test
+    void applyRefusesAProposalWhoseRequiredTravelRowWasLost() {
+        estimator.defaultMinutes(20);
+        // Genuinely separated venues: "two different places with no journey between them" is
+        // now decided from the coordinates rather than by re-asking the routing provider.
+        FakeTripRepository trips = new FakeTripRepository(
+                tripWith(activityEventAt("a", 9, 60, 43.6447, -79.3733),
+                        activityEventAt("b", 12, 60, 43.6563, -79.3806)));
+        AutoScheduleInteractor interactor = interactorFor(trips);
+        interactor.preview(simpleInput());
+        AutoSchedulePreviewOutputData preview = presenter.getPreview();
+        List<ProposedEventData> withoutTravel = new ArrayList<>();
+        for (ProposedEventData row : preview.getRows()) {
+            if (row.getKind() != ProposedEventData.Kind.TRAVEL) {
+                withoutTravel.add(row);
+            }
+        }
+
+        interactor.apply(new AutoScheduleApplyInputData("trip-1",
+                preview.getScheduleFingerprint(), withoutTravel));
+
+        assertTrue(presenter.getFailure().contains("travel"), presenter.getFailure());
+        assertEquals(0, trips.getSaveCount(),
+                "Apply must not persist an unexplained gap between different locations");
+    }
+
+    @Test
+    void applyRefusesATravelRowThatCannotFitBetweenItsNeighbours() {
+        estimator.defaultMinutes(20);
+        FakeTripRepository trips = new FakeTripRepository(
+                tripWith(activityEventAt("a", 9, 60, 43.6447, -79.3733),
+                        activityEventAt("b", 12, 60, 43.6563, -79.3806)));
+        AutoScheduleInteractor interactor = interactorFor(trips);
+        interactor.preview(simpleInput());
+        AutoSchedulePreviewOutputData preview = presenter.getPreview();
+
+        // A journey stretched past the activity it leads to. This is arithmetic on the rows,
+        // so it is caught without asking anyone.
+        List<ProposedEventData> overrunning = new ArrayList<>();
+        for (ProposedEventData row : preview.getRows()) {
+            if (row.getKind() == ProposedEventData.Kind.TRAVEL) {
+                overrunning.add(new ProposedEventData(row.getEventId(), row.getActivityId(),
+                        row.getTitle(), row.getKind(), row.getStart(),
+                        row.getEnd().plusMinutes(90), row.isLocked(), row.isMoved()));
+            } else {
+                overrunning.add(row);
+            }
+        }
+
+        interactor.apply(new AutoScheduleApplyInputData("trip-1",
+                preview.getScheduleFingerprint(), overrunning));
+
+        assertTrue(presenter.getFailure().contains("does not fit"), presenter.getFailure());
+        assertEquals(0, trips.getSaveCount());
     }
 
     @Test

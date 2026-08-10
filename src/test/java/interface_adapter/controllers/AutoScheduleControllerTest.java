@@ -33,6 +33,13 @@ class AutoScheduleControllerTest {
 
     /** Captures what the controller handed across the boundary. */
     private static final class RecordingUseCase implements AutoScheduleInputBoundary {
+        @Override
+        public void removeFromProposal(use_case.autoschedule.ProposalEditInputData inputData) {
+            removedFromProposal.add(inputData == null ? "" : inputData.getRemoveEventId());
+        }
+
+        final java.util.List<String> removedFromProposal = new java.util.ArrayList<>();
+
         private AutoScheduleInputData previewInput;
         private AutoScheduleApplyInputData applyInput;
         private int previewCalls;

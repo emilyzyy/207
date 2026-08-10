@@ -251,10 +251,16 @@ class EditThenRetryTest {
     void anActivityPlacedTooEarlyCanBeMovedLater() {
         Activity opensLate = place("late", "Opens at noon", everyDay(at(12, 0), at(20, 0)),
                 at(12, 0), at(20, 0));
+        // A second activity so the day has something to arrange; with only the late venue
+        // nothing can move and Autoschedule now declines rather than proposing a copy.
+        Activity openAllDay = place("early", "Open all day", everyDay(at(8, 0), at(20, 0)),
+                at(8, 0), at(20, 0));
         Trip trip = new Trip("trip-venice", "Venice", SUNDAY, at(9, 0), at(18, 0),
                 TransportationMode.WALKING);
-        trip.replaceSchedule(Collections.singletonList(
-                new ScheduledEvent("e-late", opensLate, at(12, 0), at(13, 0),
+        trip.replaceSchedule(Arrays.asList(
+                new ScheduledEvent("e-early", openAllDay, at(14, 0), at(15, 0),
+                        EventType.ACTIVITY, ""),
+                new ScheduledEvent("e-late", opensLate, at(16, 0), at(17, 0),
                         EventType.ACTIVITY, "")));
         FakeTripRepository trips = new FakeTripRepository(trip);
 

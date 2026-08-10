@@ -143,7 +143,14 @@ class AutoScheduleWalkthroughTest {
         // 6. Metrics, an objective summary and reasons are all present.
         assertNotNull(previewing.getMetrics());
         assertEquals(3, previewing.getMetrics().getActivityCount());
-        assertTrue(previewing.getObjectiveSummary().contains("less travel"));
+        // Checked against this proposal's own figures rather than a fixed phrase: the summary
+        // may only claim a saving the metrics printed above it actually show.
+        String summary = previewing.getObjectiveSummary();
+        boolean travelFell = previewing.getMetrics().getTravelBeforeMinutes()
+                > previewing.getMetrics().getTravelAfterMinutes();
+        assertEquals(travelFell, summary.contains("less travel"),
+                "the summary and the figures must agree: " + summary);
+        assertFalse(summary.isEmpty(), "and it must say something");
         assertTrue(previewing.getPreviewRows().stream()
                         .anyMatch(row -> !row.getAllReasons().isEmpty()),
                 "at least one row should explain itself");

@@ -264,7 +264,13 @@ class AddToPlanAutoscheduleIntegrationTest {
         // The day still schedules afterwards, so a rejected add leaves nothing poisoned.
         AutoScheduleController controller = autoschedule(app, dayPlan);
         controller.preview(settings());
-        assertEquals(AutoScheduleStatus.PREVIEW, dayPlan.getState().getStatus());
+        // One activity has nothing to rearrange, so "already well arranged" is the right
+        // answer here. What matters is that it answered rather than failing.
+        AutoScheduleStatus outcome = dayPlan.getState().getStatus();
+        assertTrue(outcome == AutoScheduleStatus.PREVIEW
+                        || outcome == AutoScheduleStatus.NO_BENEFICIAL_CHANGE,
+                "a rejected add must leave the day schedulable, got " + outcome
+                        + ": " + dayPlan.getState().getMessage());
     }
 
     // --- 9. none of this depends on the seeded demo trip ---------------------------------

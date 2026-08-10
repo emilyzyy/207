@@ -23,20 +23,18 @@ import javax.swing.JPanel;
  * at narrow widths the host places it above the schedule instead, which is the host's
  * decision, and this panel looks the same either way.</p>
  *
- * <p>Only the strongest few are shown. A wall of cards is not a hierarchy, and the fifth
- * most important thing about a schedule is not worth the room it takes from the first.</p>
+ * <p>Every earned improvement gets a tile, in the order it was given. Two to a row, wrapping
+ * as far down as it needs to; an odd one out sits on the left of its own last row. The
+ * ordering is what carries the hierarchy, so nothing has to be hidden to keep it.</p>
  *
  * <p>Nothing negative appears here. Travel that grew, waiting that grew, an activity pushed
- * out of daylight — those are real and belong under "Why these changes?" with the full
- * before/after figures, not dressed as an achievement.</p>
+ * out of daylight — those are real, and they are carried by the metrics and the trade-off
+ * strip with the full before/after figures, not dressed up as an achievement.</p>
  */
 public final class ScheduleImprovementsPanel extends JPanel {
 
     /** Wide enough for two tiles side by side, narrow enough to sit beside a day. */
     static final int PREFERRED_WIDTH = 360;
-
-    /** Past this the tiles stop being a summary and become a list. */
-    static final int MOST_SHOWN = 4;
 
     /**
      * Wrap width inside one tile. Swing will not wrap an html label without being told how
@@ -69,24 +67,15 @@ public final class ScheduleImprovementsPanel extends JPanel {
             add(none);
         } else {
             add(tileGrid(improvements));
-            if (improvements.size() > MOST_SHOWN) {
-                JLabel more = new JLabel("<html>and " + (improvements.size() - MOST_SHOWN)
-                        + " more, under Why these changes?</html>");
-                more.setFont(SwingTheme.SMALL);
-                more.setForeground(SwingTheme.MUTED);
-                more.setAlignmentX(Component.LEFT_ALIGNMENT);
-                more.setBorder(BorderFactory.createEmptyBorder(6, 2, 0, 2));
-                add(more);
-            }
         }
         add(javax.swing.Box.createVerticalGlue());
         setPreferredSize(new Dimension(PREFERRED_WIDTH, getPreferredSize().height));
         setMaximumSize(new Dimension(PREFERRED_WIDTH, Integer.MAX_VALUE));
     }
 
-    /** The strongest few tiles, two to a row. */
+    /** Every tile, two to a row. */
     private static JPanel tileGrid(List<ImprovementView> improvements) {
-        int shown = Math.min(MOST_SHOWN, improvements.size());
+        int shown = improvements.size();
         int rows = (shown + 1) / 2;
         JPanel grid = new JPanel(new java.awt.GridLayout(rows, 2, 6, 6));
         grid.setOpaque(false);

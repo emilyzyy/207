@@ -3,6 +3,7 @@ package interface_adapter.presenters;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import entity.entities.Activity;
@@ -159,16 +160,17 @@ class ImprovementTileSelectionTest {
 
     /** A pinned activity names itself, so the tile says which one was honoured. */
     @Test
-    void aHonouredPinNamesTheActivityItKept() {
+    void aHonouredPinNamesTheActivityOnAChipRatherThanATile() {
         Trip trip = wastefulDay();
         DayPlanState state = preview(trip, estimator(),
                 Collections.singleton("e-near"), false);
 
-        ImprovementView pin = cardWith(state, "PIN KEPT");
-        assertNotNull(pin, "the pin was honoured, so it should be reported: "
-                + primaries(state));
-        assertEquals("Near Museum", pin.getSecondary(),
-                "and it should say which activity it kept");
+        assertNull(cardWith(state, "PIN KEPT"),
+                "honouring a pin is a constraint respected, not an improvement earned: "
+                        + primaries(state));
+        assertTrue(state.getConstraintChips().stream()
+                        .anyMatch(chip -> chip.getLabel().contains("Near Museum")),
+                "and it names its activity on a chip: " + state.getConstraintChips());
     }
 
     /**
@@ -203,8 +205,12 @@ class ImprovementTileSelectionTest {
     }
 
     /** A day with nothing to show says so rather than inventing something. */
+    /**
+     * A day with nothing to improve is now declined outright rather than offered with an empty
+     * tile grid, which is the stronger form of the same promise.
+     */
     @Test
-    void aDayThatImprovesNothingProducesNoTiles() {
+    void aDayThatImprovesNothingIsNotOfferedAtAll() {
         Activity only = place("solo", "Solo Museum", ActivityCategory.MUSEUM,
                 IndoorOutdoorType.INDOOR, 43.65, -79.38, LocalTime.of(9, 0), LocalTime.of(20, 0));
         Trip trip = new Trip("trip-1", "Toronto", DATE, LocalTime.of(9, 0), LocalTime.of(21, 0),
@@ -213,7 +219,8 @@ class ImprovementTileSelectionTest {
 
         DayPlanState state = preview(trip, estimator(), Collections.emptySet(), false);
 
-        assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(), state.getMessage());
+        assertEquals(AutoScheduleStatus.NO_BENEFICIAL_CHANGE, state.getStatus(),
+                state.getMessage());
         assertTrue(state.getImprovements().isEmpty(),
                 "one activity that did not move improved nothing: " + primaries(state));
     }
