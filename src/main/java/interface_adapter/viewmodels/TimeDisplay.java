@@ -18,8 +18,8 @@ import java.util.Locale;
 public final class TimeDisplay {
 
     private TimeDisplay() {
-    }
 
+    }
     /**
      * Formats for a reader, for example {@code "9:00 AM"}.
      *
@@ -27,7 +27,10 @@ public final class TimeDisplay {
      * so anything that reaches a label through here is consistent by construction — Day Plan
      * rows, travel rows, Preview rows, conflict sentences, Calendar View and weather
      * timestamps all call it.</p>
+      * @param time the t im e value
+      * @return the result of the operation
      */
+
     public static String format(LocalTime time) {
         if (time == null) {
             return "";
@@ -36,22 +39,29 @@ public final class TimeDisplay {
         if (hour == 0) {
             hour = 12;
         }
-        String meridiem = time.getHour() < 12 ? "AM" : "PM";
+        final String meridiem = time.getHour() < 12 ? "AM" : "PM";
         return String.format(Locale.ROOT, "%d:%02d %s", hour, time.getMinute(), meridiem);
     }
 
-    /** A start-to-end range, as {@code "9:00 AM – 10:00 AM"}. */
+    /**
+     * A start-to-end range, as {@code "9:00 AM – 10:00 AM"}.
+     * @param end the e nd value
+     * @param start the s ta rt value
+     * @return the result of the operation
+     */
     public static String range(LocalTime start, LocalTime end) {
         return format(start) + " – " + format(end);
     }
-
     /**
      * Reads a time the traveller typed, or null when it cannot be understood.
      *
      * <p>Accepts {@code 9}, {@code 9am}, {@code 9 AM}, {@code 9:30pm}, {@code 12:05 AM} and
      * the 24-hour {@code 09:00} / {@code 13:15} the fields used to contain, so an older
      * habit still works.</p>
+      * @param text the t ex t value
+      * @return the result of the operation
      */
+
     public static LocalTime parse(String text) {
         if (text == null) {
             return null;
@@ -61,13 +71,13 @@ public final class TimeDisplay {
             return null;
         }
 
-        boolean pm = cleaned.endsWith("PM");
-        boolean am = cleaned.endsWith("AM");
+        final boolean pm = cleaned.endsWith("PM");
+        final boolean am = cleaned.endsWith("AM");
         if (am || pm) {
             cleaned = cleaned.substring(0, cleaned.length() - 2).trim();
         }
 
-        String[] parts = cleaned.split(":");
+        final String[] parts = cleaned.split(":");
         if (parts.length > 2) {
             return null;
         }
@@ -76,14 +86,15 @@ public final class TimeDisplay {
         try {
             hour = Integer.parseInt(parts[0].trim());
             if (parts.length == 2) {
-                String minutes = parts[1].trim();
+                final String minutes = parts[1].trim();
                 // "9:5" is a typo, not five minutes past; two digits are required.
                 if (minutes.length() != 2) {
                     return null;
                 }
                 minute = Integer.parseInt(minutes);
             }
-        } catch (NumberFormatException notANumber) {
+        }
+        catch (NumberFormatException notANumber) {
             return null;
         }
         if (minute < 0 || minute > 59) {
@@ -100,13 +111,15 @@ public final class TimeDisplay {
             if (pm) {
                 hour += 12;
             }
-        } else if (hour < 0 || hour > 23) {
+        }
+        else if (hour < 0 || hour > 23) {
             return null;
         }
 
         try {
             return LocalTime.of(hour, minute);
-        } catch (java.time.DateTimeException outOfRange) {
+        }
+        catch (java.time.DateTimeException outOfRange) {
             return null;
         }
     }

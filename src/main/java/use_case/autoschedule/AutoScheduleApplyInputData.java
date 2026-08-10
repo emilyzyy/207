@@ -23,8 +23,11 @@ public final class AutoScheduleApplyInputData {
     public String getTripId() {
         return tripId;
     }
+    /**
+     * The fingerprint the Preview was built from; Apply refuses if it no longer matches.
+     * @return the result of the operation
+     */
 
-    /** The fingerprint the Preview was built from; Apply refuses if it no longer matches. */
     public String getExpectedFingerprint() {
         return expectedFingerprint;
     }

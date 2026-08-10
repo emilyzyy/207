@@ -1,29 +1,31 @@
 package use_case.usecases;
 
-import use_case.ports.ActivityRepository;
-import use_case.ports.PlacesService;
-import use_case.ports.PlacesWriter;
-import entity.entities.Activity;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.IndoorOutdoorType;
-import entity.valueobjects.Location;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import entity.entities.Activity;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.Location;
+import use_case.ports.ActivityRepository;
+import use_case.ports.PlacesService;
+import use_case.ports.PlacesWriter;
 
 final class PlaceHydratorTest {
     @Test
     void hydrateUsesCachedActivityWhenPresent() {
-        Activity cached = activity("osm-1", "Museum");
-        FakeActivities activities = new FakeActivities(cached);
-        PlaceHydrator hydrator = new PlaceHydrator(activities, new EmptyPlaces(), activities);
+        final Activity cached = activity("osm-1", "Museum");
+        final FakeActivities activities = new FakeActivities(cached);
+        final PlaceHydrator hydrator = new PlaceHydrator(activities, new EmptyPlaces(), activities);
 
-        Activity result = hydrator.hydrate("osm-1", "Museum", 43.65, -79.38, "Toronto");
+        final Activity result = hydrator.hydrate("osm-1", "Museum", 43.65, -79.38, "Toronto");
 
         assertEquals("Museum", result.getName());
         assertEquals(4.5, result.getRating());
@@ -31,10 +33,10 @@ final class PlaceHydratorTest {
 
     @Test
     void hydrateFallsBackToStubWhenLookupMisses() {
-        FakeActivities activities = new FakeActivities();
-        PlaceHydrator hydrator = new PlaceHydrator(activities, new EmptyPlaces(), activities);
+        final FakeActivities activities = new FakeActivities();
+        final PlaceHydrator hydrator = new PlaceHydrator(activities, new EmptyPlaces(), activities);
 
-        Activity result = hydrator.hydrate("osm-missing", "Hidden Cafe", 43.7, -79.4, "Toronto");
+        final Activity result = hydrator.hydrate("osm-missing", "Hidden Cafe", 43.7, -79.4, "Toronto");
 
         assertEquals("osm-missing", result.getId());
         assertEquals("Hidden Cafe", result.getName());

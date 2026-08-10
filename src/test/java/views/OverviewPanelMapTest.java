@@ -1,17 +1,13 @@
 package views;
 
-import interface_adapter.viewmodels.DashboardState;
-import interface_adapter.viewmodels.DashboardViewModel;
-import interface_adapter.viewmodels.ActivitySelectionViewModel;
-import interface_adapter.viewmodels.SearchState;
-import interface_adapter.viewmodels.SearchViewModel;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.valueobjects.EventType;
-import interface_adapter.mock.MockPlacesService;
-import java.time.LocalTime;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -20,24 +16,30 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.valueobjects.EventType;
+import interface_adapter.mock.MockPlacesService;
+import interface_adapter.viewmodels.ActivitySelectionViewModel;
+import interface_adapter.viewmodels.DashboardState;
+import interface_adapter.viewmodels.DashboardViewModel;
+import interface_adapter.viewmodels.SearchState;
+import interface_adapter.viewmodels.SearchViewModel;
 
 final class OverviewPanelMapTest {
 
     @Test
     void mapObservesSearchViewModelWithoutEnablingNetworkTiles() {
         System.setProperty("trippy.map.tiles.mode", "offline");
-        DashboardViewModel dashboard = new DashboardViewModel(
+        final DashboardViewModel dashboard = new DashboardViewModel(
                 new DashboardState("", null, "", ""));
-        SearchViewModel search = new SearchViewModel(
+        final SearchViewModel search = new SearchViewModel(
                 new SearchState(Collections.emptyList(), ""));
-        OverviewPanel overview = new OverviewPanel(dashboard, search);
-        Activity activity = new MockPlacesService().findAll().get(0);
+        final OverviewPanel overview = new OverviewPanel(dashboard, search);
+        final Activity activity = new MockPlacesService().findAll().get(0);
 
         search.setState(new SearchState(
                 Collections.singletonList(activity), ""));
@@ -49,17 +51,17 @@ final class OverviewPanelMapTest {
     @Test
     void viewportLoaderMergesPlacesForTheVisibleBounds() throws Exception {
         System.setProperty("trippy.map.tiles.mode", "offline");
-        DashboardViewModel dashboard = new DashboardViewModel(
+        final DashboardViewModel dashboard = new DashboardViewModel(
                 new DashboardState("Toronto", null, "", ""));
-        SearchViewModel search = new SearchViewModel(
+        final SearchViewModel search = new SearchViewModel(
                 new SearchState(Collections.emptyList(), ""));
-        OverviewPanel overview = new OverviewPanel(dashboard, search);
-        MapPanel map = overview.getMapPanel();
+        final OverviewPanel overview = new OverviewPanel(dashboard, search);
+        final MapPanel map = overview.getMapPanel();
         map.setSize(620, 520);
 
-        CountDownLatch loaded = new CountDownLatch(1);
-        AtomicInteger requestedLimit = new AtomicInteger();
-        List<Activity> mock = new MockPlacesService().findAll();
+        final CountDownLatch loaded = new CountDownLatch(1);
+        final AtomicInteger requestedLimit = new AtomicInteger();
+        final List<Activity> mock = new MockPlacesService().findAll();
         map.setViewportLoader((south, west, north, east, max) -> {
             requestedLimit.set(max);
             loaded.countDown();
@@ -80,22 +82,22 @@ final class OverviewPanelMapTest {
     @Test
     void viewportLoaderSkipsReloadWhenMapIsFarFromTripCity() throws Exception {
         System.setProperty("trippy.map.tiles.mode", "offline");
-        String destination = "Toronto";
-        DashboardViewModel dashboard = new DashboardViewModel(
+        final String destination = "Toronto";
+        final DashboardViewModel dashboard = new DashboardViewModel(
                 new DashboardState(destination, null, "", ""));
-        SearchViewModel search = new SearchViewModel(
+        final SearchViewModel search = new SearchViewModel(
                 new SearchState(Collections.emptyList(), ""));
-        OverviewPanel overview = new OverviewPanel(dashboard, search);
-        MapPanel map = overview.getMapPanel();
+        final OverviewPanel overview = new OverviewPanel(dashboard, search);
+        final MapPanel map = overview.getMapPanel();
         map.setSize(620, 520);
 
-        double[] home = StaticTileLoader.latLngForCity(destination);
+        final double[] home = StaticTileLoader.latLngForCity(destination);
         assertNotNull(home);
 
         // setViewportLoader schedules an immediate reload on the EDT while the map is still
         // on the trip city. Ignore those loads so this test only asserts the far-from-home skip.
-        AtomicBoolean armed = new AtomicBoolean(false);
-        CountDownLatch loaded = new CountDownLatch(1);
+        final AtomicBoolean armed = new AtomicBoolean(false);
+        final CountDownLatch loaded = new CountDownLatch(1);
         map.setViewportLoader((south, west, north, east, max) -> {
             if (armed.get()) {
                 loaded.countDown();
@@ -112,11 +114,11 @@ final class OverviewPanelMapTest {
 
     @Test
     void markerLabelsFollowBookmarkAndOrderedDayPlanState() {
-        MapPanel map = new MapPanel(600, 500, false);
-        Activity plain = new MockPlacesService().findAll().get(0);
-        Activity bookmark = new MockPlacesService().findAll().get(1);
-        Activity first = new MockPlacesService().findAll().get(2);
-        Activity secondBookmarked = new MockPlacesService().findAll().get(3);
+        final MapPanel map = new MapPanel(600, 500, false);
+        final Activity plain = new MockPlacesService().findAll().get(0);
+        final Activity bookmark = new MockPlacesService().findAll().get(1);
+        final Activity first = new MockPlacesService().findAll().get(2);
+        final Activity secondBookmarked = new MockPlacesService().findAll().get(3);
         map.setActivities(Arrays.asList(plain, bookmark, first, secondBookmarked));
         map.setHighlightedIds(
                 new HashSet<>(Arrays.asList(bookmark.getId(), secondBookmarked.getId())),
@@ -135,12 +137,12 @@ final class OverviewPanelMapTest {
 
     @Test
     void markersDrawGenericThenBookmarkedThenPlannedAndSelectedLast() {
-        MapPanel map = new MapPanel(600, 500, false);
-        List<Activity> places = new MockPlacesService().findAll();
-        Activity selectedGeneric = places.get(0);
-        Activity planned = places.get(1);
-        Activity generic = places.get(2);
-        Activity bookmarked = places.get(3);
+        final MapPanel map = new MapPanel(600, 500, false);
+        final List<Activity> places = new MockPlacesService().findAll();
+        final Activity selectedGeneric = places.get(0);
+        final Activity planned = places.get(1);
+        final Activity generic = places.get(2);
+        final Activity bookmarked = places.get(3);
         map.setActivities(Arrays.asList(
                 planned, selectedGeneric, bookmarked, generic));
         map.setHighlightedIds(
@@ -148,7 +150,7 @@ final class OverviewPanelMapTest {
                 Collections.singleton(planned.getId()));
         map.selectActivity(selectedGeneric);
 
-        List<Activity> ordered = map.markerDrawingOrder();
+        final List<Activity> ordered = map.markerDrawingOrder();
 
         assertEquals(generic.getId(), ordered.get(0).getId());
         assertEquals(bookmarked.getId(), ordered.get(1).getId());
@@ -163,22 +165,22 @@ final class OverviewPanelMapTest {
     @Test
     void clickingMarkerSelectsSearchCardAndKeepsMapFocused() {
         System.setProperty("trippy.map.tiles.mode", "offline");
-        Activity activity = new MockPlacesService().findAll().get(0);
-        DashboardViewModel dashboard = new DashboardViewModel(
+        final Activity activity = new MockPlacesService().findAll().get(0);
+        final DashboardViewModel dashboard = new DashboardViewModel(
                 new DashboardState("Toronto", null, "", ""));
-        SearchViewModel search = new SearchViewModel(new SearchState(
+        final SearchViewModel search = new SearchViewModel(new SearchState(
                 Collections.singletonList(activity), ""));
-        ActivitySelectionViewModel selection = new ActivitySelectionViewModel();
-        OverviewPanel overview = new OverviewPanel(
+        final ActivitySelectionViewModel selection = new ActivitySelectionViewModel();
+        final OverviewPanel overview = new OverviewPanel(
                 dashboard, search, null, null, selection);
-        MapPanel map = overview.getMapPanel();
+        final MapPanel map = overview.getMapPanel();
         map.setSize(600, 500);
         map.selectActivity(activity);
         map.paint(new BufferedImage(600, 500, BufferedImage.TYPE_INT_ARGB).getGraphics());
 
-        MouseEvent press = new MouseEvent(map, MouseEvent.MOUSE_PRESSED,
+        final MouseEvent press = new MouseEvent(map, MouseEvent.MOUSE_PRESSED,
                 System.currentTimeMillis(), 0, 300, 250, 1, false);
-        MouseEvent release = new MouseEvent(map, MouseEvent.MOUSE_RELEASED,
+        final MouseEvent release = new MouseEvent(map, MouseEvent.MOUSE_RELEASED,
                 System.currentTimeMillis(), 0, 300, 250, 1, false);
         for (java.awt.event.MouseListener listener : map.getMouseListeners()) {
             listener.mousePressed(press);

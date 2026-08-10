@@ -24,6 +24,10 @@ public final class ShareState {
         return error;
     }
 
+    /**
+     * Performs the c an co py operation.
+     * @return the result of the operation
+     */
     public boolean canCopy() {
         return !shareText.trim().isEmpty() && !error;
     }

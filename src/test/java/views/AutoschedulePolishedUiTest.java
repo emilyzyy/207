@@ -7,6 +7,32 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.GraphicsEnvironment;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+
+import javax.swing.AbstractButton;
+import javax.swing.JLabel;
+import javax.swing.JToggleButton;
+import javax.swing.SwingUtilities;
+
+import org.junit.jupiter.api.Test;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.WeatherWarning;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.EventType;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.Location;
+import entity.valueobjects.WeatherOption;
+import entity.valueobjects.WeatherSeverity;
 import interface_adapter.controllers.AutoScheduleController;
 import interface_adapter.controllers.TaskRunner;
 import interface_adapter.viewmodels.AutoScheduleStatus;
@@ -18,29 +44,6 @@ import interface_adapter.viewmodels.PreviewRowView;
 import use_case.autoschedule.AutoScheduleApplyInputData;
 import use_case.autoschedule.AutoScheduleInputBoundary;
 import use_case.autoschedule.AutoScheduleInputData;
-import entity.valueobjects.WeatherOption;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.WeatherWarning;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.EventType;
-import entity.valueobjects.IndoorOutdoorType;
-import entity.valueobjects.Location;
-import entity.valueobjects.WeatherSeverity;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.GraphicsEnvironment;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import javax.swing.AbstractButton;
-import javax.swing.JLabel;
-import javax.swing.JToggleButton;
-import javax.swing.SwingUtilities;
-import org.junit.jupiter.api.Test;
 
 /**
  * The polished Day Plan, checked through the components it actually builds.
@@ -56,10 +59,12 @@ class AutoschedulePolishedUiTest {
     private static final class RecordingUseCase implements AutoScheduleInputBoundary {
         @Override
         public void preview(AutoScheduleInputData inputData) {
+
         }
 
         @Override
         public void apply(AutoScheduleApplyInputData inputData) {
+
         }
 
         @Override
@@ -98,7 +103,7 @@ class AutoschedulePolishedUiTest {
     // --- component search helpers -----------------------------------------------------
 
     private static List<Component> all(Component root) {
-        List<Component> found = new ArrayList<>();
+        final List<Component> found = new ArrayList<>();
         collect(root, found);
         return found;
     }
@@ -113,10 +118,10 @@ class AutoschedulePolishedUiTest {
     }
 
     private static List<JToggleButton> lockToggles(Component root) {
-        List<JToggleButton> toggles = new ArrayList<>();
+        final List<JToggleButton> toggles = new ArrayList<>();
         for (Component component : all(root)) {
             if (component instanceof JToggleButton) {
-                String name = component.getAccessibleContext().getAccessibleName();
+                final String name = component.getAccessibleContext().getAccessibleName();
                 if (name != null && (name.startsWith("Lock ") || name.startsWith("Unlock "))) {
                     toggles.add((JToggleButton) component);
                 }
@@ -126,11 +131,12 @@ class AutoschedulePolishedUiTest {
     }
 
     private static String allText(Component root) {
-        StringBuilder text = new StringBuilder();
+        final StringBuilder text = new StringBuilder();
         for (Component component : all(root)) {
             if (component instanceof JLabel) {
                 text.append(((JLabel) component).getText()).append(' ');
-            } else if (component instanceof AbstractButton) {
+            }
+            else if (component instanceof AbstractButton) {
                 text.append(((AbstractButton) component).getText()).append(' ');
             }
         }
@@ -151,11 +157,11 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void dayPlanTimesUseATwelveHourClock() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
                 Arrays.asList(event("museum", 9), event("market", 15)),
                 Collections.emptySet(), Collections.emptyList()));
 
-        String text = allText(panelFor(viewModel));
+        final String text = allText(panelFor(viewModel));
 
         assertTrue(text.contains("9:00 AM – 10:00 AM"), "morning row: " + text);
         assertTrue(text.contains("3:00 PM – 4:00 PM"), "afternoon row: " + text);
@@ -164,13 +170,13 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void weatherTimestampsAlsoUseATwelveHourClock() throws Exception {
-        WeatherWarning noon = new WeatherWarning(new Location(43.65, -79.38, "Toronto"),
+        final WeatherWarning noon = new WeatherWarning(new Location(43.65, -79.38, "Toronto"),
                 LocalTime.of(13, 0), "Rain", WeatherSeverity.MEDIUM, "65% precipitation");
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
                 Collections.singletonList(event("museum", 13)),
                 Collections.emptySet(), Collections.singletonList(noon)));
 
-        String text = allText(panelFor(viewModel));
+        final String text = allText(panelFor(viewModel));
 
         assertTrue(text.contains("1:00 PM · Rain"), "weather line: " + text);
     }
@@ -179,16 +185,16 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void everyActivityCarriesALockToggleShowingItsState() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
                 Arrays.asList(event("museum", 9), event("market", 15)),
                 new LinkedHashSet<>(Collections.singletonList("museum")),
                 Collections.emptyList()));
 
-        List<JToggleButton> toggles = lockToggles(panelFor(viewModel));
+        final List<JToggleButton> toggles = lockToggles(panelFor(viewModel));
 
         assertEquals(2, toggles.size(), "one lock control per activity");
-        JToggleButton locked = toggles.get(0);
-        JToggleButton unlocked = toggles.get(1);
+        final JToggleButton locked = toggles.get(0);
+        final JToggleButton unlocked = toggles.get(1);
 
         assertTrue(locked.isSelected(), "the pinned activity's control reads as locked");
         assertFalse(unlocked.isSelected());
@@ -199,12 +205,12 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void theLockControlNamesTheActivityAndWhatPressingItWillDo() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
                 Arrays.asList(event("museum", 9), event("market", 15)),
                 new LinkedHashSet<>(Collections.singletonList("museum")),
                 Collections.emptyList()));
 
-        List<JToggleButton> toggles = lockToggles(panelFor(viewModel));
+        final List<JToggleButton> toggles = lockToggles(panelFor(viewModel));
 
         assertEquals("Unlock museum",
                 toggles.get(0).getAccessibleContext().getAccessibleName(),
@@ -219,11 +225,11 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void theLockControlIsReachableAndOperableFromTheKeyboard() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
                 Collections.singletonList(event("museum", 9)),
                 Collections.emptySet(), Collections.emptyList()));
 
-        JToggleButton toggle = lockToggles(panelFor(viewModel)).get(0);
+        final JToggleButton toggle = lockToggles(panelFor(viewModel)).get(0);
 
         assertTrue(toggle.isFocusable(), "a control nobody can tab to is not a control");
         assertTrue(toggle.isEnabled());
@@ -235,10 +241,10 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void clickingTheLockTogglesTheExistingLockStateRatherThanASecondOne() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
                 Collections.singletonList(event("museum", 9)),
                 Collections.emptySet(), Collections.emptyList()));
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanPanel panel = panelFor(viewModel);
 
         SwingUtilities.invokeAndWait(() -> lockToggles(panel).get(0).doClick());
         assertEquals(Collections.singleton("museum"), viewModel.getState().getLockedEventIds());
@@ -250,9 +256,9 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void generatedTravelRowsCarryNoLockControl() throws Exception {
-        ScheduledEvent travel = new ScheduledEvent("travel-1", null, LocalTime.of(10, 0),
+        final ScheduledEvent travel = new ScheduledEvent("travel-1", null, LocalTime.of(10, 0),
                 LocalTime.of(10, 30), EventType.TRAVEL, "Travel to market");
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
                 Arrays.asList(event("museum", 9), travel),
                 Collections.emptySet(), Collections.emptyList()));
 
@@ -262,11 +268,11 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void lockStateSurvivesGeneratingAndClearingAPreview() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
                 Collections.singletonList(event("museum", 9)),
                 new LinkedHashSet<>(Collections.singletonList("museum")),
                 Collections.emptyList()));
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanPanel panel = panelFor(viewModel);
         assertTrue(lockToggles(panel).get(0).isSelected());
 
         SwingUtilities.invokeAndWait(() -> viewModel.setState(
@@ -282,7 +288,7 @@ class AutoschedulePolishedUiTest {
     // --- 3. the Preview reads as a proposal, not a second itinerary --------------------
 
     private static DayPlanState previewState() {
-        List<PreviewRowView> rows = Arrays.asList(
+        final List<PreviewRowView> rows = Arrays.asList(
                 new PreviewRowView("museum", "Royal Ontario Museum",
                         PreviewRowView.Kind.ACTIVITY, LocalTime.of(11, 0), LocalTime.of(12, 0),
                         true, false, "you locked this time",
@@ -313,10 +319,10 @@ class AutoschedulePolishedUiTest {
      */
     @Test
     void completeBeforeAndAfterFiguresAreVisibleWithoutOpeningAnything() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        final DayPlanPanel panel = panelFor(viewModel);
 
-        String text = allText(panel);
+        final String text = allText(panel);
         assertFalse(text.contains("0 → 132"),
                 "the ambiguous arrow cards should be gone");
         assertTrue(text.contains("Before 0 min") && text.contains("Proposed 132 min"), text);
@@ -330,9 +336,9 @@ class AutoschedulePolishedUiTest {
      */
     @Test
     void aWorseFigureIsReportedAsATradeOffRatherThanOmitted() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        final DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
 
-        String text = allText(panelFor(viewModel));
+        final String text = allText(panelFor(viewModel));
 
         assertTrue(text.contains("132 min more"),
                 "travel got worse in this fixture and the screen must say so: " + text);
@@ -345,10 +351,10 @@ class AutoschedulePolishedUiTest {
      */
     @Test
     void theReasoningSitsAboveTheTimelineOnANarrowWindow() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewWithImprovements(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(previewWithImprovements(
                 Collections.singletonList(new ImprovementView("\u23f3",
                         "63 min of waiting removed", "Less dead time"))));
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanPanel panel = panelFor(viewModel);
         final javax.swing.JFrame host = new javax.swing.JFrame();
         SwingUtilities.invokeAndWait(() -> {
             host.setUndecorated(true);
@@ -362,10 +368,10 @@ class AutoschedulePolishedUiTest {
 
         final int[] positions = new int[2];
         SwingUtilities.invokeAndWait(() -> {
-            ScheduleImprovementsPanel reasoning = stackIn(panel);
+            final ScheduleImprovementsPanel reasoning = stackIn(panel);
             assertNotNull(reasoning, "the Preview must show its reasoning: " + allText(panel));
             positions[0] = yWithin(panel, reasoning);
-            Container timeline = timelineIn(panel);
+            final Container timeline = timelineIn(panel);
             assertNotNull(timeline, "the schedule is drawn into a timeline");
             positions[1] = yWithin(panel, timeline);
         });
@@ -382,11 +388,11 @@ class AutoschedulePolishedUiTest {
      */
     @Test
     void theTimelineIsFittedToTheProposalRatherThanToTheWholeDay() throws Exception {
-        DayPlanViewModel idle = new DayPlanViewModel(planWith(
+        final DayPlanViewModel idle = new DayPlanViewModel(planWith(
                 Arrays.asList(event("museum", 9)), Collections.emptySet(),
                 Collections.emptyList()));
-        DayPlanPanel wholeDay = panelFor(idle);
-        DayPlanPanel proposal = panelFor(new DayPlanViewModel(previewState()));
+        final DayPlanPanel wholeDay = panelFor(idle);
+        final DayPlanPanel proposal = panelFor(new DayPlanViewModel(previewState()));
 
         final int[] heights = new int[2];
         SwingUtilities.invokeAndWait(() -> {
@@ -411,7 +417,7 @@ class AutoschedulePolishedUiTest {
 
     private static boolean isTravelCard(Component card) {
         for (Component component : all(card)) {
-            String text = component instanceof JLabel ? ((JLabel) component).getText() : null;
+            final String text = component instanceof JLabel ? ((JLabel) component).getText() : null;
             if (text != null && text.contains("Travel to")) {
                 return true;
             }
@@ -426,12 +432,12 @@ class AutoschedulePolishedUiTest {
      */
     @Test
     void aTravelCardNamesItsJourneyOnce() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        final DayPlanPanel panel = panelFor(viewModel);
 
         int mentions = 0;
         for (Component component : all(panel)) {
-            String text = component instanceof JLabel ? ((JLabel) component).getText() : null;
+            final String text = component instanceof JLabel ? ((JLabel) component).getText() : null;
             if (text != null && text.contains("Travel to St Lawrence Market")) {
                 mentions++;
             }
@@ -451,19 +457,20 @@ class AutoschedulePolishedUiTest {
      */
     @Test
     void aShortJourneyStaysReadableWithoutCoveringTheActivityItReaches() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        final DayPlanPanel panel = panelFor(viewModel);
 
         final int[] depths = new int[]{Integer.MIN_VALUE, Integer.MAX_VALUE};
         SwingUtilities.invokeAndWait(() -> {
-            Container timeline = timelineIn(panel);
+            final Container timeline = timelineIn(panel);
             assertNotNull(timeline, "the schedule is drawn into a timeline");
             for (Component card : timeline.getComponents()) {
                 // Swing paints the lowest z-order index last, so "in front" means smaller.
-                int depth = timeline.getComponentZOrder(card);
+                final int depth = timeline.getComponentZOrder(card);
                 if (isTravelCard(card)) {
                     depths[0] = Math.max(depths[0], depth);
-                } else {
+                }
+                else {
                     depths[1] = Math.min(depths[1], depth);
                 }
             }
@@ -479,8 +486,8 @@ class AutoschedulePolishedUiTest {
     /** A connector is never drawn shorter than it can be read at. */
     @Test
     void aShortJourneyIsDrawnAtALeastItsMinimumReadableHeight() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        final DayPlanPanel panel = panelFor(viewModel);
         // Without a peer nothing gets real bounds, and every card measures zero high.
         final javax.swing.JFrame host = new javax.swing.JFrame();
         SwingUtilities.invokeAndWait(() -> {
@@ -494,7 +501,7 @@ class AutoschedulePolishedUiTest {
 
         final int[] shortest = new int[]{Integer.MAX_VALUE};
         SwingUtilities.invokeAndWait(() -> {
-            Container timeline = timelineIn(panel);
+            final Container timeline = timelineIn(panel);
             // The timeline positions its own children, and a scroll viewport may not have
             // asked it to yet; laying it out explicitly is what gives the cards bounds.
             timeline.setSize(600, timeline.getPreferredSize().height);
@@ -515,12 +522,13 @@ class AutoschedulePolishedUiTest {
      * the two markers had to survive the move onto the timeline. The card has no badge
      * slot, so "moved" leads the subtitle and locking keeps its own toggle.
      */
+
     @Test
     void movedAndLockedStaySignpostedOnTheTimelineCards() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        final DayPlanPanel panel = panelFor(viewModel);
 
-        String text = allText(panel);
+        final String text = allText(panel);
 
         assertTrue(text.contains("moved"), "the moved activity must say so: " + text);
         assertFalse(text.contains("[locked]"), "the bracketed form should be gone");
@@ -528,7 +536,7 @@ class AutoschedulePolishedUiTest {
 
         boolean lockedToggleShown = false;
         for (JToggleButton toggle : lockToggles(panel)) {
-            String name = toggle.getAccessibleContext().getAccessibleName();
+            final String name = toggle.getAccessibleContext().getAccessibleName();
             lockedToggleShown |= name != null && name.startsWith("Unlock ");
         }
         assertTrue(lockedToggleShown,
@@ -537,8 +545,8 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void warningsAppearInTheirOwnBandAndKeepTheirWording() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        final DayPlanPanel panel = panelFor(viewModel);
 
         assertTrue(allText(panel).contains("Travel times may include estimates."));
         // The search-limit caveat is generated by the panel, not the state, so check it too.
@@ -555,10 +563,10 @@ class AutoschedulePolishedUiTest {
      */
     @Test
     void thereIsNoDisclosureAndTheReasonsAreOnTheRowsThemselves() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(previewState());
+        final DayPlanPanel panel = panelFor(viewModel);
 
-        String text = allText(panel);
+        final String text = allText(panel);
         assertNull(buttonNamed(panel, "Why these changes? ▸"),
                 "the disclosure should be gone: " + text);
         assertFalse(text.contains("Why this schedule?") || text.contains("Why these changes?"),
@@ -571,14 +579,14 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void conflictMessagesAreNeverHiddenBehindTheDisclosure() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 "trip-1", Collections.singletonList(event("museum", 9)),
                 "Royal Ontario Museum is locked to a time you marked as unavailable.", true,
                 Collections.emptyList(), AutoScheduleStatus.CONFLICT, Collections.emptyList(),
                 null, Collections.emptyList(), "", true, true, "", "",
                 Collections.emptySet()));
 
-        String text = allText(panelFor(viewModel));
+        final String text = allText(panelFor(viewModel));
 
         assertTrue(text.contains("locked to a time you marked as unavailable"),
                 "a conflict is always visible: " + text);
@@ -588,10 +596,10 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void applyAndCancelAppearOnlyWhileAProposalIsOnScreen() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
                 Collections.singletonList(event("museum", 9)),
                 Collections.emptySet(), Collections.emptyList()));
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanPanel panel = panelFor(viewModel);
 
         assertFalse(buttonNamed(panel, "Apply").isVisible(), "nothing to apply while idle");
         assertFalse(buttonNamed(panel, "Cancel").isVisible());
@@ -609,7 +617,7 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void theOldMockupActionIsStillGone() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
                 Collections.singletonList(event("museum", 9)),
                 Collections.emptySet(), Collections.emptyList()));
 
@@ -620,15 +628,15 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void aVeryLongWeatherLineIsTruncatedWithTheFullTextInATooltip() throws Exception {
-        String verbose = "Persistent heavy rain with gusting north-easterly winds and a real "
+        final String verbose = "Persistent heavy rain with gusting north-easterly winds and a real "
                 + "risk of localised surface flooding across the downtown core this afternoon";
-        WeatherWarning warning = new WeatherWarning(new Location(43.65, -79.38, "Toronto"),
+        final WeatherWarning warning = new WeatherWarning(new Location(43.65, -79.38, "Toronto"),
                 LocalTime.of(13, 0), "Rain", WeatherSeverity.HIGH, verbose);
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
                 Collections.singletonList(event("museum", 13)),
                 Collections.emptySet(), Collections.singletonList(warning)));
 
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanPanel panel = panelFor(viewModel);
         JLabel weatherLine = null;
         for (Component component : all(panel)) {
             if (component instanceof JLabel
@@ -650,7 +658,7 @@ class AutoschedulePolishedUiTest {
     // --- 5b. the improvements stack ----------------------------------------------------
 
     private static DayPlanState previewWithImprovements(List<ImprovementView> improvements) {
-        DayPlanState base = previewState();
+        final DayPlanState base = previewState();
         return new DayPlanState(base.getTripId(), base.getEvents(), base.getMessage(),
                 base.isError(), base.getHourlyWeather(), base.getStatus(),
                 base.getPreviewRows(), base.getMetrics(), base.getWarnings(),
@@ -670,12 +678,12 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void provenImprovementsRenderAsStackedCardsWithAMarkerAndTheActivity() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(previewWithImprovements(Arrays.asList(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(previewWithImprovements(Arrays.asList(
                 new ImprovementView("\u23f3", "63 min of waiting removed", "Less dead time"),
                 new ImprovementView("\u2600", "Moved into daylight", "High Park"))));
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanPanel panel = panelFor(viewModel);
 
-        String text = allText(panel);
+        final String text = allText(panel);
         assertTrue(text.contains("SCHEDULE IMPROVEMENTS"), text);
         assertTrue(text.contains("63 min of waiting removed"), text);
         assertTrue(text.contains("Moved into daylight"), text);
@@ -688,10 +696,10 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void anHonestEmptyStateAppearsRatherThanAnInventedCard() throws Exception {
-        DayPlanViewModel viewModel = new DayPlanViewModel(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(
                 previewWithImprovements(Collections.emptyList()));
 
-        String text = allText(panelFor(viewModel));
+        final String text = allText(panelFor(viewModel));
 
         assertTrue(text.contains(ScheduleImprovementsPanel.NOTHING_IMPROVED), text);
         assertFalse(text.contains("min of waiting removed"),
@@ -718,11 +726,11 @@ class AutoschedulePolishedUiTest {
 
     @Test
     void theStackRendersInBothWideAndNarrowLayouts() throws Exception {
-        List<ImprovementView> improvements = Collections.singletonList(
+        final List<ImprovementView> improvements = Collections.singletonList(
                 new ImprovementView("\u23f3", "63 min of waiting removed", "Less dead time"));
-        DayPlanViewModel viewModel =
+        final DayPlanViewModel viewModel =
                 new DayPlanViewModel(previewWithImprovements(improvements));
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanPanel panel = panelFor(viewModel);
 
         resizeTo(panel, DayPlanPanel.WIDE_LAYOUT_MINIMUM + 120);
         assertNotNull(stackIn(panel), "wide: the stack sits beside the schedule");
@@ -756,9 +764,9 @@ class AutoschedulePolishedUiTest {
     @Test
     void buildingThePanelOpensNoWindow() throws Exception {
         assumeFalse(GraphicsEnvironment.isHeadless(), "window counting needs a display");
-        int before = java.awt.Window.getWindows().length;
+        final int before = java.awt.Window.getWindows().length;
 
-        DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(planWith(
                 Collections.singletonList(event("museum", 9)),
                 Collections.emptySet(), Collections.emptyList()));
         panelFor(viewModel);
@@ -778,11 +786,11 @@ class AutoschedulePolishedUiTest {
      */
     @Test
     void theExplanationSitsBesideTheTimelineRatherThanBelowIt() throws Exception {
-        List<ImprovementView> improvements = Collections.singletonList(
+        final List<ImprovementView> improvements = Collections.singletonList(
                 new ImprovementView("\u23f3", "63 min of waiting removed", "Less dead time"));
-        DayPlanViewModel viewModel =
+        final DayPlanViewModel viewModel =
                 new DayPlanViewModel(previewWithImprovements(improvements));
-        DayPlanPanel panel = panelFor(viewModel);
+        final DayPlanPanel panel = panelFor(viewModel);
         // A component with no peer never gets real bounds, so host it in a frame that is
         // never shown; addNotify + validate is what gives every child a position.
         final javax.swing.JFrame host = new javax.swing.JFrame();
@@ -800,12 +808,12 @@ class AutoschedulePolishedUiTest {
         // thread can land between "clear" and "refill" and see a panel that never existed.
         final int[] positions = new int[3];
         SwingUtilities.invokeAndWait(() -> {
-            ScheduleImprovementsPanel reasoning = stackIn(panel);
+            final ScheduleImprovementsPanel reasoning = stackIn(panel);
             assertNotNull(reasoning, "the Preview must show its reasoning");
             positions[0] = xWithin(panel, reasoning);
             positions[1] = -1;
             for (Component component : all(panel)) {
-                String text = component instanceof JLabel
+                final String text = component instanceof JLabel
                         ? ((JLabel) component).getText() : null;
                 if (text != null && text.contains("Travel to")) {
                     positions[1] = Math.max(positions[1], xWithin(panel, component));

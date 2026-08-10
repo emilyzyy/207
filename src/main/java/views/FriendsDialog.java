@@ -1,13 +1,11 @@
 package views;
 
-import use_case.ports.AccountService;
-import entity.entities.Friendship;
-import entity.entities.User;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.util.List;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -19,6 +17,10 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
+
+import entity.entities.Friendship;
+import entity.entities.User;
+import use_case.ports.AccountService;
 
 /** Friends hub: add by username, manage requests, and view current friends. */
 public final class FriendsDialog extends JDialog {
@@ -39,16 +41,16 @@ public final class FriendsDialog extends JDialog {
         setMinimumSize(new Dimension(460, 420));
         setPreferredSize(new Dimension(520, 480));
 
-        JPanel root = new JPanel(new BorderLayout(0, 10));
+        final JPanel root = new JPanel(new BorderLayout(0, 10));
         root.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
         root.setBackground(SwingTheme.PANEL);
 
-        JLabel title = new JLabel("Friends");
+        final JLabel title = new JLabel("Friends");
         title.setFont(SwingTheme.HEADING);
         title.setForeground(SwingTheme.NAVY);
         root.add(title, BorderLayout.NORTH);
 
-        JTabbedPane tabs = new JTabbedPane();
+        final JTabbedPane tabs = new JTabbedPane();
         tabs.setFont(SwingTheme.BODY);
         buildAddTab();
         requestsPanel.setLayout(new BoxLayout(requestsPanel, BoxLayout.Y_AXIS));
@@ -61,7 +63,8 @@ public final class FriendsDialog extends JDialog {
         tabs.addChangeListener(event -> {
             if (tabs.getSelectedIndex() == 1) {
                 refreshRequests();
-            } else if (tabs.getSelectedIndex() == 2) {
+            }
+            else if (tabs.getSelectedIndex() == 2) {
                 refreshFriends();
             }
         });
@@ -69,12 +72,12 @@ public final class FriendsDialog extends JDialog {
 
         status.setFont(SwingTheme.SMALL);
         status.setForeground(SwingTheme.MUTED);
-        JPanel footer = new JPanel(new BorderLayout());
+        final JPanel footer = new JPanel(new BorderLayout());
         footer.setOpaque(false);
         footer.add(status, BorderLayout.CENTER);
-        JButton close = SwingTheme.primaryButton("Close");
+        final JButton close = SwingTheme.primaryButton("Close");
         close.addActionListener(event -> dispose());
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        final JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         right.setOpaque(false);
         right.add(close);
         footer.add(right, BorderLayout.EAST);
@@ -90,16 +93,16 @@ public final class FriendsDialog extends JDialog {
     private void buildAddTab() {
         addPanel.setOpaque(false);
         addPanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        JLabel help = new JLabel("Send a friend request using a unique username.");
+        final JLabel help = new JLabel("Send a friend request using a unique username.");
         help.setFont(SwingTheme.BODY);
         help.setForeground(SwingTheme.MUTED);
         addPanel.add(help, BorderLayout.NORTH);
 
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        final JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         row.setOpaque(false);
         row.add(new JLabel("Username"));
         row.add(usernameField);
-        JButton send = SwingTheme.primaryButton("Send request");
+        final JButton send = SwingTheme.primaryButton("Send request");
         send.addActionListener(event -> sendRequest());
         row.add(send);
         addPanel.add(row, BorderLayout.CENTER);
@@ -107,12 +110,13 @@ public final class FriendsDialog extends JDialog {
 
     private void sendRequest() {
         try {
-            Friendship created = account.sendFriendRequest(usernameField.getText().trim());
+            final Friendship created = account.sendFriendRequest(usernameField.getText().trim());
             usernameField.setText("");
             status.setForeground(SwingTheme.SUCCESS);
             status.setText("Request sent to @" + created.getOtherUser().getUsername() + ".");
             refreshRequests();
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             status.setForeground(SwingTheme.ERROR);
             status.setText(exception.getMessage());
         }
@@ -121,12 +125,13 @@ public final class FriendsDialog extends JDialog {
     private void refreshRequests() {
         requestsPanel.removeAll();
         try {
-            List<Friendship> incoming = account.listIncomingRequests();
-            List<Friendship> outgoing = account.listOutgoingRequests();
+            final List<Friendship> incoming = account.listIncomingRequests();
+            final List<Friendship> outgoing = account.listOutgoingRequests();
             requestsPanel.add(sectionLabel("Incoming"));
             if (incoming.isEmpty()) {
                 requestsPanel.add(mutedRow("No incoming requests."));
-            } else {
+            }
+            else {
                 for (Friendship request : incoming) {
                     requestsPanel.add(incomingRow(request));
                     requestsPanel.add(Box.createVerticalStrut(6));
@@ -136,13 +141,15 @@ public final class FriendsDialog extends JDialog {
             requestsPanel.add(sectionLabel("Outgoing"));
             if (outgoing.isEmpty()) {
                 requestsPanel.add(mutedRow("No outgoing requests."));
-            } else {
+            }
+            else {
                 for (Friendship request : outgoing) {
                     requestsPanel.add(outgoingRow(request));
                     requestsPanel.add(Box.createVerticalStrut(6));
                 }
             }
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             status.setForeground(SwingTheme.ERROR);
             status.setText(exception.getMessage());
             requestsPanel.add(mutedRow("Could not load requests."));
@@ -154,16 +161,18 @@ public final class FriendsDialog extends JDialog {
     private void refreshFriends() {
         friendsPanel.removeAll();
         try {
-            List<User> friends = account.listFriends();
+            final List<User> friends = account.listFriends();
             if (friends.isEmpty()) {
                 friendsPanel.add(mutedRow("You have no friends yet."));
-            } else {
+            }
+            else {
                 for (User friend : friends) {
                     friendsPanel.add(friendRow(friend));
                     friendsPanel.add(Box.createVerticalStrut(6));
                 }
             }
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             status.setForeground(SwingTheme.ERROR);
             status.setText(exception.getMessage());
             friendsPanel.add(mutedRow("Could not load friends."));
@@ -173,9 +182,9 @@ public final class FriendsDialog extends JDialog {
     }
 
     private JPanel incomingRow(Friendship request) {
-        JPanel row = listRow();
+        final JPanel row = listRow();
         row.add(avatarAndName(request.getOtherUser()), BorderLayout.CENTER);
-        JButton accept = SwingTheme.primaryButton("Accept");
+        final JButton accept = SwingTheme.primaryButton("Accept");
         accept.addActionListener(event -> {
             try {
                 account.acceptFriendRequest(request.getId());
@@ -183,7 +192,8 @@ public final class FriendsDialog extends JDialog {
                 status.setText("You are now friends with @" + request.getOtherUser().getUsername() + ".");
                 refreshRequests();
                 refreshFriends();
-            } catch (RuntimeException exception) {
+            }
+            catch (RuntimeException exception) {
                 status.setForeground(SwingTheme.ERROR);
                 status.setText(exception.getMessage());
             }
@@ -193,16 +203,17 @@ public final class FriendsDialog extends JDialog {
     }
 
     private JPanel outgoingRow(Friendship request) {
-        JPanel row = listRow();
+        final JPanel row = listRow();
         row.add(avatarAndName(request.getOtherUser()), BorderLayout.CENTER);
-        JButton cancel = SwingTheme.secondaryButton("Cancel");
+        final JButton cancel = SwingTheme.secondaryButton("Cancel");
         cancel.addActionListener(event -> {
             try {
                 account.cancelFriendRequest(request.getId());
                 status.setForeground(SwingTheme.MUTED);
                 status.setText("Cancelled request to @" + request.getOtherUser().getUsername() + ".");
                 refreshRequests();
-            } catch (RuntimeException exception) {
+            }
+            catch (RuntimeException exception) {
                 status.setForeground(SwingTheme.ERROR);
                 status.setText(exception.getMessage());
             }
@@ -212,13 +223,13 @@ public final class FriendsDialog extends JDialog {
     }
 
     private JPanel friendRow(User friend) {
-        JPanel row = listRow();
+        final JPanel row = listRow();
         row.add(avatarAndName(friend), BorderLayout.CENTER);
         return row;
     }
 
     private static JPanel listRow() {
-        JPanel row = new JPanel(new BorderLayout(10, 0));
+        final JPanel row = new JPanel(new BorderLayout(10, 0));
         row.setOpaque(true);
         row.setBackground(SwingTheme.BACKGROUND);
         row.setBorder(BorderFactory.createCompoundBorder(
@@ -230,10 +241,10 @@ public final class FriendsDialog extends JDialog {
     }
 
     private static JPanel avatarAndName(User user) {
-        JPanel info = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        final JPanel info = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         info.setOpaque(false);
         info.add(new JLabel(AvatarSupport.iconFor(user, 32)));
-        JLabel name = new JLabel("@" + user.getUsername());
+        final JLabel name = new JLabel("@" + user.getUsername());
         name.setFont(SwingTheme.BODY);
         name.setForeground(SwingTheme.NAVY);
         info.add(name);
@@ -241,7 +252,7 @@ public final class FriendsDialog extends JDialog {
     }
 
     private static JLabel sectionLabel(String text) {
-        JLabel label = new JLabel(text);
+        final JLabel label = new JLabel(text);
         label.setFont(SwingTheme.BODY.deriveFont(java.awt.Font.BOLD));
         label.setForeground(SwingTheme.NAVY);
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -250,7 +261,7 @@ public final class FriendsDialog extends JDialog {
     }
 
     private static JLabel mutedRow(String text) {
-        JLabel label = new JLabel(text);
+        final JLabel label = new JLabel(text);
         label.setFont(SwingTheme.SMALL);
         label.setForeground(SwingTheme.MUTED);
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -259,7 +270,7 @@ public final class FriendsDialog extends JDialog {
     }
 
     private static JScrollPane wrapScroll(JPanel panel) {
-        JScrollPane scroll = new JScrollPane(panel);
+        final JScrollPane scroll = new JScrollPane(panel);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(12);
         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);

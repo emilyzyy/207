@@ -38,7 +38,7 @@ public final class TravelLegKey {
         if (!(other instanceof TravelLegKey)) {
             return false;
         }
-        TravelLegKey that = (TravelLegKey) other;
+        final TravelLegKey that = (TravelLegKey) other;
         return fromId.equals(that.fromId) && toId.equals(that.toId)
                 && departure.equals(that.departure);
     }

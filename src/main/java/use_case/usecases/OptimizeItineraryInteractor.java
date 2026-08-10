@@ -1,14 +1,15 @@
 package use_case.usecases;
 
-import use_case.ports.TripRepository;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.valueobjects.EventType;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.valueobjects.EventType;
+import use_case.ports.TripRepository;
 
 /**
  * First-pass valid schedule compaction for activities already in an itinerary.
@@ -33,21 +34,22 @@ public final class OptimizeItineraryInteractor implements OptimizeItineraryInput
     @Override
     public void execute(OptimizeItineraryInputData inputData) {
         try {
-            String tripId = requireTripId(inputData);
-            Trip trip = trips.findById(tripId)
+            final String tripId = requireTripId(inputData);
+            final Trip trip = trips.findById(tripId)
                     .orElseThrow(() -> new IllegalArgumentException("Trip not found"));
-            List<ScheduledEvent> activities = scheduledActivities(trip);
+            final List<ScheduledEvent> activities = scheduledActivities(trip);
             if (activities.isEmpty()) {
                 throw new IllegalArgumentException(
                         "Add activities to the Day Plan before optimizing");
             }
 
-            List<ScheduledEvent> compacted = compact(trip, activities);
-            Trip updated = trip.copyWithSchedule(compacted);
-            Trip saved = trips.save(updated);
+            final List<ScheduledEvent> compacted = compact(trip, activities);
+            final Trip updated = trip.copyWithSchedule(compacted);
+            final Trip saved = trips.save(updated);
             output.presentSuccess(new OptimizeItineraryOutputData(
                     saved, "Current itinerary compacted successfully"));
-        } catch (IllegalArgumentException | IllegalStateException exception) {
+        }
+        catch (IllegalArgumentException | IllegalStateException exception) {
             output.presentFailure(exception.getMessage());
         }
     }
@@ -61,7 +63,7 @@ public final class OptimizeItineraryInteractor implements OptimizeItineraryInput
     }
 
     private List<ScheduledEvent> scheduledActivities(Trip trip) {
-        List<ScheduledEvent> activities = new ArrayList<ScheduledEvent>();
+        final List<ScheduledEvent> activities = new ArrayList<ScheduledEvent>();
         for (ScheduledEvent event : trip.getScheduledEvents()) {
             if (event.getEventType() == EventType.ACTIVITY) {
                 activities.add(event);
@@ -72,19 +74,19 @@ public final class OptimizeItineraryInteractor implements OptimizeItineraryInput
 
     private List<ScheduledEvent> compact(
             Trip trip, List<ScheduledEvent> scheduledActivities) {
-        List<ScheduledEvent> compacted = new ArrayList<ScheduledEvent>();
+        final List<ScheduledEvent> compacted = new ArrayList<ScheduledEvent>();
         LocalTime cursor = trip.getStartTime();
         for (ScheduledEvent existing : scheduledActivities) {
-            Activity activity = existing.getActivity();
-            long duration = Duration.between(
+            final Activity activity = existing.getActivity();
+            final long duration = Duration.between(
                     existing.getStartTime(), existing.getEndTime()).toMinutes();
             if (activity == null || duration <= 0 || duration > Integer.MAX_VALUE) {
                 throw new IllegalStateException("Scheduled activity duration is invalid");
             }
 
-            LocalTime start = cursor.isBefore(activity.getOpeningTime())
+            final LocalTime start = cursor.isBefore(activity.getOpeningTime())
                     ? activity.getOpeningTime() : cursor;
-            LocalTime end = plusWithoutDayRollover(start, (int) duration);
+            final LocalTime end = plusWithoutDayRollover(start, (int) duration);
             if (end == null || end.isAfter(activity.getClosingTime())
                     || end.isAfter(trip.getEndTime())) {
                 throw new IllegalStateException(
@@ -100,7 +102,7 @@ public final class OptimizeItineraryInteractor implements OptimizeItineraryInput
     }
 
     private LocalTime plusWithoutDayRollover(LocalTime time, int minutes) {
-        LocalTime result = time.plusMinutes(minutes);
+        final LocalTime result = time.plusMinutes(minutes);
         return minutes > 0 && !result.isAfter(time) ? null : result;
     }
 }

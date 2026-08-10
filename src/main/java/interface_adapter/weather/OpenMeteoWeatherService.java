@@ -1,12 +1,5 @@
 package interface_adapter.weather;
 
-import use_case.ports.WeatherService;
-import entity.entities.Trip;
-import entity.entities.WeatherWarning;
-import entity.valueobjects.Location;
-import entity.valueobjects.WeatherSeverity;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -21,6 +14,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import entity.entities.Trip;
+import entity.entities.WeatherWarning;
+import entity.valueobjects.Location;
+import entity.valueobjects.WeatherSeverity;
+import use_case.ports.WeatherService;
 
 /** WeatherService adapter backed by Open-Meteo's key-free geocoding and forecast APIs. */
 public final class OpenMeteoWeatherService implements WeatherService {
@@ -58,21 +59,23 @@ public final class OpenMeteoWeatherService implements WeatherService {
 
     @Override
     public List<WeatherWarning> getHourlyWarnings(Trip trip) {
-        if (trip == null) throw new IllegalArgumentException("Trip is required");
-        OpenMeteoGeocodingResponse.Result place = geocode(trip.getDestination());
-        Location location = new Location(place.latitude, place.longitude, displayName(place));
-        OpenMeteoForecastResponse forecast = fetchForecast(location, trip);
+        if (trip == null) {
+            throw new IllegalArgumentException("Trip is required");
+        }
+        final OpenMeteoGeocodingResponse.Result place = geocode(trip.getDestination());
+        final Location location = new Location(place.latitude, place.longitude, displayName(place));
+        final OpenMeteoForecastResponse forecast = fetchForecast(location, trip);
         return mapHourlyForecast(forecast, trip, location);
     }
 
     private OpenMeteoGeocodingResponse.Result geocode(String destination) {
-        String query = "name=" + encode(destination) + "&count=1&language=en&format=json";
-        OpenMeteoGeocodingResponse response = getJson(withQuery(geocodingEndpoint, query),
+        final String query = "name=" + encode(destination) + "&count=1&language=en&format=json";
+        final OpenMeteoGeocodingResponse response = getJson(withQuery(geocodingEndpoint, query),
                 OpenMeteoGeocodingResponse.class, "geocoding");
         if (response.results == null || response.results.isEmpty()) {
             throw new WeatherServiceException("Open-Meteo found no location for destination: " + destination);
         }
-        OpenMeteoGeocodingResponse.Result result = response.results.get(0);
+        final OpenMeteoGeocodingResponse.Result result = response.results.get(0);
         if (result == null || result.name == null || result.latitude == null || result.longitude == null
                 || !Double.isFinite(result.latitude) || !Double.isFinite(result.longitude)) {
             throw new WeatherServiceException("Open-Meteo returned an invalid geocoding result");
@@ -81,8 +84,8 @@ public final class OpenMeteoWeatherService implements WeatherService {
     }
 
     private OpenMeteoForecastResponse fetchForecast(Location location, Trip trip) {
-        String date = trip.getDate().toString();
-        String query = "latitude=" + location.getLatitude()
+        final String date = trip.getDate().toString();
+        final String query = "latitude=" + location.getLatitude()
                 + "&longitude=" + location.getLongitude()
                 + "&hourly=weather_code,temperature_2m,precipitation_probability,wind_speed_10m"
                 + "&timezone=auto&start_date=" + date + "&end_date=" + date;
@@ -90,12 +93,12 @@ public final class OpenMeteoWeatherService implements WeatherService {
     }
 
     private <T> T getJson(URI uri, Class<T> responseType, String operation) {
-        HttpRequest request = HttpRequest.newBuilder(uri).timeout(requestTimeout)
+        final HttpRequest request = HttpRequest.newBuilder(uri).timeout(requestTimeout)
                 .header("Accept", "application/json")
                 .header("User-Agent", "Trippy-CSC207/1.0")
                 .GET().build();
         try {
-            HttpResponse<String> response = client.send(request,
+            final HttpResponse<String> response = client.send(request,
                     HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw new WeatherServiceException("Open-Meteo " + operation
@@ -103,14 +106,17 @@ public final class OpenMeteoWeatherService implements WeatherService {
             }
             try {
                 return mapper.readValue(response.body(), responseType);
-            } catch (JsonProcessingException exception) {
+            }
+            catch (JsonProcessingException exception) {
                 throw new WeatherServiceException("Open-Meteo " + operation
                         + " response contained invalid JSON", exception);
             }
-        } catch (InterruptedException exception) {
+        }
+        catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new WeatherServiceException("Open-Meteo " + operation + " request was interrupted", exception);
-        } catch (IOException exception) {
+        }
+        catch (IOException exception) {
             throw new WeatherServiceException("Open-Meteo " + operation + " request failed", exception);
         }
     }
@@ -121,35 +127,38 @@ public final class OpenMeteoWeatherService implements WeatherService {
                 || response.hourly.time.isEmpty()) {
             throw new WeatherServiceException("Open-Meteo forecast contained no hourly results");
         }
-        OpenMeteoForecastResponse.Hourly hourly = response.hourly;
+        final OpenMeteoForecastResponse.Hourly hourly = response.hourly;
         requireAligned(hourly.weatherCode, hourly.time, "weather_code");
         requireAligned(hourly.temperature, hourly.time, "temperature_2m");
         requireAligned(hourly.precipitationProbability, hourly.time, "precipitation_probability");
         requireAligned(hourly.windSpeed, hourly.time, "wind_speed_10m");
 
-        List<WeatherWarning> warnings = new ArrayList<WeatherWarning>();
+        final List<WeatherWarning> warnings = new ArrayList<WeatherWarning>();
         for (int i = 0; i < hourly.time.size(); i++) {
             try {
-                LocalDateTime forecastTime = LocalDateTime.parse(hourly.time.get(i));
-                if (!forecastTime.toLocalDate().equals(trip.getDate())) continue;
-                Integer code = hourly.weatherCode.get(i);
-                Double temperature = hourly.temperature.get(i);
-                Integer precipitation = hourly.precipitationProbability.get(i);
-                Double wind = hourly.windSpeed.get(i);
+                final LocalDateTime forecastTime = LocalDateTime.parse(hourly.time.get(i));
+                if (!forecastTime.toLocalDate().equals(trip.getDate())) {
+                    continue;
+                }
+                final Integer code = hourly.weatherCode.get(i);
+                final Double temperature = hourly.temperature.get(i);
+                final Integer precipitation = hourly.precipitationProbability.get(i);
+                final Double wind = hourly.windSpeed.get(i);
                 if (code == null || temperature == null || precipitation == null || wind == null
                         || !Double.isFinite(temperature) || !Double.isFinite(wind)) {
                     throw new WeatherServiceException(
                             "Open-Meteo forecast contained incomplete hourly values");
                 }
-                int boundedPrecipitation = Math.max(0, Math.min(100, precipitation));
-                WeatherSeverity severity = severity(code, boundedPrecipitation, wind);
-                String message = String.format(Locale.ROOT,
+                final int boundedPrecipitation = Math.max(0, Math.min(100, precipitation));
+                final WeatherSeverity severity = severity(code, boundedPrecipitation, wind);
+                final String message = String.format(Locale.ROOT,
                         "%.1f°C · %d%% precipitation · %.1f km/h wind · %s conditions.",
                         temperature, boundedPrecipitation, wind,
                         severity.name().toLowerCase(Locale.ROOT));
                 warnings.add(new WeatherWarning(location, forecastTime.toLocalTime(),
                         condition(code), severity, message));
-            } catch (DateTimeParseException ignored) {
+            }
+            catch (DateTimeParseException ignored) {
                 // A malformed item is ignored if other valid hourly items remain.
             }
         }
@@ -178,23 +187,45 @@ public final class OpenMeteoWeatherService implements WeatherService {
     }
 
     private String condition(int code) {
-        if (code == 0) return "Clear sky";
-        if (code <= 3) return "Partly cloudy";
-        if (code == 45 || code == 48) return "Fog";
-        if (code >= 51 && code <= 57) return "Drizzle";
-        if (code >= 61 && code <= 67) return "Rain";
-        if (code >= 71 && code <= 77) return "Snow";
-        if (code >= 80 && code <= 82) return "Rain showers";
-        if (code == 85 || code == 86) return "Snow showers";
-        if (code >= 95) return "Thunderstorm";
+        if (code == 0) {
+            return "Clear sky";
+        }
+        if (code <= 3) {
+            return "Partly cloudy";
+        }
+        if (code == 45 || code == 48) {
+            return "Fog";
+        }
+        if (code >= 51 && code <= 57) {
+            return "Drizzle";
+        }
+        if (code >= 61 && code <= 67) {
+            return "Rain";
+        }
+        if (code >= 71 && code <= 77) {
+            return "Snow";
+        }
+        if (code >= 80 && code <= 82) {
+            return "Rain showers";
+        }
+        if (code == 85 || code == 86) {
+            return "Snow showers";
+        }
+        if (code >= 95) {
+            return "Thunderstorm";
+        }
         return "Unknown conditions";
     }
 
     private String displayName(OpenMeteoGeocodingResponse.Result place) {
-        StringBuilder name = new StringBuilder(place.name);
+        final StringBuilder name = new StringBuilder(place.name);
         if (place.admin1 != null && !place.admin1.trim().isEmpty()
-                && !place.admin1.equalsIgnoreCase(place.name)) name.append(", ").append(place.admin1);
-        if (place.country != null && !place.country.trim().isEmpty()) name.append(", ").append(place.country);
+                && !place.admin1.equalsIgnoreCase(place.name)) {
+            name.append(", ").append(place.admin1);
+        }
+        if (place.country != null && !place.country.trim().isEmpty()) {
+            name.append(", ").append(place.country);
+        }
         return name.toString();
     }
 
@@ -205,5 +236,4 @@ public final class OpenMeteoWeatherService implements WeatherService {
     private String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
-
 }

@@ -1,30 +1,35 @@
 package views;
 
-import entity.valueobjects.ActivityCategory;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.awt.Color;
 import java.util.HashSet;
 import java.util.Set;
+
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JList;
 import javax.swing.JTabbedPane;
 import javax.swing.plaf.basic.BasicButtonUI;
 import javax.swing.plaf.basic.BasicTabbedPaneUI;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import entity.valueobjects.ActivityCategory;
 
 final class SwingThemeTest {
-    @AfterEach void restoreLightTheme() { SwingTheme.setDarkMode(false); }
+    @AfterEach void restoreLightTheme() {
+        SwingTheme.setDarkMode(false);
+    }
 
     @Test
     void everyCategoryHasADistinctNonBlueSurface() {
-        Set<Color> colors = new HashSet<>();
+        final Set<Color> colors = new HashSet<>();
         for (ActivityCategory category : ActivityCategory.values()) {
-            Color surface = SwingTheme.categorySurface(category);
+            final Color surface = SwingTheme.categorySurface(category);
             colors.add(surface);
             assertNotEquals(SwingTheme.BLUE, surface);
         }
@@ -33,7 +38,7 @@ final class SwingThemeTest {
 
     @Test
     void darkModeChangesGlobalSurfacesAndCanBeRestored() {
-        Color lightPanel = SwingTheme.PANEL;
+        final Color lightPanel = SwingTheme.PANEL;
         SwingTheme.setDarkMode(true);
         assertTrue(SwingTheme.isDarkMode());
         assertNotEquals(lightPanel, SwingTheme.PANEL);
@@ -45,8 +50,8 @@ final class SwingThemeTest {
     void darkModeUsesThemeControlledButtonAndTabDelegates() {
         SwingTheme.setDarkMode(true);
 
-        JButton button = SwingTheme.secondaryButton("Edit");
-        JTabbedPane tabs = new JTabbedPane();
+        final JButton button = SwingTheme.secondaryButton("Edit");
+        final JTabbedPane tabs = new JTabbedPane();
 
         assertTrue(button.getUI() instanceof BasicButtonUI);
         assertTrue(tabs.getUI() instanceof BasicTabbedPaneUI);
@@ -57,14 +62,14 @@ final class SwingThemeTest {
     @Test
     void comboBoxFieldAndPopupRowsFollowTheCurrentTheme() {
         SwingTheme.setDarkMode(true);
-        JComboBox<String> combo = new JComboBox<>(new String[] {"09", "10"});
+        final JComboBox<String> combo = new JComboBox<>(new String[] {"09", "10"});
         SwingTheme.styleComboBox(combo);
-        JList<String> popup = new JList<>();
+        final JList<String> popup = new JList<>();
 
-        java.awt.Component ordinary = combo.getRenderer()
+        final java.awt.Component ordinary = combo.getRenderer()
                 .getListCellRendererComponent(popup, "09", 0, false, false);
-        Color ordinaryBackground = ordinary.getBackground();
-        java.awt.Component selected = combo.getRenderer()
+        final Color ordinaryBackground = ordinary.getBackground();
+        final java.awt.Component selected = combo.getRenderer()
                 .getListCellRendererComponent(popup, "10", 1, true, false);
 
         assertTrue(combo.getUI() instanceof SwingTheme.ThemedComboBoxUI);

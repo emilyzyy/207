@@ -1,5 +1,8 @@
 package use_case.autoschedule.engine;
 
+import java.time.LocalTime;
+import java.util.List;
+
 import use_case.autoschedule.BlockedPeriods;
 import use_case.autoschedule.PlacedActivity;
 import use_case.autoschedule.ScheduleProblem;
@@ -7,8 +10,6 @@ import use_case.autoschedule.ScheduleTask;
 import use_case.autoschedule.TimeWindow;
 import use_case.autoschedule.TravelLeg;
 import use_case.autoschedule.TravelLegPlanner;
-import java.time.LocalTime;
-import java.util.List;
 
 /**
  * Places a single activity at the earliest time that satisfies every hard rule.
@@ -25,18 +26,20 @@ public final class ActivityPlacer {
     public ActivityPlacer(List<PlacementRule> placementRules) {
         this.placementRules = placementRules;
     }
-
     /**
+      * @param problem the p ro bl em value
+      * @param task the t as k value
      * @param blocked  unavailable windows plus every lock still ahead
      * @return the placement, or null when this activity cannot follow the cursor
      */
+
     public PlacedActivity placeMovable(ScheduleProblem problem, ScheduleTask task,
                                        LocalTime cursor, ScheduleTask previous,
                                        BlockedPeriods blocked) {
-        TimeWindow availability = problem.getAvailability();
-        String fromId = previous == null ? null : previous.getEventId();
+        final TimeWindow availability = problem.getAvailability();
+        final String fromId = previous == null ? null : previous.getEventId();
 
-        TravelLeg leg = legPlanner.plan(problem.getTravel(), fromId, task.getEventId(),
+        final TravelLeg leg = legPlanner.plan(problem.getTravel(), fromId, task.getEventId(),
                 cursor, blocked, availability.getEnd());
         if (leg == null) {
             return null;
@@ -90,14 +93,19 @@ public final class ActivityPlacer {
         return build(problem, task, start, end, cursor, previous, leg, blocked);
     }
 
-    /** Confirms the traveller can still reach a locked activity by its fixed start. */
+    /**
+     * Confirms the traveller can still reach a locked activity by its fixed start.
+     * @param task the t as k value
+     * @param problem the p ro bl em value
+     * @return the result of the operation
+     */
     public PlacedActivity placeLocked(ScheduleProblem problem, ScheduleTask task,
                                       LocalTime cursor, ScheduleTask previous,
                                       BlockedPeriods blocked) {
-        TimeWindow window = task.getLockedAt();
-        String fromId = previous == null ? null : previous.getEventId();
+        final TimeWindow window = task.getLockedAt();
+        final String fromId = previous == null ? null : previous.getEventId();
 
-        TravelLeg leg = legPlanner.plan(problem.getTravel(), fromId, task.getEventId(),
+        final TravelLeg leg = legPlanner.plan(problem.getTravel(), fromId, task.getEventId(),
                 cursor, blocked, window.getStart());
         if (leg == null || leg.getArrival().isAfter(window.getStart())) {
             return null;
@@ -119,12 +127,15 @@ public final class ActivityPlacer {
      *
      * <p>When the venue's hours are unknown the task carries a single permissive window, so
      * this behaves exactly as the old single opening/closing pair did.</p>
+      * @param task the t as k value
+      * @param earliest the e ar li es t value
+      * @return the result of the operation
      */
     private static LocalTime intoOpeningHours(ScheduleTask task, LocalTime earliest) {
         LocalTime best = null;
         for (TimeWindow window : task.getOpeningWindows()) {
-            LocalTime candidate = later(earliest, window.getStart());
-            LocalTime finish = plusMinutes(candidate, task.getDurationMinutes());
+            final LocalTime candidate = later(earliest, window.getStart());
+            final LocalTime finish = plusMinutes(candidate, task.getDurationMinutes());
             if (finish == null || finish.isAfter(window.getEnd())) {
                 continue;
             }
@@ -140,19 +151,19 @@ public final class ActivityPlacer {
                                  TravelLeg leg, BlockedPeriods blocked) {
         // Waiting for the doors to open is not avoidable, so the opening time that matters
         // is the one for the window this visit is actually in.
-        TimeWindow window = task.openingWindowFor(start, end);
+        final TimeWindow window = task.openingWindowFor(start, end);
         // Measured from the earliest possible arrival, and deliberately not from the journey
         // actually travelled. Setting out later does not reclaim dead time; it only moves it
         // to the near side of the journey. Scoring the just-in-time leg instead would report
         // no avoidable waiting anywhere and quietly delete "minimize gaps" from the
         // objective.
-        int avoidable = legPlanner.avoidableIdleMinutes(leg.getArrival(), start,
+        final int avoidable = legPlanner.avoidableIdleMinutes(leg.getArrival(), start,
                 window == null ? task.getOpeningTime() : window.getStart(), blocked);
 
-        String fromId = previous == null ? null : previous.getEventId();
-        TravelLeg travelled = legPlanner.latestArrivingBy(problem.getTravel(), fromId,
+        final String fromId = previous == null ? null : previous.getEventId();
+        final TravelLeg travelled = legPlanner.latestArrivingBy(problem.getTravel(), fromId,
                 task.getEventId(), cursor, blocked, start, leg);
-        int idle = minutesBetween(cursor, start) - travelled.getMinutes();
+        final int idle = minutesBetween(cursor, start) - travelled.getMinutes();
         return new PlacedActivity(task, start, end, travelled.getDeparture(),
                 travelled.getMinutes(), Math.max(0, idle), avoidable);
     }
@@ -168,7 +179,7 @@ public final class ActivityPlacer {
     }
 
     static LocalTime plusMinutes(LocalTime time, int minutes) {
-        LocalTime result = time.plusMinutes(minutes);
+        final LocalTime result = time.plusMinutes(minutes);
         if (minutes > 0 && !result.isAfter(time)) {
             return null;
         }

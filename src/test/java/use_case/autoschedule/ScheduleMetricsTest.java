@@ -1,10 +1,16 @@
 package use_case.autoschedule;
 
-import static use_case.autoschedule.ProblemFixtures.at;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static use_case.autoschedule.ProblemFixtures.at;
 
-import use_case.autoschedule.testdoubles.FakeTravelTimeEstimator;
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.valueobjects.ActivityCategory;
@@ -12,11 +18,7 @@ import entity.valueobjects.EventType;
 import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;
-import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import org.junit.jupiter.api.Test;
+import use_case.autoschedule.testdoubles.FakeTravelTimeEstimator;
 
 /**
  * The "before" half of the Preview's comparison.
@@ -42,11 +44,11 @@ class ScheduleMetricsTest {
 
     @Test
     void aHandBuiltPlanIsChargedTheTravelItsOrderActuallyRequires() {
-        List<ScheduledEvent> plan = Arrays.asList(activity("a", 9), activity("b", 12));
-        FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().defaultMinutes(25);
+        final List<ScheduledEvent> plan = Arrays.asList(activity("a", 9), activity("b", 12));
+        final FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().defaultMinutes(25);
 
-        ScheduleMetrics naive = ScheduleMetrics.ofExistingSchedule(plan);
-        ScheduleMetrics honest = ScheduleMetrics.ofExistingSchedule(plan, estimator,
+        final ScheduleMetrics naive = ScheduleMetrics.ofExistingSchedule(plan);
+        final ScheduleMetrics honest = ScheduleMetrics.ofExistingSchedule(plan, estimator,
                 TransportationMode.WALKING, DATE);
 
         assertEquals(0, naive.getTravelMinutes(),
@@ -58,10 +60,10 @@ class ScheduleMetricsTest {
     @Test
     void theGapIsSplitBetweenTravelAndWaitingRatherThanCountedTwice() {
         // 10:00 to 12:00 is a two-hour gap; 25 minutes of it is the journey.
-        List<ScheduledEvent> plan = Arrays.asList(activity("a", 9), activity("b", 12));
-        FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().defaultMinutes(25);
+        final List<ScheduledEvent> plan = Arrays.asList(activity("a", 9), activity("b", 12));
+        final FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().defaultMinutes(25);
 
-        ScheduleMetrics honest = ScheduleMetrics.ofExistingSchedule(plan, estimator,
+        final ScheduleMetrics honest = ScheduleMetrics.ofExistingSchedule(plan, estimator,
                 TransportationMode.WALKING, DATE);
 
         assertEquals(25, honest.getTravelMinutes());
@@ -72,14 +74,14 @@ class ScheduleMetricsTest {
     @Test
     void explicitTravelRowsAreTrustedAndNotDoubleCounted() {
         // A plan Autoschedule already applied records its own journeys.
-        List<ScheduledEvent> applied = Arrays.asList(
+        final List<ScheduledEvent> applied = Arrays.asList(
                 activity("a", 9),
                 new ScheduledEvent("t", null, at(10, 0), at(10, 30), EventType.TRAVEL,
                         "Travel to b"),
                 activity("b", 11));
-        FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().defaultMinutes(25);
+        final FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().defaultMinutes(25);
 
-        ScheduleMetrics honest = ScheduleMetrics.ofExistingSchedule(applied, estimator,
+        final ScheduleMetrics honest = ScheduleMetrics.ofExistingSchedule(applied, estimator,
                 TransportationMode.WALKING, DATE);
 
         assertEquals(30, honest.getTravelMinutes(),
@@ -88,7 +90,7 @@ class ScheduleMetricsTest {
 
     @Test
     void aSingleActivityDayHasNoTravelToCharge() {
-        ScheduleMetrics honest = ScheduleMetrics.ofExistingSchedule(
+        final ScheduleMetrics honest = ScheduleMetrics.ofExistingSchedule(
                 Collections.singletonList(activity("a", 9)),
                 new FakeTravelTimeEstimator().defaultMinutes(25),
                 TransportationMode.WALKING, DATE);
@@ -98,9 +100,9 @@ class ScheduleMetricsTest {
 
     @Test
     void anEstimatorThatFailsDegradesRatherThanLosingTheComparison() {
-        List<ScheduledEvent> plan = Arrays.asList(activity("a", 9), activity("b", 12));
+        final List<ScheduledEvent> plan = Arrays.asList(activity("a", 9), activity("b", 12));
 
-        TravelTimeEstimator failing = new TravelTimeEstimator() {
+        final TravelTimeEstimator failing = new TravelTimeEstimator() {
             @Override
             public TravelEstimate estimate(Location from, Location to,
                                            TransportationMode mode,
@@ -114,7 +116,7 @@ class ScheduleMetricsTest {
             }
         };
 
-        ScheduleMetrics honest = ScheduleMetrics.ofExistingSchedule(plan, failing,
+        final ScheduleMetrics honest = ScheduleMetrics.ofExistingSchedule(plan, failing,
                 TransportationMode.WALKING, DATE);
 
         assertEquals(0, honest.getTravelMinutes(),
@@ -124,7 +126,7 @@ class ScheduleMetricsTest {
 
     @Test
     void missingArgumentsFallBackToTheExplicitRowReading() {
-        List<ScheduledEvent> plan = Arrays.asList(activity("a", 9), activity("b", 12));
+        final List<ScheduledEvent> plan = Arrays.asList(activity("a", 9), activity("b", 12));
 
         assertEquals(ScheduleMetrics.ofExistingSchedule(plan).getTravelMinutes(),
                 ScheduleMetrics.ofExistingSchedule(plan, null, null, null).getTravelMinutes());

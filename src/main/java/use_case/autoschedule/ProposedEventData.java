@@ -6,7 +6,9 @@ import java.time.LocalTime;
 public final class ProposedEventData {
 
     /** Whether this row is something the user does, or the journey in between. */
-    public enum Kind { ACTIVITY, TRAVEL }
+    public enum Kind {
+        ACTIVITY, TRAVEL
+    }
 
     private final String eventId;
     private final String activityId;
@@ -32,8 +34,11 @@ public final class ProposedEventData {
     public String getEventId() {
         return eventId;
     }
+    /**
+     * Empty for travel rows, which have no activity behind them.
+     * @return the result of the operation
+     */
 
-    /** Empty for travel rows, which have no activity behind them. */
     public String getActivityId() {
         return activityId;
     }
@@ -57,8 +62,11 @@ public final class ProposedEventData {
     public boolean isLocked() {
         return locked;
     }
+    /**
+     * True when this activity ended up at a different time than before.
+     * @return the result of the operation
+     */
 
-    /** True when this activity ended up at a different time than before. */
     public boolean isMoved() {
         return moved;
     }

@@ -1,10 +1,11 @@
 package use_case.usecases;
 
-import use_case.ports.ItineraryDataAccessInterface;
-import entity.entities.Trip;
-import entity.valueobjects.TransportationMode;
 import java.time.LocalDate;
 import java.time.LocalTime;
+
+import entity.entities.Trip;
+import entity.valueobjects.TransportationMode;
+import use_case.ports.ItineraryDataAccessInterface;
 
 /**
  * Updates destination, date, window, and transportation on an existing itinerary.
@@ -27,19 +28,19 @@ public final class EditItineraryInteractor implements EditItineraryInputBoundary
             throw new IllegalArgumentException("Edit itinerary input is required");
         }
 
-        String itineraryId = requireText(inputData.getItineraryId(), "Itinerary id is required");
-        String destination = requireText(inputData.getDestination(), "Destination is required");
-        LocalDate date = requireNonNull(inputData.getDate(), "Date is required");
-        LocalTime startTime = requireNonNull(inputData.getStartTime(), "Start time is required");
-        LocalTime endTime = requireNonNull(inputData.getEndTime(), "End time is required");
-        TransportationMode mode = requireNonNull(inputData.getTransportationMode(),
+        final String itineraryId = requireText(inputData.getItineraryId(), "Itinerary id is required");
+        final String destination = requireText(inputData.getDestination(), "Destination is required");
+        final LocalDate date = requireNonNull(inputData.getDate(), "Date is required");
+        final LocalTime startTime = requireNonNull(inputData.getStartTime(), "Start time is required");
+        final LocalTime endTime = requireNonNull(inputData.getEndTime(), "End time is required");
+        final TransportationMode mode = requireNonNull(inputData.getTransportationMode(),
                 "Transportation mode is required");
 
         if (!endTime.isAfter(startTime)) {
             throw new IllegalArgumentException("Trip end must follow start");
         }
 
-        Trip itinerary = itineraryDataAccess.loadItinerary(itineraryId)
+        final Trip itinerary = itineraryDataAccess.loadItinerary(itineraryId)
                 .orElseThrow(() -> new IllegalArgumentException("Itinerary not found"));
 
         itinerary.updateOptionsPreservingSchedule(

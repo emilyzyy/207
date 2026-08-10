@@ -1,6 +1,5 @@
 package interface_adapter.places;
 
-import entity.valueobjects.OpeningHours;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -9,6 +8,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
+import entity.valueobjects.OpeningHours;
 
 /**
  * Turns an OpenStreetMap {@code opening_hours} tag into normalised weekday intervals.
@@ -72,8 +73,8 @@ public final class OpeningHoursParser {
     }
 
     private OpeningHoursParser() {
-    }
 
+    }
     /**
      * Parses a raw tag value.
      *
@@ -81,11 +82,12 @@ public final class OpeningHoursParser {
      * @return normalised hours, or {@link OpeningHours#unknown()} when the value is absent
      *         or not fully understood — never an exception
      */
+
     public static OpeningHours parse(String raw) {
         if (raw == null) {
             return OpeningHours.unknown();
         }
-        String value = raw.trim().toLowerCase(Locale.ROOT);
+        final String value = raw.trim().toLowerCase(Locale.ROOT);
         if (value.isEmpty()) {
             return OpeningHours.unknown();
         }
@@ -97,14 +99,14 @@ public final class OpeningHoursParser {
             return OpeningHours.unknown();
         }
 
-        Map<DayOfWeek, List<OpeningHours.TimeInterval>> week = new EnumMap<>(DayOfWeek.class);
+        final Map<DayOfWeek, List<OpeningHours.TimeInterval>> week = new EnumMap<>(DayOfWeek.class);
         for (DayOfWeek day : DayOfWeek.values()) {
             week.put(day, new ArrayList<OpeningHours.TimeInterval>());
         }
         boolean anyRuleApplied = false;
 
         for (String rule : value.split(";")) {
-            String trimmed = rule.trim();
+            final String trimmed = rule.trim();
             if (trimmed.isEmpty()) {
                 continue;
             }
@@ -127,22 +129,24 @@ public final class OpeningHoursParser {
     /**
      * Applies one {@code ;}-separated rule, replacing whatever the days it names had before.
      *
+      * @param rule the r ul e value
      * @return false if the rule was not understood, in which case the caller gives up entirely
      */
     private static boolean applyRule(String rule,
                                      Map<DayOfWeek, List<OpeningHours.TimeInterval>> week) {
-        String selector;
-        String times;
-        int split = indexOfTimesPart(rule);
+        final String selector;
+        final String times;
+        final int split = indexOfTimesPart(rule);
         if (split < 0) {
             selector = "";
             times = rule;
-        } else {
+        }
+        else {
             selector = rule.substring(0, split).trim();
             times = rule.substring(split).trim();
         }
 
-        List<DayOfWeek> days = selector.isEmpty()
+        final List<DayOfWeek> days = selector.isEmpty()
                 ? new ArrayList<>(java.util.Arrays.asList(DayOfWeek.values()))
                 : parseDays(selector);
         if (days == null) {
@@ -156,8 +160,8 @@ public final class OpeningHoursParser {
             return true;
         }
 
-        List<OpeningHours.TimeInterval> sameDay = new ArrayList<>();
-        List<OpeningHours.TimeInterval> nextDay = new ArrayList<>();
+        final List<OpeningHours.TimeInterval> sameDay = new ArrayList<>();
+        final List<OpeningHours.TimeInterval> nextDay = new ArrayList<>();
         for (String span : times.split(",")) {
             if (!parseSpan(span.trim(), sameDay, nextDay)) {
                 return false;
@@ -176,40 +180,48 @@ public final class OpeningHoursParser {
         return true;
     }
 
-    /** Where the weekday selector stops and the times begin: the first digit or "off". */
+    /**
+     * Where the weekday selector stops and the times begin: the first digit or "off".
+     * @param rule the r ul e value
+     * @return the result of the operation
+     */
     private static int indexOfTimesPart(String rule) {
         for (int i = 0; i < rule.length(); i++) {
             if (Character.isDigit(rule.charAt(i))) {
                 return i;
             }
         }
-        int off = rule.indexOf("off");
+        final int off = rule.indexOf("off");
         if (off >= 0) {
             return off;
         }
-        int closed = rule.indexOf("closed");
+        final int closed = rule.indexOf("closed");
         return closed >= 0 ? closed : -1;
     }
 
-    /** {@code mo-we,fr} into the days it names, or null if anything is unrecognised. */
+    /**
+     * {@code mo-we,fr} into the days it names, or null if anything is unrecognised.
+     * @param selector the s el ec to r value
+     * @return the result of the operation
+     */
     private static List<DayOfWeek> parseDays(String selector) {
-        List<DayOfWeek> days = new ArrayList<>();
+        final List<DayOfWeek> days = new ArrayList<>();
         for (String part : selector.split(",")) {
-            String token = part.trim();
+            final String token = part.trim();
             if (token.isEmpty()) {
                 continue;
             }
-            int dash = token.indexOf('-');
+            final int dash = token.indexOf('-');
             if (dash < 0) {
-                DayOfWeek day = DAY_NAMES.get(token);
+                final DayOfWeek day = DAY_NAMES.get(token);
                 if (day == null) {
                     return null;
                 }
                 days.add(day);
                 continue;
             }
-            DayOfWeek from = DAY_NAMES.get(token.substring(0, dash).trim());
-            DayOfWeek to = DAY_NAMES.get(token.substring(dash + 1).trim());
+            final DayOfWeek from = DAY_NAMES.get(token.substring(0, dash).trim());
+            final DayOfWeek to = DAY_NAMES.get(token.substring(dash + 1).trim());
             if (from == null || to == null) {
                 return null;
             }
@@ -228,17 +240,18 @@ public final class OpeningHoursParser {
      * One {@code 09:00-17:00} span, appending to the day it starts on and, when it runs past
      * midnight, to the following day as well.
      *
+      * @param span the s pa n value
      * @return false if the span is not two well-formed times
      */
     private static boolean parseSpan(String span,
                                      List<OpeningHours.TimeInterval> sameDay,
                                      List<OpeningHours.TimeInterval> nextDay) {
-        int dash = span.indexOf('-');
+        final int dash = span.indexOf('-');
         if (dash < 0) {
             return false;
         }
-        LocalTime start = parseTime(span.substring(0, dash).trim());
-        LocalTime end = parseTime(span.substring(dash + 1).trim());
+        final LocalTime start = parseTime(span.substring(0, dash).trim());
+        final LocalTime end = parseTime(span.substring(dash + 1).trim());
         if (start == null || end == null) {
             return false;
         }
@@ -257,7 +270,11 @@ public final class OpeningHoursParser {
         return true;
     }
 
-    /** {@code 9}, {@code 09:00} or the {@code 24:00} that means the end of the day. */
+    /**
+     * {@code 9}, {@code 09:00} or the {@code 24:00} that means the end of the day.
+     * @param text the t ex t value
+     * @return the result of the operation
+     */
     private static LocalTime parseTime(String text) {
         if (text.isEmpty()) {
             return null;
@@ -265,15 +282,16 @@ public final class OpeningHoursParser {
         if ("24:00".equals(text)) {
             return END_OF_DAY;
         }
-        int colon = text.indexOf(':');
+        final int colon = text.indexOf(':');
         try {
-            int hour = Integer.parseInt(colon < 0 ? text : text.substring(0, colon));
-            int minute = colon < 0 ? 0 : Integer.parseInt(text.substring(colon + 1));
+            final int hour = Integer.parseInt(colon < 0 ? text : text.substring(0, colon));
+            final int minute = colon < 0 ? 0 : Integer.parseInt(text.substring(colon + 1));
             if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
                 return null;
             }
             return LocalTime.of(hour, minute);
-        } catch (NumberFormatException notTime) {
+        }
+        catch (NumberFormatException notTime) {
             return null;
         }
     }

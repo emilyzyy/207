@@ -1,14 +1,32 @@
 package use_case.autoschedule;
 
-import entity.valueobjects.WeatherOption;
-
-import static use_case.autoschedule.ProblemFixtures.at;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static use_case.autoschedule.ProblemFixtures.at;
 
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.EventType;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.Location;
+import entity.valueobjects.TransportationMode;
+import entity.valueobjects.WeatherOption;
+import entity.valueobjects.WeatherSeverity;
 import use_case.autoschedule.engine.ScheduleEngine;
 import use_case.autoschedule.policy.DaylightPolicy;
 import use_case.autoschedule.policy.MealWindowPolicy;
@@ -18,23 +36,6 @@ import use_case.autoschedule.testdoubles.FakeTravelTimeEstimator;
 import use_case.autoschedule.testdoubles.FakeTripRepository;
 import use_case.autoschedule.testdoubles.FakeWeatherContextGateway;
 import use_case.autoschedule.testdoubles.RecordingPresenter;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.EventType;
-import entity.valueobjects.IndoorOutdoorType;
-import entity.valueobjects.Location;
-import entity.valueobjects.TransportationMode;
-import entity.valueobjects.WeatherSeverity;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import org.junit.jupiter.api.Test;
 
 /**
  * Weather is the one soft objective the traveller is asked about, and only when asking is
@@ -63,7 +64,7 @@ class WeatherPreferenceTest {
     void anHourlyForecastMakesTheWeatherPreferenceAvailable() {
         weather.returning(WeatherContext.hourly(allDay(WeatherSeverity.LOW)));
 
-        WeatherOption option = interactorFor(oneOutdoorDay()).weatherOptionFor("trip-1");
+        final WeatherOption option = interactorFor(oneOutdoorDay()).weatherOptionFor("trip-1");
 
         assertTrue(option.isAvailable(),
                 "an hourly forecast can tell 10am from 3pm, so the choice is a real one");
@@ -76,7 +77,7 @@ class WeatherPreferenceTest {
     void aWholeDayForecastWithholdsThePreferenceAndSaysWhy() {
         weather.returning(WeatherContext.tripLevel(WeatherSeverity.HIGH));
 
-        WeatherOption option = interactorFor(oneOutdoorDay()).weatherOptionFor("trip-1");
+        final WeatherOption option = interactorFor(oneOutdoorDay()).weatherOptionFor("trip-1");
 
         assertFalse(option.isAvailable(),
                 "one severity for the whole day scores every candidate time alike");
@@ -93,9 +94,9 @@ class WeatherPreferenceTest {
     @Test
     void aTripBeyondTheHourlyHorizonWithholdsThePreference() {
         weather.returning(WeatherContext.tripLevel(WeatherSeverity.LOW));
-        Trip farFuture = tripOn(java.time.LocalDate.now().plusMonths(6));
+        final Trip farFuture = tripOn(java.time.LocalDate.now().plusMonths(6));
 
-        WeatherOption option = interactorFor(new FakeTripRepository(farFuture))
+        final WeatherOption option = interactorFor(new FakeTripRepository(farFuture))
                 .weatherOptionFor("trip-1");
 
         assertFalse(option.isAvailable());
@@ -106,7 +107,7 @@ class WeatherPreferenceTest {
     void anUnobtainableForecastWithholdsThePreference() {
         weather.returning(WeatherContext.unavailable());
 
-        WeatherOption option = interactorFor(oneOutdoorDay()).weatherOptionFor("trip-1");
+        final WeatherOption option = interactorFor(oneOutdoorDay()).weatherOptionFor("trip-1");
 
         assertFalse(option.isAvailable());
         assertEquals(WeatherOption.NO_FORECAST, option.getUnavailableReason());
@@ -114,11 +115,11 @@ class WeatherPreferenceTest {
 
     @Test
     void askingAboutWeatherNeverThrowsAndNeverReportsAFailure() {
-        AutoScheduleInteractor interactor = new AutoScheduleInteractor(oneOutdoorDay(),
+        final AutoScheduleInteractor interactor = new AutoScheduleInteractor(oneOutdoorDay(),
                 estimator, new FakeWeatherContextGateway().thatFails(), presenter, REGISTERED,
                 new ScheduleEngine());
 
-        WeatherOption option = interactor.weatherOptionFor("trip-1");
+        final WeatherOption option = interactor.weatherOptionFor("trip-1");
 
         assertFalse(option.isAvailable());
         assertEquals(WeatherOption.NO_FORECAST, option.getUnavailableReason());
@@ -130,7 +131,7 @@ class WeatherPreferenceTest {
     @Test
     void anUnknownTripYieldsAnUnavailableOptionRatherThanAnError() {
         weather.returning(WeatherContext.hourly(allDay(WeatherSeverity.LOW)));
-        AutoScheduleInteractor interactor = interactorFor(oneOutdoorDay());
+        final AutoScheduleInteractor interactor = interactorFor(oneOutdoorDay());
 
         assertFalse(interactor.weatherOptionFor("no-such-trip").isAvailable());
         assertFalse(interactor.weatherOptionFor("").isAvailable());
@@ -145,7 +146,7 @@ class WeatherPreferenceTest {
         weather.returning(WeatherContext.hourly(allDay(WeatherSeverity.HIGH)));
 
         interactorFor(oneOutdoorDay()).preview(input(false));
-        AutoSchedulePreviewOutputData notConsidered = presenter.getPreview();
+        final AutoSchedulePreviewOutputData notConsidered = presenter.getPreview();
 
         assertNotNull(notConsidered);
         assertFalse(notConsidered.getActivePolicies().contains(PolicyId.WEATHER),
@@ -158,7 +159,7 @@ class WeatherPreferenceTest {
 
         // The same day with the same forecast, this time asked for: the score is the
         // comparison that proves the unticked run really was weather-free.
-        RecordingPresenter second = new RecordingPresenter();
+        final RecordingPresenter second = new RecordingPresenter();
         new AutoScheduleInteractor(oneOutdoorDay(), estimator, weather, second, REGISTERED,
                 new ScheduleEngine()).preview(input(true));
 
@@ -173,7 +174,7 @@ class WeatherPreferenceTest {
         weather.returning(WeatherContext.tripLevel(WeatherSeverity.HIGH));
 
         interactorFor(oneOutdoorDay()).preview(input(true));
-        AutoSchedulePreviewOutputData preview = presenter.getPreview();
+        final AutoSchedulePreviewOutputData preview = presenter.getPreview();
 
         assertNotNull(preview, "a useless forecast must not cost the traveller their day");
         assertFalse(preview.getActivePolicies().contains(PolicyId.WEATHER),
@@ -192,7 +193,7 @@ class WeatherPreferenceTest {
      */
     @Test
     void selectedHourlyWeatherMovesAnOutdoorActivityOutOfTheWorstHours() {
-        Map<Integer, WeatherSeverity> byHour = allDay(WeatherSeverity.LOW);
+        final Map<Integer, WeatherSeverity> byHour = allDay(WeatherSeverity.LOW);
         byHour.put(9, WeatherSeverity.HIGH);
         weather.returning(WeatherContext.hourly(byHour));
 
@@ -206,10 +207,10 @@ class WeatherPreferenceTest {
 
     private LocalTime parkStartWithWeather(boolean considerWeather,
                                            Map<Integer, WeatherSeverity> byHour) {
-        RecordingPresenter recorder = new RecordingPresenter();
-        FakeTripRepository trips = new FakeTripRepository(tripWith(
+        final RecordingPresenter recorder = new RecordingPresenter();
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(
                 outdoorEvent("park", 9, 60), indoorEvent("museum", 10, 60)));
-        AutoScheduleInputData request = new AutoScheduleInputData("trip-1", at(9, 0),
+        final AutoScheduleInputData request = new AutoScheduleInputData("trip-1", at(9, 0),
                 at(11, 10), TransportationMode.WALKING, Collections.emptySet(),
                 Collections.emptyList(), true, considerWeather);
 
@@ -226,10 +227,10 @@ class WeatherPreferenceTest {
         // The whole day is foul, so weather would rather the park were anywhere else --
         // but it is pinned, and a pin is not negotiable.
         weather.returning(WeatherContext.hourly(allDay(WeatherSeverity.HIGH)));
-        FakeTripRepository trips = new FakeTripRepository(tripWith(
+        final FakeTripRepository trips = new FakeTripRepository(tripWith(
                 outdoorEvent("park", 10, 60), indoorEvent("museum", 14, 60)));
 
-        AutoScheduleInputData pinned = new AutoScheduleInputData("trip-1", at(9, 0), at(21, 0),
+        final AutoScheduleInputData pinned = new AutoScheduleInputData("trip-1", at(9, 0), at(21, 0),
                 TransportationMode.WALKING, Collections.singleton("park"),
                 Collections.emptyList(), false, true);
         new AutoScheduleInteractor(trips, estimator, weather, presenter, REGISTERED,
@@ -242,14 +243,14 @@ class WeatherPreferenceTest {
 
     @Test
     void aSmallWeatherGainCannotJustifyAnExtremeDetour() {
-        WeatherSuitabilityPolicy policy = new WeatherSuitabilityPolicy();
-        Map<Integer, WeatherSeverity> byHour = allDay(WeatherSeverity.HIGH);
-        PolicyContext worst = new PolicyContext(WeatherContext.hourly(byHour));
-        ScheduleTask park = ScheduleTask.movable("park", ProblemFixtures.activity("park",
+        final WeatherSuitabilityPolicy policy = new WeatherSuitabilityPolicy();
+        final Map<Integer, WeatherSeverity> byHour = allDay(WeatherSeverity.HIGH);
+        final PolicyContext worst = new PolicyContext(WeatherContext.hourly(byHour));
+        final ScheduleTask park = ScheduleTask.movable("park", ProblemFixtures.activity("park",
                 ActivityCategory.PARKS_NATURE, IndoorOutdoorType.OUTDOOR, at(0, 0), at(23, 59)),
                 480, 0);
 
-        int penalty = policy.penaltyMinutes(PlacedActivity.first(park, at(9, 0), at(17, 0), 0, 0),
+        final int penalty = policy.penaltyMinutes(PlacedActivity.first(park, at(9, 0), at(17, 0), 0, 0),
                 worst);
 
         assertTrue(penalty <= WeatherSuitabilityPolicy.MAX_PENALTY_MINUTES,
@@ -272,7 +273,7 @@ class WeatherPreferenceTest {
     }
 
     private static Map<Integer, WeatherSeverity> allDay(WeatherSeverity severity) {
-        Map<Integer, WeatherSeverity> byHour = new HashMap<>();
+        final Map<Integer, WeatherSeverity> byHour = new HashMap<>();
         for (int hour = 0; hour < 24; hour++) {
             byHour.put(hour, severity);
         }
@@ -302,9 +303,9 @@ class WeatherPreferenceTest {
 
     private static ScheduledEvent event(String id, ActivityCategory category,
                                         IndoorOutdoorType exposure, int startHour, int minutes) {
-        Activity activity = new Activity(id, id, category, new Location(43.65, -79.38, id),
+        final Activity activity = new Activity(id, id, category, new Location(43.65, -79.38, id),
                 4.5, minutes, at(0, 0), at(23, 59), exposure, "none");
-        LocalTime start = at(startHour, 0);
+        final LocalTime start = at(startHour, 0);
         return new ScheduledEvent(id, activity, start, start.plusMinutes(minutes),
                 EventType.ACTIVITY, "");
     }
@@ -314,11 +315,11 @@ class WeatherPreferenceTest {
     }
 
     private static Trip tripOn(java.time.LocalDate date, ScheduledEvent... events) {
-        List<ScheduledEvent> schedule = new ArrayList<>(Arrays.asList(events));
+        final List<ScheduledEvent> schedule = new ArrayList<>(Arrays.asList(events));
         if (schedule.isEmpty()) {
             schedule.add(outdoorEvent("park", 10, 60));
         }
-        Trip trip = new Trip("trip-1", "Toronto", date, at(9, 0), at(21, 0),
+        final Trip trip = new Trip("trip-1", "Toronto", date, at(9, 0), at(21, 0),
                 TransportationMode.WALKING);
         trip.replaceSchedule(schedule);
         return trip;

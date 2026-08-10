@@ -1,13 +1,15 @@
 package interface_adapter.presenters;
 
-import interface_adapter.viewmodels.TripAssistantState;
-import interface_adapter.viewmodels.TripAssistantViewModel;
-import entity.valueobjects.TripAssistantMessage;
-import use_case.tripassistant.TripAssistantOutputBoundary;
-import use_case.tripassistant.TripAssistantOutputData;
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.swing.SwingUtilities;
+
+import entity.valueobjects.TripAssistantMessage;
+import interface_adapter.viewmodels.TripAssistantState;
+import interface_adapter.viewmodels.TripAssistantViewModel;
+import use_case.tripassistant.TripAssistantOutputBoundary;
+import use_case.tripassistant.TripAssistantOutputData;
 
 /** Maps use-case results into George's Swing chat state. */
 public final class TripAssistantPresenter implements TripAssistantOutputBoundary {
@@ -20,9 +22,13 @@ public final class TripAssistantPresenter implements TripAssistantOutputBoundary
         this.viewModel = viewModel;
     }
 
+    /**
+     * Performs the p re se nt lo ad in g operation.
+     * @param question the q ue st io n value
+     */
     public void presentLoading(String question) {
         update(() -> {
-            List<TripAssistantMessage> messages = mutableMessages();
+            final List<TripAssistantMessage> messages = mutableMessages();
             messages.add(new TripAssistantMessage(TripAssistantMessage.Role.USER, question));
             viewModel.setState(new TripAssistantState(messages, true, ""));
         });
@@ -31,7 +37,7 @@ public final class TripAssistantPresenter implements TripAssistantOutputBoundary
     @Override
     public void presentSuccess(TripAssistantOutputData outputData) {
         update(() -> {
-            List<TripAssistantMessage> messages = mutableMessages();
+            final List<TripAssistantMessage> messages = mutableMessages();
             messages.add(new TripAssistantMessage(
                     TripAssistantMessage.Role.ASSISTANT,
                     outputData.getAnswer(), outputData.getActivityIds()));
@@ -58,7 +64,8 @@ public final class TripAssistantPresenter implements TripAssistantOutputBoundary
         }
         try {
             SwingUtilities.invokeAndWait(action);
-        } catch (Exception exception) {
+        }
+        catch (Exception exception) {
             throw new IllegalStateException("Could not update Trip Assistant view", exception);
         }
     }

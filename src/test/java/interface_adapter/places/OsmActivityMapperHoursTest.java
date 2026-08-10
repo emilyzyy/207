@@ -4,12 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Optional;
-import com.fasterxml.jackson.databind.JsonNode;
+
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import entity.entities.Activity;
 
 /**
@@ -26,20 +28,20 @@ class OsmActivityMapperHoursTest {
     private static final LocalDate WEDNESDAY = LocalDate.of(2026, 8, 12);
 
     private static Activity mapOne(String openingHours) throws Exception {
-        String json = "{\"elements\":[{\"type\":\"node\",\"id\":1,\"lat\":45.44,\"lon\":12.32,"
+        final String json = "{\"elements\":[{\"type\":\"node\",\"id\":1,\"lat\":45.44,\"lon\":12.32,"
                 + "\"tags\":{\"name\":\"Test Place\",\"amenity\":\"restaurant\""
                 + (openingHours == null ? ""
                         : ",\"opening_hours\":\"" + openingHours + "\"")
                 + "}}]}";
-        JsonNode element = new ObjectMapper().readTree(json).get("elements").get(0);
-        Optional<Activity> mapped = new OsmActivityMapper(new ObjectMapper()).fromOverpass(element);
+        final JsonNode element = new ObjectMapper().readTree(json).get("elements").get(0);
+        final Optional<Activity> mapped = new OsmActivityMapper(new ObjectMapper()).fromOverpass(element);
         assertTrue(mapped.isPresent(), "the mapper should have produced a place");
         return mapped.get();
     }
 
     @Test
     void aSplitHoursTagArrivesParsedIntoItsTwoIntervals() throws Exception {
-        Activity place = mapOne("Mo-Sa 12:30-14:30,19:00-22:30");
+        final Activity place = mapOne("Mo-Sa 12:30-14:30,19:00-22:30");
 
         assertEquals("Mo-Sa 12:30-14:30,19:00-22:30", place.getOpeningHoursText());
         assertTrue(place.getOpeningHours().isKnown(),
@@ -51,7 +53,7 @@ class OsmActivityMapperHoursTest {
 
     @Test
     void aVenueClosedOnADayIsKnownToBeClosed() throws Exception {
-        Activity place = mapOne("Mo-Tu,Th-Su 07:00-20:00; We closed");
+        final Activity place = mapOne("Mo-Tu,Th-Su 07:00-20:00; We closed");
 
         assertTrue(place.getOpeningHours().isClosedOn(WEDNESDAY),
                 "a venue shut on the trip date must be schedulable-as-closed, not unknown");
@@ -59,7 +61,7 @@ class OsmActivityMapperHoursTest {
 
     @Test
     void noTagStillMeansUnknownRatherThanClosed() throws Exception {
-        Activity place = mapOne(null);
+        final Activity place = mapOne(null);
 
         assertFalse(place.getOpeningHours().isKnown());
         assertFalse(place.getOpeningHours().isClosedOn(WEDNESDAY),

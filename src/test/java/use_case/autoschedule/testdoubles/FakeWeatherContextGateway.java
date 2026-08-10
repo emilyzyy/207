@@ -1,8 +1,8 @@
 package use_case.autoschedule.testdoubles;
 
+import entity.entities.Trip;
 import use_case.autoschedule.WeatherContext;
 import use_case.autoschedule.WeatherContextGateway;
-import entity.entities.Trip;
 
 /** Returns a fixed forecast context, or throws to exercise degradation. */
 public final class FakeWeatherContextGateway implements WeatherContextGateway {

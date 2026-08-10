@@ -1,11 +1,12 @@
 package entity.entities;
 
-import entity.valueobjects.EventType;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import entity.valueobjects.EventType;
 
 /**
  * One calendar day of a trip: its date, its window, and the events scheduled for it.
@@ -47,8 +48,13 @@ public final class TripDay {
     public List<ScheduledEvent> getScheduledEvents() {
         return Collections.unmodifiableList(scheduledEvents);
     }
+    /**
+     * Moves the day's date and/or window, keeping every existing event inside it.
+     * @param newEnd the n ew en d value
+     * @param newStart the n ew st ar t value
+     * @param newDate the n ew da te value
+     */
 
-    /** Moves the day's date and/or window, keeping every existing event inside it. */
     public void updateWindow(LocalDate newDate, LocalTime newStart, LocalTime newEnd) {
         if (newStart == null || newEnd == null || !newEnd.isAfter(newStart)) {
             throw new IllegalArgumentException("Day end must follow start");
@@ -70,19 +76,23 @@ public final class TripDay {
      */
     public void updateWindowPreservingSchedule(
             LocalDate newDate, LocalTime newStart, LocalTime newEnd) {
-        if (newDate == null) throw new IllegalArgumentException("Day date is required");
+        if (newDate == null) {
+            throw new IllegalArgumentException("Day date is required");
+        }
         if (newStart == null || newEnd == null || !newEnd.isAfter(newStart)) {
             throw new IllegalArgumentException("Day end must follow start");
         }
-        List<ScheduledEvent> retained = new ArrayList<>();
+        final List<ScheduledEvent> retained = new ArrayList<>();
         for (ScheduledEvent event : scheduledEvents) {
-            boolean startOutside = event.getStartTime().isBefore(newStart)
+            final boolean startOutside = event.getStartTime().isBefore(newStart)
                     || !event.getStartTime().isBefore(newEnd);
-            boolean endOutside = !event.getEndTime().isAfter(newStart)
+            final boolean endOutside = !event.getEndTime().isAfter(newStart)
                     || event.getEndTime().isAfter(newEnd);
-            if (startOutside && endOutside) continue;
-            LocalTime adjustedStart = startOutside ? newStart : event.getStartTime();
-            LocalTime adjustedEnd = endOutside ? newEnd : event.getEndTime();
+            if (startOutside && endOutside) {
+                continue;
+            }
+            final LocalTime adjustedStart = startOutside ? newStart : event.getStartTime();
+            final LocalTime adjustedEnd = endOutside ? newEnd : event.getEndTime();
             event.reschedule(adjustedStart, adjustedEnd, event.getNotes());
             retained.add(event);
         }
@@ -93,6 +103,10 @@ public final class TripDay {
         endTime = newEnd;
     }
 
+    /**
+     * Performs the a dd ev en t operation.
+     * @param event the e ve nt value
+     */
     public void addEvent(ScheduledEvent event) {
         if (event == null) {
             throw new IllegalArgumentException("Event is required");
@@ -100,6 +114,10 @@ public final class TripDay {
         scheduledEvents.add(event);
     }
 
+    /**
+     * Performs the r ep la ce sc he du le operation.
+     * @param events the e ve nt s value
+     */
     public void replaceSchedule(List<ScheduledEvent> events) {
         if (events == null) {
             throw new IllegalArgumentException("Schedule is required");
@@ -116,7 +134,7 @@ public final class TripDay {
                 throw new IllegalArgumentException("Scheduled events must be sorted and cannot overlap");
             }
             if (event.getEventType() == EventType.ACTIVITY) {
-                Activity activity = event.getActivity();
+                final Activity activity = event.getActivity();
                 if (activity == null) {
                     throw new IllegalArgumentException("Activity event requires an activity");
                 }
@@ -131,10 +149,19 @@ public final class TripDay {
         scheduledEvents.addAll(events);
     }
 
+    /**
+     * Performs the r em ov ee ve nt operation.
+     * @param eventId the e ve nt id value
+     */
     public void removeEvent(String eventId) {
         scheduledEvents.removeIf(event -> event.getId().equals(eventId));
     }
 
+    /**
+     * Performs the f in de ve nt operation.
+     * @param eventId the e ve nt id value
+     * @return the result of the operation
+     */
     public ScheduledEvent findEvent(String eventId) {
         for (ScheduledEvent event : scheduledEvents) {
             if (event.getId().equals(eventId)) {

@@ -1,5 +1,9 @@
 package app;
 
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Optional;
+
 import entity.entities.Activity;
 import entity.entities.Trip;
 import entity.entities.WeatherWarning;
@@ -14,9 +18,6 @@ import use_case.ports.TripRepository;
 import use_case.ports.WeatherService;
 import use_case.scheduling.ActivityScoringPolicy;
 import use_case.usecases.*;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.Optional;
 
 /**
  * Application-layer use-case registry. Concrete infrastructure is supplied by an outer builder.
@@ -34,7 +35,7 @@ public final class AppContainer implements ApiTripService {
     public final AccountService account;
     public final CreateTripUseCase createTrip;
     public final DiscoverTripPlacesUseCase discoverTripPlaces;
-    public final SearchActivitiesUseCase searchActivities;
+    public final SearchActivitiesInteractor searchActivities;
     public final FilterActivitiesUseCase filterActivities;
     public final BookmarkActivityUseCase bookmarkActivity;
     public final RemoveBookmarkUseCase removeBookmark;
@@ -92,7 +93,7 @@ public final class AppContainer implements ApiTripService {
         this.account = account;
         createTrip = new CreateTripUseCase(trips);
         discoverTripPlaces = new DiscoverTripPlacesUseCase(trips, places, placesWriter);
-        searchActivities = new SearchActivitiesUseCase(places);
+        searchActivities = new SearchActivitiesInteractor(places);
         filterActivities = new FilterActivitiesUseCase();
         bookmarkActivity = new BookmarkActivityUseCase(trips, activities);
         removeBookmark = new RemoveBookmarkUseCase(trips);

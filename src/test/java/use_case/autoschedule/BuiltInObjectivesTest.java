@@ -1,16 +1,26 @@
 package use_case.autoschedule;
 
-import static use_case.autoschedule.ProblemFixtures.at;
-import static use_case.autoschedule.ProblemFixtures.flatMatrix;
-import static use_case.autoschedule.ProblemFixtures.noBlockedWindows;
-import static use_case.autoschedule.ProblemFixtures.tasks;
-import static use_case.autoschedule.ProblemFixtures.window;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static use_case.autoschedule.ProblemFixtures.at;
+import static use_case.autoschedule.ProblemFixtures.flatMatrix;
+import static use_case.autoschedule.ProblemFixtures.noBlockedWindows;
+import static use_case.autoschedule.ProblemFixtures.tasks;
+import static use_case.autoschedule.ProblemFixtures.window;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.WeatherSeverity;
 import use_case.autoschedule.engine.ScheduleEngine;
 import use_case.autoschedule.engine.ScheduleSearchResult;
 import use_case.autoschedule.engine.SearchBudget;
@@ -18,14 +28,6 @@ import use_case.autoschedule.policy.DaylightPolicy;
 import use_case.autoschedule.policy.MealWindowPolicy;
 import use_case.autoschedule.policy.SoftPolicy;
 import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.IndoorOutdoorType;
-import entity.valueobjects.WeatherSeverity;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import org.junit.jupiter.api.Test;
 
 /**
  * The scheduling intelligence is built in and always on; the traveller's only choice is
@@ -58,13 +60,12 @@ class BuiltInObjectivesTest {
     private SchedulingPreferences preferences(boolean keepOrder, WeatherContext weather) {
         return SchedulingPreferences.builtIn(BUILT_IN, keepOrder, new PolicyContext(weather));
     }
-
     // --- what each built-in consideration does -------------------------------------
 
     @Test
     void mealsPreferCustomaryEatingTimes() {
-        MealWindowPolicy policy = new MealWindowPolicy();
-        ScheduleTask lunch = food("lunch", 60, 0);
+        final MealWindowPolicy policy = new MealWindowPolicy();
+        final ScheduleTask lunch = food("lunch", 60, 0);
 
         assertEquals(0, policy.penaltyMinutes(placedAt(lunch, 12, 30), PolicyContext.empty()));
         assertTrue(policy.penaltyMinutes(placedAt(lunch, 15, 30), PolicyContext.empty()) > 0);
@@ -72,8 +73,8 @@ class BuiltInObjectivesTest {
 
     @Test
     void outdoorActivitiesPreferDaylight() {
-        DaylightPolicy policy = new DaylightPolicy();
-        ScheduleTask park = outdoor("park", 60, 0);
+        final DaylightPolicy policy = new DaylightPolicy();
+        final ScheduleTask park = outdoor("park", 60, 0);
 
         assertEquals(0, policy.penaltyMinutes(placedAt(park, 14, 0), PolicyContext.empty()));
         assertTrue(policy.penaltyMinutes(placedAt(park, 20, 0), PolicyContext.empty()) > 0);
@@ -81,9 +82,9 @@ class BuiltInObjectivesTest {
 
     @Test
     void aWholeDayForecastCannotInfluenceTimingSoItContributesNothing() {
-        WeatherSuitabilityPolicy policy = new WeatherSuitabilityPolicy();
-        ScheduleTask park = outdoor("park", 60, 0);
-        PolicyContext coarse = new PolicyContext(
+        final WeatherSuitabilityPolicy policy = new WeatherSuitabilityPolicy();
+        final ScheduleTask park = outdoor("park", 60, 0);
+        final PolicyContext coarse = new PolicyContext(
                 WeatherContext.tripLevel(WeatherSeverity.HIGH));
 
         assertEquals(0, policy.penaltyMinutes(placedAt(park, 14, 0), coarse),
@@ -93,12 +94,12 @@ class BuiltInObjectivesTest {
 
     @Test
     void anHourlyForecastDoesInfluenceTiming() {
-        Map<Integer, WeatherSeverity> byHour = new HashMap<>();
+        final Map<Integer, WeatherSeverity> byHour = new HashMap<>();
         byHour.put(10, WeatherSeverity.LOW);
         byHour.put(15, WeatherSeverity.HIGH);
-        PolicyContext hourly = new PolicyContext(WeatherContext.hourly(byHour));
-        WeatherSuitabilityPolicy policy = new WeatherSuitabilityPolicy();
-        ScheduleTask park = outdoor("park", 60, 0);
+        final PolicyContext hourly = new PolicyContext(WeatherContext.hourly(byHour));
+        final WeatherSuitabilityPolicy policy = new WeatherSuitabilityPolicy();
+        final ScheduleTask park = outdoor("park", 60, 0);
 
         assertTrue(policy.penaltyMinutes(placedAt(park, 15, 0), hourly)
                 > policy.penaltyMinutes(placedAt(park, 10, 0), hourly));
@@ -106,9 +107,9 @@ class BuiltInObjectivesTest {
 
     @Test
     void aMissingForecastCostsNothingAndSaysNothing() {
-        WeatherSuitabilityPolicy policy = new WeatherSuitabilityPolicy();
-        ScheduleTask park = outdoor("park", 60, 0);
-        PolicyContext none = new PolicyContext(WeatherContext.unavailable());
+        final WeatherSuitabilityPolicy policy = new WeatherSuitabilityPolicy();
+        final ScheduleTask park = outdoor("park", 60, 0);
+        final PolicyContext none = new PolicyContext(WeatherContext.unavailable());
 
         assertEquals(0, policy.penaltyMinutes(placedAt(park, 14, 0), none));
         assertNull(policy.reasonFor(placedAt(park, 14, 0), none));
@@ -116,10 +117,10 @@ class BuiltInObjectivesTest {
 
     @Test
     void indoorActivitiesAreUnaffectedByWeather() {
-        Map<Integer, WeatherSeverity> byHour = new HashMap<>();
+        final Map<Integer, WeatherSeverity> byHour = new HashMap<>();
         byHour.put(14, WeatherSeverity.HIGH);
-        WeatherSuitabilityPolicy policy = new WeatherSuitabilityPolicy();
-        ScheduleTask museum = ProblemFixtures.task("museum", 60, 0, at(9, 0), at(21, 0));
+        final WeatherSuitabilityPolicy policy = new WeatherSuitabilityPolicy();
+        final ScheduleTask museum = ProblemFixtures.task("museum", 60, 0, at(9, 0), at(21, 0));
 
         assertEquals(0, policy.penaltyMinutes(placedAt(museum, 14, 0),
                 new PolicyContext(WeatherContext.hourly(byHour))));
@@ -129,13 +130,13 @@ class BuiltInObjectivesTest {
 
     @Test
     void everySoftPenaltyIsCapped() {
-        ScheduleTask lunch = food("lunch", 240, 0);
-        ScheduleTask park = outdoor("park", 600, 1);
-        Map<Integer, WeatherSeverity> byHour = new HashMap<>();
+        final ScheduleTask lunch = food("lunch", 240, 0);
+        final ScheduleTask park = outdoor("park", 600, 1);
+        final Map<Integer, WeatherSeverity> byHour = new HashMap<>();
         for (int hour = 0; hour < 24; hour++) {
             byHour.put(hour, WeatherSeverity.HIGH);
         }
-        PolicyContext worst = new PolicyContext(WeatherContext.hourly(byHour));
+        final PolicyContext worst = new PolicyContext(WeatherContext.hourly(byHour));
 
         assertTrue(new MealWindowPolicy().penaltyMinutes(placedAt(lunch, 3, 0), worst)
                 <= MealWindowPolicy.MAX_PENALTY_MINUTES);
@@ -150,21 +151,21 @@ class BuiltInObjectivesTest {
         // Two orders: one puts the meal in its window but crosses the city to do it.
         // Perfect meal timing is worth at most 120 minutes, so 400 minutes of detour
         // must lose.
-        ScheduleTask meal = food("meal", 60, 0);
-        ScheduleTask museum = ProblemFixtures.task("museum", 60, 1, at(9, 0), at(21, 0));
-        List<ScheduleTask> items = tasks(meal, museum);
+        final ScheduleTask meal = food("meal", 60, 0);
+        final ScheduleTask museum = ProblemFixtures.task("museum", 60, 1, at(9, 0), at(21, 0));
+        final List<ScheduleTask> items = tasks(meal, museum);
 
-        PeriodPlan plan = PeriodPlan.forRun(window(9, 21), false, 2);
-        TravelMatrix.Builder builder = TravelMatrix.builder(plan);
+        final PeriodPlan plan = PeriodPlan.forRun(window(9, 21), false, 2);
+        final TravelMatrix.Builder builder = TravelMatrix.builder(plan);
         for (DeparturePeriod period : plan.activePeriods()) {
             // museum -> meal is quick; meal -> museum is a 400-minute ordeal.
             builder.put("museum", "meal", period, TravelEstimate.routed(400));
             builder.put("meal", "museum", period, TravelEstimate.routed(5));
         }
-        ScheduleProblem problem = new ScheduleProblem(window(9, 21), items, noBlockedWindows(),
+        final ScheduleProblem problem = new ScheduleProblem(window(9, 21), items, noBlockedWindows(),
                 builder.build(), preferences(false, WeatherContext.unavailable()));
 
-        ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
+        final ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
 
         assertNotNull(result.getPlan());
         assertEquals(Arrays.asList("meal", "museum"), result.getPlan().orderedEventIds(),
@@ -175,20 +176,20 @@ class BuiltInObjectivesTest {
     @Test
     void aWorthwhileSoftImprovementStillWins() {
         // Same shape, but the detour is only ten minutes, well under the meal cap.
-        ScheduleTask meal = food("meal", 60, 0);
-        ScheduleTask museum = ProblemFixtures.task("museum", 60, 1, at(9, 0), at(21, 0));
-        List<ScheduleTask> items = tasks(museum, meal);
+        final ScheduleTask meal = food("meal", 60, 0);
+        final ScheduleTask museum = ProblemFixtures.task("museum", 60, 1, at(9, 0), at(21, 0));
+        final List<ScheduleTask> items = tasks(museum, meal);
 
-        PeriodPlan plan = PeriodPlan.forRun(window(9, 21), false, 2);
-        TravelMatrix.Builder builder = TravelMatrix.builder(plan);
+        final PeriodPlan plan = PeriodPlan.forRun(window(9, 21), false, 2);
+        final TravelMatrix.Builder builder = TravelMatrix.builder(plan);
         for (DeparturePeriod period : plan.activePeriods()) {
             builder.put("museum", "meal", period, TravelEstimate.routed(15));
             builder.put("meal", "museum", period, TravelEstimate.routed(5));
         }
-        ScheduleProblem problem = new ScheduleProblem(window(9, 21), items, noBlockedWindows(),
+        final ScheduleProblem problem = new ScheduleProblem(window(9, 21), items, noBlockedWindows(),
                 builder.build(), preferences(false, WeatherContext.unavailable()));
 
-        ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
+        final ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
 
         // Museum first puts the meal at roughly 10:15, still outside lunch; meal first
         // puts it at 09:00. Whichever wins, the decision must be explainable by cost.
@@ -203,14 +204,14 @@ class BuiltInObjectivesTest {
 
     @Test
     void costIsTravelPlusIdlePlusCappedPenalties() {
-        List<ScheduleTask> items = tasks(
+        final List<ScheduleTask> items = tasks(
                 ProblemFixtures.task("a", 60, 0, at(9, 0), at(21, 0)),
                 ProblemFixtures.task("b", 60, 1, at(15, 0), at(21, 0)));
-        ScheduleProblem problem = new ScheduleProblem(window(9, 21), items, noBlockedWindows(),
+        final ScheduleProblem problem = new ScheduleProblem(window(9, 21), items, noBlockedWindows(),
                 flatMatrix(items, window(9, 21), 10),
                 preferences(false, WeatherContext.unavailable()));
 
-        ScheduleScore score = engine.search(problem, SearchBudget.defaultBudget())
+        final ScheduleScore score = engine.search(problem, SearchBudget.defaultBudget())
                 .getPlan().getScore();
 
         assertEquals(score.getTravelMinutes() + score.getAvoidableIdleMinutes()
@@ -222,15 +223,15 @@ class BuiltInObjectivesTest {
 
     @Test
     void keepingTheCurrentOrderAddsACappedCharge() {
-        List<ScheduleTask> items = tasks(
+        final List<ScheduleTask> items = tasks(
                 ProblemFixtures.task("a", 60, 0, at(9, 0), at(21, 0)),
                 ProblemFixtures.task("b", 60, 1, at(9, 0), at(21, 0)));
-        TravelMatrix matrix = flatMatrix(items, window(9, 21), 10);
+        final TravelMatrix matrix = flatMatrix(items, window(9, 21), 10);
 
-        ScheduleScore kept = engine.search(new ScheduleProblem(window(9, 21), items,
+        final ScheduleScore kept = engine.search(new ScheduleProblem(window(9, 21), items,
                 noBlockedWindows(), matrix, preferences(true, WeatherContext.unavailable())),
                 SearchBudget.defaultBudget()).getPlan().getScore();
-        ScheduleScore free = engine.search(new ScheduleProblem(window(9, 21), items,
+        final ScheduleScore free = engine.search(new ScheduleProblem(window(9, 21), items,
                 noBlockedWindows(), matrix, preferences(false, WeatherContext.unavailable())),
                 SearchBudget.defaultBudget()).getPlan().getScore();
 
@@ -242,20 +243,20 @@ class BuiltInObjectivesTest {
     @Test
     void theOrderChargeCannotOutweighAGenuinelyBetterDay() {
         // Reversing the order saves far more travel than the capped order charge.
-        ScheduleTask first = ProblemFixtures.task("first", 60, 0, at(9, 0), at(21, 0));
-        ScheduleTask second = ProblemFixtures.task("second", 60, 1, at(9, 0), at(21, 0));
-        List<ScheduleTask> items = tasks(first, second);
+        final ScheduleTask first = ProblemFixtures.task("first", 60, 0, at(9, 0), at(21, 0));
+        final ScheduleTask second = ProblemFixtures.task("second", 60, 1, at(9, 0), at(21, 0));
+        final List<ScheduleTask> items = tasks(first, second);
 
-        PeriodPlan plan = PeriodPlan.forRun(window(9, 21), false, 2);
-        TravelMatrix.Builder builder = TravelMatrix.builder(plan);
+        final PeriodPlan plan = PeriodPlan.forRun(window(9, 21), false, 2);
+        final TravelMatrix.Builder builder = TravelMatrix.builder(plan);
         for (DeparturePeriod period : plan.activePeriods()) {
             builder.put("first", "second", period, TravelEstimate.routed(200));
             builder.put("second", "first", period, TravelEstimate.routed(5));
         }
-        ScheduleProblem problem = new ScheduleProblem(window(9, 21), items, noBlockedWindows(),
+        final ScheduleProblem problem = new ScheduleProblem(window(9, 21), items, noBlockedWindows(),
                 builder.build(), preferences(true, WeatherContext.unavailable()));
 
-        ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
+        final ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
 
         assertEquals(Arrays.asList("second", "first"), result.getPlan().orderedEventIds(),
                 "saving 195 minutes must beat a charge capped at "
@@ -274,7 +275,7 @@ class BuiltInObjectivesTest {
 
     @Test
     void weatherIsListedAsAnObjectiveOnlyWhenItCouldActuallyContribute() {
-        Map<Integer, WeatherSeverity> byHour = new HashMap<>();
+        final Map<Integer, WeatherSeverity> byHour = new HashMap<>();
         byHour.put(11, WeatherSeverity.HIGH);
 
         assertTrue(preferences(true, WeatherContext.hourly(byHour)).activeIds()
@@ -291,16 +292,16 @@ class BuiltInObjectivesTest {
 
     @Test
     void theSameInputAlwaysProducesTheSameSchedule() {
-        List<ScheduleTask> items = tasks(
+        final List<ScheduleTask> items = tasks(
                 ProblemFixtures.task("a", 60, 0, at(9, 0), at(21, 0)),
                 food("b", 60, 1),
                 outdoor("c", 60, 2));
-        ScheduleProblem problem = new ScheduleProblem(window(9, 21), items, noBlockedWindows(),
+        final ScheduleProblem problem = new ScheduleProblem(window(9, 21), items, noBlockedWindows(),
                 flatMatrix(items, window(9, 21), 12),
                 preferences(true, WeatherContext.unavailable()));
 
-        ScheduleSearchResult first = engine.search(problem, SearchBudget.defaultBudget());
-        ScheduleSearchResult second = engine.search(problem, SearchBudget.defaultBudget());
+        final ScheduleSearchResult first = engine.search(problem, SearchBudget.defaultBudget());
+        final ScheduleSearchResult second = engine.search(problem, SearchBudget.defaultBudget());
 
         assertEquals(first.getPlan().orderedEventIds(), second.getPlan().orderedEventIds());
         assertEquals(first.getPlan().getScore(), second.getPlan().getScore());
@@ -308,15 +309,15 @@ class BuiltInObjectivesTest {
 
     @Test
     void aSoftPreferenceNeverOverridesOpeningHours() {
-        ScheduleTask lateOnly = ScheduleTask.movable("supper",
+        final ScheduleTask lateOnly = ScheduleTask.movable("supper",
                 ProblemFixtures.activity("supper", ActivityCategory.FOOD,
                         IndoorOutdoorType.INDOOR, at(15, 0), at(16, 30)), 90, 0);
-        List<ScheduleTask> items = tasks(lateOnly);
-        ScheduleProblem problem = new ScheduleProblem(window(9, 21), items, noBlockedWindows(),
+        final List<ScheduleTask> items = tasks(lateOnly);
+        final ScheduleProblem problem = new ScheduleProblem(window(9, 21), items, noBlockedWindows(),
                 flatMatrix(items, window(9, 21), 10),
                 preferences(false, WeatherContext.unavailable()));
 
-        ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
+        final ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
 
         assertTrue(result.isFound(), "a preference must not make a day unschedulable");
         assertEquals(at(15, 0), result.getPlan().getPlacements().get(0).getStart());
@@ -324,8 +325,8 @@ class BuiltInObjectivesTest {
 
     @Test
     void policiesStillEmitReasonsForTheSchedulesTheyJudge() {
-        MealWindowPolicy policy = new MealWindowPolicy();
-        ScheduleTask lunch = food("lunch", 60, 0);
+        final MealWindowPolicy policy = new MealWindowPolicy();
+        final ScheduleTask lunch = food("lunch", 60, 0);
 
         assertEquals(ReasonCode.IN_MEAL_WINDOW,
                 policy.reasonFor(placedAt(lunch, 12, 30), PolicyContext.empty()).getCode());

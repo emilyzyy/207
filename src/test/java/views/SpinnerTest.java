@@ -16,7 +16,7 @@ class SpinnerTest {
 
     @Test
     void theAnimationRunsOnlyWhileTheSpinnerIsVisible() {
-        Spinner spinner = new Spinner();
+        final Spinner spinner = new Spinner();
         assertTrue(spinner.isSpinning(), "a spinner starts visible, so it starts running");
 
         spinner.setVisible(false);

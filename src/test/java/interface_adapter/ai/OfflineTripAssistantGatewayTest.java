@@ -1,8 +1,18 @@
 package interface_adapter.ai;
 
-import use_case.tripassistant.TripAssistantDecision;
-import entity.valueobjects.TripAssistantMessage;
-import use_case.tripassistant.TripAssistantRequest;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.valueobjects.ActivityCategory;
@@ -10,24 +20,16 @@ import entity.valueobjects.EventType;
 import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import entity.valueobjects.TripAssistantMessage;
+import use_case.tripassistant.TripAssistantDecision;
+import use_case.tripassistant.TripAssistantRequest;
 
 final class OfflineTripAssistantGatewayTest {
     private final OfflineTripAssistantGateway gateway = new OfflineTripAssistantGateway();
 
     @Test
     void rainRecommendationsUseOnlyExistingShelteredActivities() {
-        TripAssistantDecision decision = gateway.answer(request(
+        final TripAssistantDecision decision = gateway.answer(request(
                 "What should I do if it rains?", Collections.emptyList()));
 
         assertEquals(TripAssistantDecision.Intent.RAIN, decision.getIntent());
@@ -38,7 +40,7 @@ final class OfflineTripAssistantGatewayTest {
 
     @Test
     void bookmarkQuestionRestrictsSelectionToBookmarks() {
-        TripAssistantDecision decision = gateway.answer(request(
+        final TripAssistantDecision decision = gateway.answer(request(
                 "Which bookmarked activity should I visit?", Collections.emptyList()));
 
         assertEquals(TripAssistantDecision.Intent.BOOKMARKS, decision.getIntent());
@@ -47,11 +49,11 @@ final class OfflineTripAssistantGatewayTest {
 
     @Test
     void whyQuestionReusesTheLastGroundedRecommendations() {
-        List<TripAssistantMessage> history = Collections.singletonList(
+        final List<TripAssistantMessage> history = Collections.singletonList(
                 new TripAssistantMessage(TripAssistantMessage.Role.ASSISTANT,
                         "Try the park", Collections.singletonList("park")));
 
-        TripAssistantDecision decision = gateway.answer(request(
+        final TripAssistantDecision decision = gateway.answer(request(
                 "Why is this a good choice?", history));
 
         assertEquals(TripAssistantDecision.Intent.EXPLAIN, decision.getIntent());
@@ -60,9 +62,9 @@ final class OfflineTripAssistantGatewayTest {
 
     @Test
     void generalIdentityAndArithmeticQuestionsGetDirectFriendlyAnswers() {
-        TripAssistantDecision identity = gateway.answer(request(
+        final TripAssistantDecision identity = gateway.answer(request(
                 "What is your name?", Collections.emptyList()));
-        TripAssistantDecision arithmetic = gateway.answer(request(
+        final TripAssistantDecision arithmetic = gateway.answer(request(
                 "3 + 3 = ?", Collections.emptyList()));
 
         assertEquals(TripAssistantDecision.Intent.GENERAL, identity.getIntent());
@@ -75,11 +77,11 @@ final class OfflineTripAssistantGatewayTest {
 
     @Test
     void activityFollowUpUsesRecentGroundedIdsAndRequestedFact() {
-        List<TripAssistantMessage> history = Collections.singletonList(
+        final List<TripAssistantMessage> history = Collections.singletonList(
                 new TripAssistantMessage(TripAssistantMessage.Role.ASSISTANT,
                         "Try the museum", Collections.singletonList("museum")));
 
-        TripAssistantDecision decision = gateway.answer(request(
+        final TripAssistantDecision decision = gateway.answer(request(
                 "What is their specialty?", history));
 
         assertEquals(TripAssistantDecision.Intent.ACTIVITY_DETAILS, decision.getIntent());
@@ -91,23 +93,23 @@ final class OfflineTripAssistantGatewayTest {
 
     @Test
     void afternoonRecommendationFitsTheActualFreeGapInTheDayPlan() {
-        Activity longVisit = activity(
+        final Activity longVisit = activity(
                 "long", IndoorOutdoorType.INDOOR, 5.0, 120);
-        Activity shortVisit = activity(
+        final Activity shortVisit = activity(
                 "short", IndoorOutdoorType.INDOOR, 4.0, 45);
-        Activity booked = activity(
+        final Activity booked = activity(
                 "booked", IndoorOutdoorType.INDOOR, 4.5, 240);
-        ScheduledEvent occupied = new ScheduledEvent(
+        final ScheduledEvent occupied = new ScheduledEvent(
                 "occupied", booked, LocalTime.of(12, 0), LocalTime.of(16, 0),
                 EventType.ACTIVITY, "Already planned");
-        TripAssistantRequest request = new TripAssistantRequest(
+        final TripAssistantRequest request = new TripAssistantRequest(
                 "Toronto", LocalDate.of(2026, 8, 20), LocalTime.of(9, 0),
                 LocalTime.of(18, 0), TransportationMode.WALKING,
                 Arrays.asList(longVisit, shortVisit, booked), Collections.emptySet(),
                 Collections.singletonList(occupied), Collections.emptyList(),
                 Collections.emptyList(), "What fits into my afternoon?");
 
-        TripAssistantDecision decision = gateway.answer(request);
+        final TripAssistantDecision decision = gateway.answer(request);
 
         assertTrue(decision.getActivityIds().contains("short"));
         assertFalse(decision.getActivityIds().contains("long"));

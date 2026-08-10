@@ -5,6 +5,16 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
@@ -13,16 +23,8 @@ import entity.valueobjects.EventType;
 import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;
-import use_case.ports.DistanceService;
 import use_case.autoschedule.testdoubles.FakeTripRepository;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import org.junit.jupiter.api.Test;
+import use_case.ports.DistanceService;
 
 /**
  * Removing an activity from a day Autoschedule has already applied.
@@ -71,10 +73,10 @@ class AppliedPlanRemovalTest {
      * each identified as {@code travel-<destination>}.
      */
     private static Trip appliedDay(int activityCount, TransportationMode mode) {
-        List<ScheduledEvent> events = new ArrayList<>();
+        final List<ScheduledEvent> events = new ArrayList<>();
         LocalTime cursor = LocalTime.of(9, 0);
         for (int i = 0; i < activityCount; i++) {
-            String id = "e" + i;
+            final String id = "e" + i;
             if (i > 0) {
                 events.add(new ScheduledEvent("travel-" + id, null, cursor,
                         cursor.plusMinutes(15), EventType.TRAVEL, "Travel to Place " + id));
@@ -84,14 +86,14 @@ class AppliedPlanRemovalTest {
                     EventType.ACTIVITY, ""));
             cursor = cursor.plusMinutes(60 + 45);
         }
-        Trip trip = new Trip("trip-1", "Toronto", DATE, LocalTime.of(9, 0), LocalTime.of(21, 0),
+        final Trip trip = new Trip("trip-1", "Toronto", DATE, LocalTime.of(9, 0), LocalTime.of(21, 0),
                 mode);
         trip.replaceSchedule(events);
         return trip;
     }
 
     private static List<String> idsOf(Trip trip, EventType type) {
-        List<String> ids = new ArrayList<>();
+        final List<String> ids = new ArrayList<>();
         for (ScheduledEvent event : trip.getScheduledEvents()) {
             if (event.getEventType() == type) {
                 ids.add(event.getId());
@@ -101,7 +103,7 @@ class AppliedPlanRemovalTest {
     }
 
     private static String describe(Trip trip) {
-        StringBuilder text = new StringBuilder("\n");
+        final StringBuilder text = new StringBuilder("\n");
         for (ScheduledEvent event : trip.getScheduledEvents()) {
             text.append("  ").append(event.getEventType()).append(' ')
                     .append(event.getStartTime()).append('-').append(event.getEndTime())
@@ -112,10 +114,10 @@ class AppliedPlanRemovalTest {
 
     /** No leg may point at an activity that has gone, and none may be drawn twice. */
     private static void assertTravelIsSoundlyConnected(Trip trip) {
-        Set<String> activities = new HashSet<>(idsOf(trip, EventType.ACTIVITY));
-        Set<String> destinations = new HashSet<>();
+        final Set<String> activities = new HashSet<>(idsOf(trip, EventType.ACTIVITY));
+        final Set<String> destinations = new HashSet<>();
         for (String legId : idsOf(trip, EventType.TRAVEL)) {
-            String destination = legId.replaceFirst("^travel-", "");
+            final String destination = legId.replaceFirst("^travel-", "");
             assertTrue(activities.contains(destination),
                     "orphaned journey " + legId + describe(trip));
             assertTrue(destinations.add(destination),
@@ -124,14 +126,14 @@ class AppliedPlanRemovalTest {
     }
 
     private static Trip remove(Trip trip, String eventId, DistanceService distances) {
-        FakeTripRepository trips = new FakeTripRepository(trip);
+        final FakeTripRepository trips = new FakeTripRepository(trip);
         return new RemoveScheduledEventUseCase(trips, distances).execute("trip-1", eventId);
     }
 
     // 1
     @Test
     void removingTheFirstActivityKeepsTheJourneysBetweenTheRest() {
-        Trip after = remove(appliedDay(4, TransportationMode.WALKING), "e0",
+        final Trip after = remove(appliedDay(4, TransportationMode.WALKING), "e0",
                 new RecordingDistances(12));
 
         assertEquals(List.of("e1", "e2", "e3"), idsOf(after, EventType.ACTIVITY));
@@ -143,11 +145,11 @@ class AppliedPlanRemovalTest {
     // 2
     @Test
     void removingAMiddleActivityReplacesTwoJourneysWithOne() {
-        Trip before = appliedDay(4, TransportationMode.WALKING);
-        Trip after = remove(before, "e2", new RecordingDistances(12));
+        final Trip before = appliedDay(4, TransportationMode.WALKING);
+        final Trip after = remove(before, "e2", new RecordingDistances(12));
 
         assertEquals(List.of("e0", "e1", "e3"), idsOf(after, EventType.ACTIVITY));
-        List<String> legs = idsOf(after, EventType.TRAVEL);
+        final List<String> legs = idsOf(after, EventType.TRAVEL);
         assertEquals(2, legs.size(), "A-B survives and B-D is new" + describe(after));
         assertTrue(legs.contains("travel-e1"), "the journey into B is unchanged" + describe(after));
         assertTrue(legs.contains("travel-e3"), "and B to D is drawn" + describe(after));
@@ -158,7 +160,7 @@ class AppliedPlanRemovalTest {
     // 3
     @Test
     void removingTheFinalActivityDropsOnlyItsIncomingJourney() {
-        Trip after = remove(appliedDay(4, TransportationMode.WALKING), "e3",
+        final Trip after = remove(appliedDay(4, TransportationMode.WALKING), "e3",
                 new RecordingDistances(12));
 
         assertEquals(List.of("e0", "e1", "e2"), idsOf(after, EventType.ACTIVITY));
@@ -170,7 +172,7 @@ class AppliedPlanRemovalTest {
     // 4
     @Test
     void removingOneOfTwoLeavesOneActivityAndNoJourney() {
-        Trip after = remove(appliedDay(2, TransportationMode.WALKING), "e0",
+        final Trip after = remove(appliedDay(2, TransportationMode.WALKING), "e0",
                 new RecordingDistances(12));
 
         assertEquals(List.of("e1"), idsOf(after, EventType.ACTIVITY));
@@ -181,8 +183,8 @@ class AppliedPlanRemovalTest {
     // 5
     @Test
     void removingTwoConsecutiveActivitiesRecomputesTheNewAdjacency() {
-        RecordingDistances distances = new RecordingDistances(12);
-        Trip after = remove(remove(appliedDay(4, TransportationMode.WALKING), "e1", distances),
+        final RecordingDistances distances = new RecordingDistances(12);
+        final Trip after = remove(remove(appliedDay(4, TransportationMode.WALKING), "e1", distances),
                 "e2", distances);
 
         assertEquals(List.of("e0", "e3"), idsOf(after, EventType.ACTIVITY));
@@ -194,7 +196,7 @@ class AppliedPlanRemovalTest {
     @Test
     void removingEveryActivityLeavesNothingAtAll() {
         Trip current = appliedDay(3, TransportationMode.WALKING);
-        RecordingDistances distances = new RecordingDistances(12);
+        final RecordingDistances distances = new RecordingDistances(12);
         for (String id : List.of("e0", "e1", "e2")) {
             current = remove(current, id, distances);
         }
@@ -207,10 +209,10 @@ class AppliedPlanRemovalTest {
     // 7
     @Test
     void everyRemainingActivityAppearsExactlyOnce() {
-        Trip after = remove(appliedDay(4, TransportationMode.WALKING), "e1",
+        final Trip after = remove(appliedDay(4, TransportationMode.WALKING), "e1",
                 new RecordingDistances(12));
 
-        List<String> ids = idsOf(after, EventType.ACTIVITY);
+        final List<String> ids = idsOf(after, EventType.ACTIVITY);
         assertEquals(new HashSet<>(ids).size(), ids.size(), "no duplicates" + describe(after));
         assertEquals(3, ids.size());
     }
@@ -218,7 +220,7 @@ class AppliedPlanRemovalTest {
     // 11
     @Test
     void theReplacementJourneyUsesTheTripsOwnTransportMode() {
-        RecordingDistances distances = new RecordingDistances(12);
+        final RecordingDistances distances = new RecordingDistances(12);
 
         remove(appliedDay(4, TransportationMode.TRANSIT), "e2", distances);
 
@@ -232,10 +234,10 @@ class AppliedPlanRemovalTest {
     // 14
     @Test
     void aFailingProviderLeavesASoundScheduleRatherThanAHalfEditedOne() {
-        RecordingDistances broken = new RecordingDistances(12);
+        final RecordingDistances broken = new RecordingDistances(12);
         broken.broken = true;
 
-        Trip after = remove(appliedDay(4, TransportationMode.WALKING), "e2", broken);
+        final Trip after = remove(appliedDay(4, TransportationMode.WALKING), "e2", broken);
 
         assertEquals(List.of("e0", "e1", "e3"), idsOf(after, EventType.ACTIVITY),
                 "the removal itself still succeeds" + describe(after));
@@ -250,7 +252,7 @@ class AppliedPlanRemovalTest {
     /** A replacement journey lands exactly when its activity starts, as the scheduler does. */
     @Test
     void aReplacementJourneyArrivesAsItsActivityBegins() {
-        Trip after = remove(appliedDay(4, TransportationMode.WALKING), "e2",
+        final Trip after = remove(appliedDay(4, TransportationMode.WALKING), "e2",
                 new RecordingDistances(12));
 
         ScheduledEvent leg = null;
@@ -274,7 +276,7 @@ class AppliedPlanRemovalTest {
     /** A journey is never drawn where there is not room for it. */
     @Test
     void noJourneyIsDrawnWhenTheGapIsTooSmallToHoldIt() {
-        Trip after = remove(appliedDay(4, TransportationMode.WALKING), "e2",
+        final Trip after = remove(appliedDay(4, TransportationMode.WALKING), "e2",
                 new RecordingDistances(600));
 
         assertTrue(idsOf(after, EventType.TRAVEL).stream().noneMatch("travel-e3"::equals),

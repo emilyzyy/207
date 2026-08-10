@@ -21,11 +21,18 @@ public final class SearchBudget {
         this.maxNodes = maxNodes;
     }
 
+    /**
+     * Performs the d ef au lt bu dg et operation.
+     * @return the result of the operation
+     */
     public static SearchBudget defaultBudget() {
         return new SearchBudget(DEFAULT_MAX_NODES);
     }
+    /**
+     * Consumes one node; false once the budget is spent.
+     * @return the result of the operation
+     */
 
-    /** Consumes one node; false once the budget is spent. */
     public boolean consume() {
         if (usedNodes >= maxNodes) {
             return false;

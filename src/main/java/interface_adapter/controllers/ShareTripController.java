@@ -1,8 +1,9 @@
 package interface_adapter.controllers;
 
+import java.util.function.Supplier;
+
 import use_case.usecases.ShareTripInputBoundary;
 import use_case.usecases.ShareTripOutputBoundary;
-import java.util.function.Supplier;
 
 /** Converts the active Swing trip selection into a share-use-case request. */
 public final class ShareTripController {
@@ -22,10 +23,12 @@ public final class ShareTripController {
         this.output = output;
     }
 
+    /** Performs the e xe cu te operation. */
     public void execute() {
         try {
             output.presentSuccess(shareTrip.execute(activeTripId.get()));
-        } catch (IllegalArgumentException exception) {
+        }
+        catch (IllegalArgumentException exception) {
             output.presentFailure(exception.getMessage());
         }
     }

@@ -3,18 +3,20 @@ package views;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.valueobjects.ActivityCategory;
 import entity.valueobjects.EventType;
 import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import org.junit.jupiter.api.Test;
 
 /**
  * The map joins the Day Plan's stops in order.
@@ -37,7 +39,7 @@ class MapRouteLineTest {
     }
 
     private static MapPanel mapWith(List<Activity> places, List<ScheduledEvent> schedule) {
-        MapPanel map = new MapPanel(600, 400);
+        final MapPanel map = new MapPanel(600, 400);
         map.setActivities(places);
         map.setSchedule(schedule);
         return map;
@@ -45,11 +47,11 @@ class MapRouteLineTest {
 
     @Test
     void theRouteFollowsTheDayPlanOrderNotTheOrderPlacesWereLoaded() {
-        Activity west = place("accademia", 45.43137, 12.32809);
-        Activity east = place("giardini", 45.42890, 12.35520);
-        Activity centre = place("sanmarco", 45.43395, 12.33860);
+        final Activity west = place("accademia", 45.43137, 12.32809);
+        final Activity east = place("giardini", 45.42890, 12.35520);
+        final Activity centre = place("sanmarco", 45.43395, 12.33860);
         // Loaded west, east, centre -- but the day runs east, centre, west.
-        MapPanel map = mapWith(Arrays.asList(west, east, centre),
+        final MapPanel map = mapWith(Arrays.asList(west, east, centre),
                 Arrays.asList(stop(east, 10), stop(centre, 12), stop(west, 15)));
 
         assertEquals(Arrays.asList("giardini", "sanmarco", "accademia"), map.routeOrder());
@@ -57,8 +59,8 @@ class MapRouteLineTest {
 
     @Test
     void oneStopDrawsNoLine() {
-        Activity only = place("sanmarco", 45.43395, 12.33860);
-        MapPanel map = mapWith(Collections.singletonList(only),
+        final Activity only = place("sanmarco", 45.43395, 12.33860);
+        final MapPanel map = mapWith(Collections.singletonList(only),
                 Collections.singletonList(stop(only, 10)));
 
         assertTrue(map.routeOrder().isEmpty(), "a single stop is a point, not a journey");
@@ -66,7 +68,7 @@ class MapRouteLineTest {
 
     @Test
     void anEmptyDayPlanDrawsNoLine() {
-        MapPanel map = mapWith(new ArrayList<>(), new ArrayList<>());
+        final MapPanel map = mapWith(new ArrayList<>(), new ArrayList<>());
 
         assertTrue(map.routeOrder().isEmpty());
     }
@@ -77,9 +79,9 @@ class MapRouteLineTest {
      */
     @Test
     void aScheduledStopWithNoLoadedPlaceIsSkipped() {
-        Activity known = place("sanmarco", 45.43395, 12.33860);
-        Activity offMap = place("faraway", 45.60000, 12.90000);
-        MapPanel map = mapWith(Collections.singletonList(known),
+        final Activity known = place("sanmarco", 45.43395, 12.33860);
+        final Activity offMap = place("faraway", 45.60000, 12.90000);
+        final MapPanel map = mapWith(Collections.singletonList(known),
                 Arrays.asList(stop(offMap, 10), stop(known, 12)));
 
         assertTrue(map.routeOrder().isEmpty(),

@@ -1,39 +1,41 @@
 package use_case.usecases;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.time.LocalTime;
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
 import entity.valueobjects.ActivityCategory;
 import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
-import java.time.LocalTime;
-import java.util.Collections;
-import java.util.concurrent.atomic.AtomicReference;
-import org.junit.jupiter.api.Test;
 import use_case.search.ActivitySearchRequest;
 import use_case.search.ActivitySearchResult;
 import use_case.search.SearchFailure;
 import use_case.search.SearchSource;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-final class SearchActivitiesUseCaseTest {
+final class SearchActivitiesInteractorTest {
 
     @Test
     void delegatesTheCompleteRequestAndReturnsTheGatewayResult() {
-        ActivitySearchRequest request = new ActivitySearchRequest(
+        final ActivitySearchRequest request = new ActivitySearchRequest(
                 "Toronto", "museum", ActivityCategory.MUSEUM,
                 IndoorOutdoorType.INDOOR, 25);
-        ActivitySearchResult expected = new ActivitySearchResult(
+        final ActivitySearchResult expected = new ActivitySearchResult(
                 Collections.singletonList(museum()), SearchSource.NOMINATIM,
                 false, SearchFailure.NONE);
-        AtomicReference<ActivitySearchRequest> received = new AtomicReference<>();
-        SearchActivitiesUseCase interactor = new SearchActivitiesUseCase(input -> {
+        final AtomicReference<ActivitySearchRequest> received = new AtomicReference<>();
+        final SearchActivitiesInteractor interactor = new SearchActivitiesInteractor(input -> {
             received.set(input);
             return expected;
         });
 
-        ActivitySearchResult actual = interactor.execute(request);
+        final ActivitySearchResult actual = interactor.execute(request);
 
         assertSame(request, received.get());
         assertSame(expected, actual);
@@ -42,19 +44,19 @@ final class SearchActivitiesUseCaseTest {
 
     @Test
     void requiresAnActivitySearchGateway() {
-        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
-                () -> new SearchActivitiesUseCase(null));
+        final IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                () -> new SearchActivitiesInteractor(null));
 
         assertEquals("Activity search gateway is required", failure.getMessage());
     }
 
     @Test
     void rejectsAMissingSearchRequestWithoutCallingTheGateway() {
-        SearchActivitiesUseCase interactor = new SearchActivitiesUseCase(input -> {
+        final SearchActivitiesInteractor interactor = new SearchActivitiesInteractor(input -> {
             throw new AssertionError("Gateway must not be called");
         });
 
-        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+        final IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                 () -> interactor.execute(null));
 
         assertEquals("Activity search request is required", failure.getMessage());

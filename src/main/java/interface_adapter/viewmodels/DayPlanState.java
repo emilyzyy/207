@@ -1,13 +1,14 @@
 package interface_adapter.viewmodels;
 
-import entity.entities.ScheduledEvent;
-import entity.entities.WeatherWarning;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+
+import entity.entities.ScheduledEvent;
+import entity.entities.WeatherWarning;
 
 /**
  * Immutable display state shared by the Day Plan and Calendar views.
@@ -97,7 +98,13 @@ public final class DayPlanState {
                 Collections.<LocalDate>emptyList(), 0);
     }
 
-    /** Preview/conflict/failure form without improvements, plus which days exist. */
+    /**
+     * Preview/conflict/failure form without improvements, plus which days exist.
+     * @param message the m es sa ge value
+     * @param error the e rr or value
+     * @param tripId the t ri pi d value
+     * @param events the e ve nt s value
+     */
     public DayPlanState(String tripId, List<ScheduledEvent> events, String message, boolean error,
                         List<WeatherWarning> hourlyWeather,
                         AutoScheduleStatus status, List<PreviewRowView> previewRows,
@@ -156,18 +163,27 @@ public final class DayPlanState {
     public String getTripId() {
         return tripId;
     }
+    /**
+     * Every day of the trip, in order; empty for callers that predate multi-day trips.
+     * @return the result of the operation
+     */
 
-    /** Every day of the trip, in order; empty for callers that predate multi-day trips. */
     public List<LocalDate> getTripDates() {
         return tripDates;
     }
+    /**
+     * Which day the Day Plan is showing; 0 for single-day trips and legacy callers.
+     * @return the result of the operation
+     */
 
-    /** Which day the Day Plan is showing; 0 for single-day trips and legacy callers. */
     public int getActiveDayIndex() {
         return activeDayIndex;
     }
+    /**
+     * The itinerary as it really stands, never a proposal.
+     * @return the result of the operation
+     */
 
-    /** The itinerary as it really stands, never a proposal. */
     public List<ScheduledEvent> getEvents() {
         return events;
     }
@@ -183,13 +199,19 @@ public final class DayPlanState {
     public AutoScheduleStatus getStatus() {
         return status;
     }
+    /**
+     * The proposed schedule while a Preview is on screen; empty otherwise.
+     * @return the result of the operation
+     */
 
-    /** The proposed schedule while a Preview is on screen; empty otherwise. */
     public List<PreviewRowView> getPreviewRows() {
         return previewRows;
     }
+    /**
+     * Before-and-after figures for the proposal, or null when there is none.
+     * @return the result of the operation
+     */
 
-    /** Before-and-after figures for the proposal, or null when there is none. */
     public PreviewMetricsView getMetrics() {
         return metrics;
     }
@@ -197,8 +219,11 @@ public final class DayPlanState {
     public List<String> getWarnings() {
         return warnings;
     }
+    /**
+     * One sentence naming what the schedule was arranged for.
+     * @return the result of the operation
+     */
 
-    /** One sentence naming what the schedule was arranged for. */
     public String getObjectiveSummary() {
         return objectiveSummary;
     }
@@ -206,34 +231,54 @@ public final class DayPlanState {
     public boolean isKeptCurrentOrder() {
         return keptCurrentOrder;
     }
+    /**
+     * False when the search stopped at its limit, so the UI avoids claiming the best.
+     * @return the result of the operation
+     */
 
-    /** False when the search stopped at its limit, so the UI avoids claiming the best. */
     public boolean isSearchCompletedWithinLimit() {
         return searchCompletedWithinLimit;
     }
+    /**
+     * Wording about how much the travel times can be trusted; empty when unremarkable.
+     * @return the result of the operation
+     */
 
-    /** Wording about how much the travel times can be trusted; empty when unremarkable. */
     public String getTravelQualityNote() {
         return travelQualityNote;
     }
+    /**
+     * Identifies the plan the Preview was built from, so a stale Apply is refused.
+     * @return the result of the operation
+     */
 
-    /** Identifies the plan the Preview was built from, so a stale Apply is refused. */
     public String getPreviewFingerprint() {
         return previewFingerprint;
     }
-
     /** Proven before/after gains, for the "Schedule improvements" stack; empty when none. */
-    /** Requirements the schedule worked around; smaller and quieter than an improvement. */
+    /**
+     * Requirements the schedule worked around; smaller and quieter than an improvement.
+     * @return the result of the operation
+     */
+
     public List<ConstraintChipView> getConstraintChips() {
         return constraintChips;
     }
+    /**
+     * One sentence naming a disadvantage the schedule accepted, or empty.
+     * @return the result of the operation
+     */
 
-    /** One sentence naming a disadvantage the schedule accepted, or empty. */
     public String getTradeOff() {
         return tradeOff;
     }
+    /**
+     * The same state carrying the reasoning the Presenter selected for this proposal.
+     * @param tradeOffSentence the t ra de of fs en te nc e value
+     * @param chips the c hi ps value
+     * @return the result of the operation
+     */
 
-    /** The same state carrying the reasoning the Presenter selected for this proposal. */
     public DayPlanState withReasoning(List<ConstraintChipView> chips, String tradeOffSentence) {
         return new DayPlanState(this, chips, tradeOffSentence);
     }
@@ -266,13 +311,20 @@ public final class DayPlanState {
     public List<ImprovementView> getImprovements() {
         return improvements;
     }
+    /**
+     * Activities the traveller pinned, remembered for as long as the app is open.
+     * @return the result of the operation
+     */
 
-    /** Activities the traveller pinned, remembered for as long as the app is open. */
     public Set<String> getLockedEventIds() {
         return lockedEventIds;
     }
+    /**
+     * Same itinerary and locks, with Autoschedule returned to its resting state.
+     * @param newMessage the n ew me ss ag e value
+     * @return the result of the operation
+     */
 
-    /** Same itinerary and locks, with Autoschedule returned to its resting state. */
     public DayPlanState clearedPreview(String newMessage) {
         return new DayPlanState(tripId, events, newMessage, false, hourlyWeather, AutoScheduleStatus.IDLE,
                 Collections.<PreviewRowView>emptyList(), null, Collections.<String>emptyList(),
@@ -290,6 +342,8 @@ public final class DayPlanState {
      * the state from the short constructor instead reset the status to IDLE and emptied the
      * rows, so a forecast landing while a Preview was open silently threw the proposal away,
      * along with the traveller's pins.</p>
+      * @param updatedWeather the u pd at ed we at he r value
+      * @return the result of the operation
      */
     public DayPlanState withHourlyWeather(List<WeatherWarning> updatedWeather) {
         return new DayPlanState(tripId, events, message, error, updatedWeather, status,
@@ -304,6 +358,7 @@ public final class DayPlanState {
      * <p>Dismissing is only about the message. The saved day, the pins and the forecast are
      * untouched, and Autoschedule stays available — the whole point of the OK button is that
      * the traveller can now change something and try again.</p>
+      * @return the result of the operation
      */
     public DayPlanState withoutNotice() {
         return new DayPlanState(tripId, events, "", false, hourlyWeather,
@@ -313,13 +368,20 @@ public final class DayPlanState {
                 tripDates, activeDayIndex);
     }
 
-    /** Whether a blocking notice is on screen: a conflict or a failure, never a Preview. */
+    /**
+     * Whether a blocking notice is on screen: a conflict or a failure, never a Preview.
+     * @return the result of the operation
+     */
     public boolean hasBlockingNotice() {
         return error && !message.isEmpty()
                 && (status == AutoScheduleStatus.CONFLICT || status == AutoScheduleStatus.FAILURE);
     }
 
-    /** Same state with a different set of pinned activities. */
+    /**
+     * Same state with a different set of pinned activities.
+     * @param updatedLockIds the u pd at ed lo ck id s value
+     * @return the result of the operation
+     */
     public DayPlanState withLocks(Set<String> updatedLockIds) {
         return new DayPlanState(tripId, events, message, error, hourlyWeather, status, previewRows, metrics,
                 warnings, objectiveSummary, keptCurrentOrder, searchCompletedWithinLimit,
@@ -327,7 +389,11 @@ public final class DayPlanState {
                 tripDates, activeDayIndex);
     }
 
-    /** Same state showing that work is under way. */
+    /**
+     * Same state showing that work is under way.
+     * @param loadingMessage the l oa di ng me ss ag e value
+     * @return the result of the operation
+     */
     public DayPlanState loading(String loadingMessage) {
         return new DayPlanState(tripId, events, loadingMessage, false, hourlyWeather, AutoScheduleStatus.LOADING,
                 Collections.<PreviewRowView>emptyList(), null, Collections.<String>emptyList(),
@@ -338,15 +404,23 @@ public final class DayPlanState {
     public List<WeatherWarning> getHourlyWeather() {
         return hourlyWeather;
     }
+    /**
+     * Selects every forecast hour that overlaps the event's half-open time interval.
+     * @param event the e ve nt value
+     * @return the result of the operation
+     */
 
-    /** Selects every forecast hour that overlaps the event's half-open time interval. */
     public List<WeatherWarning> getHourlyWeatherFor(ScheduledEvent event) {
-        if (event == null) return Collections.emptyList();
-        List<WeatherWarning> result = new ArrayList<WeatherWarning>();
+        if (event == null) {
+            return Collections.emptyList();
+        }
+        final List<WeatherWarning> result = new ArrayList<WeatherWarning>();
         for (WeatherWarning warning : hourlyWeather) {
-            if (warning == null || warning.getTime() == null) continue;
-            java.time.LocalTime nextHour = warning.getTime().plusHours(1);
-            boolean reachesAfterStart = nextHour.isAfter(event.getStartTime())
+            if (warning == null || warning.getTime() == null) {
+                continue;
+            }
+            final java.time.LocalTime nextHour = warning.getTime().plusHours(1);
+            final boolean reachesAfterStart = nextHour.isAfter(event.getStartTime())
                     || nextHour.isBefore(warning.getTime());
             if (warning.getTime().isBefore(event.getEndTime()) && reachesAfterStart) {
                 result.add(warning);

@@ -1,15 +1,16 @@
 package use_case.autoschedule.engine;
 
-import use_case.autoschedule.BlockedPeriods;
-import use_case.autoschedule.PlacedActivity;
-import use_case.autoschedule.SchedulePlan;
-import use_case.autoschedule.ScheduleProblem;
-import use_case.autoschedule.ScheduleTask;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+
+import use_case.autoschedule.BlockedPeriods;
+import use_case.autoschedule.PlacedActivity;
+import use_case.autoschedule.SchedulePlan;
+import use_case.autoschedule.ScheduleProblem;
+import use_case.autoschedule.ScheduleTask;
 
 /**
  * Re-times an already-chosen visiting order against a different travel matrix.
@@ -27,34 +28,36 @@ public final class SchedulePlanRebuilder {
     public SchedulePlanRebuilder(ActivityPlacer placer) {
         this.placer = placer;
     }
-
     /**
+      * @param problem the p ro bl em value
      * @param orderedEventIds the visiting order to preserve
      * @return the re-timed plan, or null when that order is no longer feasible
      */
+
     public SchedulePlan rebuild(ScheduleProblem problem, List<String> orderedEventIds) {
-        List<ScheduleTask> locks = new ArrayList<>(problem.getLockedTasks());
+        final List<ScheduleTask> locks = new ArrayList<>(problem.getLockedTasks());
         Collections.sort(locks, Comparator
                 .comparing((ScheduleTask task) -> task.getLockedAt().getStart())
                 .thenComparing(ScheduleTask::getEventId));
 
-        List<PlacedActivity> placements = new ArrayList<>();
+        final List<PlacedActivity> placements = new ArrayList<>();
         LocalTime cursor = problem.getAvailability().getStart();
         ScheduleTask previous = null;
         int lockedIndex = 0;
 
         for (String eventId : orderedEventIds) {
-            ScheduleTask task = findTask(problem, eventId);
+            final ScheduleTask task = findTask(problem, eventId);
             if (task == null) {
                 return null;
             }
-            PlacedActivity placed;
+            final PlacedActivity placed;
             if (task.isLocked()) {
-                BlockedPeriods withoutThisLock = problem.blockedPeriodsFrom(locks, lockedIndex + 1);
+                final BlockedPeriods withoutThisLock = problem.blockedPeriodsFrom(locks, lockedIndex + 1);
                 placed = placer.placeLocked(problem, task, cursor, previous, withoutThisLock);
                 lockedIndex++;
-            } else {
-                BlockedPeriods blocked = problem.blockedPeriodsFrom(locks, lockedIndex);
+            }
+            else {
+                final BlockedPeriods blocked = problem.blockedPeriodsFrom(locks, lockedIndex);
                 placed = placer.placeMovable(problem, task, cursor, previous, blocked);
             }
             if (placed == null) {

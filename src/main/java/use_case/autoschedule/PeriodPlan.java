@@ -60,9 +60,10 @@ public final class PeriodPlan {
     /**
      * Builds the plan for one run.
      *
-     * @param window          availability window for the run
-     * @param timeSensitive   whether the provider varies with departure time
      * @param directedPairs   number of directed legs that will be prefetched
+     * @param timeSensitive   whether the provider varies with departure time
+     * @param window          availability window for the run
+      * @return the result of the operation
      */
     public static PeriodPlan forRun(TimeWindow window, boolean timeSensitive, int directedPairs) {
         return forRun(window, timeSensitive, directedPairs, MAX_PREFETCH_CALLS);
@@ -77,8 +78,8 @@ public final class PeriodPlan {
             throw new IllegalArgumentException("Directed pair count cannot be negative");
         }
 
-        List<DeparturePeriod> overlapping = overlapping(window);
-        Map<DeparturePeriod, DeparturePeriod> map = new EnumMap<>(DeparturePeriod.class);
+        final List<DeparturePeriod> overlapping = overlapping(window);
+        final Map<DeparturePeriod, DeparturePeriod> map = new EnumMap<>(DeparturePeriod.class);
         for (DeparturePeriod period : DeparturePeriod.values()) {
             map.put(period, nearest(period, overlapping));
         }
@@ -92,8 +93,8 @@ public final class PeriodPlan {
         while (activeOf(map, overlapping).size() > 1
                 && activeOf(map, overlapping).size() * directedPairs > maxPrefetchCalls
                 && ladderStep < MERGE_LADDER.length) {
-            DeparturePeriod from = MERGE_LADDER[ladderStep][0];
-            DeparturePeriod to = MERGE_LADDER[ladderStep][1];
+            final DeparturePeriod from = MERGE_LADDER[ladderStep][0];
+            final DeparturePeriod to = MERGE_LADDER[ladderStep][1];
             merge(map, from, nearest(to, overlapping));
             ladderStep++;
         }
@@ -101,9 +102,9 @@ public final class PeriodPlan {
     }
 
     private static List<DeparturePeriod> overlapping(TimeWindow window) {
-        List<DeparturePeriod> result = new ArrayList<>();
+        final List<DeparturePeriod> result = new ArrayList<>();
         for (DeparturePeriod period : DeparturePeriod.values()) {
-            boolean overlaps = window.getStart().isBefore(period.getEnd())
+            final boolean overlaps = window.getStart().isBefore(period.getEnd())
                     && period.getStart().isBefore(window.getEnd());
             if (overlaps) {
                 result.add(period);
@@ -122,7 +123,7 @@ public final class PeriodPlan {
         DeparturePeriod best = candidates.get(0);
         int bestDistance = Math.abs(best.ordinal() - period.ordinal());
         for (DeparturePeriod candidate : candidates) {
-            int distance = Math.abs(candidate.ordinal() - period.ordinal());
+            final int distance = Math.abs(candidate.ordinal() - period.ordinal());
             if (distance < bestDistance) {
                 best = candidate;
                 bestDistance = distance;
@@ -151,36 +152,53 @@ public final class PeriodPlan {
 
     private static List<DeparturePeriod> activeOf(Map<DeparturePeriod, DeparturePeriod> map,
                                                   List<DeparturePeriod> overlapping) {
-        Set<DeparturePeriod> distinct = new LinkedHashSet<>();
+        final Set<DeparturePeriod> distinct = new LinkedHashSet<>();
         for (DeparturePeriod period : overlapping) {
             distinct.add(map.get(period));
         }
         return new ArrayList<>(distinct);
     }
 
-    /** Periods actually prefetched, in chronological order. */
+    /**
+     * Periods actually prefetched, in chronological order.
+     * @return the result of the operation
+     */
     public List<DeparturePeriod> activePeriods() {
         return Collections.unmodifiableList(active);
     }
 
+    /**
+     * Performs the s iz e operation.
+     * @return the result of the operation
+     */
     public int size() {
         return active.size();
     }
+    /**
+     * The active period a departure at {@code time} reads from. Deterministic and total.
+     * @param time the t im e value
+     * @return the result of the operation
+     */
 
-    /** The active period a departure at {@code time} reads from. Deterministic and total. */
     public DeparturePeriod resolve(LocalTime time) {
         return assignment.get(DeparturePeriod.containing(time));
     }
+    /**
+     * Prefetch requests this plan will issue for {@code directedPairs} legs.
+     * @param directedPairs the d ir ec te dp ai rs value
+     * @return the result of the operation
+     */
 
-    /** Prefetch requests this plan will issue for {@code directedPairs} legs. */
     public int prefetchCallCount(int directedPairs) {
         return active.size() * directedPairs;
     }
-
     /**
      * Whether this plan respects the prefetch ceiling, or has already collapsed to the
      * single irreducible matrix and cannot go lower. See {@link #MAX_PREFETCH_CALLS}.
+      * @param directedPairs the d ir ec te dp ai rs value
+      * @return the result of the operation
      */
+
     public boolean withinPrefetchBudget(int directedPairs) {
         return active.size() == 1 || prefetchCallCount(directedPairs) <= MAX_PREFETCH_CALLS;
     }

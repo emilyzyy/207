@@ -1,5 +1,14 @@
 package use_case.usecases;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+
+import org.junit.jupiter.api.Test;
+
+import database.persistence.InMemoryItineraryDataAccessObject;
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
@@ -8,21 +17,14 @@ import entity.valueobjects.EventType;
 import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;
-import database.persistence.InMemoryItineraryDataAccessObject;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class ShareTripUseCaseTest {
 
     @Test
     void createsPortableSummaryWithTripOptionsAndSchedule() {
-        InMemoryItineraryDataAccessObject trips = new InMemoryItineraryDataAccessObject();
-        Trip trip = trip("trip-share");
-        Activity museum = new Activity(
+        final InMemoryItineraryDataAccessObject trips = new InMemoryItineraryDataAccessObject();
+        final Trip trip = trip("trip-share");
+        final Activity museum = new Activity(
                 "rom", "Royal Ontario Museum", ActivityCategory.MUSEUM,
                 new Location(43.6677, -79.3948, "100 Queens Park"),
                 4.7, 90, LocalTime.of(10, 0), LocalTime.of(17, 30),
@@ -32,10 +34,10 @@ final class ShareTripUseCaseTest {
                 EventType.ACTIVITY, "Visit exhibits"));
         trips.save(trip);
 
-        ShareTripUseCase useCase = new ShareTripUseCase(
+        final ShareTripUseCase useCase = new ShareTripUseCase(
                 new GetTripSummaryUseCase(trips));
 
-        String shared = useCase.execute("trip-share");
+        final String shared = useCase.execute("trip-share");
 
         assertTrue(shared.contains("Trippy trip to Toronto"));
         assertTrue(shared.contains("Date: 2026-08-12"));
@@ -46,7 +48,7 @@ final class ShareTripUseCaseTest {
 
     @Test
     void rejectsMissingActiveTripAndUnknownTrip() {
-        ShareTripUseCase useCase = new ShareTripUseCase(
+        final ShareTripUseCase useCase = new ShareTripUseCase(
                 new GetTripSummaryUseCase(new InMemoryItineraryDataAccessObject()));
 
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(" "));

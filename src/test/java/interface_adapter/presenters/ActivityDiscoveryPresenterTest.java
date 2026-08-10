@@ -1,5 +1,13 @@
 package interface_adapter.presenters;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalTime;
+import java.util.Collections;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
 import entity.valueobjects.ActivityCategory;
 import entity.valueobjects.IndoorOutdoorType;
@@ -8,22 +16,16 @@ import interface_adapter.viewmodels.BookmarksState;
 import interface_adapter.viewmodels.BookmarksViewModel;
 import interface_adapter.viewmodels.SearchState;
 import interface_adapter.viewmodels.SearchViewModel;
-import java.time.LocalTime;
-import java.util.Collections;
-import org.junit.jupiter.api.Test;
 import use_case.search.SearchFailure;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class ActivityDiscoveryPresenterTest {
 
     @Test
     void transientFailureKeepsExistingActivitiesVisible() {
-        Activity existing = activity();
-        SearchViewModel search = new SearchViewModel(new SearchState(
+        final Activity existing = activity();
+        final SearchViewModel search = new SearchViewModel(new SearchState(
                 Collections.singletonList(existing), ""));
-        ActivityDiscoveryPresenter presenter = new ActivityDiscoveryPresenter(
+        final ActivityDiscoveryPresenter presenter = new ActivityDiscoveryPresenter(
                 search, new BookmarksViewModel(new BookmarksState(Collections.emptyList())));
 
         presenter.presentSearchResult(Collections.emptyList(), "park", null, 0.0,
@@ -35,9 +37,9 @@ final class ActivityDiscoveryPresenterTest {
 
     @Test
     void genuineNoMatchClearsOldResultsAndShowsContext() {
-        SearchViewModel search = new SearchViewModel(new SearchState(
+        final SearchViewModel search = new SearchViewModel(new SearchState(
                 Collections.singletonList(activity()), ""));
-        ActivityDiscoveryPresenter presenter = new ActivityDiscoveryPresenter(
+        final ActivityDiscoveryPresenter presenter = new ActivityDiscoveryPresenter(
                 search, new BookmarksViewModel(new BookmarksState(Collections.emptyList())));
 
         presenter.presentSearchResult(Collections.emptyList(), "aquarium", null, 0.0,

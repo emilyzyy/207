@@ -1,9 +1,10 @@
 package use_case.autoschedule.engine;
 
+import java.util.List;
+
 import use_case.autoschedule.SchedulePlan;
 import use_case.autoschedule.ScheduleProblem;
 import use_case.autoschedule.ScheduleTask;
-import java.util.List;
 
 /** Mutable bookkeeping shared across one search: the incumbent and the node budget. */
 final class SearchState {

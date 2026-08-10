@@ -36,8 +36,11 @@ public final class AutoScheduleConflictOutputData {
     public String getSubject() {
         return subject;
     }
+    /**
+     * Extra wording the message needs, such as the weekday a venue is shut.
+     * @return the result of the operation
+     */
 
-    /** Extra wording the message needs, such as the weekday a venue is shut. */
     public String getDetail() {
         return detail;
     }

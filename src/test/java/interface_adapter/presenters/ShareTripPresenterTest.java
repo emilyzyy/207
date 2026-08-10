@@ -1,20 +1,21 @@
 package interface_adapter.presenters;
 
-import interface_adapter.viewmodels.ShareState;
-import interface_adapter.viewmodels.ShareViewModel;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
+
+import interface_adapter.viewmodels.ShareState;
+import interface_adapter.viewmodels.ShareViewModel;
 
 final class ShareTripPresenterTest {
 
     @Test
     void exposesCopyableSuccessAndNonCopyableFailure() {
-        ShareViewModel viewModel = new ShareViewModel(
+        final ShareViewModel viewModel = new ShareViewModel(
                 new ShareState("", "", false));
-        ShareTripPresenter presenter = new ShareTripPresenter(viewModel);
+        final ShareTripPresenter presenter = new ShareTripPresenter(viewModel);
 
         presenter.presentSuccess("Toronto itinerary");
         assertEquals("Toronto itinerary", viewModel.getState().getShareText());

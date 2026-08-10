@@ -1,11 +1,9 @@
 package interface_adapter.places;
 
-import entity.entities.Activity;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.OpeningHours;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -16,12 +14,16 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+import entity.entities.Activity;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.OpeningHours;
 
 final class NominatimPlacesServiceTest {
     private HttpServer server;
@@ -43,7 +45,7 @@ final class NominatimPlacesServiceTest {
                         + "\"tags\":{\"name\":\"City Museum\",\"tourism\":\"museum\","
                         + "\"addr:street\":\"Museum Road\"}}]}");
 
-        List<Activity> results = service().search("Toronto", "");
+        final List<Activity> results = service().search("Toronto", "");
 
         assertEquals(1, results.size());
         assertEquals("osm-123", results.get(0).getId());
@@ -61,7 +63,7 @@ final class NominatimPlacesServiceTest {
                 "{\"elements\":[{\"id\":123,\"lat\":43.66,\"lon\":-79.39,"
                         + "\"tags\":{\"name\":\"City Museum\",\"tourism\":\"museum\","
                         + "\"addr:street\":\"Culture Road\"}}]}");
-        NominatimPlacesService service = service();
+        final NominatimPlacesService service = service();
 
         assertEquals(1, service.search("Toronto", "museum").size());
         assertEquals(1, service.search("Toronto", "culture").size());
@@ -78,7 +80,7 @@ final class NominatimPlacesServiceTest {
                         + "\"tags\":{\"name\":\"Tour Eiffel\",\"name:en\":\"Eiffel Tower\","
                         + "\"tourism\":\"attraction\"}}]}");
 
-        List<Activity> results = service().search("Paris", "");
+        final List<Activity> results = service().search("Paris", "");
 
         assertEquals(1, results.size());
         assertEquals("Eiffel Tower", results.get(0).getName());
@@ -94,7 +96,7 @@ final class NominatimPlacesServiceTest {
                         + "\"tags\":{\"name\":\"Музей\",\"int_name\":\"Museum\","
                         + "\"tourism\":\"museum\"}}]}");
 
-        List<Activity> results = service().search("Moscow", "");
+        final List<Activity> results = service().search("Moscow", "");
 
         assertEquals(1, results.size());
         assertEquals("Museum", results.get(0).getName());
@@ -109,7 +111,7 @@ final class NominatimPlacesServiceTest {
                 "{\"elements\":[{\"id\":126,\"lat\":43.66,\"lon\":-79.39,"
                         + "\"tags\":{\"name\":\"Café Local\",\"amenity\":\"cafe\"}}]}");
 
-        List<Activity> results = service().search("Paris", "");
+        final List<Activity> results = service().search("Paris", "");
 
         assertEquals(1, results.size());
         assertEquals("Café Local", results.get(0).getName());
@@ -125,7 +127,7 @@ final class NominatimPlacesServiceTest {
                         + "\"tags\":{\"name\":\"City Museum\",\"name:en\":\"City Museum\","
                         + "\"tourism\":\"museum\"}}]}");
 
-        List<Activity> results = service().search("Toronto", "");
+        final List<Activity> results = service().search("Toronto", "");
 
         assertEquals(1, results.size());
         assertEquals("City Museum", results.get(0).getName());
@@ -141,7 +143,7 @@ final class NominatimPlacesServiceTest {
                         + "\"tags\":{\"name\":\"Cafe A\",\"amenity\":\"cafe\","
                         + "\"opening_hours\":\"Mo-Fr 09:30-17:15; Sa 10:00-14:00\"}}]}");
 
-        List<Activity> results = service().search("Toronto", "");
+        final List<Activity> results = service().search("Toronto", "");
 
         assertEquals(1, results.size());
         assertEquals(java.time.LocalTime.of(9, 30), results.get(0).getOpeningTime());
@@ -159,7 +161,7 @@ final class NominatimPlacesServiceTest {
                         + "\"tags\":{\"name\":\"Cafe B\",\"amenity\":\"cafe\","
                         + "\"opening_hours\":\"24/7\"}}]}");
 
-        List<Activity> results = service().search("Toronto", "");
+        final List<Activity> results = service().search("Toronto", "");
 
         assertEquals(1, results.size());
         assertEquals(java.time.LocalTime.of(0, 0), results.get(0).getOpeningTime());
@@ -175,7 +177,7 @@ final class NominatimPlacesServiceTest {
                 "{\"elements\":[{\"id\":302,\"lat\":43.66,\"lon\":-79.39,"
                         + "\"tags\":{\"name\":\"Cafe C\",\"amenity\":\"cafe\"}}]}");
 
-        List<Activity> results = service().search("Toronto", "");
+        final List<Activity> results = service().search("Toronto", "");
 
         assertEquals(1, results.size());
         assertEquals(java.time.LocalTime.of(9, 0), results.get(0).getOpeningTime());
@@ -193,7 +195,7 @@ final class NominatimPlacesServiceTest {
                         + "\"tags\":{\"name\":\"Cafe D\",\"amenity\":\"cafe\","
                         + "\"opening_hours\":\"by appointment only\"}}]}");
 
-        List<Activity> results = service().search("Toronto", "");
+        final List<Activity> results = service().search("Toronto", "");
 
         assertEquals(1, results.size());
         assertEquals(java.time.LocalTime.of(9, 0), results.get(0).getOpeningTime());
@@ -250,7 +252,7 @@ final class NominatimPlacesServiceTest {
                         + "{\"id\":202,\"lat\":43.68,\"lon\":-79.37,"
                         + "\"tags\":{\"name\":\"Shop C\",\"shop\":\"supermarket\"}}]}");
 
-        List<Activity> results =
+        final List<Activity> results =
                 service().searchInBounds(43.6, -79.4, 43.7, -79.3, 100);
 
         assertEquals(3, results.size());
@@ -271,7 +273,7 @@ final class NominatimPlacesServiceTest {
                         + "{\"id\":201,\"lat\":43.67,\"lon\":-79.38,"
                         + "\"tags\":{\"name\":\"Cafe B\",\"amenity\":\"cafe\"}}]}");
 
-        List<Activity> result =
+        final List<Activity> result =
                 service().searchInBounds(43.6, -79.4, 43.7, -79.3, 1);
 
         assertEquals(1, result.size());
@@ -298,7 +300,7 @@ final class NominatimPlacesServiceTest {
                         + element(411, "Aquarium", "\"tourism\":\"aquarium\"")
                         + "]}");
 
-        List<Activity> results = service().search("Toronto", "");
+        final List<Activity> results = service().search("Toronto", "");
 
         assertEquals(ActivityCategory.ENTERTAINMENT, results.get(0).getCategory());
         assertEquals(ActivityCategory.PARKS_NATURE, results.get(1).getCategory());
@@ -323,7 +325,7 @@ final class NominatimPlacesServiceTest {
                         + "\"center\":{\"lat\":43.70,\"lon\":-79.40},"
                         + "\"tags\":{\"name\":\"Large Park\",\"leisure\":\"park\"}}]}");
 
-        List<Activity> results = service().search("Toronto", "");
+        final List<Activity> results = service().search("Toronto", "");
 
         assertEquals(1, results.size());
         assertEquals(ActivityCategory.PARKS_NATURE, results.get(0).getCategory());
@@ -333,24 +335,26 @@ final class NominatimPlacesServiceTest {
 
     @Test
     void cacheMissSearchesNominatimAndFetchesExactOsmObject() throws Exception {
-        AtomicInteger geocodingCalls = new AtomicInteger();
-        AtomicInteger overpassCalls = new AtomicInteger();
-        AtomicReference<String> exactQuery = new AtomicReference<>("");
+        final AtomicInteger geocodingCalls = new AtomicInteger();
+        final AtomicInteger overpassCalls = new AtomicInteger();
+        final AtomicReference<String> exactQuery = new AtomicReference<>("");
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/search", exchange -> {
-            String body = geocodingCalls.getAndIncrement() == 0
+            final String body = geocodingCalls.getAndIncrement() == 0
                     ? "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]"
                     : "[{\"lat\":\"43.647\",\"lon\":\"-79.414\","
                             + "\"osm_type\":\"relation\",\"osm_id\":16751345}]";
             respond(exchange, 200, body);
         });
         server.createContext("/interpreter", exchange -> {
-            String request = new String(exchange.getRequestBody().readAllBytes(),
+            final String request = new String(exchange.getRequestBody().readAllBytes(),
                     StandardCharsets.UTF_8);
-            int call = overpassCalls.getAndIncrement();
-            if (call > 0) exactQuery.set(java.net.URLDecoder.decode(
-                    request.substring("data=".length()), StandardCharsets.UTF_8));
-            String body = call == 0
+            final int call = overpassCalls.getAndIncrement();
+            if (call > 0) {
+                exactQuery.set(java.net.URLDecoder.decode(
+                        request.substring("data=".length()), StandardCharsets.UTF_8));
+            }
+            final String body = call == 0
                     ? "{\"elements\":[" + element(600, "Nearby Cafe",
                             "\"amenity\":\"cafe\"") + "]}"
                     : "{\"elements\":[{\"type\":\"relation\",\"id\":16751345,"
@@ -361,7 +365,7 @@ final class NominatimPlacesServiceTest {
         });
         server.start();
 
-        List<Activity> results = service().search("Toronto", "Trinity Bellwoods Park");
+        final List<Activity> results = service().search("Toronto", "Trinity Bellwoods Park");
 
         assertEquals(1, results.size());
         assertEquals("Trinity Bellwoods Park", results.get(0).getName());
@@ -388,7 +392,7 @@ final class NominatimPlacesServiceTest {
     }
 
     private NominatimPlacesService service() {
-        String base = "http://127.0.0.1:" + server.getAddress().getPort();
+        final String base = "http://127.0.0.1:" + server.getAddress().getPort();
         return new NominatimPlacesService(
                 HttpClient.newHttpClient(),
                 new ObjectMapper(),
@@ -398,7 +402,7 @@ final class NominatimPlacesServiceTest {
 
     private static void respond(
             HttpExchange exchange, int status, String body) throws IOException {
-        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        final byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.sendResponseHeaders(status, bytes.length);
         exchange.getResponseBody().write(bytes);
         exchange.close();
@@ -421,7 +425,7 @@ final class NominatimPlacesServiceTest {
                         + "\"tags\":{\"name\":\"City Museum\",\"tourism\":\"museum\","
                         + "\"opening_hours\":\"Mo-Fr 10:00-17:00; Sa-Su 11:00-16:00\"}}]}");
 
-        OpeningHours hours = service().search("Toronto", "").get(0).getOpeningHours();
+        final OpeningHours hours = service().search("Toronto", "").get(0).getOpeningHours();
 
         assertTrue(hours.isKnown());
         // 12 August 2026 is a Wednesday, 15 August a Saturday.
@@ -440,7 +444,7 @@ final class NominatimPlacesServiceTest {
                 "{\"elements\":[{\"id\":123,\"lat\":43.66,\"lon\":-79.39,"
                         + "\"tags\":{\"name\":\"City Museum\",\"tourism\":\"museum\"}}]}");
 
-        Activity activity = service().search("Toronto", "").get(0);
+        final Activity activity = service().search("Toronto", "").get(0);
 
         assertFalse(activity.getOpeningHours().isKnown());
         assertFalse(activity.getOpeningHours().isClosedOn(LocalDate.of(2026, 8, 12)),
@@ -457,7 +461,7 @@ final class NominatimPlacesServiceTest {
                         + "\"tags\":{\"name\":\"City Museum\",\"tourism\":\"museum\","
                         + "\"opening_hours\":\"whenever the curator feels like it\"}}]}");
 
-        List<Activity> results = service().search("Toronto", "");
+        final List<Activity> results = service().search("Toronto", "");
 
         assertEquals(1, results.size(), "a tag we cannot read must not lose the place");
         assertFalse(results.get(0).getOpeningHours().isKnown());
@@ -472,7 +476,7 @@ final class NominatimPlacesServiceTest {
                 "{\"elements\":[{\"id\":123,\"lat\":43.66,\"lon\":-79.39,"
                         + "\"tags\":{\"name\":\"City Museum\",\"tourism\":\"museum\"}}]}");
 
-        Activity activity = service().search("Toronto", "").get(0);
+        final Activity activity = service().search("Toronto", "").get(0);
 
         assertEquals(LocalTime.of(9, 0), activity.getOpeningTime());
         assertEquals(LocalTime.of(21, 0), activity.getClosingTime());
@@ -502,7 +506,7 @@ final class NominatimPlacesServiceTest {
                         + "\"tags\":{\"name\":\"Late Bar\",\"amenity\":\"cafe\","
                         + "\"opening_hours\":\"Mo-Fr 09:00-17:00; Sa-Su 11:00-23:00\"}}]}");
 
-        Activity activity = service().search("Toronto", "").get(0);
+        final Activity activity = service().search("Toronto", "").get(0);
 
         assertEquals(LocalTime.of(9, 0), activity.getOpeningTime());
         assertEquals(LocalTime.of(23, 0), activity.getClosingTime());
@@ -530,7 +534,7 @@ final class NominatimPlacesServiceTest {
                         + "\"tags\":{\"name\":\"Museum B\",\"tourism\":\"museum\","
                         + "\"opening_hours\":\"We 10:00-13:00,14:00-18:00\"}}]}");
 
-        Activity activity = service().searchInBounds(43.6, -79.4, 43.7, -79.3, 100).get(0);
+        final Activity activity = service().searchInBounds(43.6, -79.4, 43.7, -79.3, 100).get(0);
 
         assertEquals("We 10:00-13:00,14:00-18:00", activity.getOpeningHoursText());
         assertEquals(2, activity.getOpeningHours()
@@ -549,7 +553,7 @@ final class NominatimPlacesServiceTest {
                         + "\"tags\":{\"name\":\"Odd Place\",\"tourism\":\"museum\","
                         + "\"opening_hours\":\"Mo-Su sunrise-sunset\"}}]}");
 
-        Activity activity = service().search("Toronto", "").get(0);
+        final Activity activity = service().search("Toronto", "").get(0);
 
         assertEquals("Mo-Su sunrise-sunset", activity.getOpeningHoursText(),
                 "we could not parse it, but we can still show the user what it said");

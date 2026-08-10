@@ -1,6 +1,18 @@
 package use_case.tripassistant;
 
-import entity.valueobjects.TripAssistantMessage;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.junit.jupiter.api.Test;
 
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
@@ -9,18 +21,7 @@ import entity.valueobjects.EventType;
 import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import entity.valueobjects.TripAssistantMessage;
 
 final class TripAssistantResponseFormatterTest {
     private final TripAssistantResponseFormatter formatter =
@@ -38,7 +39,7 @@ final class TripAssistantResponseFormatterTest {
 
     @Test
     void missingSpecialtyIsHonestAndDoesNotRepeatRecommendationTemplate() {
-        TripAssistantOutputData output = format(
+        final TripAssistantOutputData output = format(
                 "What is their specialty?", history("cafe"), "cafe",
                 TripAssistantDecision.RequestedFact.SPECIALTY,
                 "Its signature drink is a maple latte invented in 1920.");
@@ -69,16 +70,16 @@ final class TripAssistantResponseFormatterTest {
 
     @Test
     void bookmarkAndDayPlanStatusComeFromCurrentTripContext() {
-        ScheduledEvent event = new ScheduledEvent(
+        final ScheduledEvent event = new ScheduledEvent(
                 "event-cafe", cafe, LocalTime.of(10, 0), LocalTime.of(10, 45),
                 EventType.ACTIVITY, "Coffee");
-        TripAssistantRequest request = request(
+        final TripAssistantRequest request = request(
                 "Is it in my Day Plan?", history("cafe"),
                 Collections.singleton("cafe"), Collections.singletonList(event));
 
-        TripAssistantOutputData plan = formatter.format(request, details(
+        final TripAssistantOutputData plan = formatter.format(request, details(
                 "park", TripAssistantDecision.RequestedFact.PLAN_STATUS, "invented"));
-        TripAssistantOutputData bookmark = formatter.format(request, details(
+        final TripAssistantOutputData bookmark = formatter.format(request, details(
                 "park", TripAssistantDecision.RequestedFact.BOOKMARK_STATUS, "invented"));
 
         assertEquals("Kó-Café is already in your Day Plan.", plan.getAnswer());
@@ -87,7 +88,7 @@ final class TripAssistantResponseFormatterTest {
 
     @Test
     void followUpPronounForcesTheMostRecentSingleGroundedActivity() {
-        TripAssistantOutputData output = format(
+        final TripAssistantOutputData output = format(
                 "What is its rating?", history("cafe"), "park",
                 TripAssistantDecision.RequestedFact.RATING,
                 "Actual Park has a perfect rating.");
@@ -98,7 +99,7 @@ final class TripAssistantResponseFormatterTest {
 
     @Test
     void ambiguousPronounAsksForClarificationInsteadOfGuessing() {
-        TripAssistantOutputData output = format(
+        final TripAssistantOutputData output = format(
                 "When do they open?", history("cafe", "park"), "cafe",
                 TripAssistantDecision.RequestedFact.HOURS, "Guess the café");
 
@@ -110,7 +111,7 @@ final class TripAssistantResponseFormatterTest {
 
     @Test
     void unsupportedFactAndModelTextCannotAddActivityClaims() {
-        TripAssistantOutputData output = format(
+        final TripAssistantOutputData output = format(
                 "How expensive is Kó-Café?", Collections.emptyList(), "cafe",
                 TripAssistantDecision.RequestedFact.UNKNOWN,
                 "Kó-Café costs exactly $12 and serves a secret drink.");
@@ -123,15 +124,15 @@ final class TripAssistantResponseFormatterTest {
 
     @Test
     void whyFollowUpGetsAConciseGroundedExplanation() {
-        TripAssistantRequest request = request(
+        final TripAssistantRequest request = request(
                 "Why did you recommend it?", history("cafe"),
                 Collections.emptySet(), Collections.emptyList());
-        TripAssistantDecision decision = new TripAssistantDecision(
+        final TripAssistantDecision decision = new TripAssistantDecision(
                 TripAssistantDecision.Intent.EXPLAIN,
                 Collections.singletonList("cafe"), "It is famous worldwide.", "",
                 TripAssistantDecision.RequestedFact.RECOMMENDATION_REASON);
 
-        TripAssistantOutputData output = formatter.format(request, decision);
+        final TripAssistantOutputData output = formatter.format(request, decision);
 
         assertTrue(output.getAnswer().startsWith("I recommended Kó-Café because"));
         assertTrue(output.getAnswer().contains("4.7 rating"));
@@ -142,7 +143,7 @@ final class TripAssistantResponseFormatterTest {
 
     private void assertFact(
             TripAssistantDecision.RequestedFact fact, String expected) {
-        TripAssistantOutputData output = format(
+        final TripAssistantOutputData output = format(
                 "Tell me the fact", Collections.emptyList(), "cafe", fact, "invented");
         assertEquals(expected, output.getAnswer());
         assertFalse(output.getAnswer().contains("invented"));

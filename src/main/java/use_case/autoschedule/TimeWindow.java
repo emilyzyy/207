@@ -25,6 +25,12 @@ public final class TimeWindow {
         this.end = end;
     }
 
+    /**
+     * Performs the o f operation.
+     * @param end the e nd value
+     * @param start the s ta rt value
+     * @return the result of the operation
+     */
     public static TimeWindow of(LocalTime start, LocalTime end) {
         return new TimeWindow(start, end);
     }
@@ -37,21 +43,37 @@ public final class TimeWindow {
         return end;
     }
 
+    /**
+     * Performs the d ur at io nm in ut es operation.
+     * @return the result of the operation
+     */
     public int durationMinutes() {
         return (end.toSecondOfDay() - start.toSecondOfDay()) / 60;
     }
+    /**
+     * True when {@code time} lies in {@code [start, end)}.
+     * @param time the t im e value
+     * @return the result of the operation
+     */
 
-    /** True when {@code time} lies in {@code [start, end)}. */
     public boolean contains(LocalTime time) {
         return !time.isBefore(start) && time.isBefore(end);
     }
+    /**
+     * True when this window and {@code other} share at least one minute.
+     * @param other the o th er value
+     * @return the result of the operation
+     */
 
-    /** True when this window and {@code other} share at least one minute. */
     public boolean overlaps(TimeWindow other) {
         return start.isBefore(other.end) && other.start.isBefore(end);
     }
+    /**
+     * True when {@code [start, end)} of {@code other} lies entirely inside this window.
+     * @param other the o th er value
+     * @return the result of the operation
+     */
 
-    /** True when {@code [start, end)} of {@code other} lies entirely inside this window. */
     public boolean encloses(TimeWindow other) {
         return !other.start.isBefore(start) && !other.end.isAfter(end);
     }
@@ -64,7 +86,7 @@ public final class TimeWindow {
         if (!(other instanceof TimeWindow)) {
             return false;
         }
-        TimeWindow that = (TimeWindow) other;
+        final TimeWindow that = (TimeWindow) other;
         return start.equals(that.start) && end.equals(that.end);
     }
 

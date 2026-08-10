@@ -18,10 +18,20 @@ public final class TravelEstimate {
         this.quality = quality;
     }
 
+    /**
+     * Performs the r ou te d operation.
+     * @param minutes the m in ut es value
+     * @return the result of the operation
+     */
     public static TravelEstimate routed(int minutes) {
         return new TravelEstimate(minutes, TravelEstimateQuality.ROUTED);
     }
 
+    /**
+     * Performs the u nk no wn operation.
+     * @param minutes the m in ut es value
+     * @return the result of the operation
+     */
     public static TravelEstimate unknown(int minutes) {
         return new TravelEstimate(minutes, TravelEstimateQuality.UNKNOWN);
     }
@@ -42,7 +52,7 @@ public final class TravelEstimate {
         if (!(other instanceof TravelEstimate)) {
             return false;
         }
-        TravelEstimate that = (TravelEstimate) other;
+        final TravelEstimate that = (TravelEstimate) other;
         return minutes == that.minutes && quality == that.quality;
     }
 

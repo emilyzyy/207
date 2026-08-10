@@ -15,7 +15,10 @@ import use_case.autoschedule.Reason;
  */
 public interface SoftPolicy {
 
-    /** Identifies this policy so the user's toggles can select it. */
+    /**
+     * Identifies this policy so the user's toggles can select it.
+     * @return the result of the operation
+     */
     PolicyId id();
 
     /**
@@ -23,12 +26,18 @@ public interface SoftPolicy {
      *
      * <p>Every policy uses that same unit so no policy can dominate the ranking merely
      * by choosing a bigger scale. Zero means the policy is content.</p>
+      * @param placement the p la ce me nt value
+      * @param context the c on te xt value
+      * @return the result of the operation
      */
     int penaltyMinutes(PlacedActivity placement, PolicyContext context);
 
     /**
      * Why this policy would explain the placement, or null when it has nothing to say.
      * Called only for the schedule finally chosen, never inside the search.
+      * @param placement the p la ce me nt value
+      * @param context the c on te xt value
+      * @return the result of the operation
      */
     Reason reasonFor(PlacedActivity placement, PolicyContext context);
 }

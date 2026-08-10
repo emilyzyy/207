@@ -3,8 +3,9 @@ package views;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import entity.valueobjects.ActivityCategory;
 import org.junit.jupiter.api.Test;
+
+import entity.valueobjects.ActivityCategory;
 
 class ActivityCategoryPresentationTest {
     @Test

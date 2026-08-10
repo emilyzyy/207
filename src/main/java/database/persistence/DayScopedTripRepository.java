@@ -1,11 +1,12 @@
 package database.persistence;
 
-import use_case.ports.TripRepository;
-import entity.entities.Trip;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
+
+import entity.entities.Trip;
+import use_case.ports.TripRepository;
 
 /**
  * Repository decorator that exposes only one day of each stored trip.
@@ -32,8 +33,8 @@ public final class DayScopedTripRepository implements TripRepository {
 
     @Override
     public Trip save(Trip trip) {
-        int index = dayIndex.get();
-        Trip real = delegate.findById(trip.getId())
+        final int index = dayIndex.get();
+        final Trip real = delegate.findById(trip.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Trip not found"));
         real.replaceDaySchedule(index, trip.getScheduledEvents());
         return delegate.save(real);
@@ -46,7 +47,7 @@ public final class DayScopedTripRepository implements TripRepository {
 
     @Override
     public List<Trip> findAll() {
-        List<Trip> projected = new ArrayList<Trip>();
+        final List<Trip> projected = new ArrayList<Trip>();
         for (Trip trip : delegate.findAll()) {
             projected.add(projectActiveDay(trip));
         }
@@ -59,7 +60,7 @@ public final class DayScopedTripRepository implements TripRepository {
     }
 
     private Trip projectActiveDay(Trip trip) {
-        int index = dayIndex.get();
+        final int index = dayIndex.get();
         if (index < 0 || index >= trip.getDayCount()) {
             throw new IllegalArgumentException("Day index out of range");
         }

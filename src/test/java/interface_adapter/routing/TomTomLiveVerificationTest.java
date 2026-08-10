@@ -5,13 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import entity.valueobjects.Location;
 import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
+import entity.valueobjects.Location;
 
 /**
  * Proves that TomTom itself answered, rather than that driving produced some number.
@@ -47,11 +49,11 @@ class TomTomLiveVerificationTest {
 
     /** Presence only. The value is never read into a message, a log or an assertion. */
     private static String key() {
-        String fromEnvironment = System.getenv("TOMTOM_API_KEY");
+        final String fromEnvironment = System.getenv("TOMTOM_API_KEY");
         if (fromEnvironment != null && !fromEnvironment.trim().isEmpty()) {
             return fromEnvironment;
         }
-        String fromProperty = System.getProperty("tomtom.api.key");
+        final String fromProperty = System.getProperty("tomtom.api.key");
         if (fromProperty != null && !fromProperty.trim().isEmpty()) {
             return fromProperty;
         }
@@ -64,7 +66,7 @@ class TomTomLiveVerificationTest {
      */
     private static Integer callTomTom(Location from, Location to, LocalDateTime departure,
                                       String key) throws Exception {
-        Method method = OsrmDistanceService.class.getDeclaredMethod("estimateTomtom",
+        final Method method = OsrmDistanceService.class.getDeclaredMethod("estimateTomtom",
                 Location.class, Location.class, LocalDateTime.class, String.class);
         method.setAccessible(true);
         return (Integer) method.invoke(new OsrmDistanceService(), from, to, departure, key);
@@ -72,19 +74,19 @@ class TomTomLiveVerificationTest {
 
     @Test
     void tomtomItselfAnswersWithARouteAtTwoDifferentDepartureTimes() throws Exception {
-        String key = key();
+        final String key = key();
         assumeTrue(key != null,
                 "TOMTOM_API_KEY is not set, so live TomTom cannot be verified. This is "
                         + "reported rather than passed silently: without it the driving path "
                         + "returns OSRM numbers and no traffic-aware claim is earned.");
 
-        long startedMorning = System.currentTimeMillis();
-        Integer morning = callTomTom(UNION_STATION, CASA_LOMA, MORNING, key);
-        long morningLatency = System.currentTimeMillis() - startedMorning;
+        final long startedMorning = System.currentTimeMillis();
+        final Integer morning = callTomTom(UNION_STATION, CASA_LOMA, MORNING, key);
+        final long morningLatency = System.currentTimeMillis() - startedMorning;
 
-        long startedRush = System.currentTimeMillis();
-        Integer rush = callTomTom(UNION_STATION, CASA_LOMA, RUSH_HOUR, key);
-        long rushLatency = System.currentTimeMillis() - startedRush;
+        final long startedRush = System.currentTimeMillis();
+        final Integer rush = callTomTom(UNION_STATION, CASA_LOMA, RUSH_HOUR, key);
+        final long rushLatency = System.currentTimeMillis() - startedRush;
 
         // A duration here cannot have come from anywhere else: this method has no fallback,
         // and returns null unless the live endpoint answered 200 with a parsable route.
@@ -118,15 +120,15 @@ class TomTomLiveVerificationTest {
      */
     @Test
     void swappingTheCoordinatePairIsRejectedByTheLiveService() throws Exception {
-        String key = key();
+        final String key = key();
         assumeTrue(key != null, "TOMTOM_API_KEY is not set");
 
-        Location swappedFrom = new Location(UNION_STATION.getLongitude(),
+        final Location swappedFrom = new Location(UNION_STATION.getLongitude(),
                 UNION_STATION.getLatitude(), "swapped origin");
-        Location swappedTo = new Location(CASA_LOMA.getLongitude(),
+        final Location swappedTo = new Location(CASA_LOMA.getLongitude(),
                 CASA_LOMA.getLatitude(), "swapped destination");
 
-        Integer swapped = callTomTom(swappedFrom, swappedTo, MORNING, key);
+        final Integer swapped = callTomTom(swappedFrom, swappedTo, MORNING, key);
 
         assertNull(swapped,
                 "a longitude in the latitude position is out of range, so the live service "
@@ -142,7 +144,7 @@ class TomTomLiveVerificationTest {
      */
     @Test
     void reportsClearlyWhenNoCredentialIsAvailable() {
-        boolean present = key() != null;
+        final boolean present = key() != null;
         System.out.println("[live] TomTom credential present: " + present
                 + (present ? "" : " - live driving NOT verified, no traffic-aware claim"));
         assertTrue(true, "informational");

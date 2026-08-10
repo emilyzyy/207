@@ -1,13 +1,15 @@
 package views;
 
-import interface_adapter.viewmodels.ImprovementView;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.util.List;
+
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+
+import interface_adapter.viewmodels.ImprovementView;
 
 /**
  * The "Schedule improvements" stack: one card per thing the schedule provably achieved.
@@ -61,16 +63,17 @@ public final class ScheduleImprovementsPanel extends JPanel {
         if (improvements == null || improvements.isEmpty()) {
             // An honest empty state. Inventing a card here would make every other card
             // worth less, because the user could no longer tell which ones were earned.
-            JLabel none = new JLabel("<html>" + NOTHING_IMPROVED + "</html>");
+            final JLabel none = new JLabel("<html>" + NOTHING_IMPROVED + "</html>");
             none.setFont(SwingTheme.SMALL);
             none.setForeground(SwingTheme.MUTED);
             none.setAlignmentX(Component.LEFT_ALIGNMENT);
             none.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 2));
             add(none);
-        } else {
+        }
+        else {
             add(tileGrid(improvements));
             if (improvements.size() > MOST_SHOWN) {
-                JLabel more = new JLabel("<html>and " + (improvements.size() - MOST_SHOWN)
+                final JLabel more = new JLabel("<html>and " + (improvements.size() - MOST_SHOWN)
                         + " more, under Why these changes?</html>");
                 more.setFont(SwingTheme.SMALL);
                 more.setForeground(SwingTheme.MUTED);
@@ -84,11 +87,15 @@ public final class ScheduleImprovementsPanel extends JPanel {
         setMaximumSize(new Dimension(PREFERRED_WIDTH, Integer.MAX_VALUE));
     }
 
-    /** The strongest few tiles, two to a row. */
+    /**
+     * The strongest few tiles, two to a row.
+     * @param improvements the i mp ro ve me nt s value
+     * @return the result of the operation
+     */
     private static JPanel tileGrid(List<ImprovementView> improvements) {
-        int shown = Math.min(MOST_SHOWN, improvements.size());
-        int rows = (shown + 1) / 2;
-        JPanel grid = new JPanel(new java.awt.GridLayout(rows, 2, 6, 6));
+        final int shown = Math.min(MOST_SHOWN, improvements.size());
+        final int rows = (shown + 1) / 2;
+        final JPanel grid = new JPanel(new java.awt.GridLayout(rows, 2, 6, 6));
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
         for (int i = 0; i < shown; i++) {
@@ -97,7 +104,7 @@ public final class ScheduleImprovementsPanel extends JPanel {
         // GridLayout gives every cell the same size, so an odd count needs a spacer or the
         // last tile stretches to twice the width of the others.
         if (shown % 2 == 1) {
-            JPanel filler = new JPanel();
+            final JPanel filler = new JPanel();
             filler.setOpaque(false);
             grid.add(filler);
         }
@@ -110,9 +117,11 @@ public final class ScheduleImprovementsPanel extends JPanel {
      *
      * <p>Flat and softly rounded, sized by the grid rather than by its own text, so four
      * tiles read as a set rather than as four differently-shaped notices.</p>
+      * @param improvement the i mp ro ve me nt value
+      * @return the result of the operation
      */
     private static JPanel card(ImprovementView improvement) {
-        JPanel card = new JPanel();
+        final JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(SwingTheme.BLUE_SOFT);
         card.setBorder(BorderFactory.createCompoundBorder(
@@ -122,7 +131,7 @@ public final class ScheduleImprovementsPanel extends JPanel {
 
         // The glyph leads the figure rather than sitting in its own colour swatch, so the
         // category survives being read aloud or printed in grey.
-        JLabel primary = new JLabel("<html><div style='width:" + TEXT_WIDTH + "px'>"
+        final JLabel primary = new JLabel("<html><div style='width:" + TEXT_WIDTH + "px'>"
                 + improvement.getMarker() + "&nbsp; <b>" + escape(improvement.getPrimary())
                 + "</b></div></html>");
         primary.setFont(SwingTheme.SMALL);
@@ -131,7 +140,7 @@ public final class ScheduleImprovementsPanel extends JPanel {
         card.add(primary);
 
         if (!improvement.getSecondary().isEmpty()) {
-            JLabel secondary = new JLabel("<html><div style='width:" + TEXT_WIDTH + "px'>"
+            final JLabel secondary = new JLabel("<html><div style='width:" + TEXT_WIDTH + "px'>"
                     + escape(improvement.getSecondary()) + "</div></html>");
             secondary.setFont(SwingTheme.SMALL);
             secondary.setForeground(SwingTheme.MUTED);

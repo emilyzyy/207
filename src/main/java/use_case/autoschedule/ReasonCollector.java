@@ -1,9 +1,10 @@
 package use_case.autoschedule;
 
-import use_case.autoschedule.policy.SoftPolicy;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import use_case.autoschedule.policy.SoftPolicy;
 
 /**
  * Gathers the explanations for a finished schedule.
@@ -23,15 +24,18 @@ public final class ReasonCollector {
     /**
      * Reasons for every placement, most important first within each activity.
      *
+      * @param preferences the p re fe re nc es value
+      * @param plan the p la n value
      * @param blockedWindows the user's unavailable periods, to spot placements pushed clear of one
+      * @return the result of the operation
      */
     public List<Reason> collect(SchedulePlan plan, SchedulingPreferences preferences,
                                 List<TimeWindow> blockedWindows) {
-        List<Reason> reasons = new ArrayList<>();
+        final List<Reason> reasons = new ArrayList<>();
         for (PlacedActivity placement : plan.getPlacements()) {
             reasons.addAll(structuralReasons(placement, blockedWindows));
             for (SoftPolicy policy : preferences.getPolicies()) {
-                Reason reason = policy.reasonFor(placement, preferences.getContext());
+                final Reason reason = policy.reasonFor(placement, preferences.getContext());
                 if (reason != null) {
                     reasons.add(reason);
                 }
@@ -41,9 +45,9 @@ public final class ReasonCollector {
     }
 
     private List<Reason> structuralReasons(PlacedActivity placement, List<TimeWindow> blocked) {
-        List<Reason> reasons = new ArrayList<>();
-        ScheduleTask task = placement.getTask();
-        String eventId = task.getEventId();
+        final List<Reason> reasons = new ArrayList<>();
+        final ScheduleTask task = placement.getTask();
+        final String eventId = task.getEventId();
 
         if (task.isLocked()) {
             reasons.add(new Reason(eventId, ReasonCode.LOCKED_BY_USER, ""));
@@ -53,15 +57,15 @@ public final class ReasonCollector {
         // The window this visit sits in, not the whole day's span: a venue that shuts for
         // lunch has an opening and a closing time per shift, and only one of them is
         // relevant to a given placement.
-        TimeWindow open = task.openingWindowFor(placement.getStart(), placement.getEnd());
-        LocalTime opens = open == null ? task.getOpeningTime() : open.getStart();
-        LocalTime closes = open == null ? task.getClosingTime() : open.getEnd();
+        final TimeWindow open = task.openingWindowFor(placement.getStart(), placement.getEnd());
+        final LocalTime opens = open == null ? task.getOpeningTime() : open.getStart();
+        final LocalTime closes = open == null ? task.getClosingTime() : open.getEnd();
 
         if (placement.getStart().equals(opens) && placement.getIdleMinutesBefore() > 0) {
             reasons.add(new Reason(eventId, ReasonCode.OPENS_LATER, opens.toString()));
         }
 
-        int untilClosing = minutes(placement.getEnd(), closes);
+        final int untilClosing = minutes(placement.getEnd(), closes);
         if (untilClosing >= 0 && untilClosing <= CLOSING_SOON_MINUTES) {
             reasons.add(new Reason(eventId, ReasonCode.CLOSING_SOON, closes.toString()));
         }

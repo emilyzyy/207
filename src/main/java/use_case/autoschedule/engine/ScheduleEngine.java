@@ -1,5 +1,11 @@
 package use_case.autoschedule.engine;
 
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
 import use_case.autoschedule.BlockedPeriods;
 import use_case.autoschedule.PlacedActivity;
 import use_case.autoschedule.ScheduleConflict;
@@ -10,11 +16,6 @@ import use_case.autoschedule.ScheduleTask;
 import use_case.autoschedule.SchedulingPreferences;
 import use_case.autoschedule.TimeWindow;
 import use_case.autoschedule.policy.SoftPolicy;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
 
 /**
  * Deterministic bounded branch-and-bound over the orders in which the movable
@@ -46,31 +47,40 @@ public final class ScheduleEngine {
     }
 
     public ScheduleEngine(List<PlacementRule> placementRules) {
-        List<PlacementRule> rules = Collections.unmodifiableList(new ArrayList<>(
+        final List<PlacementRule> rules = Collections.unmodifiableList(new ArrayList<>(
                 placementRules == null ? Collections.<PlacementRule>emptyList() : placementRules));
         this.placer = new ActivityPlacer(rules);
     }
 
-    /** The placer this engine uses, so re-timing obeys exactly the same rules. */
+    /**
+     * The placer this engine uses, so re-timing obeys exactly the same rules.
+     * @return the result of the operation
+     */
     public ActivityPlacer placer() {
         return placer;
     }
 
+    /**
+     * Performs the s ea rc h operation.
+     * @param budget the b ud ge t value
+     * @param problem the p ro bl em value
+     * @return the result of the operation
+     */
     public ScheduleSearchResult search(ScheduleProblem problem, SearchBudget budget) {
         if (problem == null || budget == null) {
             throw new IllegalArgumentException("Problem and budget are required");
         }
 
-        List<ScheduleTask> locked = sortedByLockStart(problem.getLockedTasks());
-        List<ScheduleTask> movable = sortedById(problem.getMovableTasks());
+        final List<ScheduleTask> locked = sortedByLockStart(problem.getLockedTasks());
+        final List<ScheduleTask> movable = sortedById(problem.getMovableTasks());
 
-        SearchState state = new SearchState(problem, locked, budget);
+        final SearchState state = new SearchState(problem, locked, budget);
         state.best = new GreedyPlanner().plan(problem, locked, placer);
 
         explore(state, problem.getAvailability().getStart(), null, movable, 0,
                 new ArrayList<PlacedActivity>());
 
-        boolean withinLimit = !budget.isExhausted();
+        final boolean withinLimit = !budget.isExhausted();
         if (state.best == null) {
             return ScheduleSearchResult.conflict(diagnose(problem), withinLimit, budget.getUsedNodes());
         }
@@ -80,6 +90,9 @@ public final class ScheduleEngine {
     /**
      * Depth-first exploration in time order. At every node the next thing to happen is
      * either the next locked activity or one of the remaining movable activities.
+      * @param state the s ta te value
+      * @param previous the p re vi ou s value
+      * @param cursor the c ur so r value
      */
     private void explore(SearchState state, LocalTime cursor, ScheduleTask previous,
                          List<ScheduleTask> remaining, int lockedIndex,
@@ -88,9 +101,9 @@ public final class ScheduleEngine {
             return;
         }
 
-        boolean allLockedPlaced = lockedIndex >= state.locked.size();
+        final boolean allLockedPlaced = lockedIndex >= state.locked.size();
         if (remaining.isEmpty() && allLockedPlaced) {
-            SchedulePlan candidate = new SchedulePlan(placements,
+            final SchedulePlan candidate = new SchedulePlan(placements,
                     score(placements, state.problem.getPreferences()));
             if (state.best == null || candidate.getScore().compareTo(state.best.getScore()) < 0) {
                 state.best = candidate;
@@ -105,13 +118,13 @@ public final class ScheduleEngine {
             return;
         }
 
-        BlockedPeriods blocked = state.problem.blockedPeriodsFrom(state.locked, lockedIndex);
+        final BlockedPeriods blocked = state.problem.blockedPeriodsFrom(state.locked, lockedIndex);
 
         if (!allLockedPlaced) {
-            ScheduleTask lockedTask = state.locked.get(lockedIndex);
-            BlockedPeriods withoutThisLock =
+            final ScheduleTask lockedTask = state.locked.get(lockedIndex);
+            final BlockedPeriods withoutThisLock =
                     state.problem.blockedPeriodsFrom(state.locked, lockedIndex + 1);
-            PlacedActivity placed = placer.placeLocked(state.problem, lockedTask, cursor,
+            final PlacedActivity placed = placer.placeLocked(state.problem, lockedTask, cursor,
                     previous, withoutThisLock);
             if (placed != null) {
                 explore(state, placed.getEnd(), lockedTask, remaining, lockedIndex + 1,
@@ -120,8 +133,8 @@ public final class ScheduleEngine {
         }
 
         for (int i = 0; i < remaining.size(); i++) {
-            ScheduleTask candidate = remaining.get(i);
-            PlacedActivity placed = placer.placeMovable(state.problem, candidate, cursor,
+            final ScheduleTask candidate = remaining.get(i);
+            final PlacedActivity placed = placer.placeMovable(state.problem, candidate, cursor,
                     previous, blocked);
             if (placed == null) {
                 continue;
@@ -137,6 +150,9 @@ public final class ScheduleEngine {
      * <p>The travel term uses the smallest estimate across every prefetched period, so
      * it can never exceed the real bucketed cost. An admissible bound like this one is
      * what lets the search discard branches without risking the optimum.</p>
+      * @param state the s ta te value
+      * @param cursor the c ur so r value
+      * @return the result of the operation
      */
     private boolean exceedsRemainingTimeBound(SearchState state, LocalTime cursor,
                                               ScheduleTask previous, List<ScheduleTask> remaining) {
@@ -160,13 +176,16 @@ public final class ScheduleEngine {
      * the day with no travel before it, so the largest of those charges is dropped.
      * Without that correction the bound could exceed the true remaining cost and prune
      * the optimal schedule.</p>
+      * @param state the s ta te value
+      * @param previous the p re vi ou s value
+      * @return the result of the operation
      */
     private int minimumRemainingTravel(SearchState state, ScheduleTask previous,
                                        List<ScheduleTask> remaining) {
         if (remaining.isEmpty()) {
             return 0;
         }
-        List<String> sources = new ArrayList<>();
+        final List<String> sources = new ArrayList<>();
         if (previous != null) {
             sources.add(previous.getEventId());
         }
@@ -177,7 +196,7 @@ public final class ScheduleEngine {
         int total = 0;
         int largest = 0;
         for (ScheduleTask task : remaining) {
-            int cheapest = state.problem.getTravel().minIncomingMinutes(task.getEventId(), sources);
+            final int cheapest = state.problem.getTravel().minIncomingMinutes(task.getEventId(), sources);
             total += cheapest;
             largest = Math.max(largest, cheapest);
         }
@@ -193,13 +212,16 @@ public final class ScheduleEngine {
      * branch that could merely tie is still explored: the final identifier tie-break is
      * not knowable from a partial schedule, and discarding ties would let the answer
      * depend on the order the tree happened to be walked.</p>
+      * @param state the s ta te value
+      * @param placements the p la ce me nt s value
+      * @return the result of the operation
      */
     private boolean cannotBeatIncumbent(SearchState state, List<PlacedActivity> placements,
                                         ScheduleTask previous, List<ScheduleTask> remaining) {
         if (state.best == null) {
             return false;
         }
-        SchedulingPreferences preferences = state.problem.getPreferences();
+        final SchedulingPreferences preferences = state.problem.getPreferences();
         int costSoFar = 0;
         for (PlacedActivity placed : placements) {
             if (preferences.countsTravel()) {
@@ -213,7 +235,7 @@ public final class ScheduleEngine {
         // The floor must only contain terms the score itself charges. Adding travel the
         // ranking has been told to ignore would make this bound inadmissible and let the
         // search prune the very schedule it was looking for.
-        int floor = costSoFar + (preferences.countsTravel()
+        final int floor = costSoFar + (preferences.countsTravel()
                 ? minimumRemainingTravel(state, previous, remaining) : 0);
         return floor > state.best.getScore().practicalCostMinutes();
     }
@@ -231,21 +253,23 @@ public final class ScheduleEngine {
      *
      * <p>Travel, wasted waiting and the capped soft penalties are simply added, so a
      * small improvement in one can never be worth a large sacrifice in another.</p>
+      * @param placements the p la ce me nt s value
+      * @return the result of the operation
      */
     public static ScheduleScore score(List<PlacedActivity> placements,
                                       SchedulingPreferences preferences) {
-        SchedulingPreferences active = preferences == null
+        final SchedulingPreferences active = preferences == null
                 ? SchedulingPreferences.none() : preferences;
         int penalty = 0;
         int travel = 0;
         int avoidableIdle = 0;
         int displacement = 0;
-        StringBuilder tieBreak = new StringBuilder();
+        final StringBuilder tieBreak = new StringBuilder();
 
-        List<PlacedActivity> ordered = new ArrayList<>(placements);
+        final List<PlacedActivity> ordered = new ArrayList<>(placements);
         Collections.sort(ordered, (left, right) -> left.getStart().compareTo(right.getStart()));
         for (int position = 0; position < ordered.size(); position++) {
-            PlacedActivity placed = ordered.get(position);
+            final PlacedActivity placed = ordered.get(position);
             penalty += policyPenalty(placed, active);
             travel += placed.getTravelMinutesBefore();
             avoidableIdle += placed.getAvoidableIdleMinutes();
@@ -272,9 +296,11 @@ public final class ScheduleEngine {
      * day, not the stretch from first opening to last closing: a venue open 09:00-11:00 and
      * 15:00-17:00 offers a visitor two hours, never eight. A venue shut for the whole date
      * offers none, and is reported by name rather than as a vague "no feasible order".</p>
+      * @param problem the p ro bl em value
+      * @return the result of the operation
      */
     private ScheduleConflict diagnose(ScheduleProblem problem) {
-        TimeWindow availability = problem.getAvailability();
+        final TimeWindow availability = problem.getAvailability();
         // Closed all day is checked first and reported as itself. It used to fall through to
         // the "only 0 minutes fit" message below, which is arithmetically true and useless:
         // it reads as though a wider availability window would help, so the traveller moves
@@ -288,9 +314,9 @@ public final class ScheduleEngine {
         for (ScheduleTask task : problem.allTasks()) {
             int usable = 0;
             for (TimeWindow open : task.getOpeningWindows()) {
-                LocalTime windowStart = ActivityPlacer.later(open.getStart(),
+                final LocalTime windowStart = ActivityPlacer.later(open.getStart(),
                         availability.getStart());
-                LocalTime windowEnd = ActivityPlacer.earlier(open.getEnd(),
+                final LocalTime windowEnd = ActivityPlacer.earlier(open.getEnd(),
                         availability.getEnd());
                 if (windowEnd.isAfter(windowStart)) {
                     usable = Math.max(usable,
@@ -305,18 +331,22 @@ public final class ScheduleEngine {
         return ScheduleConflict.noFeasibleOrder();
     }
 
-    /** "Sundays", or an empty string when the task was built without a date. */
+    /**
+     * "Sundays", or an empty string when the task was built without a date.
+     * @param task the t as k value
+     * @return the result of the operation
+     */
     private static String dayName(ScheduleTask task) {
         if (task.getTripDate() == null) {
             return "";
         }
-        String day = task.getTripDate().getDayOfWeek()
+        final String day = task.getTripDate().getDayOfWeek()
                 .getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH);
         return day + "s";
     }
 
     private static List<ScheduleTask> sortedByLockStart(List<ScheduleTask> tasks) {
-        List<ScheduleTask> sorted = new ArrayList<>(tasks);
+        final List<ScheduleTask> sorted = new ArrayList<>(tasks);
         Collections.sort(sorted, Comparator
                 .comparing((ScheduleTask task) -> task.getLockedAt().getStart())
                 .thenComparing(ScheduleTask::getEventId));
@@ -324,20 +354,20 @@ public final class ScheduleEngine {
     }
 
     private static List<ScheduleTask> sortedById(List<ScheduleTask> tasks) {
-        List<ScheduleTask> sorted = new ArrayList<>(tasks);
+        final List<ScheduleTask> sorted = new ArrayList<>(tasks);
         Collections.sort(sorted, Comparator.comparing(ScheduleTask::getEventId));
         return sorted;
     }
 
     private static List<ScheduleTask> withoutIndex(List<ScheduleTask> tasks, int index) {
-        List<ScheduleTask> copy = new ArrayList<>(tasks);
+        final List<ScheduleTask> copy = new ArrayList<>(tasks);
         copy.remove(index);
         return copy;
     }
 
     private static List<PlacedActivity> append(List<PlacedActivity> placements,
                                                PlacedActivity placed) {
-        List<PlacedActivity> copy = new ArrayList<>(placements);
+        final List<PlacedActivity> copy = new ArrayList<>(placements);
         copy.add(placed);
         return copy;
     }

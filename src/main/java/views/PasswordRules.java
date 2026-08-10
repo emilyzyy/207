@@ -5,11 +5,13 @@ public final class PasswordRules {
     public static final int MIN_LENGTH = 6;
 
     private PasswordRules() {
-    }
 
+    }
     /**
+      * @param password the p as sw or d value
      * @return an error message, or {@code null} if the password is acceptable
      */
+
     public static String validateNewPassword(String password) {
         if (password == null || password.isEmpty()) {
             return "Please enter a password.";
@@ -21,10 +23,12 @@ public final class PasswordRules {
     }
 
     /**
+      * @param password the p as sw or d value
+      * @param confirm the c on fi rm value
      * @return an error message, or {@code null} if both passwords match and the new one is valid
      */
     public static String validateNewPasswordPair(String password, String confirm) {
-        String error = validateNewPassword(password);
+        final String error = validateNewPassword(password);
         if (error != null) {
             return error;
         }

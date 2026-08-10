@@ -21,11 +21,23 @@ public final class ScheduleSearchResult {
         this.nodesExplored = nodesExplored;
     }
 
+    /**
+     * Performs the f ou nd operation.
+     * @param completedWithinLimit the c om pl et ed wi th in li mi t value
+     * @param plan the p la n value
+     * @return the result of the operation
+     */
     public static ScheduleSearchResult found(SchedulePlan plan, boolean completedWithinLimit,
                                              int nodesExplored) {
         return new ScheduleSearchResult(plan, null, completedWithinLimit, nodesExplored);
     }
 
+    /**
+     * Performs the c on fl ic t operation.
+     * @param completedWithinLimit the c om pl et ed wi th in li mi t value
+     * @param conflict the c on fl ic t value
+     * @return the result of the operation
+     */
     public static ScheduleSearchResult conflict(ScheduleConflict conflict, boolean completedWithinLimit,
                                                 int nodesExplored) {
         return new ScheduleSearchResult(null, conflict, completedWithinLimit, nodesExplored);
@@ -42,11 +54,12 @@ public final class ScheduleSearchResult {
     public ScheduleConflict getConflict() {
         return conflict;
     }
-
     /**
      * False when the node budget stopped the search early. The Preview then says
      * "best schedule found within the search limit" rather than claiming optimality.
+      * @return the result of the operation
      */
+
     public boolean isCompletedWithinLimit() {
         return completedWithinLimit;
     }

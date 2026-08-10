@@ -1,36 +1,38 @@
 package interface_adapter.places;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalTime;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.jupiter.api.Test;
+
+import entity.entities.Activity;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.Location;
 import use_case.ports.NearbyActivityDiscovery;
 import use_case.search.ActivitySearchRequest;
 import use_case.search.ActivitySearchResult;
 import use_case.search.PlaceSearchException;
 import use_case.search.SearchFailure;
 import use_case.search.SearchSource;
-import entity.entities.Activity;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.IndoorOutdoorType;
-import entity.valueobjects.Location;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class OpenStreetMapPlacesServiceTest {
     @Test
     void namedSearchUsesNominatimWithoutCallingNearbyDiscovery() {
-        AtomicInteger namedCalls = new AtomicInteger();
-        AtomicInteger nearbyCalls = new AtomicInteger();
-        OpenStreetMapPlacesService service = new OpenStreetMapPlacesService(
+        final AtomicInteger namedCalls = new AtomicInteger();
+        final AtomicInteger nearbyCalls = new AtomicInteger();
+        final OpenStreetMapPlacesService service = new OpenStreetMapPlacesService(
                 (destination, query, limit) -> {
                     namedCalls.incrementAndGet();
                     return List.of(activity("osm-relation-1", "Royal Ontario Museum",
                             ActivityCategory.MUSEUM));
                 }, nearby(nearbyCalls));
 
-        ActivitySearchResult result = service.search(request("Royal Ontario Museum"));
+        final ActivitySearchResult result = service.search(request("Royal Ontario Museum"));
 
         assertEquals(1, namedCalls.get());
         assertEquals(0, nearbyCalls.get());
@@ -40,8 +42,8 @@ final class OpenStreetMapPlacesServiceTest {
 
     @Test
     void exactCachedNameAvoidsAnotherRemoteRequest() {
-        AtomicInteger calls = new AtomicInteger();
-        OpenStreetMapPlacesService service = new OpenStreetMapPlacesService(
+        final AtomicInteger calls = new AtomicInteger();
+        final OpenStreetMapPlacesService service = new OpenStreetMapPlacesService(
                 (destination, query, limit) -> {
                     calls.incrementAndGet();
                     return List.of(activity("osm-node-2", "Tim Hortons",
@@ -49,7 +51,7 @@ final class OpenStreetMapPlacesServiceTest {
                 }, nearby(new AtomicInteger()));
 
         service.search(request("Tim Hortons"));
-        ActivitySearchResult second = service.search(request("Tim Hortons"));
+        final ActivitySearchResult second = service.search(request("Tim Hortons"));
 
         assertEquals(1, calls.get());
         assertEquals(SearchSource.LOCAL, second.getSource());
@@ -57,16 +59,18 @@ final class OpenStreetMapPlacesServiceTest {
 
     @Test
     void networkFailureIsDistinctFromNoMatchesAndKeepsLocalResults() {
-        AtomicInteger calls = new AtomicInteger();
-        OpenStreetMapPlacesService service = new OpenStreetMapPlacesService(
+        final AtomicInteger calls = new AtomicInteger();
+        final OpenStreetMapPlacesService service = new OpenStreetMapPlacesService(
                 (destination, query, limit) -> {
-                    if (calls.getAndIncrement() == 0) return List.of(
-                            activity("osm-node-3", "High Park", ActivityCategory.PARKS_NATURE));
+                    if (calls.getAndIncrement() == 0) {
+                        return List.of(
+                                activity("osm-node-3", "High Park", ActivityCategory.PARKS_NATURE));
+                    }
                     throw new PlaceSearchException(SearchFailure.RATE_LIMITED, "busy");
                 }, nearby(new AtomicInteger()));
         service.search(request("High Park"));
 
-        ActivitySearchResult result = service.search(request("High"));
+        final ActivitySearchResult result = service.search(request("High"));
 
         assertEquals(SearchFailure.RATE_LIMITED, result.getFailure());
         assertTrue(result.isPartial());
@@ -75,13 +79,13 @@ final class OpenStreetMapPlacesServiceTest {
 
     @Test
     void accentsAndMultiWordNamesAreNormalizedForLocalRanking() {
-        OpenStreetMapPlacesService service = new OpenStreetMapPlacesService(
+        final OpenStreetMapPlacesService service = new OpenStreetMapPlacesService(
                 (destination, query, limit) -> List.of(
                         activity("osm-node-4", "Musée Royal", ActivityCategory.MUSEUM)),
                 nearby(new AtomicInteger()));
         service.search(request("Musée Royal"));
 
-        ActivitySearchResult result = service.search(request("musee royal"));
+        final ActivitySearchResult result = service.search(request("musee royal"));
 
         assertEquals(SearchSource.LOCAL, result.getSource());
         assertEquals("Musée Royal", result.getActivities().get(0).getName());
@@ -89,25 +93,27 @@ final class OpenStreetMapPlacesServiceTest {
 
     @Test
     void placesLoadedByTheMapAreImmediatelySearchableLocally() {
-        AtomicInteger namedCalls = new AtomicInteger();
-        Activity park = activity("osm-way-5", "Christie Pits Park",
+        final AtomicInteger namedCalls = new AtomicInteger();
+        final Activity park = activity("osm-way-5", "Christie Pits Park",
                 ActivityCategory.PARKS_NATURE);
-        NearbyActivityDiscovery nearby = new NearbyActivityDiscovery() {
+        final NearbyActivityDiscovery nearby = new NearbyActivityDiscovery() {
             @Override public List<Activity> around(String destination, int limit) {
                 return List.of();
             }
+
             @Override public List<Activity> inBounds(double south, double west, double north,
                                                      double east, int limit) {
                 return List.of(park);
             }
         };
-        OpenStreetMapPlacesService service = new OpenStreetMapPlacesService(
+        final OpenStreetMapPlacesService service = new OpenStreetMapPlacesService(
                 (destination, query, limit) -> {
-                    namedCalls.incrementAndGet(); return List.of();
+                    namedCalls.incrementAndGet();
+                    return List.of();
                 }, nearby);
         service.searchInBounds("Toronto", 43.6, -79.5, 43.7, -79.3, 50);
 
-        ActivitySearchResult result = service.search(request("Christie Pits Park"));
+        final ActivitySearchResult result = service.search(request("Christie Pits Park"));
 
         assertEquals(SearchSource.LOCAL, result.getSource());
         assertEquals(0, namedCalls.get());
@@ -116,23 +122,24 @@ final class OpenStreetMapPlacesServiceTest {
 
     @Test
     void viewportPlacesLoadedForOneTripDoNotLeakIntoAnotherDestination() {
-        Activity torontoPark = activity("osm-way-6", "High Park",
+        final Activity torontoPark = activity("osm-way-6", "High Park",
                 ActivityCategory.PARKS_NATURE);
-        NearbyActivityDiscovery nearby = new NearbyActivityDiscovery() {
+        final NearbyActivityDiscovery nearby = new NearbyActivityDiscovery() {
             @Override public List<Activity> around(String destination, int limit) {
                 return List.of();
             }
+
             @Override public List<Activity> inBounds(double south, double west, double north,
                                                      double east, int limit) {
                 return List.of(torontoPark);
             }
         };
-        OpenStreetMapPlacesService service = new OpenStreetMapPlacesService(
+        final OpenStreetMapPlacesService service = new OpenStreetMapPlacesService(
                 (destination, query, limit) -> List.of(), nearby);
 
         service.searchInBounds("Toronto", 43.6, -79.5, 43.7, -79.3, 50);
 
-        ActivitySearchResult vancouver = service.search(
+        final ActivitySearchResult vancouver = service.search(
                 new ActivitySearchRequest("Vancouver", "", null, null, 25));
         assertTrue(vancouver.getActivities().stream()
                 .noneMatch(activity -> activity.getId().equals(torontoPark.getId())));
@@ -145,11 +152,14 @@ final class OpenStreetMapPlacesServiceTest {
     private static NearbyActivityDiscovery nearby(AtomicInteger calls) {
         return new NearbyActivityDiscovery() {
             @Override public List<Activity> around(String destination, int limit) {
-                calls.incrementAndGet(); return List.of();
+                calls.incrementAndGet();
+                return List.of();
             }
+
             @Override public List<Activity> inBounds(double south, double west, double north,
                                                      double east, int limit) {
-                calls.incrementAndGet(); return List.of();
+                calls.incrementAndGet();
+                return List.of();
             }
         };
     }

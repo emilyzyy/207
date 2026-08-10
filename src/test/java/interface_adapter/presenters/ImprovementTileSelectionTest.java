@@ -5,6 +5,16 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
@@ -27,14 +37,6 @@ import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
 import use_case.autoschedule.testdoubles.FakeTravelTimeEstimator;
 import use_case.autoschedule.testdoubles.FakeTripRepository;
 import use_case.autoschedule.testdoubles.FakeWeatherContextGateway;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import org.junit.jupiter.api.Test;
 
 /**
  * Which explanations become tiles, and in what order.
@@ -65,7 +67,7 @@ class ImprovementTileSelectionTest {
 
     private static DayPlanState preview(Trip trip, FakeTravelTimeEstimator estimator,
                                         Set<String> locks, boolean keepOrder) {
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(trip.getId(),
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(trip.getId(),
                 trip.getScheduledEvents(), "", false, Collections.emptyList()));
         new AutoScheduleInteractor(new FakeTripRepository(trip), estimator,
                 new FakeWeatherContextGateway(), new AutoSchedulePresenter(viewModel),
@@ -78,14 +80,14 @@ class ImprovementTileSelectionTest {
 
     /** A day that wastes a lot of time and a lot of walking, so the savings are real. */
     private static Trip wastefulDay() {
-        Activity far = place("far", "Far Museum", ActivityCategory.MUSEUM,
+        final Activity far = place("far", "Far Museum", ActivityCategory.MUSEUM,
                 IndoorOutdoorType.INDOOR, 43.80, -79.20, LocalTime.of(9, 0), LocalTime.of(20, 0));
-        Activity near = place("near", "Near Museum", ActivityCategory.MUSEUM,
+        final Activity near = place("near", "Near Museum", ActivityCategory.MUSEUM,
                 IndoorOutdoorType.INDOOR, 43.65, -79.38, LocalTime.of(9, 0), LocalTime.of(20, 0));
-        Activity alsoNear = place("also", "Also Near", ActivityCategory.MUSEUM,
+        final Activity alsoNear = place("also", "Also Near", ActivityCategory.MUSEUM,
                 IndoorOutdoorType.INDOOR, 43.66, -79.39, LocalTime.of(9, 0), LocalTime.of(20, 0));
 
-        Trip trip = new Trip("trip-1", "Toronto", DATE, LocalTime.of(9, 0), LocalTime.of(21, 0),
+        final Trip trip = new Trip("trip-1", "Toronto", DATE, LocalTime.of(9, 0), LocalTime.of(21, 0),
                 TransportationMode.WALKING);
         trip.replaceSchedule(Arrays.asList(
                 event("e-near", near, LocalTime.of(9, 0)),
@@ -95,7 +97,7 @@ class ImprovementTileSelectionTest {
     }
 
     private static FakeTravelTimeEstimator estimator() {
-        FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false);
+        final FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false);
         estimator.route("near", "also", 5).route("also", "near", 5)
                 .route("near", "far", 40).route("far", "near", 40)
                 .route("also", "far", 38).route("far", "also", 38);
@@ -103,7 +105,7 @@ class ImprovementTileSelectionTest {
     }
 
     private static List<String> primaries(DayPlanState state) {
-        List<String> shown = new ArrayList<>();
+        final List<String> shown = new ArrayList<>();
         for (ImprovementView card : state.getImprovements()) {
             shown.add(card.getPrimary());
         }
@@ -121,7 +123,7 @@ class ImprovementTileSelectionTest {
 
     @Test
     void aMeasurableSavingIsShownAsAFigureAndItsUnit() {
-        DayPlanState state = preview(wastefulDay(), estimator(), Collections.emptySet(), false);
+        final DayPlanState state = preview(wastefulDay(), estimator(), Collections.emptySet(), false);
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(), state.getMessage());
 
         boolean sawFigure = false;
@@ -139,11 +141,11 @@ class ImprovementTileSelectionTest {
     /** Measurable savings lead; explanations of what did not change come last. */
     @Test
     void measurableSavingsAreRankedAheadOfExplanations() {
-        DayPlanState state = preview(wastefulDay(), estimator(), Collections.emptySet(), true);
-        List<String> shown = primaries(state);
+        final DayPlanState state = preview(wastefulDay(), estimator(), Collections.emptySet(), true);
+        final List<String> shown = primaries(state);
 
         int firstFigure = -1;
-        int orderKept = shown.indexOf("ORDER KEPT");
+        final int orderKept = shown.indexOf("ORDER KEPT");
         for (int i = 0; i < shown.size(); i++) {
             if (shown.get(i).endsWith(" MIN")) {
                 firstFigure = i;
@@ -160,11 +162,11 @@ class ImprovementTileSelectionTest {
     /** A pinned activity names itself, so the tile says which one was honoured. */
     @Test
     void aHonouredPinNamesTheActivityItKept() {
-        Trip trip = wastefulDay();
-        DayPlanState state = preview(trip, estimator(),
+        final Trip trip = wastefulDay();
+        final DayPlanState state = preview(trip, estimator(),
                 Collections.singleton("e-near"), false);
 
-        ImprovementView pin = cardWith(state, "PIN KEPT");
+        final ImprovementView pin = cardWith(state, "PIN KEPT");
         assertNotNull(pin, "the pin was honoured, so it should be reported: "
                 + primaries(state));
         assertEquals("Near Museum", pin.getSecondary(),
@@ -178,9 +180,9 @@ class ImprovementTileSelectionTest {
      */
     @Test
     void theOrderTileDoesNotRestateItself() {
-        DayPlanState state = preview(wastefulDay(), estimator(), Collections.emptySet(), true);
+        final DayPlanState state = preview(wastefulDay(), estimator(), Collections.emptySet(), true);
 
-        ImprovementView order = cardWith(state, "ORDER KEPT");
+        final ImprovementView order = cardWith(state, "ORDER KEPT");
         if (order != null) {
             assertEquals("", order.getSecondary(),
                     "the supporting line would only repeat the heading");
@@ -193,8 +195,8 @@ class ImprovementTileSelectionTest {
      */
     @Test
     void aPreferenceThatChangedNothingProducesNoTile() {
-        DayPlanState state = preview(wastefulDay(), estimator(), Collections.emptySet(), false);
-        List<String> shown = primaries(state);
+        final DayPlanState state = preview(wastefulDay(), estimator(), Collections.emptySet(), false);
+        final List<String> shown = primaries(state);
 
         assertFalse(shown.contains("WEATHER IMPROVED"),
                 "nothing here got better weather: " + shown);
@@ -205,13 +207,13 @@ class ImprovementTileSelectionTest {
     /** A day with nothing to show says so rather than inventing something. */
     @Test
     void aDayThatImprovesNothingProducesNoTiles() {
-        Activity only = place("solo", "Solo Museum", ActivityCategory.MUSEUM,
+        final Activity only = place("solo", "Solo Museum", ActivityCategory.MUSEUM,
                 IndoorOutdoorType.INDOOR, 43.65, -79.38, LocalTime.of(9, 0), LocalTime.of(20, 0));
-        Trip trip = new Trip("trip-1", "Toronto", DATE, LocalTime.of(9, 0), LocalTime.of(21, 0),
+        final Trip trip = new Trip("trip-1", "Toronto", DATE, LocalTime.of(9, 0), LocalTime.of(21, 0),
                 TransportationMode.WALKING);
         trip.replaceSchedule(Collections.singletonList(event("e-solo", only, LocalTime.of(9, 0))));
 
-        DayPlanState state = preview(trip, estimator(), Collections.emptySet(), false);
+        final DayPlanState state = preview(trip, estimator(), Collections.emptySet(), false);
 
         assertEquals(AutoScheduleStatus.PREVIEW, state.getStatus(), state.getMessage());
         assertTrue(state.getImprovements().isEmpty(),
@@ -221,17 +223,17 @@ class ImprovementTileSelectionTest {
     /** Every tile must be backed by the figures printed above it. */
     @Test
     void everyFigureTileAgreesWithTheReportedMetrics() {
-        DayPlanState state = preview(wastefulDay(), estimator(), Collections.emptySet(), false);
+        final DayPlanState state = preview(wastefulDay(), estimator(), Collections.emptySet(), false);
 
         for (ImprovementView card : state.getImprovements()) {
             if ("less travel".equals(card.getSecondary())) {
-                int saved = state.getMetrics().getTravelBeforeMinutes()
+                final int saved = state.getMetrics().getTravelBeforeMinutes()
                         - state.getMetrics().getTravelAfterMinutes();
                 assertEquals(saved + " MIN", card.getPrimary(),
                         "the tile must be Before minus Proposed, not a separate sum");
             }
             if ("waiting removed".equals(card.getSecondary())) {
-                int saved = state.getMetrics().getIdleBeforeMinutes()
+                final int saved = state.getMetrics().getIdleBeforeMinutes()
                         - state.getMetrics().getIdleAfterMinutes();
                 assertEquals(saved + " MIN", card.getPrimary(),
                         "the tile must be Before minus Proposed, not a separate sum");
@@ -242,19 +244,19 @@ class ImprovementTileSelectionTest {
     /** Running Preview twice replaces the tiles rather than adding a second set. */
     @Test
     void repeatedPreviewsReplaceTheTilesRatherThanAccumulateThem() {
-        Trip trip = wastefulDay();
-        FakeTripRepository trips = new FakeTripRepository(trip);
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(trip.getId(),
+        final Trip trip = wastefulDay();
+        final FakeTripRepository trips = new FakeTripRepository(trip);
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(trip.getId(),
                 trip.getScheduledEvents(), "", false, Collections.emptyList()));
-        AutoScheduleInputData request = new AutoScheduleInputData("trip-1", LocalTime.of(9, 0),
+        final AutoScheduleInputData request = new AutoScheduleInputData("trip-1", LocalTime.of(9, 0),
                 LocalTime.of(21, 0), TransportationMode.WALKING, Collections.emptySet(),
                 Collections.emptyList(), false, true);
 
-        AutoScheduleInteractor interactor = new AutoScheduleInteractor(trips, estimator(),
+        final AutoScheduleInteractor interactor = new AutoScheduleInteractor(trips, estimator(),
                 new FakeWeatherContextGateway(), new AutoSchedulePresenter(viewModel),
                 POLICIES, new ScheduleEngine());
         interactor.preview(request);
-        int first = viewModel.getState().getImprovements().size();
+        final int first = viewModel.getState().getImprovements().size();
         interactor.preview(request);
 
         assertEquals(first, viewModel.getState().getImprovements().size(),

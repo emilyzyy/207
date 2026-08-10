@@ -1,17 +1,18 @@
 package use_case.search;
 
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.IndoorOutdoorType;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+
+import org.junit.jupiter.api.Test;
+
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.IndoorOutdoorType;
 
 final class ActivitySearchRequestTest {
 
     @Test
     void trimsUserEnteredDestinationAndQuery() {
-        ActivitySearchRequest request = new ActivitySearchRequest(
+        final ActivitySearchRequest request = new ActivitySearchRequest(
                 "  Toronto, Ontario, Canada  ", "  Trinity Bellwoods Park  ",
                 null, null, 25);
 
@@ -21,7 +22,7 @@ final class ActivitySearchRequestTest {
 
     @Test
     void normalizesMissingTextAndNonPositiveLimits() {
-        ActivitySearchRequest request = new ActivitySearchRequest(
+        final ActivitySearchRequest request = new ActivitySearchRequest(
                 null, null, null, null, 0);
 
         assertEquals("", request.getDestination());
@@ -31,7 +32,7 @@ final class ActivitySearchRequestTest {
 
     @Test
     void preservesValidLimitAndOptionalDiscoveryFilters() {
-        ActivitySearchRequest request = new ActivitySearchRequest(
+        final ActivitySearchRequest request = new ActivitySearchRequest(
                 "Milan", "museum", ActivityCategory.MUSEUM,
                 IndoorOutdoorType.INDOOR, 75);
 
@@ -42,7 +43,7 @@ final class ActivitySearchRequestTest {
 
     @Test
     void leavesUnselectedFiltersAbsent() {
-        ActivitySearchRequest request = new ActivitySearchRequest(
+        final ActivitySearchRequest request = new ActivitySearchRequest(
                 "New York", "park", null, null, 20);
 
         assertNull(request.getCategory());

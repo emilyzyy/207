@@ -1,6 +1,19 @@
 package use_case.tripassistant;
 
-import use_case.ports.TripAssistantGateway;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.Collections;
+
+import org.junit.jupiter.api.Test;
+
+import database.persistence.CachedPlacesRepository;
+import database.persistence.InMemoryTripRepository;
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
@@ -11,38 +24,27 @@ import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;
 import entity.valueobjects.WeatherSeverity;
-import database.persistence.CachedPlacesRepository;
-import database.persistence.InMemoryTripRepository;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.Arrays;
-import java.util.Collections;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import use_case.ports.TripAssistantGateway;
 
 final class TripAssistantInteractorTest {
 
     @Test
     void suppliesCompleteCurrentTripContextAndRemovesUnknownActivityIds() {
-        Activity museum = activity("museum", "Actual Museum", IndoorOutdoorType.INDOOR, 4.8);
-        Activity park = activity("park", "Actual Park", IndoorOutdoorType.OUTDOOR, 4.6);
-        Trip trip = trip();
+        final Activity museum = activity("museum", "Actual Museum", IndoorOutdoorType.INDOOR, 4.8);
+        final Activity park = activity("park", "Actual Park", IndoorOutdoorType.OUTDOOR, 4.6);
+        final Trip trip = trip();
         trip.setDiscoveredPlaces(Arrays.asList(museum, park));
         trip.bookmark(museum);
         trip.addEvent(new ScheduledEvent(
                 "event-park", park, LocalTime.of(14, 0), LocalTime.of(15, 0),
                 EventType.ACTIVITY, "Visit"));
-        InMemoryTripRepository trips = new InMemoryTripRepository();
+        final InMemoryTripRepository trips = new InMemoryTripRepository();
         trips.save(trip);
-        CachedPlacesRepository activities = new CachedPlacesRepository();
+        final CachedPlacesRepository activities = new CachedPlacesRepository();
         activities.addAll(Arrays.asList(museum, park));
-        CapturingGateway gateway = new CapturingGateway();
-        RecordingPresenter presenter = new RecordingPresenter();
-        TripAssistantInteractor interactor = new TripAssistantInteractor(
+        final CapturingGateway gateway = new CapturingGateway();
+        final RecordingPresenter presenter = new RecordingPresenter();
+        final TripAssistantInteractor interactor = new TripAssistantInteractor(
                 trips, activities,
                 ignored -> Collections.singletonList(new WeatherWarning(
                         new Location(43.6, -79.3, "Toronto"), LocalTime.of(13, 0),
@@ -52,7 +54,7 @@ final class TripAssistantInteractorTest {
         interactor.execute(new TripAssistantInputData(
                 trip.getId(), "What should I do if it rains?", Collections.emptyList()));
 
-        TripAssistantRequest context = gateway.request;
+        final TripAssistantRequest context = gateway.request;
         assertEquals("Toronto", context.getDestination());
         assertEquals(LocalDate.of(2026, 8, 20), context.getDate());
         assertEquals(LocalTime.of(9, 0), context.getStartTime());
@@ -69,9 +71,9 @@ final class TripAssistantInteractorTest {
 
     @Test
     void missingTripProducesClearFailureWithoutCallingGateway() {
-        CapturingGateway gateway = new CapturingGateway();
-        RecordingPresenter presenter = new RecordingPresenter();
-        TripAssistantInteractor interactor = new TripAssistantInteractor(
+        final CapturingGateway gateway = new CapturingGateway();
+        final RecordingPresenter presenter = new RecordingPresenter();
+        final TripAssistantInteractor interactor = new TripAssistantInteractor(
                 new InMemoryTripRepository(), new CachedPlacesRepository(),
                 ignored -> Collections.emptyList(), gateway, presenter);
 
@@ -88,8 +90,8 @@ final class TripAssistantInteractorTest {
                 null, new CachedPlacesRepository(), ignored -> Collections.emptyList(),
                 ignored -> null, new RecordingPresenter()));
 
-        RecordingPresenter presenter = new RecordingPresenter();
-        TripAssistantInteractor interactor = new TripAssistantInteractor(
+        final RecordingPresenter presenter = new RecordingPresenter();
+        final TripAssistantInteractor interactor = new TripAssistantInteractor(
                 new InMemoryTripRepository(), new CachedPlacesRepository(),
                 ignored -> Collections.emptyList(), ignored -> null, presenter);
 
@@ -102,16 +104,16 @@ final class TripAssistantInteractorTest {
 
     @Test
     void weatherFailureUsesEmptyWarningsAndGatewayRuntimeBecomesFriendlyFailure() {
-        Activity museum = activity("museum", "Actual Museum", IndoorOutdoorType.INDOOR, 4.8);
-        Trip trip = trip();
+        final Activity museum = activity("museum", "Actual Museum", IndoorOutdoorType.INDOOR, 4.8);
+        final Trip trip = trip();
         // No discovered places: falls back to the activity repository catalogue.
-        InMemoryTripRepository trips = new InMemoryTripRepository();
+        final InMemoryTripRepository trips = new InMemoryTripRepository();
         trips.save(trip);
-        CachedPlacesRepository activities = new CachedPlacesRepository();
+        final CachedPlacesRepository activities = new CachedPlacesRepository();
         activities.addAll(Collections.singletonList(museum));
-        CapturingGateway gateway = new CapturingGateway();
-        RecordingPresenter presenter = new RecordingPresenter();
-        TripAssistantInteractor interactor = new TripAssistantInteractor(
+        final CapturingGateway gateway = new CapturingGateway();
+        final RecordingPresenter presenter = new RecordingPresenter();
+        final TripAssistantInteractor interactor = new TripAssistantInteractor(
                 trips, activities,
                 ignored -> {
                     throw new IllegalStateException("weather down");
@@ -124,7 +126,7 @@ final class TripAssistantInteractorTest {
         assertTrue(gateway.request.getWeather().isEmpty());
         assertEquals(1, gateway.request.getActivities().size());
 
-        TripAssistantInteractor failing = new TripAssistantInteractor(
+        final TripAssistantInteractor failing = new TripAssistantInteractor(
                 trips, activities, ignored -> Collections.emptyList(),
                 ignored -> {
                     throw new RuntimeException("provider offline");
@@ -137,18 +139,18 @@ final class TripAssistantInteractorTest {
 
     @Test
     void displaysLiveGeneralAnswerWithoutInventingAnActivity() {
-        Activity museum = activity("museum", "Actual Museum", IndoorOutdoorType.INDOOR, 4.8);
-        Trip trip = trip();
+        final Activity museum = activity("museum", "Actual Museum", IndoorOutdoorType.INDOOR, 4.8);
+        final Trip trip = trip();
         trip.setDiscoveredPlaces(Collections.singletonList(museum));
-        InMemoryTripRepository trips = new InMemoryTripRepository();
+        final InMemoryTripRepository trips = new InMemoryTripRepository();
         trips.save(trip);
-        CachedPlacesRepository activities = new CachedPlacesRepository();
+        final CachedPlacesRepository activities = new CachedPlacesRepository();
         activities.addAll(Collections.singletonList(museum));
-        RecordingPresenter presenter = new RecordingPresenter();
-        TripAssistantGateway gateway = ignored -> new TripAssistantDecision(
+        final RecordingPresenter presenter = new RecordingPresenter();
+        final TripAssistantGateway gateway = ignored -> new TripAssistantDecision(
                 TripAssistantDecision.Intent.GENERAL, Collections.emptyList(),
                 "I'm George, and 3 + 3 is 6.", "");
-        TripAssistantInteractor interactor = new TripAssistantInteractor(
+        final TripAssistantInteractor interactor = new TripAssistantInteractor(
                 trips, activities, ignored -> Collections.emptyList(), gateway, presenter);
 
         interactor.execute(new TripAssistantInputData(
@@ -189,9 +191,13 @@ final class TripAssistantInteractorTest {
         private String failure;
 
         @Override
-        public void presentSuccess(TripAssistantOutputData value) { output = value; }
+        public void presentSuccess(TripAssistantOutputData value) {
+            output = value;
+        }
 
         @Override
-        public void presentFailure(String message) { failure = message; }
+        public void presentFailure(String message) {
+            failure = message;
+        }
     }
 }

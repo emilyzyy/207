@@ -1,8 +1,16 @@
 package interface_adapter.presenters;
 
-import interface_adapter.viewmodels.DayPlanState;
-import interface_adapter.viewmodels.DayPlanViewModel;
-import use_case.usecases.OptimizeItineraryOutputData;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
@@ -13,33 +21,27 @@ import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;
 import entity.valueobjects.WeatherSeverity;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.Collections;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import interface_adapter.viewmodels.DayPlanState;
+import interface_adapter.viewmodels.DayPlanViewModel;
+import use_case.usecases.OptimizeItineraryOutputData;
 
 final class OptimizeItineraryPresenterTest {
 
     @Test
     void successAndFailureUpdateTheSharedDayPlanState() {
-        DayPlanViewModel viewModel = new DayPlanViewModel(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(
                 new DayPlanState("trip-1", Collections.emptyList(), "", false));
-        AtomicInteger stateChanges = new AtomicInteger();
+        final AtomicInteger stateChanges = new AtomicInteger();
         viewModel.addPropertyChangeListener(event -> stateChanges.incrementAndGet());
-        OptimizeItineraryPresenter presenter = new OptimizeItineraryPresenter(viewModel);
-        WeatherWarning hourly = new WeatherWarning(
+        final OptimizeItineraryPresenter presenter = new OptimizeItineraryPresenter(viewModel);
+        final WeatherWarning hourly = new WeatherWarning(
                 new Location(43.65, -79.38, "Toronto"), LocalTime.of(10, 0),
                 "Rain", WeatherSeverity.MEDIUM, "18°C");
         viewModel.setState(new DayPlanState(
                 "trip-1", Collections.emptyList(), "", false,
                 Collections.singletonList(hourly)));
         stateChanges.set(0);
-        Trip trip = tripWithOneEvent();
+        final Trip trip = tripWithOneEvent();
 
         presenter.presentSuccess(new OptimizeItineraryOutputData(trip, "Compacted"));
 
@@ -58,9 +60,9 @@ final class OptimizeItineraryPresenterTest {
     }
 
     private Trip tripWithOneEvent() {
-        Trip trip = new Trip("trip-1", "Toronto", LocalDate.of(2026, 7, 23),
+        final Trip trip = new Trip("trip-1", "Toronto", LocalDate.of(2026, 7, 23),
                 LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING);
-        Activity activity = new Activity("rom", "Royal Ontario Museum",
+        final Activity activity = new Activity("rom", "Royal Ontario Museum",
                 ActivityCategory.MUSEUM, new Location(43.67, -79.39, "100 Queens Park"),
                 4.7, 120, LocalTime.of(9, 0), LocalTime.of(20, 0),
                 IndoorOutdoorType.INDOOR, "Low");

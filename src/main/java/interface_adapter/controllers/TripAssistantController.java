@@ -1,13 +1,14 @@
 package interface_adapter.controllers;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Supplier;
+
+import entity.valueobjects.TripAssistantMessage;
 import interface_adapter.presenters.TripAssistantPresenter;
 import interface_adapter.viewmodels.TripAssistantViewModel;
 import use_case.tripassistant.TripAssistantInputBoundary;
 import use_case.tripassistant.TripAssistantInputData;
-import entity.valueobjects.TripAssistantMessage;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Supplier;
 
 /** Captures one chat turn and dispatches all potentially slow work away from Swing's EDT. */
 public final class TripAssistantController {
@@ -32,15 +33,19 @@ public final class TripAssistantController {
         this.taskRunner = taskRunner;
     }
 
+    /**
+     * Performs the e xe cu te operation.
+     * @param question the q ue st io n value
+     */
     public void execute(String question) {
-        String normalized = question == null ? "" : question.trim();
+        final String normalized = question == null ? "" : question.trim();
         if (normalized.isEmpty()) {
             presenter.presentFailure("Type a question for George");
             return;
         }
-        List<TripAssistantMessage> history = new ArrayList<TripAssistantMessage>(
+        final List<TripAssistantMessage> history = new ArrayList<TripAssistantMessage>(
                 viewModel.getState().getMessages());
-        String currentTripId = tripId.get();
+        final String currentTripId = tripId.get();
         presenter.presentLoading(normalized);
         taskRunner.run(() -> inputBoundary.execute(
                 new TripAssistantInputData(currentTripId, normalized, history)));

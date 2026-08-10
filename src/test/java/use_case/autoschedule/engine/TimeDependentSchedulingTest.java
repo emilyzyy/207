@@ -1,12 +1,17 @@
 package use_case.autoschedule.engine;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static use_case.autoschedule.ProblemFixtures.at;
 import static use_case.autoschedule.ProblemFixtures.noBlockedWindows;
 import static use_case.autoschedule.ProblemFixtures.task;
 import static use_case.autoschedule.ProblemFixtures.tasks;
 import static use_case.autoschedule.ProblemFixtures.window;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
 
 import use_case.autoschedule.DeparturePeriod;
 import use_case.autoschedule.PeriodPlan;
@@ -15,9 +20,6 @@ import use_case.autoschedule.ScheduleTask;
 import use_case.autoschedule.TimeWindow;
 import use_case.autoschedule.TravelEstimate;
 import use_case.autoschedule.TravelMatrix;
-import java.util.Arrays;
-import java.util.List;
-import org.junit.jupiter.api.Test;
 
 /**
  * Proves that travel really does depend on when a leg is taken, and that the schedule
@@ -70,18 +72,18 @@ class TimeDependentSchedulingTest {
     @Test
     void readsTheBucketForTheActualDepartureTimeNotTheStartOfTheDay() {
         // "long" runs 09:00-12:00, so the leg out of it departs during MIDDAY, not EARLY.
-        List<ScheduleTask> items = tasks(
+        final List<ScheduleTask> items = tasks(
                 task("long", 180, 0, at(9, 0), at(21, 0)),
                 task("next", 60, 1, at(9, 0), at(21, 0)));
-        TravelMatrix matrix = new MatrixBuilder(window(9, 21), items)
+        final TravelMatrix matrix = new MatrixBuilder(window(9, 21), items)
                 .leg("long", "next", DeparturePeriod.EARLY, 90)
                 .leg("long", "next", DeparturePeriod.MIDDAY, 5)
                 .leg("next", "long", 200)
                 .build();
-        ScheduleProblem problem = new ScheduleProblem(window(9, 21), items,
+        final ScheduleProblem problem = new ScheduleProblem(window(9, 21), items,
                 noBlockedWindows(), matrix);
 
-        ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
+        final ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
 
         assertTrue(result.isFound());
         assertEquals(Arrays.asList("long", "next"), result.getPlan().orderedEventIds());
@@ -92,20 +94,20 @@ class TimeDependentSchedulingTest {
 
     @Test
     void choosesTheOrderThatAvoidsTheExpensivePeriod() {
-        List<ScheduleTask> items = tasks(
+        final List<ScheduleTask> items = tasks(
                 task("a", 180, 0, at(9, 0), at(21, 0)),
                 task("b", 60, 1, at(9, 0), at(21, 0)));
         // Leaving a at midday is cheap; leaving b in the morning is expensive.
-        TravelMatrix matrix = new MatrixBuilder(window(9, 21), items)
+        final TravelMatrix matrix = new MatrixBuilder(window(9, 21), items)
                 .leg("a", "b", DeparturePeriod.MIDDAY, 5)
                 .leg("a", "b", DeparturePeriod.EARLY, 5)
                 .leg("b", "a", DeparturePeriod.EARLY, 120)
                 .leg("b", "a", DeparturePeriod.MIDDAY, 120)
                 .build();
-        ScheduleProblem problem = new ScheduleProblem(window(9, 21), items,
+        final ScheduleProblem problem = new ScheduleProblem(window(9, 21), items,
                 noBlockedWindows(), matrix);
 
-        ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
+        final ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
 
         assertEquals(Arrays.asList("a", "b"), result.getPlan().orderedEventIds());
         assertEquals(5, result.getPlan().totalTravelMinutes());
@@ -113,20 +115,20 @@ class TimeDependentSchedulingTest {
 
     @Test
     void theOppositeBucketValuesProduceTheOppositeOrder() {
-        List<ScheduleTask> items = tasks(
+        final List<ScheduleTask> items = tasks(
                 task("a", 180, 0, at(9, 0), at(21, 0)),
                 task("b", 60, 1, at(9, 0), at(21, 0)));
         // Same problem shape, mirrored costs: now going b first is the cheap option.
-        TravelMatrix matrix = new MatrixBuilder(window(9, 21), items)
+        final TravelMatrix matrix = new MatrixBuilder(window(9, 21), items)
                 .leg("a", "b", DeparturePeriod.MIDDAY, 120)
                 .leg("a", "b", DeparturePeriod.EARLY, 120)
                 .leg("b", "a", DeparturePeriod.EARLY, 5)
                 .leg("b", "a", DeparturePeriod.MIDDAY, 5)
                 .build();
-        ScheduleProblem problem = new ScheduleProblem(window(9, 21), items,
+        final ScheduleProblem problem = new ScheduleProblem(window(9, 21), items,
                 noBlockedWindows(), matrix);
 
-        ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
+        final ScheduleSearchResult result = engine.search(problem, SearchBudget.defaultBudget());
 
         assertEquals(Arrays.asList("b", "a"), result.getPlan().orderedEventIds());
         assertEquals(5, result.getPlan().totalTravelMinutes());
@@ -136,11 +138,11 @@ class TimeDependentSchedulingTest {
     void searchBeatsTheGreedyIncumbentWhenUrgencyIsMisleading() {
         // Greedy visits "urgent" first because it closes soonest, but every leg out of it
         // is slow; the good plan visits it last, still inside its window.
-        List<ScheduleTask> items = tasks(
+        final List<ScheduleTask> items = tasks(
                 task("a", 60, 0, at(9, 0), at(21, 0)),
                 task("b", 60, 1, at(9, 0), at(21, 0)),
                 task("urgent", 60, 2, at(9, 0), at(14, 0)));
-        TravelMatrix matrix = new MatrixBuilder(window(9, 21), items)
+        final TravelMatrix matrix = new MatrixBuilder(window(9, 21), items)
                 .leg("urgent", "a", 60)
                 .leg("urgent", "b", 60)
                 .leg("a", "b", 5)
@@ -148,11 +150,11 @@ class TimeDependentSchedulingTest {
                 .leg("a", "urgent", 5)
                 .leg("b", "urgent", 5)
                 .build();
-        ScheduleProblem problem = new ScheduleProblem(window(9, 21), items,
+        final ScheduleProblem problem = new ScheduleProblem(window(9, 21), items,
                 noBlockedWindows(), matrix);
 
-        ScheduleSearchResult searched = engine.search(problem, SearchBudget.defaultBudget());
-        int greedyTravel = new GreedyPlanner()
+        final ScheduleSearchResult searched = engine.search(problem, SearchBudget.defaultBudget());
+        final int greedyTravel = new GreedyPlanner()
                 .plan(problem, problem.getLockedTasks(),
                         new ActivityPlacer(java.util.Collections.emptyList()))
                 .totalTravelMinutes();
@@ -167,20 +169,20 @@ class TimeDependentSchedulingTest {
 
     @Test
     void theSameProblemAlwaysProducesTheSameSchedule() {
-        List<ScheduleTask> items = tasks(
+        final List<ScheduleTask> items = tasks(
                 task("a", 60, 0, at(9, 0), at(21, 0)),
                 task("b", 60, 1, at(9, 0), at(21, 0)),
                 task("c", 60, 2, at(9, 0), at(21, 0)),
                 task("d", 60, 3, at(9, 0), at(21, 0)));
-        TravelMatrix matrix = new MatrixBuilder(window(9, 21), items)
+        final TravelMatrix matrix = new MatrixBuilder(window(9, 21), items)
                 .leg("a", "b", 10).leg("b", "c", 10).leg("c", "d", 10)
                 .leg("d", "a", 10).leg("a", "c", 20).leg("c", "a", 20)
                 .build();
-        ScheduleProblem problem = new ScheduleProblem(window(9, 21), items,
+        final ScheduleProblem problem = new ScheduleProblem(window(9, 21), items,
                 noBlockedWindows(), matrix);
 
-        ScheduleSearchResult first = engine.search(problem, SearchBudget.defaultBudget());
-        ScheduleSearchResult second = engine.search(problem, SearchBudget.defaultBudget());
+        final ScheduleSearchResult first = engine.search(problem, SearchBudget.defaultBudget());
+        final ScheduleSearchResult second = engine.search(problem, SearchBudget.defaultBudget());
 
         assertEquals(first.getPlan().orderedEventIds(), second.getPlan().orderedEventIds());
         assertEquals(first.getPlan().getScore(), second.getPlan().getScore());
@@ -190,25 +192,25 @@ class TimeDependentSchedulingTest {
 
     @Test
     void theInputOrderOfActivitiesDoesNotChangeTheResult() {
-        List<ScheduleTask> forward = tasks(
+        final List<ScheduleTask> forward = tasks(
                 task("a", 60, 0, at(9, 0), at(21, 0)),
                 task("b", 60, 1, at(9, 0), at(21, 0)),
                 task("c", 60, 2, at(9, 0), at(21, 0)));
-        List<ScheduleTask> reversed = tasks(
+        final List<ScheduleTask> reversed = tasks(
                 task("c", 60, 2, at(9, 0), at(21, 0)),
                 task("b", 60, 1, at(9, 0), at(21, 0)),
                 task("a", 60, 0, at(9, 0), at(21, 0)));
 
-        TravelMatrix forwardMatrix = new MatrixBuilder(window(9, 21), forward)
+        final TravelMatrix forwardMatrix = new MatrixBuilder(window(9, 21), forward)
                 .leg("a", "b", 8).leg("b", "c", 8).leg("a", "c", 25)
                 .leg("c", "b", 8).leg("b", "a", 8).leg("c", "a", 25).build();
-        TravelMatrix reversedMatrix = new MatrixBuilder(window(9, 21), reversed)
+        final TravelMatrix reversedMatrix = new MatrixBuilder(window(9, 21), reversed)
                 .leg("a", "b", 8).leg("b", "c", 8).leg("a", "c", 25)
                 .leg("c", "b", 8).leg("b", "a", 8).leg("c", "a", 25).build();
 
-        ScheduleSearchResult first = engine.search(new ScheduleProblem(window(9, 21), forward,
+        final ScheduleSearchResult first = engine.search(new ScheduleProblem(window(9, 21), forward,
                 noBlockedWindows(), forwardMatrix), SearchBudget.defaultBudget());
-        ScheduleSearchResult second = engine.search(new ScheduleProblem(window(9, 21), reversed,
+        final ScheduleSearchResult second = engine.search(new ScheduleProblem(window(9, 21), reversed,
                 noBlockedWindows(), reversedMatrix), SearchBudget.defaultBudget());
 
         assertEquals(first.getPlan().orderedEventIds(), second.getPlan().orderedEventIds());

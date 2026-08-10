@@ -1,10 +1,12 @@
 package views;
 
-import interface_adapter.viewmodels.CalendarViewModel;
-import interface_adapter.viewmodels.DayPlanViewModel;
 import java.awt.BorderLayout;
 import java.awt.Frame;
+
 import javax.swing.JDialog;
+
+import interface_adapter.viewmodels.CalendarViewModel;
+import interface_adapter.viewmodels.DayPlanViewModel;
 
 /** Modeless interactive calendar owned by the main application frame. */
 public final class CalendarDialog extends JDialog {
@@ -27,7 +29,10 @@ public final class CalendarDialog extends JDialog {
         add(new CalendarPanel(calendarViewModel), BorderLayout.CENTER);
     }
 
-    /** Retains the original composition contract used to verify shared schedule identity. */
+    /**
+     * Retains the original composition contract used to verify shared schedule identity.
+     * @return the result of the operation
+     */
     public DayPlanViewModel getViewModel() {
         return dayPlanViewModel;
     }

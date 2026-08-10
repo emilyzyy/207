@@ -1,8 +1,7 @@
 package use_case.autoschedule;
 
-import entity.valueobjects.WeatherOption;
-
 import entity.entities.Trip;
+import entity.valueobjects.WeatherOption;
 
 /**
  * Inward-facing forecast contract owned by the Autoschedule use case.
@@ -19,6 +18,8 @@ public interface WeatherContextGateway {
      * <p>Implementations report {@link WeatherContext#unavailable()} rather than throwing
      * when the forecast cannot be obtained: weather is a preference, and losing it must
      * never cost the user their schedule.</p>
+      * @param trip the t ri p value
+      * @return the result of the operation
      */
     WeatherContext contextFor(Trip trip);
 
@@ -30,12 +31,15 @@ public interface WeatherContextGateway {
      * supplied it and however far away the trip is. An implementation backed by a service
      * that knows its own horizon may answer more cheaply by overriding this, but it must
      * not answer more generously than {@link #contextFor} would.</p>
+      * @param trip the t ri p value
+      * @return the result of the operation
      */
     default WeatherOption optionFor(Trip trip) {
-        WeatherContext context;
+        final WeatherContext context;
         try {
             context = contextFor(trip);
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             // The contract says failures come back as an unavailable context, but asking
             // what is possible must not be able to throw at a caller who only wants to
             // draw a checkbox.

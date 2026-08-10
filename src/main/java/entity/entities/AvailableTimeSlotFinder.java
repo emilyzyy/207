@@ -1,6 +1,5 @@
 package entity.entities;
 
-import entity.entities.ScheduledEvent;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -11,20 +10,27 @@ import java.util.List;
 public final class AvailableTimeSlotFinder {
     private static final int[] PREFERRED_DURATIONS = {60, 45, 30, 15};
 
+    /**
+     * Performs the f in d operation.
+     * @param dayEnd the d ay en d value
+     * @param events the e ve nt s value
+     * @param dayStart the d ay st ar t value
+     * @return the result of the operation
+     */
     public Slot find(LocalTime dayStart, LocalTime dayEnd, List<ScheduledEvent> events) {
-        List<Gap> gaps = gaps(dayStart, dayEnd, events);
+        final List<Gap> gaps = gaps(dayStart, dayEnd, events);
         for (int duration : PREFERRED_DURATIONS) {
             for (Gap gap : gaps) {
-                LocalTime alignedStart = ceilToQuarter(gap.start);
+                final LocalTime alignedStart = ceilToQuarter(gap.start);
                 if (!alignedStart.plusMinutes(duration).isAfter(gap.end)) {
                     return new Slot(alignedStart, alignedStart.plusMinutes(duration));
                 }
             }
         }
         for (Gap gap : gaps) {
-            LocalTime alignedStart = ceilToQuarter(gap.start);
-            long available = Duration.between(alignedStart, gap.end).toMinutes();
-            int quarterMinutes = (int) (available / 15) * 15;
+            final LocalTime alignedStart = ceilToQuarter(gap.start);
+            final long available = Duration.between(alignedStart, gap.end).toMinutes();
+            final int quarterMinutes = (int) (available / 15) * 15;
             if (quarterMinutes > 0) {
                 return new Slot(alignedStart, alignedStart.plusMinutes(quarterMinutes));
             }
@@ -34,26 +40,32 @@ public final class AvailableTimeSlotFinder {
 
     private List<Gap> gaps(LocalTime dayStart, LocalTime dayEnd,
                            List<ScheduledEvent> events) {
-        List<ScheduledEvent> ordered = new ArrayList<>(
+        final List<ScheduledEvent> ordered = new ArrayList<>(
                 events == null ? java.util.Collections.emptyList() : events);
         ordered.sort(Comparator.comparing(ScheduledEvent::getStartTime));
-        List<Gap> gaps = new ArrayList<>();
+        final List<Gap> gaps = new ArrayList<>();
         LocalTime cursor = dayStart;
         for (ScheduledEvent event : ordered) {
-            LocalTime start = event.getStartTime().isBefore(dayStart)
+            final LocalTime start = event.getStartTime().isBefore(dayStart)
                     ? dayStart : event.getStartTime();
-            LocalTime end = event.getEndTime().isAfter(dayEnd)
+            final LocalTime end = event.getEndTime().isAfter(dayEnd)
                     ? dayEnd : event.getEndTime();
-            if (start.isAfter(cursor)) gaps.add(new Gap(cursor, start));
-            if (end.isAfter(cursor)) cursor = end;
+            if (start.isAfter(cursor)) {
+                gaps.add(new Gap(cursor, start));
+            }
+            if (end.isAfter(cursor)) {
+                cursor = end;
+            }
         }
-        if (dayEnd.isAfter(cursor)) gaps.add(new Gap(cursor, dayEnd));
+        if (dayEnd.isAfter(cursor)) {
+            gaps.add(new Gap(cursor, dayEnd));
+        }
         return gaps;
     }
 
     private static LocalTime ceilToQuarter(LocalTime time) {
-        int minutes = time.getHour() * 60 + time.getMinute();
-        int aligned = ((minutes + 14) / 15) * 15;
+        final int minutes = time.getHour() * 60 + time.getMinute();
+        final int aligned = ((minutes + 14) / 15) * 15;
         return LocalTime.of((aligned / 60) % 24, aligned % 60);
     }
 
@@ -76,7 +88,12 @@ public final class AvailableTimeSlotFinder {
             this.end = end;
         }
 
-        public LocalTime getStart() { return start; }
-        public LocalTime getEnd() { return end; }
+        public LocalTime getStart() {
+            return start;
+        }
+
+        public LocalTime getEnd() {
+            return end;
+        }
     }
 }

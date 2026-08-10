@@ -17,10 +17,21 @@ public final class TripParticipant {
         this.role = owner ? null : (role == null ? TripAccessRole.EDIT : role);
     }
 
+    /**
+     * Performs the o wn er operation.
+     * @param user the u se r value
+     * @return the result of the operation
+     */
     public static TripParticipant owner(User user) {
         return new TripParticipant(user, null, true);
     }
 
+    /**
+     * Performs the m em be r operation.
+     * @param role the r ol e value
+     * @param user the u se r value
+     * @return the result of the operation
+     */
     public static TripParticipant member(User user, TripAccessRole role) {
         return new TripParticipant(user, role, false);
     }

@@ -5,11 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.valueobjects.EventType;
-import entity.valueobjects.TransportationMode;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,8 +12,15 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.valueobjects.EventType;
+import entity.valueobjects.TransportationMode;
 import use_case.autoschedule.engine.ScheduleEngine;
 import use_case.autoschedule.policy.DaylightPolicy;
 import use_case.autoschedule.policy.MealWindowPolicy;
@@ -44,14 +46,14 @@ class PreviewApplyLifecycleTest {
     private FakeTripRepository trips;
 
     private static ScheduledEvent activityEvent(String id, int startHour) {
-        Activity activity = ProblemFixtures.activity(id, LocalTime.of(9, 0), LocalTime.of(21, 0));
+        final Activity activity = ProblemFixtures.activity(id, LocalTime.of(9, 0), LocalTime.of(21, 0));
         return new ScheduledEvent(id, activity, LocalTime.of(startHour, 0),
                 LocalTime.of(startHour + 1, 0), EventType.ACTIVITY, "");
     }
 
     @BeforeEach
     void setUp() {
-        Trip trip = new Trip("trip-1", "Toronto", ProblemFixtures.TRIP_DATE,
+        final Trip trip = new Trip("trip-1", "Toronto", ProblemFixtures.TRIP_DATE,
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING);
         trip.replaceSchedule(Arrays.asList(
                 activityEvent("a", 9), activityEvent("b", 13), activityEvent("c", 17)));
@@ -72,7 +74,7 @@ class PreviewApplyLifecycleTest {
     }
 
     private static List<ScheduledEvent> eventsOf(Trip trip, EventType type) {
-        List<ScheduledEvent> found = new ArrayList<>();
+        final List<ScheduledEvent> found = new ArrayList<>();
         for (ScheduledEvent event : trip.getScheduledEvents()) {
             if (event.getEventType() == type) {
                 found.add(event);
@@ -88,7 +90,7 @@ class PreviewApplyLifecycleTest {
 
     @Test
     void previewDoesNotTouchTheStoredTrip() {
-        List<ScheduledEvent> before =
+        final List<ScheduledEvent> before =
                 new ArrayList<>(trips.findById("trip-1").orElseThrow().getScheduledEvents());
 
         interactor().preview(previewInput());
@@ -100,9 +102,9 @@ class PreviewApplyLifecycleTest {
 
     @Test
     void repeatedPreviewsDoNotAccumulateRows() {
-        AutoScheduleInteractor interactor = interactor();
+        final AutoScheduleInteractor interactor = interactor();
         interactor.preview(previewInput());
-        int first = presenter.getPreview().getRows().size();
+        final int first = presenter.getPreview().getRows().size();
 
         interactor.preview(previewInput());
         interactor.preview(previewInput());
@@ -114,13 +116,13 @@ class PreviewApplyLifecycleTest {
 
     @Test
     void applyKeepsEveryActivityExactlyOnce() {
-        AutoScheduleInteractor interactor = interactor();
+        final AutoScheduleInteractor interactor = interactor();
         interactor.preview(previewInput());
         interactor.apply(applyInputFrom(presenter.getPreview()));
 
-        Trip saved = trips.findById("trip-1").orElseThrow();
-        List<ScheduledEvent> activities = eventsOf(saved, EventType.ACTIVITY);
-        Set<String> ids = new HashSet<>();
+        final Trip saved = trips.findById("trip-1").orElseThrow();
+        final List<ScheduledEvent> activities = eventsOf(saved, EventType.ACTIVITY);
+        final Set<String> ids = new HashSet<>();
         for (ScheduledEvent event : activities) {
             assertTrue(ids.add(event.getId()), "duplicated activity " + event.getId());
         }
@@ -130,25 +132,25 @@ class PreviewApplyLifecycleTest {
 
     @Test
     void applyGeneratesTravelOnlyBetweenActivitiesNeverBeforeOrAfter() {
-        AutoScheduleInteractor interactor = interactor();
+        final AutoScheduleInteractor interactor = interactor();
         interactor.preview(previewInput());
         interactor.apply(applyInputFrom(presenter.getPreview()));
 
-        List<ScheduledEvent> all = trips.findById("trip-1").orElseThrow().getScheduledEvents();
+        final List<ScheduledEvent> all = trips.findById("trip-1").orElseThrow().getScheduledEvents();
         assertEquals(EventType.ACTIVITY, all.get(0).getEventType(),
                 "no journey before the first activity: the trip has no origin");
         assertEquals(EventType.ACTIVITY, all.get(all.size() - 1).getEventType(),
                 "no journey after the last activity: the trip has no destination");
-        long travel = all.stream().filter(e -> e.getEventType() == EventType.TRAVEL).count();
+        final long travel = all.stream().filter(e -> e.getEventType() == EventType.TRAVEL).count();
         assertTrue(travel <= 2, "at most one journey between each consecutive pair, got " + travel);
     }
 
     @Test
     void applyReplacesTheScheduleRatherThanAppendingToIt() {
-        AutoScheduleInteractor interactor = interactor();
+        final AutoScheduleInteractor interactor = interactor();
         interactor.preview(previewInput());
         interactor.apply(applyInputFrom(presenter.getPreview()));
-        int afterFirst = trips.findById("trip-1").orElseThrow().getScheduledEvents().size();
+        final int afterFirst = trips.findById("trip-1").orElseThrow().getScheduledEvents().size();
 
         interactor.preview(previewInput());
         interactor.apply(applyInputFrom(presenter.getPreview()));
@@ -162,7 +164,7 @@ class PreviewApplyLifecycleTest {
 
     @Test
     void asecondRunSchedulesActivitiesOnlyAndIgnoresGeneratedTravel() {
-        AutoScheduleInteractor interactor = interactor();
+        final AutoScheduleInteractor interactor = interactor();
         interactor.preview(previewInput());
         interactor.apply(applyInputFrom(presenter.getPreview()));
         assertFalse(eventsOf(trips.findById("trip-1").orElseThrow(), EventType.TRAVEL).isEmpty(),
@@ -170,7 +172,7 @@ class PreviewApplyLifecycleTest {
 
         interactor.preview(previewInput());
 
-        long activityRows = presenter.getPreview().getRows().stream()
+        final long activityRows = presenter.getPreview().getRows().stream()
                 .filter(r -> r.getKind() == ProposedEventData.Kind.ACTIVITY).count();
         assertEquals(3, activityRows,
                 "the previous run's travel must not become an activity to schedule");
@@ -178,15 +180,15 @@ class PreviewApplyLifecycleTest {
 
     @Test
     void applyIsRefusedWhenTheDayPlanChangedAfterThePreview() {
-        AutoScheduleInteractor interactor = interactor();
+        final AutoScheduleInteractor interactor = interactor();
         interactor.preview(previewInput());
-        AutoScheduleApplyInputData stale = applyInputFrom(presenter.getPreview());
+        final AutoScheduleApplyInputData stale = applyInputFrom(presenter.getPreview());
 
-        Trip trip = trips.findById("trip-1").orElseThrow();
-        List<ScheduledEvent> shorter = new ArrayList<>(trip.getScheduledEvents());
+        final Trip trip = trips.findById("trip-1").orElseThrow();
+        final List<ScheduledEvent> shorter = new ArrayList<>(trip.getScheduledEvents());
         shorter.remove(2);
         trips.save(trip.copyWithSchedule(shorter));
-        int savesBefore = trips.getSaveCount();
+        final int savesBefore = trips.getSaveCount();
 
         interactor.apply(stale);
 

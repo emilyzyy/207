@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
-import interface_adapter.controllers.AutoScheduleSettings;
-import interface_adapter.controllers.AutoScheduleSettingsValidator;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.GraphicsEnvironment;
@@ -17,12 +15,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import javax.swing.JLabel;
+
 import javax.swing.AbstractButton;
+import javax.swing.JLabel;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+
+import interface_adapter.controllers.AutoScheduleSettings;
+import interface_adapter.controllers.AutoScheduleSettingsValidator;
 
 /**
  * The settings dialog uses constrained 24-hour selectors for its availability window.
@@ -54,7 +57,7 @@ class AutoScheduleSettingsDialogTest {
     }
 
     private static List<Component> all(Component root) {
-        List<Component> found = new ArrayList<>();
+        final List<Component> found = new ArrayList<>();
         collect(root, found);
         return found;
     }
@@ -69,7 +72,7 @@ class AutoScheduleSettingsDialogTest {
     }
 
     private static List<JTextField> fields(Component root) {
-        List<JTextField> found = new ArrayList<>();
+        final List<JTextField> found = new ArrayList<>();
         for (Component component : all(root)) {
             if (component instanceof JTextField) {
                 found.add((JTextField) component);
@@ -79,7 +82,7 @@ class AutoScheduleSettingsDialogTest {
     }
 
     private static List<TimeSelectorPanel> timeSelectors(Component root) {
-        List<TimeSelectorPanel> found = new ArrayList<>();
+        final List<TimeSelectorPanel> found = new ArrayList<>();
         for (Component component : all(root)) {
             if (component instanceof TimeSelectorPanel) {
                 found.add((TimeSelectorPanel) component);
@@ -89,7 +92,7 @@ class AutoScheduleSettingsDialogTest {
     }
 
     private static String allText(Component root) {
-        StringBuilder text = new StringBuilder();
+        final StringBuilder text = new StringBuilder();
         for (Component component : all(root)) {
             if (component instanceof JLabel) {
                 text.append(((JLabel) component).getText()).append(' ');
@@ -100,9 +103,9 @@ class AutoScheduleSettingsDialogTest {
 
     @Test
     void availabilityIsPrefilledInTheTimeSelectors() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
+        final AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
 
-        List<TimeSelectorPanel> times = timeSelectors(dialog.getRootPane());
+        final List<TimeSelectorPanel> times = timeSelectors(dialog.getRootPane());
 
         assertEquals(LocalTime.of(9, 0), times.get(0).getTime());
         assertEquals(LocalTime.of(21, 0), times.get(1).getTime());
@@ -110,9 +113,9 @@ class AutoScheduleSettingsDialogTest {
 
     @Test
     void theDialogIsGroupedWithoutObsoleteTypingExamples() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
+        final AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
 
-        String text = allText(dialog.getRootPane());
+        final String text = allText(dialog.getRootPane());
 
         assertTrue(text.contains("WHEN YOU ARE FREE"), text);
         assertTrue(text.contains("TIMES YOU ARE NOT AVAILABLE"), text);
@@ -122,9 +125,9 @@ class AutoScheduleSettingsDialogTest {
 
     @Test
     void readingBackTheDefaultFieldsGivesTheOriginalTimes() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
+        final AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
 
-        AutoScheduleSettings settings = dialog.read();
+        final AutoScheduleSettings settings = dialog.read();
 
         assertNotNull(settings, "the prefilled 12-hour text must parse");
         assertEquals(LocalTime.of(9, 0), settings.getAvailableStart());
@@ -134,15 +137,15 @@ class AutoScheduleSettingsDialogTest {
 
     @Test
     void selectedQuarterHourTimesAreRead() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
-        List<TimeSelectorPanel> times = timeSelectors(dialog.getRootPane());
+        final AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
+        final List<TimeSelectorPanel> times = timeSelectors(dialog.getRootPane());
 
         SwingUtilities.invokeAndWait(() -> {
             times.get(0).setTime(LocalTime.of(10, 30));
             times.get(1).setTime(LocalTime.of(19, 45));
         });
 
-        AutoScheduleSettings settings = dialog.read();
+        final AutoScheduleSettings settings = dialog.read();
         assertEquals(LocalTime.of(10, 30), settings.getAvailableStart());
         assertEquals(LocalTime.of(19, 45), settings.getAvailableEnd(),
                 "the selected military time should be preserved");
@@ -150,8 +153,8 @@ class AutoScheduleSettingsDialogTest {
 
     @Test
     void selectorsOnlyExposeHoursAndQuarterHours() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
-        List<TimeSelectorPanel> times = timeSelectors(dialog.getRootPane());
+        final AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
+        final List<TimeSelectorPanel> times = timeSelectors(dialog.getRootPane());
         times.get(0).setTime(LocalTime.of(23, 45));
         assertEquals(LocalTime.of(23, 45), times.get(0).getTime());
     }
@@ -162,7 +165,7 @@ class AutoScheduleSettingsDialogTest {
      */
     @Test
     void validationMessagesQuoteTheTripHoursOnATwelveHourClock() {
-        List<String> problems = new AutoScheduleSettingsValidator().validate(
+        final List<String> problems = new AutoScheduleSettingsValidator().validate(
                 new AutoScheduleSettings(LocalTime.of(6, 0), LocalTime.of(23, 0),
                         Collections.emptyList(), true, false),
                 LocalTime.of(9, 0), LocalTime.of(21, 0));
@@ -186,7 +189,7 @@ class AutoScheduleSettingsDialogTest {
 
     /** Fires focusLost on every listener, which is what a real focus change does. */
     private static void loseFocus(JTextField field) {
-        java.awt.event.FocusEvent event = new java.awt.event.FocusEvent(
+        final java.awt.event.FocusEvent event = new java.awt.event.FocusEvent(
                 field, java.awt.event.FocusEvent.FOCUS_LOST);
         for (java.awt.event.FocusListener listener : field.getFocusListeners()) {
             listener.focusLost(event);
@@ -199,16 +202,16 @@ class AutoScheduleSettingsDialogTest {
     }
 
     private AutoScheduleSettingsDialog dialogWithOnePeriod() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
+        final AutoScheduleSettingsDialog dialog = dialog(LocalTime.of(9, 0), LocalTime.of(21, 0));
         SwingUtilities.invokeAndWait(() -> addPeriodButton(dialog.getRootPane()).doClick());
         return dialog;
     }
 
     @Test
     void anUnavailablePeriodIsRenderedOnATwelveHourClock() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
+        final AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
 
-        List<JTextField> period = periodFields(dialog);
+        final List<JTextField> period = periodFields(dialog);
 
         assertEquals(2, period.size(), "one period contributes two time fields");
         assertEquals("12:00 PM", period.get(0).getText(),
@@ -220,15 +223,15 @@ class AutoScheduleSettingsDialogTest {
 
     @Test
     void amAndPmUnavailablePeriodInputIsUnderstood() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
-        List<JTextField> period = periodFields(dialog);
+        final AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
+        final List<JTextField> period = periodFields(dialog);
 
         SwingUtilities.invokeAndWait(() -> {
             period.get(0).setText("9:30 AM");
             period.get(1).setText("1:45 PM");
         });
 
-        AutoScheduleSettings settings = dialog.read();
+        final AutoScheduleSettings settings = dialog.read();
         assertNotNull(settings);
         assertEquals(1, settings.getUnavailableWindows().size());
         assertEquals(LocalTime.of(9, 30), settings.getUnavailableWindows().get(0).getStart());
@@ -237,15 +240,15 @@ class AutoScheduleSettingsDialogTest {
 
     @Test
     void midnightAndNoonRoundTripThroughAnUnavailablePeriod() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
-        List<JTextField> period = periodFields(dialog);
+        final AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
+        final List<JTextField> period = periodFields(dialog);
 
         SwingUtilities.invokeAndWait(() -> {
             period.get(0).setText("12:00 AM");
             period.get(1).setText("12:00 PM");
         });
 
-        AutoScheduleSettings settings = dialog.read();
+        final AutoScheduleSettings settings = dialog.read();
         assertEquals(LocalTime.MIDNIGHT, settings.getUnavailableWindows().get(0).getStart(),
                 "12:00 AM is midnight, not noon");
         assertEquals(LocalTime.NOON, settings.getUnavailableWindows().get(0).getEnd(),
@@ -254,8 +257,8 @@ class AutoScheduleSettingsDialogTest {
 
     @Test
     void typedTwentyFourHourTextIsNormalisedBackToTheTwelveHourClock() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
-        List<JTextField> period = periodFields(dialog);
+        final AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
+        final List<JTextField> period = periodFields(dialog);
 
         SwingUtilities.invokeAndWait(() -> {
             period.get(0).setText("13:30");
@@ -271,8 +274,8 @@ class AutoScheduleSettingsDialogTest {
 
     @Test
     void unreadableTextIsLeftAloneRatherThanOverwritten() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
-        List<JTextField> period = periodFields(dialog);
+        final AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
+        final List<JTextField> period = periodFields(dialog);
 
         SwingUtilities.invokeAndWait(() -> {
             period.get(0).setText("half past one");
@@ -286,17 +289,17 @@ class AutoScheduleSettingsDialogTest {
 
     @Test
     void everyUnavailablePeriodFieldRoundTripsToTheSameLocalTime() throws Exception {
-        AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
-        List<JTextField> period = periodFields(dialog);
+        final AutoScheduleSettingsDialog dialog = dialogWithOnePeriod();
+        final List<JTextField> period = periodFields(dialog);
 
         for (int hour = 0; hour < 24; hour++) {
-            LocalTime expected = LocalTime.of(hour, 15);
+            final LocalTime expected = LocalTime.of(hour, 15);
             final String shown = interface_adapter.viewmodels.TimeDisplay.format(expected);
             SwingUtilities.invokeAndWait(() -> {
                 period.get(0).setText(shown);
                 period.get(1).setText(shown);
             });
-            AutoScheduleSettings settings = dialog.read();
+            final AutoScheduleSettings settings = dialog.read();
             assertEquals(expected, settings.getUnavailableWindows().get(0).getStart(),
                     "an unavailable period must mean the same LocalTime it displays: " + shown);
         }
@@ -308,16 +311,16 @@ class AutoScheduleSettingsDialogTest {
      */
     @Test
     void unavailablePeriodValidationIsUnchanged() {
-        AutoScheduleSettingsValidator validator = new AutoScheduleSettingsValidator();
+        final AutoScheduleSettingsValidator validator = new AutoScheduleSettingsValidator();
 
-        List<String> inverted = validator.validate(
+        final List<String> inverted = validator.validate(
                 new AutoScheduleSettings(LocalTime.of(9, 0), LocalTime.of(21, 0),
                         Collections.singletonList(new AutoScheduleSettings.Window(
                                 LocalTime.of(14, 0), LocalTime.of(13, 0))), true, false),
                 LocalTime.of(9, 0), LocalTime.of(21, 0));
         assertTrue(inverted.get(0).contains("must end after it starts"), inverted.toString());
 
-        List<String> overlapping = validator.validate(
+        final List<String> overlapping = validator.validate(
                 new AutoScheduleSettings(LocalTime.of(9, 0), LocalTime.of(21, 0),
                         Arrays.asList(
                                 new AutoScheduleSettings.Window(
@@ -339,13 +342,13 @@ class AutoScheduleSettingsDialogTest {
      */
     @Test
     void allSixFactorsAreShownAndOnlyTheTwoRealChoicesCanBeChanged() {
-        AutoScheduleSettingsDialog dialog = new AutoScheduleSettingsDialog(
+        final AutoScheduleSettingsDialog dialog = new AutoScheduleSettingsDialog(
                 null, LocalTime.of(9, 0), LocalTime.of(21, 0));
         // With no usable forecast the weather switch is off and disabled, which is its own
         // documented state; ask for the ordinary case where it can be offered.
         dialog.applyWeatherOption(entity.valueobjects.WeatherOption.available());
 
-        java.util.List<ToggleSwitch> switches = new java.util.ArrayList<>();
+        final java.util.List<ToggleSwitch> switches = new java.util.ArrayList<>();
         collectSwitches(dialog.getContentPane(), switches);
 
         assertEquals(6, switches.size(), "six factors are weighed, so six are shown");
@@ -355,7 +358,8 @@ class AutoScheduleSettingsDialogTest {
         for (ToggleSwitch control : switches) {
             if (control.isEnabled()) {
                 movable++;
-            } else {
+            }
+            else {
                 assertTrue(control.isSelected(),
                         "a factor that is always applied must look on, not off");
                 fixedOn++;

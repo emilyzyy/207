@@ -17,25 +17,37 @@ public final class SearchViewModel {
         return state;
     }
 
+    /**
+     * Performs the s et st at e operation.
+     * @param updatedState the u pd at ed st at e value
+     */
     public void setState(SearchState updatedState) {
-        SearchState oldState = state;
+        final SearchState oldState = state;
         state = Objects.requireNonNull(updatedState, "Search state is required");
         changes.firePropertyChange("state", oldState, state);
     }
 
-    /** Marks a discovered activity as focused in the sidebar. */
+    /**
+     * Marks a discovered activity as focused in the sidebar.
+     * @param activityId the a ct iv it yi d value
+     */
     public void selectActivity(String activityId) {
-        SearchState current = state;
+        final SearchState current = state;
         setState(new SearchState(current.getActivities(), current.getQuery(),
                 current.getBookmarkedIds(), current.getScheduledIds(), activityId,
                 current.isLoading(), current.getCategory(), current.getMinimumRating(),
                 current.getType(), current.getFeedback()));
     }
 
-    /** Toggles the loading indicator shown while places are being fetched. */
+    /**
+     * Toggles the loading indicator shown while places are being fetched.
+     * @param loading the l oa di ng value
+     */
     public void setLoading(boolean loading) {
-        SearchState current = state;
-        if (current.isLoading() == loading) return;
+        final SearchState current = state;
+        if (current.isLoading() == loading) {
+            return;
+        }
         setState(new SearchState(current.getActivities(), current.getQuery(),
                 current.getBookmarkedIds(), current.getScheduledIds(),
                 current.getSelectedActivityId(), loading,
@@ -43,10 +55,18 @@ public final class SearchViewModel {
                 current.getType(), current.getFeedback()));
     }
 
+    /**
+     * Performs the a dd pr op er ty ch an ge li st en er operation.
+     * @param listener the l is te ne r value
+     */
     public void addPropertyChangeListener(PropertyChangeListener listener) {
         changes.addPropertyChangeListener(listener);
     }
 
+    /**
+     * Performs the r em ov ep ro pe rt yc ha ng el is te ne r operation.
+     * @param listener the l is te ne r value
+     */
     public void removePropertyChangeListener(PropertyChangeListener listener) {
         changes.removePropertyChangeListener(listener);
     }

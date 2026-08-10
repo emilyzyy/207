@@ -65,32 +65,61 @@ public final class ScheduleConflict {
         this.availableMinutes = availableMinutes;
     }
 
+    /**
+     * Performs the a ct iv it yc an no tf it operation.
+     * @param activityName the a ct iv it yn am e value
+     * @param eventId the e ve nt id value
+     * @return the result of the operation
+     */
     public static ScheduleConflict activityCannotFit(String eventId, String activityName,
                                                      int requiredMinutes, int availableMinutes) {
         return new ScheduleConflict(Kind.ACTIVITY_CANNOT_FIT, eventId, activityName,
                 requiredMinutes, availableMinutes);
     }
 
-    /** The venue is shut all day on the date being scheduled. */
+    /**
+     * The venue is shut all day on the date being scheduled.
+     * @param activityName the a ct iv it yn am e value
+     * @param eventId the e ve nt id value
+     * @return the result of the operation
+     */
     public static ScheduleConflict activityClosedOnDate(String eventId, String activityName,
                                                        String dayName) {
         return new ScheduleConflict(Kind.ACTIVITY_CLOSED_ON_DATE, eventId, activityName,
                 0, 0, dayName);
     }
 
-    /** Extra wording for kinds that need it, such as the weekday a venue is shut. */
+    /**
+     * Extra wording for kinds that need it, such as the weekday a venue is shut.
+     * @return the result of the operation
+     */
     public String getDetail() {
         return detail;
     }
 
+    /**
+     * Performs the n of ea si bl eo rd er operation.
+     * @return the result of the operation
+     */
     public static ScheduleConflict noFeasibleOrder() {
         return new ScheduleConflict(Kind.NO_FEASIBLE_ORDER, "", "", 0, 0);
     }
 
+    /**
+     * Performs the r ef in ed tr av el in fe as ib le operation.
+     * @return the result of the operation
+     */
     public static ScheduleConflict refinedTravelInfeasible() {
         return new ScheduleConflict(Kind.REFINED_TRAVEL_INFEASIBLE, "", "", 0, 0);
     }
 
+    /**
+     * Performs the o f operation.
+     * @param eventId the e ve nt id value
+     * @param subject the s ub je ct value
+     * @param kind the k in d value
+     * @return the result of the operation
+     */
     public static ScheduleConflict of(Kind kind, String eventId, String subject) {
         return new ScheduleConflict(kind, eventId, subject, 0, 0);
     }
@@ -98,13 +127,19 @@ public final class ScheduleConflict {
     public Kind getKind() {
         return kind;
     }
+    /**
+     * The event the user should look at, or empty when the whole day is the problem.
+     * @return the result of the operation
+     */
 
-    /** The event the user should look at, or empty when the whole day is the problem. */
     public String getBlockingEventId() {
         return blockingEventId;
     }
+    /**
+     * Supporting name: the activity, or the window that clashed.
+     * @return the result of the operation
+     */
 
-    /** Supporting name: the activity, or the window that clashed. */
     public String getSubject() {
         return subject;
     }
@@ -125,7 +160,7 @@ public final class ScheduleConflict {
         if (!(other instanceof ScheduleConflict)) {
             return false;
         }
-        ScheduleConflict that = (ScheduleConflict) other;
+        final ScheduleConflict that = (ScheduleConflict) other;
         return kind == that.kind && blockingEventId.equals(that.blockingEventId)
                 && subject.equals(that.subject) && requiredMinutes == that.requiredMinutes
                 && availableMinutes == that.availableMinutes;

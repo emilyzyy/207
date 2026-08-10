@@ -1,18 +1,19 @@
 package interface_adapter.controllers;
 
-import use_case.usecases.ShareTripInputBoundary;
-import use_case.usecases.ShareTripOutputBoundary;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+
+import org.junit.jupiter.api.Test;
+
+import use_case.usecases.ShareTripInputBoundary;
+import use_case.usecases.ShareTripOutputBoundary;
 
 final class ShareTripControllerTest {
 
     @Test
     void sendsActiveTripShareTextToOutput() {
-        RecordingOutput output = new RecordingOutput();
-        ShareTripController controller = new ShareTripController(
+        final RecordingOutput output = new RecordingOutput();
+        final ShareTripController controller = new ShareTripController(
                 tripId -> "Share " + tripId,
                 () -> "trip-42",
                 output);
@@ -25,11 +26,11 @@ final class ShareTripControllerTest {
 
     @Test
     void convertsUseCaseValidationIntoFailureOutput() {
-        RecordingOutput output = new RecordingOutput();
-        ShareTripInputBoundary failing = tripId -> {
+        final RecordingOutput output = new RecordingOutput();
+        final ShareTripInputBoundary failing = tripId -> {
             throw new IllegalArgumentException("Create a trip before sharing");
         };
-        ShareTripController controller = new ShareTripController(
+        final ShareTripController controller = new ShareTripController(
                 failing, () -> "", output);
 
         controller.execute();

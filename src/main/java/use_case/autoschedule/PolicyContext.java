@@ -10,6 +10,10 @@ public final class PolicyContext {
         this.weather = weather == null ? WeatherContext.unavailable() : weather;
     }
 
+    /**
+     * Performs the e mp ty operation.
+     * @return the result of the operation
+     */
     public static PolicyContext empty() {
         return EMPTY;
     }

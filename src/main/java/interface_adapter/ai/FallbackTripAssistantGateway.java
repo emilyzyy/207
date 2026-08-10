@@ -1,13 +1,14 @@
 package interface_adapter.ai;
 
-import use_case.ports.TripAssistantGateway;
-import use_case.tripassistant.TripAssistantDecision;
-import entity.valueobjects.TripAssistantMessage;
-import use_case.tripassistant.TripAssistantRequest;
-import entity.entities.Activity;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
+
+import entity.entities.Activity;
+import entity.valueobjects.TripAssistantMessage;
+import use_case.ports.TripAssistantGateway;
+import use_case.tripassistant.TripAssistantDecision;
+import use_case.tripassistant.TripAssistantRequest;
 
 /** Uses deterministic recommendations when the live provider cannot complete a turn. */
 public final class FallbackTripAssistantGateway implements TripAssistantGateway {
@@ -23,14 +24,15 @@ public final class FallbackTripAssistantGateway implements TripAssistantGateway 
     @Override
     public TripAssistantDecision answer(TripAssistantRequest request) {
         try {
-            TripAssistantDecision decision = live.answer(request);
+            final TripAssistantDecision decision = live.answer(request);
             if (isGrounded(decision, request)) {
                 return decision;
             }
-        } catch (RuntimeException ignored) {
+        }
+        catch (RuntimeException ignored) {
             // The UI receives a deterministic answer and a clear fallback notice below.
         }
-        TripAssistantDecision fallback = offline.answer(request);
+        final TripAssistantDecision fallback = offline.answer(request);
         return new TripAssistantDecision(
                 fallback.getIntent(), fallback.getActivityIds(),
                 fallback.getAnswer(),
@@ -43,7 +45,7 @@ public final class FallbackTripAssistantGateway implements TripAssistantGateway 
         if (decision == null) {
             return false;
         }
-        Set<String> allowed = new HashSet<String>();
+        final Set<String> allowed = new HashSet<String>();
         for (Activity activity : request.getActivities()) {
             allowed.add(activity.getId());
         }
@@ -61,7 +63,7 @@ public final class FallbackTripAssistantGateway implements TripAssistantGateway 
     }
 
     private boolean requiresGroundedTripAnswer(TripAssistantRequest request) {
-        String question = request.getQuestion().toLowerCase(Locale.ROOT);
+        final String question = request.getQuestion().toLowerCase(Locale.ROOT);
         if (containsAny(question,
                 "recommend", "suggest", "activity", "place to", "visit",
                 "what should i do", "rain", "weather", "afternoon",
@@ -84,7 +86,7 @@ public final class FallbackTripAssistantGateway implements TripAssistantGateway 
 
     private boolean hasRecentGroundedActivity(TripAssistantRequest request) {
         for (int index = request.getHistory().size() - 1; index >= 0; index--) {
-            TripAssistantMessage message = request.getHistory().get(index);
+            final TripAssistantMessage message = request.getHistory().get(index);
             if (message.getRole() == TripAssistantMessage.Role.ASSISTANT
                     && !message.getActivityIds().isEmpty()) {
                 return true;

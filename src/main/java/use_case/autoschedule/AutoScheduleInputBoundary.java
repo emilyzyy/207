@@ -10,10 +10,16 @@ import entity.valueobjects.WeatherOption;
  */
 public interface AutoScheduleInputBoundary {
 
-    /** Works out a proposed schedule and presents it. Changes nothing. */
+    /**
+     * Works out a proposed schedule and presents it. Changes nothing.
+     * @param inputData the i np ut da ta value
+     */
     void preview(AutoScheduleInputData inputData);
 
-    /** Saves a previously previewed schedule, if the Day Plan has not moved on. */
+    /**
+     * Saves a previously previewed schedule, if the Day Plan has not moved on.
+     * @param inputData the i np ut da ta value
+     */
     void apply(AutoScheduleApplyInputData inputData);
 
     /**
@@ -27,6 +33,8 @@ public interface AutoScheduleInputBoundary {
      * weather, and keeps this class the only place that decides what counts as usable.</p>
      *
      * <p>Never throws. An unanswerable question yields an unavailable option.</p>
+      * @param tripId the t ri pi d value
+      * @return the result of the operation
      */
     WeatherOption weatherOptionFor(String tripId);
 }

@@ -1,9 +1,10 @@
 package use_case.usecases;
 
-import entity.entities.ScheduledEvent;
-import entity.valueobjects.EventType;
 import java.util.ArrayList;
 import java.util.List;
+
+import entity.entities.ScheduledEvent;
+import entity.valueobjects.EventType;
 
 /**
  * Rules shared by the use cases that let a traveller edit the day by hand.
@@ -24,16 +25,19 @@ import java.util.List;
 final class ScheduleEdits {
 
     private ScheduleEdits() {
-    }
 
+    }
     /**
      * The same events with every generated travel block removed.
      *
      * <p>Activities are returned untouched and in their existing order; only their derived
      * connective tissue goes.</p>
+      * @param events the e ve nt s value
+      * @return the result of the operation
      */
+
     static List<ScheduledEvent> withoutDerivedTravel(List<ScheduledEvent> events) {
-        List<ScheduledEvent> kept = new ArrayList<>();
+        final List<ScheduledEvent> kept = new ArrayList<>();
         if (events == null) {
             return kept;
         }

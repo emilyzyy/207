@@ -47,8 +47,11 @@ public final class Friendship {
     public Status getStatus() {
         return status;
     }
+    /**
+     * The other person relative to the current user (for list UIs).
+     * @return the result of the operation
+     */
 
-    /** The other person relative to the current user (for list UIs). */
     public User getOtherUser() {
         return otherUser;
     }

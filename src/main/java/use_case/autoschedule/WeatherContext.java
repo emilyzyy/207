@@ -1,10 +1,11 @@
 package use_case.autoschedule;
 
-import entity.valueobjects.WeatherSeverity;
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
+import entity.valueobjects.WeatherSeverity;
 
 /**
  * What the scheduler knows about the weather for the trip day.
@@ -35,12 +36,19 @@ public final class WeatherContext {
                 ? Collections.emptyMap() : Collections.unmodifiableMap(new HashMap<>(severityByHour));
     }
 
-    /** No forecast could be obtained; scheduling proceeds without weather. */
+    /**
+     * No forecast could be obtained; scheduling proceeds without weather.
+     * @return the result of the operation
+     */
     public static WeatherContext unavailable() {
         return UNAVAILABLE;
     }
+    /**
+     * One severity for the whole day, matching today's weather adapter.
+     * @param severity the s ev er it y value
+     * @return the result of the operation
+     */
 
-    /** One severity for the whole day, matching today's weather adapter. */
     public static WeatherContext tripLevel(WeatherSeverity severity) {
         if (severity == null) {
             return UNAVAILABLE;
@@ -48,7 +56,11 @@ public final class WeatherContext {
         return new WeatherContext(true, severity, null);
     }
 
-    /** Severity per hour of the day, for when an hourly forecast is available. */
+    /**
+     * Severity per hour of the day, for when an hourly forecast is available.
+     * @param byHour the b yh ou r value
+     * @return the result of the operation
+     */
     public static WeatherContext hourly(Map<Integer, WeatherSeverity> byHour) {
         if (byHour == null || byHour.isEmpty()) {
             return UNAVAILABLE;
@@ -59,8 +71,12 @@ public final class WeatherContext {
     public boolean isAvailable() {
         return available;
     }
+    /**
+     * Severity at a given time, or null when nothing is known.
+     * @param time the t im e value
+     * @return the result of the operation
+     */
 
-    /** Severity at a given time, or null when nothing is known. */
     public WeatherSeverity severityAt(LocalTime time) {
         if (!available) {
             return null;
@@ -71,11 +87,13 @@ public final class WeatherContext {
         return tripSeverity;
     }
 
-    /** True when severity varies across the day rather than being one trip-wide value. */
+    /**
+     * True when severity varies across the day rather than being one trip-wide value.
+     * @return the result of the operation
+     */
     public boolean isHourly() {
         return !severityByHour.isEmpty();
     }
-
     /**
      * Whether this forecast can actually tell one time of day from another.
      *
@@ -83,7 +101,9 @@ public final class WeatherContext {
      * same, so weather has nothing to say about <em>when</em> to do things. Scheduling
      * treats that as weather being unable to contribute rather than pretending to have
      * optimised around it, and the Preview says so.</p>
+      * @return the result of the operation
      */
+
     public boolean canDistinguishTimes() {
         return available && isHourly();
     }

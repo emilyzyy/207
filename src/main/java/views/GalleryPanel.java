@@ -1,8 +1,5 @@
 package views;
 
-import use_case.ports.DestinationGeocoder;
-import entity.entities.Trip;
-import entity.entities.User;
 import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -20,9 +17,10 @@ import java.awt.image.BufferedImage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -32,6 +30,10 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
+
+import entity.entities.Trip;
+import entity.entities.User;
+import use_case.ports.DestinationGeocoder;
 
 public final class GalleryPanel extends JPanel {
     private static final int CARD_ARC = 16;
@@ -136,25 +138,25 @@ public final class GalleryPanel extends JPanel {
         setLayout(new BorderLayout());
         setBackground(SwingTheme.BACKGROUND);
 
-        JPanel header = new JPanel(new BorderLayout());
+        final JPanel header = new JPanel(new BorderLayout());
         header.setBackground(SwingTheme.BACKGROUND);
         header.setBorder(BorderFactory.createEmptyBorder(24, 40, 8, 40));
 
-        JLabel title = new JLabel("My Trips");
+        final JLabel title = new JLabel("My Trips");
         title.setFont(SwingTheme.TITLE);
         header.add(title, BorderLayout.WEST);
 
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        final JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         actions.setOpaque(false);
-        JButton newTrip = SwingTheme.primaryButton("+ New Itinerary");
+        final JButton newTrip = SwingTheme.primaryButton("+ New Itinerary");
         newTrip.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
-        Dimension galleryActionSize = new Dimension(150, 40);
+        final Dimension galleryActionSize = new Dimension(150, 40);
         newTrip.setPreferredSize(galleryActionSize);
         newTrip.setMinimumSize(galleryActionSize);
         newTrip.addActionListener(e -> onCreateTrip.run());
         actions.add(newTrip);
         if (onAuthAction != null && !signedIn) {
-            JButton authButton = new JButton("Sign in");
+            final JButton authButton = new JButton("Sign in");
             authButton.setFont(SwingTheme.BODY);
             authButton.setPreferredSize(new Dimension(100, galleryActionSize.height));
             authButton.setMinimumSize(new Dimension(100, galleryActionSize.height));
@@ -191,7 +193,7 @@ public final class GalleryPanel extends JPanel {
             cardGrid.add(createCard(trip));
         }
 
-        JScrollPane scroll = new JScrollPane(cardGrid);
+        final JScrollPane scroll = new JScrollPane(cardGrid);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         add(scroll, BorderLayout.CENTER);
@@ -199,6 +201,10 @@ public final class GalleryPanel extends JPanel {
         startTileLoading(trips);
     }
 
+    /**
+     * Performs the s et in co mi ng fr ie nd re qu es tc ou nt operation.
+     * @param count the c ou nt value
+     */
     public void setIncomingFriendRequestCount(int count) {
         if (friendsButton == null) {
             return;
@@ -207,6 +213,10 @@ public final class GalleryPanel extends JPanel {
         friendsButton.setToolTipText(tooltipForIncoming(count));
     }
 
+    /**
+     * Performs the s et pr of il eu se r operation.
+     * @param user the u se r value
+     */
     public void setProfileUser(User user) {
         if (avatarButton == null) {
             return;
@@ -228,9 +238,9 @@ public final class GalleryPanel extends JPanel {
         if (usernames == null || usernames.isEmpty()) {
             return null;
         }
-        StringBuilder line = new StringBuilder("With ");
+        final StringBuilder line = new StringBuilder("With ");
         for (int i = 0; i < usernames.size(); i++) {
-            String piece = (i == 0 ? "" : ", ") + "@" + usernames.get(i);
+            final String piece = (i == 0 ? "" : ", ") + "@" + usernames.get(i);
             if (line.length() + piece.length() > WITH_LINE_MAX_CHARS) {
                 if (!line.toString().endsWith("...")) {
                     line.append("...");
@@ -248,7 +258,7 @@ public final class GalleryPanel extends JPanel {
 
     private void startTileLoading(List<Trip> trips) {
         for (Trip trip : trips) {
-            String key = trip.getDestination().toLowerCase();
+            final String key = trip.getDestination().toLowerCase();
             tileForDestination(trip.getDestination())
                     .thenAccept(img -> {
                         if (img != null) {
@@ -292,10 +302,10 @@ public final class GalleryPanel extends JPanel {
             setLayout(new BorderLayout());
             setPreferredSize(new Dimension(320, 260));
 
-            JPanel overlay = new JPanel(new GridBagLayout()) {
+            final JPanel overlay = new JPanel(new GridBagLayout()) {
                 @Override
                 protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g.create();
+                    final Graphics2D g2 = (Graphics2D) g.create();
                     g2.setComposite(AlphaComposite.SrcOver.derive(0.55f));
                     g2.setColor(Color.BLACK);
                     g2.fillRect(0, 0, getWidth(), getHeight());
@@ -304,11 +314,11 @@ public final class GalleryPanel extends JPanel {
             };
             overlay.setOpaque(false);
 
-            JPanel content = new JPanel();
+            final JPanel content = new JPanel();
             content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
             content.setOpaque(false);
 
-            JLabel name = new JLabel(trip.getDestination());
+            final JLabel name = new JLabel(trip.getDestination());
             name.setFont(SwingTheme.HEADING.deriveFont(Font.BOLD, 20f));
             name.setForeground(Color.WHITE);
             name.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -316,10 +326,10 @@ public final class GalleryPanel extends JPanel {
 
             content.add(Box.createVerticalStrut(6));
 
-            String dateStr = trip.getDate().getMonth().name().charAt(0)
+            final String dateStr = trip.getDate().getMonth().name().charAt(0)
                     + trip.getDate().getMonth().name().substring(1).toLowerCase()
                     + " " + trip.getDate().getDayOfMonth() + ", " + trip.getDate().getYear();
-            JLabel dateLabel = new JLabel(dateStr);
+            final JLabel dateLabel = new JLabel(dateStr);
             dateLabel.setForeground(new Color(200, 215, 235));
             dateLabel.setFont(SwingTheme.BODY);
             dateLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -327,22 +337,22 @@ public final class GalleryPanel extends JPanel {
 
             content.add(Box.createVerticalStrut(4));
 
-            JLabel meta = new JLabel(trip.getStartTime() + " \u2013 " + trip.getEndTime());
+            final JLabel meta = new JLabel(trip.getStartTime() + " \u2013 " + trip.getEndTime());
             meta.setForeground(new Color(170, 185, 205));
             meta.setFont(SwingTheme.SMALL);
             meta.setAlignmentX(Component.CENTER_ALIGNMENT);
             content.add(meta);
 
-            String withLine = formatWithLine(companionsByTripId.get(trip.getId()));
+            final String withLine = formatWithLine(companionsByTripId.get(trip.getId()));
             if (withLine != null) {
                 content.add(Box.createVerticalStrut(4));
-                JLabel withLabel = new JLabel(withLine);
+                final JLabel withLabel = new JLabel(withLine);
                 withLabel.setForeground(new Color(180, 200, 220));
                 withLabel.setFont(SwingTheme.SMALL);
                 withLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-                List<String> names = companionsByTripId.get(trip.getId());
+                final List<String> names = companionsByTripId.get(trip.getId());
                 if (names != null && !names.isEmpty()) {
-                    StringBuilder tip = new StringBuilder("With ");
+                    final StringBuilder tip = new StringBuilder("With ");
                     for (int i = 0; i < names.size(); i++) {
                         if (i > 0) {
                             tip.append(", ");
@@ -356,7 +366,7 @@ public final class GalleryPanel extends JPanel {
 
             content.add(Box.createVerticalStrut(4));
 
-            JLabel counts = new JLabel(trip.getBookmarkedActivities().size() + " bookmarks  \u00b7  "
+            final JLabel counts = new JLabel(trip.getBookmarkedActivities().size() + " bookmarks  \u00b7  "
                     + trip.getScheduledEvents().size() + " events");
             counts.setForeground(new Color(150, 165, 185));
             counts.setFont(SwingTheme.SMALL);
@@ -365,7 +375,7 @@ public final class GalleryPanel extends JPanel {
 
             content.add(Box.createVerticalStrut(14));
 
-            JButton openButton = new JButton("Open Trip");
+            final JButton openButton = new JButton("Open Trip");
             openButton.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
             openButton.setForeground(Color.WHITE);
             openButton.setBackground(SwingTheme.BLUE);
@@ -376,12 +386,12 @@ public final class GalleryPanel extends JPanel {
             openButton.setAlignmentX(Component.CENTER_ALIGNMENT);
             openButton.setBorder(BorderFactory.createEmptyBorder(10, 28, 10, 28));
             openButton.addActionListener(e -> onOpenTrip.accept(trip));
-            JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
+            final JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
             buttons.setOpaque(false);
             buttons.setAlignmentX(Component.CENTER_ALIGNMENT);
             buttons.add(openButton);
             if (onDeleteTrip != null) {
-                JButton deleteButton = new JButton("Delete Trip");
+                final JButton deleteButton = new JButton("Delete Trip");
                 deleteButton.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
                 deleteButton.setForeground(Color.WHITE);
                 deleteButton.setBackground(new Color(180, 45, 45));
@@ -395,7 +405,7 @@ public final class GalleryPanel extends JPanel {
             }
             content.add(buttons);
 
-            GridBagConstraints gbc = new GridBagConstraints();
+            final GridBagConstraints gbc = new GridBagConstraints();
             gbc.gridx = 0;
             gbc.gridy = 0;
             gbc.anchor = GridBagConstraints.CENTER;
@@ -405,18 +415,21 @@ public final class GalleryPanel extends JPanel {
         }
 
         private void confirmDelete() {
-            boolean confirmed = RemovalDialogs.confirm(
+            final boolean confirmed = RemovalDialogs.confirm(
                     GalleryPanel.this,
                     "Delete Trip",
                     "Delete the trip to " + trip.getDestination()
                             + "? This cannot be undone.");
-            if (!confirmed) return;
+            if (!confirmed) {
+                return;
+            }
             try {
                 onDeleteTrip.accept(trip);
                 RemovalDialogs.notifyRemoved(
                         GalleryPanel.this,
                         "Trip to " + trip.getDestination() + " was deleted.");
-            } catch (RuntimeException exception) {
+            }
+            catch (RuntimeException exception) {
                 JOptionPane.showMessageDialog(
                         GalleryPanel.this,
                         "Could not delete the trip: " + exception.getMessage(),
@@ -427,29 +440,31 @@ public final class GalleryPanel extends JPanel {
 
         @Override
         protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
+            final Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 
-            int w = getWidth(), h = getHeight();
+            final int w = getWidth(), h = getHeight();
 
-            BufferedImage tile = tileFor(trip.getDestination());
+            final BufferedImage tile = tileFor(trip.getDestination());
             if (tile != null) {
-                double tileAspect = (double) StaticTileLoader.TILE_SIZE / StaticTileLoader.TILE_SIZE;
-                double cardAspect = (double) w / h;
-                int drawW, drawH;
+                final double tileAspect = (double) StaticTileLoader.TILE_SIZE / StaticTileLoader.TILE_SIZE;
+                final double cardAspect = (double) w / h;
+                final int drawW, drawH;
                 if (tileAspect > cardAspect) {
                     drawH = h;
                     drawW = (int) (h * tileAspect);
-                } else {
+                }
+                else {
                     drawW = w;
                     drawH = (int) (w / tileAspect);
                 }
-                int ox = (w - drawW) / 2;
-                int oy = (h - drawH) / 2;
+                final int ox = (w - drawW) / 2;
+                final int oy = (h - drawH) / 2;
                 g2.setClip(new java.awt.geom.RoundRectangle2D.Float(0, 0, w, h, CARD_ARC, CARD_ARC));
                 g2.drawImage(tile, ox, oy, drawW, drawH, null);
-            } else {
+            }
+            else {
                 g2.setColor(new Color(30, 50, 80));
                 g2.fill(new java.awt.geom.RoundRectangle2D.Float(0, 0, w, h, CARD_ARC, CARD_ARC));
             }
@@ -466,7 +481,7 @@ public final class GalleryPanel extends JPanel {
 
         @Override
         protected void paintChildren(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
+            final Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setClip(new java.awt.geom.RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), CARD_ARC, CARD_ARC));
             super.paintChildren(g2);
@@ -475,7 +490,7 @@ public final class GalleryPanel extends JPanel {
 
         @Override
         public Dimension getPreferredSize() {
-            Dimension d = super.getPreferredSize();
+            final Dimension d = super.getPreferredSize();
             return new Dimension(Math.max(d.width, 320), Math.max(d.height, 260));
         }
     }

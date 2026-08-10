@@ -1,8 +1,9 @@
 package use_case.autoschedule.engine;
 
+import java.time.LocalTime;
+
 import use_case.autoschedule.ScheduleProblem;
 import use_case.autoschedule.ScheduleTask;
-import java.time.LocalTime;
 
 /**
  * An extra feasibility veto consulted when the engine places an activity.
@@ -15,7 +16,12 @@ import java.time.LocalTime;
  */
 public interface PlacementRule {
 
-    /** True when the activity may occupy {@code [start, end)} in this problem. */
+    /**
+     * True when the activity may occupy {@code [start, end)} in this problem.
+     * @param task the t as k value
+     * @param problem the p ro bl em value
+     * @return the result of the operation
+     */
     boolean allows(ScheduleProblem problem, ScheduleTask task,
                    LocalTime start, LocalTime end, int travelMinutesBefore);
 }

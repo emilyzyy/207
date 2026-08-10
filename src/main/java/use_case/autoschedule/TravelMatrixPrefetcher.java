@@ -1,10 +1,11 @@
 package use_case.autoschedule;
 
-import entity.valueobjects.TransportationMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+
+import entity.valueobjects.TransportationMode;
 
 /**
  * Builds the bucketed {@link TravelMatrix} for one run by asking the estimator for
@@ -28,30 +29,31 @@ public final class TravelMatrixPrefetcher {
     /**
      * Prefetches travel for every ordered pair of {@code tasks}.
      *
-     * @param tasks        activities to be scheduled, in any order
-     * @param mode         transportation mode chosen for this run
      * @param date         the trip date, bound to each departure time
      * @param availability the run's availability window
+     * @param tasks        activities to be scheduled, in any order
+     * @param mode         transportation mode chosen for this run
+      * @return the result of the operation
      */
     public TravelMatrix prefetch(List<ScheduleTask> tasks, TransportationMode mode,
                                  LocalDate date, TimeWindow availability) {
         if (tasks == null || tasks.isEmpty()) {
             throw new IllegalArgumentException("Travel prefetch needs at least one activity");
         }
-        int directedPairs = tasks.size() * (tasks.size() - 1);
-        PeriodPlan periods = PeriodPlan.forRun(availability,
+        final int directedPairs = tasks.size() * (tasks.size() - 1);
+        final PeriodPlan periods = PeriodPlan.forRun(availability,
                 estimator.isTimeSensitive(mode), directedPairs);
 
-        TravelMatrix.Builder builder = TravelMatrix.builder(periods);
+        final TravelMatrix.Builder builder = TravelMatrix.builder(periods);
         for (DeparturePeriod period : periods.activePeriods()) {
-            LocalTime departureTime = period.sampleWithin(availability);
-            LocalDateTime departure = LocalDateTime.of(date, departureTime);
+            final LocalTime departureTime = period.sampleWithin(availability);
+            final LocalDateTime departure = LocalDateTime.of(date, departureTime);
             for (ScheduleTask from : tasks) {
                 for (ScheduleTask to : tasks) {
                     if (from.getEventId().equals(to.getEventId())) {
                         continue;
                     }
-                    TravelEstimate estimate = estimator.estimate(
+                    final TravelEstimate estimate = estimator.estimate(
                             from.getActivity().getLocation(),
                             to.getActivity().getLocation(),
                             mode, departure);

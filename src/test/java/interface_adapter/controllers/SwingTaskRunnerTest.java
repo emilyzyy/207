@@ -6,7 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import javax.swing.SwingUtilities;
+
 import org.junit.jupiter.api.Test;
 
 /**
@@ -17,8 +19,8 @@ class SwingTaskRunnerTest {
 
     @Test
     void workRunsAwayFromTheEventThread() throws Exception {
-        AtomicBoolean ranOnEventThread = new AtomicBoolean(true);
-        CountDownLatch finished = new CountDownLatch(1);
+        final AtomicBoolean ranOnEventThread = new AtomicBoolean(true);
+        final CountDownLatch finished = new CountDownLatch(1);
 
         SwingUtilities.invokeAndWait(() -> new SwingTaskRunner().run(() -> {
             ranOnEventThread.set(SwingUtilities.isEventDispatchThread());
@@ -32,16 +34,17 @@ class SwingTaskRunnerTest {
 
     @Test
     void theEventThreadIsFreedImmediatelyRatherThanWaiting() throws Exception {
-        CountDownLatch allowFinish = new CountDownLatch(1);
-        CountDownLatch started = new CountDownLatch(1);
-        AtomicBoolean submitReturnedWhileWorking = new AtomicBoolean(false);
+        final CountDownLatch allowFinish = new CountDownLatch(1);
+        final CountDownLatch started = new CountDownLatch(1);
+        final AtomicBoolean submitReturnedWhileWorking = new AtomicBoolean(false);
 
         SwingUtilities.invokeAndWait(() -> {
             new SwingTaskRunner().run(() -> {
                 started.countDown();
                 try {
                     allowFinish.await(5, TimeUnit.SECONDS);
-                } catch (InterruptedException interrupted) {
+                }
+                catch (InterruptedException interrupted) {
                     Thread.currentThread().interrupt();
                 }
             });

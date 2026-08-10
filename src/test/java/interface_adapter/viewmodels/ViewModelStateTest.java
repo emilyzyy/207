@@ -1,29 +1,31 @@
 package interface_adapter.viewmodels;
 
-import entity.entities.Activity;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.IndoorOutdoorType;
-import entity.valueobjects.Location;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import entity.entities.Activity;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.Location;
 
 final class ViewModelStateTest {
 
     @Test
     void activityStatesUseDefensiveSnapshotsAndViewModelsPublishChanges() {
-        List<Activity> source = new ArrayList<Activity>();
+        final List<Activity> source = new ArrayList<Activity>();
         source.add(activity("rom"));
-        SearchViewModel search = new SearchViewModel(new SearchState(source, ""));
-        BookmarksViewModel bookmarks = new BookmarksViewModel(new BookmarksState(source));
-        AtomicInteger searchChanges = new AtomicInteger();
-        AtomicInteger bookmarkChanges = new AtomicInteger();
+        final SearchViewModel search = new SearchViewModel(new SearchState(source, ""));
+        final BookmarksViewModel bookmarks = new BookmarksViewModel(new BookmarksState(source));
+        final AtomicInteger searchChanges = new AtomicInteger();
+        final AtomicInteger bookmarkChanges = new AtomicInteger();
         search.addPropertyChangeListener(event -> searchChanges.incrementAndGet());
         bookmarks.addPropertyChangeListener(event -> bookmarkChanges.incrementAndGet());
 
@@ -45,14 +47,14 @@ final class ViewModelStateTest {
 
     @Test
     void dashboardAndTripOptionsExposeSeededTripInformation() {
-        DashboardState dashboardState = new DashboardState(
+        final DashboardState dashboardState = new DashboardState(
                 "Toronto", LocalDate.of(2026, 7, 23),
                 "Sunny intervals", "24°C · Good conditions");
-        DashboardViewModel dashboard = new DashboardViewModel(dashboardState);
-        TripOptionsState optionsState = new TripOptionsState(
+        final DashboardViewModel dashboard = new DashboardViewModel(dashboardState);
+        final TripOptionsState optionsState = new TripOptionsState(
                 "Toronto", LocalDate.of(2026, 7, 23),
                 LocalTime.of(9, 0), LocalTime.of(18, 0));
-        TripOptionsViewModel options = new TripOptionsViewModel(optionsState);
+        final TripOptionsViewModel options = new TripOptionsViewModel(optionsState);
 
         assertEquals("Toronto", dashboard.getState().getDestination());
         assertEquals("Sunny intervals", dashboard.getState().getWeatherCondition());

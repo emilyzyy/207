@@ -6,6 +6,28 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.awt.Component;
+import java.awt.Container;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import javax.swing.AbstractButton;
+import javax.swing.SwingUtilities;
+
+import org.junit.jupiter.api.Test;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.EventType;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.Location;
+import entity.valueobjects.TransportationMode;
 import interface_adapter.controllers.AutoScheduleController;
 import interface_adapter.controllers.AutoScheduleSettings;
 import interface_adapter.controllers.TaskRunner;
@@ -18,33 +40,13 @@ import interface_adapter.viewmodels.DashboardState;
 import interface_adapter.viewmodels.DashboardViewModel;
 import interface_adapter.viewmodels.DayPlanState;
 import interface_adapter.viewmodels.DayPlanViewModel;
-import views.TrippyFrame;
-import app.AppContainer;
 import use_case.autoschedule.AutoScheduleInteractor;
 import use_case.autoschedule.engine.ScheduleEngine;
 import use_case.autoschedule.policy.DaylightPolicy;
 import use_case.autoschedule.policy.MealWindowPolicy;
 import use_case.autoschedule.policy.SoftPolicy;
 import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.EventType;
-import entity.valueobjects.IndoorOutdoorType;
-import entity.valueobjects.Location;
-import entity.valueobjects.TransportationMode;
-import java.awt.Component;
-import java.awt.Container;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import javax.swing.AbstractButton;
-import javax.swing.SwingUtilities;
-import org.junit.jupiter.api.Test;
+import views.TrippyFrame;
 
 /**
  * End-to-end checks over the wiring: one Autoschedule path exists, the replaced mockup is
@@ -60,11 +62,11 @@ class AutoScheduleWiringIntegrationTest {
     }
 
     private static Trip tripWithActivities(String id, int count) {
-        Trip trip = new Trip(id, "Toronto", LocalDate.of(2026, 8, 12),
+        final Trip trip = new Trip(id, "Toronto", LocalDate.of(2026, 8, 12),
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING);
-        List<ScheduledEvent> events = new ArrayList<>();
+        final List<ScheduledEvent> events = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            LocalTime start = LocalTime.of(9 + i * 3, 0);
+            final LocalTime start = LocalTime.of(9 + i * 3, 0);
             events.add(new ScheduledEvent("event-" + i, activity("a" + i, 9, 21),
                     start, start.plusMinutes(60), EventType.ACTIVITY, ""));
         }
@@ -74,9 +76,9 @@ class AutoScheduleWiringIntegrationTest {
 
     /** Builds the same slice AppBuilder does, against an injected trip. */
     private static AutoScheduleController wire(AppContainer app, DayPlanViewModel viewModel) {
-        List<SoftPolicy> builtIn = Arrays.asList(new WeatherSuitabilityPolicy(),
+        final List<SoftPolicy> builtIn = Arrays.asList(new WeatherSuitabilityPolicy(),
                 new MealWindowPolicy(), new DaylightPolicy());
-        AutoScheduleInteractor interactor = new AutoScheduleInteractor(app.trips,
+        final AutoScheduleInteractor interactor = new AutoScheduleInteractor(app.trips,
                 new DistanceServiceTravelTimeEstimator(
                         new interface_adapter.mock.MockDistanceService()),
                 new WeatherServiceContextGateway(app.weather),
@@ -92,10 +94,10 @@ class AutoScheduleWiringIntegrationTest {
     @Test
     void theFrameOffersAutoscheduleAndNoLongerOffersTheOldMockup() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
-            AppBuilder builder = new AppBuilder();
-            TrippyFrame frame = builder.buildSwingApplication(builder.buildOffline());
+            final AppBuilder builder = new AppBuilder();
+            final TrippyFrame frame = builder.buildSwingApplication(builder.buildOffline());
 
-            List<AbstractButton> autoschedule = findButtons(frame, "Autoschedule");
+            final List<AbstractButton> autoschedule = findButtons(frame, "Autoschedule");
             assertEquals(1, autoschedule.size(),
                     "there should be exactly one way into Autoschedule");
             assertNull(findButton(frame, "Optimize Itinerary"));
@@ -106,13 +108,13 @@ class AutoScheduleWiringIntegrationTest {
 
     @Test
     void aPreviewLeavesBothTheRepositoryAndTheCalendarUntouched() {
-        AppBuilder builder = new AppBuilder();
-        AppContainer app = builder.buildOffline();
-        Trip trip = app.trips.save(tripWithActivities("trip-1", 3));
+        final AppBuilder builder = new AppBuilder();
+        final AppContainer app = builder.buildOffline();
+        final Trip trip = app.trips.save(tripWithActivities("trip-1", 3));
 
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
-        CalendarViewModel calendar = new CalendarViewModel(
+        final CalendarViewModel calendar = new CalendarViewModel(
                 new DashboardViewModel(new DashboardState("Toronto",
                         LocalDate.of(2026, 8, 12), "", "")),
                 viewModel, () -> LocalDate.of(2026, 8, 12));
@@ -131,24 +133,24 @@ class AutoScheduleWiringIntegrationTest {
 
     @Test
     void applyingSavesTheScheduleAndTheCalendarFollows() {
-        AppBuilder builder = new AppBuilder();
-        AppContainer app = builder.buildOffline();
-        Trip trip = app.trips.save(tripWithActivities("trip-1", 3));
+        final AppBuilder builder = new AppBuilder();
+        final AppContainer app = builder.buildOffline();
+        final Trip trip = app.trips.save(tripWithActivities("trip-1", 3));
 
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
-        CalendarViewModel calendar = new CalendarViewModel(
+        final CalendarViewModel calendar = new CalendarViewModel(
                 new DashboardViewModel(new DashboardState("Toronto",
                         LocalDate.of(2026, 8, 12), "", "")),
                 viewModel, () -> LocalDate.of(2026, 8, 12));
-        AutoScheduleController controller = wire(app, viewModel);
+        final AutoScheduleController controller = wire(app, viewModel);
 
         controller.preview(defaultSettings());
-        int proposedRows = viewModel.getState().getPreviewRows().size();
+        final int proposedRows = viewModel.getState().getPreviewRows().size();
         controller.apply();
 
         assertEquals(AutoScheduleStatus.APPLIED, viewModel.getState().getStatus());
-        Trip saved = app.trips.findById("trip-1").orElseThrow();
+        final Trip saved = app.trips.findById("trip-1").orElseThrow();
         assertEquals(proposedRows, saved.getScheduledEvents().size());
         assertEquals(proposedRows, calendar.getState().getEvents().size(),
                 "the Calendar observes the applied schedule through the shared view model");
@@ -157,13 +159,13 @@ class AutoScheduleWiringIntegrationTest {
 
     @Test
     void cancellingLeavesEverythingExactlyAsItWas() {
-        AppBuilder builder = new AppBuilder();
-        AppContainer app = builder.buildOffline();
-        Trip trip = app.trips.save(tripWithActivities("trip-1", 3));
+        final AppBuilder builder = new AppBuilder();
+        final AppContainer app = builder.buildOffline();
+        final Trip trip = app.trips.save(tripWithActivities("trip-1", 3));
 
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
-        AutoScheduleController controller = wire(app, viewModel);
+        final AutoScheduleController controller = wire(app, viewModel);
 
         controller.preview(defaultSettings());
         controller.cancel();
@@ -175,20 +177,20 @@ class AutoScheduleWiringIntegrationTest {
 
     @Test
     void aPinnedActivityKeepsItsTimeThroughTheWholeFlow() {
-        AppBuilder builder = new AppBuilder();
-        AppContainer app = builder.buildOffline();
-        Trip trip = app.trips.save(tripWithActivities("trip-1", 3));
+        final AppBuilder builder = new AppBuilder();
+        final AppContainer app = builder.buildOffline();
+        final Trip trip = app.trips.save(tripWithActivities("trip-1", 3));
 
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 trip.getId(), trip.getScheduledEvents(), "", false));
-        AutoScheduleController controller = wire(app, viewModel);
-        LocalTime pinnedStart = trip.getScheduledEvents().get(2).getStartTime();
+        final AutoScheduleController controller = wire(app, viewModel);
+        final LocalTime pinnedStart = trip.getScheduledEvents().get(2).getStartTime();
 
         controller.toggleLock("event-2");
         controller.preview(defaultSettings());
         controller.apply();
 
-        ScheduledEvent pinned = app.trips.findById("trip-1").orElseThrow()
+        final ScheduledEvent pinned = app.trips.findById("trip-1").orElseThrow()
                 .getScheduledEvents().stream()
                 .filter(event -> event.getId().equals("event-2"))
                 .findFirst().orElseThrow(AssertionError::new);
@@ -198,17 +200,17 @@ class AutoScheduleWiringIntegrationTest {
 
     @Test
     void aSeededTripAndAnOrdinaryTripBehaveIdenticallyThroughTheBoundary() {
-        AppBuilder builder = new AppBuilder();
+        final AppBuilder builder = new AppBuilder();
 
-        AppContainer seededApp = builder.buildOffline();
-        Trip seeded = seededApp.trips.save(tripWithActivities("seeded", 3));
-        DayPlanViewModel seededView = new DayPlanViewModel(new DayPlanState(
+        final AppContainer seededApp = builder.buildOffline();
+        final Trip seeded = seededApp.trips.save(tripWithActivities("seeded", 3));
+        final DayPlanViewModel seededView = new DayPlanViewModel(new DayPlanState(
                 seeded.getId(), seeded.getScheduledEvents(), "", false));
         wire(seededApp, seededView).preview(defaultSettings());
 
-        AppContainer ordinaryApp = builder.buildOffline();
-        Trip ordinary = ordinaryApp.trips.save(tripWithActivities("ordinary", 3));
-        DayPlanViewModel ordinaryView = new DayPlanViewModel(new DayPlanState(
+        final AppContainer ordinaryApp = builder.buildOffline();
+        final Trip ordinary = ordinaryApp.trips.save(tripWithActivities("ordinary", 3));
+        final DayPlanViewModel ordinaryView = new DayPlanViewModel(new DayPlanState(
                 ordinary.getId(), ordinary.getScheduledEvents(), "", false));
         wire(ordinaryApp, ordinaryView).preview(defaultSettings());
 
@@ -222,12 +224,12 @@ class AutoScheduleWiringIntegrationTest {
 
     @Test
     void anEmptyDayPlanIsExplainedRatherThanCrashing() {
-        AppBuilder builder = new AppBuilder();
-        AppContainer app = builder.buildOffline();
-        Trip empty = app.trips.save(new Trip("trip-1", "Toronto", LocalDate.of(2026, 8, 12),
+        final AppBuilder builder = new AppBuilder();
+        final AppContainer app = builder.buildOffline();
+        final Trip empty = app.trips.save(new Trip("trip-1", "Toronto", LocalDate.of(2026, 8, 12),
                 LocalTime.of(9, 0), LocalTime.of(21, 0), TransportationMode.WALKING));
 
-        DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
+        final DayPlanViewModel viewModel = new DayPlanViewModel(new DayPlanState(
                 empty.getId(), empty.getScheduledEvents(), "", false));
         wire(app, viewModel).preview(defaultSettings());
 
@@ -238,8 +240,8 @@ class AutoScheduleWiringIntegrationTest {
     @Test
     void theBuiltFrameWiresAutoscheduleToTheSharedDayPlanState() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
-            AppBuilder builder = new AppBuilder();
-            TrippyFrame frame = builder.buildSwingApplication(builder.buildOffline());
+            final AppBuilder builder = new AppBuilder();
+            final TrippyFrame frame = builder.buildSwingApplication(builder.buildOffline());
 
             assertNotNull(frame.getDayPlanPanel());
             assertEquals(frame.getDayPlanPanel().getViewModel(),
@@ -250,12 +252,12 @@ class AutoScheduleWiringIntegrationTest {
     }
 
     private static AbstractButton findButton(Component component, String text) {
-        List<AbstractButton> found = findButtons(component, text);
+        final List<AbstractButton> found = findButtons(component, text);
         return found.isEmpty() ? null : found.get(0);
     }
 
     private static List<AbstractButton> findButtons(Component component, String text) {
-        List<AbstractButton> found = new ArrayList<>();
+        final List<AbstractButton> found = new ArrayList<>();
         collectButtons(component, text, found);
         return found;
     }

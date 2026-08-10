@@ -1,8 +1,9 @@
 package entity.entities;
 
+import java.time.LocalTime;
+
 import entity.valueobjects.Location;
 import entity.valueobjects.WeatherSeverity;
-import java.time.LocalTime;
 
 public final class WeatherWarning {
     private final Location location;
@@ -20,9 +21,23 @@ public final class WeatherWarning {
         this.message = message;
     }
 
-    public Location getLocation() { return location; }
-    public LocalTime getTime() { return time; }
-    public String getWeatherCondition() { return weatherCondition; }
-    public WeatherSeverity getSeverity() { return severity; }
-    public String getMessage() { return message; }
+    public Location getLocation() {
+        return location;
+    }
+
+    public LocalTime getTime() {
+        return time;
+    }
+
+    public String getWeatherCondition() {
+        return weatherCondition;
+    }
+
+    public WeatherSeverity getSeverity() {
+        return severity;
+    }
+
+    public String getMessage() {
+        return message;
+    }
 }

@@ -1,20 +1,9 @@
 package views;
 
-import interface_adapter.viewmodels.ActivitySelectionViewModel;
-import interface_adapter.viewmodels.BookmarksViewModel;
-import interface_adapter.viewmodels.DashboardState;
-import interface_adapter.viewmodels.DashboardViewModel;
-import interface_adapter.viewmodels.DayPlanViewModel;
-import interface_adapter.viewmodels.SearchState;
-import interface_adapter.viewmodels.SearchViewModel;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import use_case.ports.DestinationGeocoder;
-import entity.valueobjects.GeoPoint;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.Color;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
@@ -22,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -29,6 +19,18 @@ import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.valueobjects.GeoPoint;
+import interface_adapter.viewmodels.ActivitySelectionViewModel;
+import interface_adapter.viewmodels.BookmarksViewModel;
+import interface_adapter.viewmodels.DashboardState;
+import interface_adapter.viewmodels.DashboardViewModel;
+import interface_adapter.viewmodels.DayPlanViewModel;
+import interface_adapter.viewmodels.SearchState;
+import interface_adapter.viewmodels.SearchViewModel;
+import use_case.ports.DestinationGeocoder;
 
 /** Left-side interactive map and weather preview. */
 public final class OverviewPanel extends JPanel {
@@ -65,7 +67,7 @@ public final class OverviewPanel extends JPanel {
 
         mapPanel = new MapPanel(620, 520);
         mapPanel.setCity(viewModel.getState().getDestination());
-        double[] knownCoordinates = StaticTileLoader.latLngForCity(
+        final double[] knownCoordinates = StaticTileLoader.latLngForCity(
                 viewModel.getState().getDestination());
         if (knownCoordinates != null) {
             mapPanel.focusOnCoordinates(knownCoordinates[0], knownCoordinates[1]);
@@ -73,7 +75,9 @@ public final class OverviewPanel extends JPanel {
         mapPanel.setPlaceSelectionListener(this::selectPlaceFromMap);
         mapPanel.setPlacesLoadedListener(loaded -> mergeIntoSearch(searchViewModel, loaded));
         mapPanel.setPlacesLoadingListener(loading -> {
-            if (!loading && !searchViewModel.getState().getActivities().isEmpty()) return;
+            if (!loading && !searchViewModel.getState().getActivities().isEmpty()) {
+                return;
+            }
             searchViewModel.setLoading(loading);
         });
         // The map sits in a layered pane so the forecast strip can float over its
@@ -106,14 +110,14 @@ public final class OverviewPanel extends JPanel {
     }
 
     private JPanel weatherCard() {
-        JPanel card = new JPanel(new BorderLayout(12, 3));
+        final JPanel card = new JPanel(new BorderLayout(12, 3));
         SwingTheme.styleCard(card);
-        JLabel icon = new JLabel("\u2600");
+        final JLabel icon = new JLabel("\u2600");
         icon.setFont(new Font("SansSerif", Font.PLAIN, 30));
         icon.setForeground(new Color(226, 154, 21));
         card.add(icon, BorderLayout.WEST);
 
-        JPanel copy = new JPanel(new BorderLayout(0, 3));
+        final JPanel copy = new JPanel(new BorderLayout(0, 3));
         copy.setOpaque(false);
         conditionLabel.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         conditionLabel.setForeground(SwingTheme.NAVY);
@@ -165,14 +169,14 @@ public final class OverviewPanel extends JPanel {
 
     /** The map fills the layered pane; the strip hugs its bottom-right, above the bar. */
     private void layOutMapLayers() {
-        int width = mapLayers.getWidth();
-        int height = mapLayers.getHeight();
+        final int width = mapLayers.getWidth();
+        final int height = mapLayers.getHeight();
         mapPanel.setBounds(0, 0, width, height);
         if (forecastStrip != null) {
-            int margin = 10;
+            final int margin = 10;
             // Deliberately short: about five hours at a glance. The strip is borrowing
             // map space, and a wider one starts to feel like the panel it replaced.
-            int stripWidth = Math.min(400, Math.max(260, width - 2 * margin));
+            final int stripWidth = Math.min(400, Math.max(260, width - 2 * margin));
             forecastStrip.setBounds(width - stripWidth - margin,
                     height - HourlyForecastStrip.STRIP_HEIGHT - margin,
                     stripWidth, HourlyForecastStrip.STRIP_HEIGHT);
@@ -187,8 +191,8 @@ public final class OverviewPanel extends JPanel {
     }
 
     private void refreshMap() {
-        SearchState state = searchViewModel.getState();
-        Map<String, Activity> merged = new LinkedHashMap<>();
+        final SearchState state = searchViewModel.getState();
+        final Map<String, Activity> merged = new LinkedHashMap<>();
         for (Activity activity : state.getActivities()) {
             merged.put(activity.getId(), activity);
         }
@@ -197,7 +201,7 @@ public final class OverviewPanel extends JPanel {
                 merged.put(activity.getId(), activity);
             }
         }
-        List<ScheduledEvent> events = new ArrayList<>();
+        final List<ScheduledEvent> events = new ArrayList<>();
         if (dayPlanViewModel != null) {
             events.addAll(dayPlanViewModel.getState().getEvents());
             for (ScheduledEvent event : events) {
@@ -213,8 +217,10 @@ public final class OverviewPanel extends JPanel {
     }
 
     private void selectCurrentActivity() {
-        if (selectionViewModel == null) return;
-        String selectedId = selectionViewModel.getSelectedActivityId();
+        if (selectionViewModel == null) {
+            return;
+        }
+        final String selectedId = selectionViewModel.getSelectedActivityId();
         Activity selected = null;
         for (Activity activity : mapActivities()) {
             if (activity.getId().equals(selectedId)) {
@@ -225,7 +231,10 @@ public final class OverviewPanel extends JPanel {
         mapPanel.selectActivity(selected);
     }
 
-    /** Keeps a map click synchronized with both the Search state and shared card selection. */
+    /**
+     * Keeps a map click synchronized with both the Search state and shared card selection.
+     * @param activityId the a ct iv it yi d value
+     */
     private void selectPlaceFromMap(String activityId) {
         searchViewModel.selectActivity(activityId);
         if (selectionViewModel != null) {
@@ -241,7 +250,7 @@ public final class OverviewPanel extends JPanel {
     }
 
     private List<Activity> mapActivities() {
-        Map<String, Activity> activities = new LinkedHashMap<>();
+        final Map<String, Activity> activities = new LinkedHashMap<>();
         for (Activity activity : searchViewModel.getState().getActivities()) {
             activities.put(activity.getId(), activity);
         }
@@ -260,16 +269,24 @@ public final class OverviewPanel extends JPanel {
         return new ArrayList<>(activities.values());
     }
 
-    /** Folds viewport-loaded places into the shared search state so the sidebar updates too. */
+    /**
+     * Folds viewport-loaded places into the shared search state so the sidebar updates too.
+     * @param loaded the l oa de d value
+     * @param searchViewModel the s ea rc hv ie wm od el value
+     */
     private void mergeIntoSearch(SearchViewModel searchViewModel, List<Activity> loaded) {
-        if (loaded == null || loaded.isEmpty()) return;
-        SearchState current = searchViewModel.getState();
-        Map<String, Activity> byId = new java.util.LinkedHashMap<>();
+        if (loaded == null || loaded.isEmpty()) {
+            return;
+        }
+        final SearchState current = searchViewModel.getState();
+        final Map<String, Activity> byId = new java.util.LinkedHashMap<>();
         for (Activity activity : current.getActivities()) {
             byId.put(activity.getId(), activity);
         }
         for (Activity activity : loaded) {
-            if (activity.getLocation() != null) byId.putIfAbsent(activity.getId(), activity);
+            if (activity.getLocation() != null) {
+                byId.putIfAbsent(activity.getId(), activity);
+            }
         }
         searchViewModel.setState(new SearchState(
                 new ArrayList<>(byId.values()),
@@ -290,20 +307,30 @@ public final class OverviewPanel extends JPanel {
         return weatherPreviewButton;
     }
 
+    /**
+     * Performs the s et vi ew po rt pl ac es lo ad er operation.
+     * @param loader the l oa de r value
+     */
     public void setViewportPlacesLoader(MapPanel.ViewportPlacesLoader loader) {
         mapPanel.setViewportLoader(loader);
     }
+    /**
+     * Resolves non-built-in destinations through the application's shared geocoder.
+     * @param geocoder the g eo co de r value
+     */
 
-    /** Resolves non-built-in destinations through the application's shared geocoder. */
     public void setDestinationGeocoder(DestinationGeocoder geocoder) {
-        if (geocoder == null) return;
-        String destination = viewModel.getState().getDestination();
-        Thread worker = new Thread(() -> {
+        if (geocoder == null) {
+            return;
+        }
+        final String destination = viewModel.getState().getDestination();
+        final Thread worker = new Thread(() -> {
             try {
-                GeoPoint point = geocoder.geocode(destination);
+                final GeoPoint point = geocoder.geocode(destination);
                 javax.swing.SwingUtilities.invokeLater(() ->
                         mapPanel.focusOnCoordinates(point.getLatitude(), point.getLongitude()));
-            } catch (RuntimeException exception) {
+            }
+            catch (RuntimeException exception) {
                 System.err.println("[Overview] Could not locate " + destination + ": "
                         + exception.getMessage());
             }

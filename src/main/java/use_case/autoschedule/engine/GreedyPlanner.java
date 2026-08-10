@@ -1,15 +1,16 @@
 package use_case.autoschedule.engine;
 
-import use_case.autoschedule.BlockedPeriods;
-import use_case.autoschedule.PlacedActivity;
-import use_case.autoschedule.SchedulePlan;
-import use_case.autoschedule.ScheduleProblem;
-import use_case.autoschedule.ScheduleTask;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+
+import use_case.autoschedule.BlockedPeriods;
+import use_case.autoschedule.PlacedActivity;
+import use_case.autoschedule.SchedulePlan;
+import use_case.autoschedule.ScheduleProblem;
+import use_case.autoschedule.ScheduleTask;
 
 /**
  * Builds one feasible schedule quickly, used as the search's starting incumbent.
@@ -24,23 +25,29 @@ import java.util.List;
  */
 public final class GreedyPlanner {
 
+    /**
+     * Performs the p la n operation.
+     * @param lockedSortedByStart the l oc ke ds or te db ys ta rt value
+     * @param problem the p ro bl em value
+     * @return the result of the operation
+     */
     public SchedulePlan plan(ScheduleProblem problem, List<ScheduleTask> lockedSortedByStart,
                              ActivityPlacer placer) {
-        List<ScheduleTask> remaining = new ArrayList<>(problem.getMovableTasks());
-        List<PlacedActivity> placements = new ArrayList<>();
+        final List<ScheduleTask> remaining = new ArrayList<>(problem.getMovableTasks());
+        final List<PlacedActivity> placements = new ArrayList<>();
         LocalTime cursor = problem.getAvailability().getStart();
         ScheduleTask previous = null;
         int lockedIndex = 0;
 
         while (!remaining.isEmpty() || lockedIndex < lockedSortedByStart.size()) {
-            ScheduleTask nextLocked = lockedIndex < lockedSortedByStart.size()
+            final ScheduleTask nextLocked = lockedIndex < lockedSortedByStart.size()
                     ? lockedSortedByStart.get(lockedIndex) : null;
-            BlockedPeriods blocked = problem.blockedPeriodsFrom(lockedSortedByStart, lockedIndex);
+            final BlockedPeriods blocked = problem.blockedPeriodsFrom(lockedSortedByStart, lockedIndex);
 
             ScheduleTask chosen = null;
             PlacedActivity chosenPlacement = null;
             for (ScheduleTask candidate : byUrgency(remaining, problem, previous, cursor)) {
-                PlacedActivity placed = placer.placeMovable(problem, candidate, cursor,
+                final PlacedActivity placed = placer.placeMovable(problem, candidate, cursor,
                         previous, blocked);
                 if (placed == null) {
                     continue;
@@ -61,9 +68,9 @@ public final class GreedyPlanner {
             if (nextLocked == null) {
                 return null;
             }
-            BlockedPeriods withoutThisLock =
+            final BlockedPeriods withoutThisLock =
                     problem.blockedPeriodsFrom(lockedSortedByStart, lockedIndex + 1);
-            PlacedActivity lockedPlacement = placer.placeLocked(problem, nextLocked, cursor,
+            final PlacedActivity lockedPlacement = placer.placeLocked(problem, nextLocked, cursor,
                     previous, withoutThisLock);
             if (lockedPlacement == null) {
                 return null;
@@ -83,7 +90,7 @@ public final class GreedyPlanner {
 
     private List<ScheduleTask> byUrgency(List<ScheduleTask> remaining, ScheduleProblem problem,
                                          ScheduleTask previous, LocalTime cursor) {
-        List<ScheduleTask> sorted = new ArrayList<>(remaining);
+        final List<ScheduleTask> sorted = new ArrayList<>(remaining);
         Collections.sort(sorted, Comparator
                 .comparing(ScheduleTask::getClosingTime)
                 .thenComparingInt((ScheduleTask task) -> previous == null ? 0

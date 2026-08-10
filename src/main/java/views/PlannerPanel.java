@@ -1,6 +1,7 @@
 package views;
 
 import java.awt.BorderLayout;
+
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 
@@ -22,7 +23,7 @@ public final class PlannerPanel extends JPanel {
         setLayout(new BorderLayout());
         setBackground(SwingTheme.BACKGROUND);
 
-        JTabbedPane tabs = new JTabbedPane();
+        final JTabbedPane tabs = new JTabbedPane();
         tabs.setUI(new SwingTheme.MinimalTabbedPaneUI());
         tabs.setBorder(null);
         tabs.setFont(SwingTheme.BODY);

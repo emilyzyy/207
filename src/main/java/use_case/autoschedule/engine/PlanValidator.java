@@ -1,16 +1,17 @@
 package use_case.autoschedule.engine;
 
-import use_case.autoschedule.BlockedPeriods;
-import use_case.autoschedule.PlacedActivity;
-import use_case.autoschedule.SchedulePlan;
-import use_case.autoschedule.ScheduleConflict;
-import use_case.autoschedule.ScheduleProblem;
-import use_case.autoschedule.ScheduleTask;
-import use_case.autoschedule.TimeWindow;
 import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import use_case.autoschedule.BlockedPeriods;
+import use_case.autoschedule.PlacedActivity;
+import use_case.autoschedule.ScheduleConflict;
+import use_case.autoschedule.SchedulePlan;
+import use_case.autoschedule.ScheduleProblem;
+import use_case.autoschedule.ScheduleTask;
+import use_case.autoschedule.TimeWindow;
 
 /**
  * Checks a finished schedule against every hard rule, independently of whatever built it.
@@ -24,6 +25,8 @@ import java.util.Set;
 public final class PlanValidator {
 
     /**
+      * @param problem the p ro bl em value
+      * @param plan the p la n value
      * @return null when the plan satisfies every hard rule, otherwise the violation
      */
     public ScheduleConflict validate(ScheduleProblem problem, SchedulePlan plan) {
@@ -31,19 +34,19 @@ public final class PlanValidator {
             return ScheduleConflict.noFeasibleOrder();
         }
 
-        List<PlacedActivity> placements = plan.getPlacements();
-        ScheduleConflict completeness = checkEveryActivityPlacedOnce(problem, placements);
+        final List<PlacedActivity> placements = plan.getPlacements();
+        final ScheduleConflict completeness = checkEveryActivityPlacedOnce(problem, placements);
         if (completeness != null) {
             return completeness;
         }
 
-        TimeWindow availability = problem.getAvailability();
-        BlockedPeriods unavailable = BlockedPeriods.of(problem.getUnavailableWindows());
+        final TimeWindow availability = problem.getAvailability();
+        final BlockedPeriods unavailable = BlockedPeriods.of(problem.getUnavailableWindows());
 
         PlacedActivity previous = null;
         for (PlacedActivity placed : placements) {
-            ScheduleTask task = placed.getTask();
-            TimeWindow window = placed.window();
+            final ScheduleTask task = placed.getTask();
+            final TimeWindow window = placed.window();
 
             if (!availability.encloses(window)) {
                 return ScheduleConflict.of(ScheduleConflict.Kind.NO_FEASIBLE_ORDER,
@@ -63,7 +66,7 @@ public final class PlanValidator {
                         task.getEventId(), task.getActivity().getName());
             }
 
-            TimeWindow travel = placed.travelWindow();
+            final TimeWindow travel = placed.travelWindow();
             if (travel != null) {
                 if (unavailable.blocks(travel)) {
                     return ScheduleConflict.of(
@@ -82,8 +85,8 @@ public final class PlanValidator {
                 if (window.getStart().isBefore(previous.getEnd())) {
                     return ScheduleConflict.refinedTravelInfeasible();
                 }
-                boolean needsTravel = placed.getTravelMinutesBefore() > 0;
-                LocalTime earliestArrival = previous.getEnd()
+                final boolean needsTravel = placed.getTravelMinutesBefore() > 0;
+                final LocalTime earliestArrival = previous.getEnd()
                         .plusMinutes(placed.getTravelMinutesBefore());
                 if (needsTravel && window.getStart().isBefore(earliestArrival)) {
                     return ScheduleConflict.refinedTravelInfeasible();
@@ -96,7 +99,7 @@ public final class PlanValidator {
 
     private ScheduleConflict checkEveryActivityPlacedOnce(ScheduleProblem problem,
                                                           List<PlacedActivity> placements) {
-        Set<String> placed = new HashSet<>();
+        final Set<String> placed = new HashSet<>();
         for (PlacedActivity placement : placements) {
             if (!placed.add(placement.getTask().getEventId())) {
                 return ScheduleConflict.of(ScheduleConflict.Kind.NO_FEASIBLE_ORDER,

@@ -1,14 +1,15 @@
 package use_case.usecases;
 
-import use_case.ports.TripRepository;
-import entity.entities.Trip;
-import entity.entities.TripDay;
-import entity.valueobjects.TransportationMode;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import entity.entities.Trip;
+import entity.entities.TripDay;
+import entity.valueobjects.TransportationMode;
+import use_case.ports.TripRepository;
 
 /** Interactor that validates, creates, and persists a new trip aggregate. */
 public final class CreateTripUseCase implements CreateTripInputBoundary {
@@ -27,37 +28,38 @@ public final class CreateTripUseCase implements CreateTripInputBoundary {
             throw new IllegalArgumentException("Create trip input is required");
         }
 
-        String destination = requireText(
+        final String destination = requireText(
                 inputData.getDestination(), "Destination is required");
-        LocalDate date = requireNonNull(inputData.getDate(), "Date is required");
-        LocalTime start = requireNonNull(
+        final LocalDate date = requireNonNull(inputData.getDate(), "Date is required");
+        final LocalTime start = requireNonNull(
                 inputData.getStartTime(), "Start time is required");
-        LocalTime end = requireNonNull(
+        final LocalTime end = requireNonNull(
                 inputData.getEndTime(), "End time is required");
-        TransportationMode mode = requireNonNull(
+        final TransportationMode mode = requireNonNull(
                 inputData.getTransportationMode(), "Transportation mode is required");
 
         if (!end.isAfter(start)) {
             throw new IllegalArgumentException("Trip end must follow start");
         }
 
-        int dayCount = inputData.getDayCount();
+        final int dayCount = inputData.getDayCount();
         if (dayCount < 1) {
             throw new IllegalArgumentException("Trip must last at least one day");
         }
 
-        List<TripDay> days = new ArrayList<TripDay>(dayCount);
+        final List<TripDay> days = new ArrayList<TripDay>(dayCount);
         for (int i = 0; i < dayCount; i++) {
             days.add(new TripDay(date.plusDays(i), start, end));
         }
 
-        Trip trip = new Trip(
+        final Trip trip = new Trip(
                 UUID.randomUUID().toString(), destination, mode, days);
         return trips.save(trip);
     }
 
     /**
      * Compatibility overload retained for the REST and legacy web entry points.
+      * @return the result of the operation
      */
     public Trip execute(
             String destination,
@@ -68,6 +70,10 @@ public final class CreateTripUseCase implements CreateTripInputBoundary {
         return execute(new CreateTripInputData(destination, date, start, end, mode));
     }
 
+    /**
+     * Performs the e xe cu te operation.
+     * @return the result of the operation
+     */
     public Trip execute(
             String destination,
             LocalDate date,

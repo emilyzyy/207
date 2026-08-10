@@ -1,12 +1,13 @@
 package use_case.autoschedule.policy;
 
+import java.time.LocalTime;
+
+import entity.valueobjects.ActivityCategory;
 import use_case.autoschedule.PlacedActivity;
 import use_case.autoschedule.PolicyContext;
 import use_case.autoschedule.PolicyId;
 import use_case.autoschedule.Reason;
 import use_case.autoschedule.ReasonCode;
-import entity.valueobjects.ActivityCategory;
-import java.time.LocalTime;
 
 /**
  * Prefers to place meals at customary eating times.
@@ -47,7 +48,7 @@ public final class MealWindowPolicy implements SoftPolicy {
         if (placement.getTask().getActivity().getCategory() != ActivityCategory.FOOD) {
             return null;
         }
-        String eventId = placement.getTask().getEventId();
+        final String eventId = placement.getTask().getEventId();
         if (minutesFromNearestMealWindow(placement.getStart()) == 0) {
             return new Reason(eventId, ReasonCode.IN_MEAL_WINDOW, "");
         }
@@ -55,8 +56,8 @@ public final class MealWindowPolicy implements SoftPolicy {
     }
 
     private static int minutesFromNearestMealWindow(LocalTime start) {
-        int lunch = distanceTo(start, LUNCH_START, LUNCH_END);
-        int dinner = distanceTo(start, DINNER_START, DINNER_END);
+        final int lunch = distanceTo(start, LUNCH_START, LUNCH_END);
+        final int dinner = distanceTo(start, DINNER_START, DINNER_END);
         return Math.min(lunch, dinner);
     }
 

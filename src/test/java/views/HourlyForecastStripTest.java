@@ -1,26 +1,29 @@
 package views;
 
-import interface_adapter.viewmodels.DashboardState;
-import interface_adapter.viewmodels.DashboardViewModel;
-import interface_adapter.viewmodels.DayPlanState;
-import interface_adapter.viewmodels.DayPlanViewModel;
-import entity.entities.WeatherWarning;
-import entity.valueobjects.Location;
-import entity.valueobjects.WeatherSeverity;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.awt.Component;
 import java.awt.Container;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Collections;
+
 import javax.swing.AbstractButton;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import entity.entities.WeatherWarning;
+import entity.valueobjects.Location;
+import entity.valueobjects.WeatherSeverity;
+import interface_adapter.viewmodels.DashboardState;
+import interface_adapter.viewmodels.DashboardViewModel;
+import interface_adapter.viewmodels.DayPlanState;
+import interface_adapter.viewmodels.DayPlanViewModel;
 
 /**
  * The inline forecast strip, holding the behaviour the old hourly-weather window proved:
@@ -31,23 +34,23 @@ final class HourlyForecastStripTest {
 
     @Test
     void forecastRendersEveryHourAndUpdatesFromSharedViewModel() throws Exception {
-        DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
+        final DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
                 "trip-1", Collections.emptyList(), "", false));
-        HourlyForecastStrip strip = new HourlyForecastStrip(dayPlan);
+        final HourlyForecastStrip strip = new HourlyForecastStrip(dayPlan);
 
         assertTrue(allText(strip).contains("Weather is updating"));
 
-        WeatherWarning afternoon = warning(
+        final WeatherWarning afternoon = warning(
                 LocalTime.of(14, 0), "Light rain", WeatherSeverity.MEDIUM,
                 "21°C · 65% precipitation · 12 km/h wind");
-        WeatherWarning morning = warning(
+        final WeatherWarning morning = warning(
                 LocalTime.of(9, 0), "Clear sky", WeatherSeverity.LOW,
                 "18°C · 5% precipitation · 4 km/h wind");
         SwingUtilities.invokeAndWait(() -> dayPlan.setState(new DayPlanState(
                 "trip-1", Collections.emptyList(), "", false,
                 Arrays.asList(afternoon, morning))));
 
-        String forecast = allText(strip);
+        final String forecast = allText(strip);
         assertTrue(forecast.contains("9:00 AM"), forecast);
         assertTrue(forecast.contains("2:00 PM"), forecast);
         assertTrue(forecast.indexOf("9:00 AM") < forecast.indexOf("2:00 PM"),
@@ -59,9 +62,9 @@ final class HourlyForecastStripTest {
 
     @Test
     void aDisposedStripStopsListeningToTheViewModel() throws Exception {
-        DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
+        final DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
                 "trip-1", Collections.emptyList(), "", false));
-        HourlyForecastStrip strip = new HourlyForecastStrip(dayPlan);
+        final HourlyForecastStrip strip = new HourlyForecastStrip(dayPlan);
         strip.disposeListeners();
 
         SwingUtilities.invokeAndWait(() -> dayPlan.setState(new DayPlanState(
@@ -86,10 +89,10 @@ final class HourlyForecastStripTest {
     /** Colour repeats the glyph, so it may be soft — but wet must never look like sun. */
     @Test
     void eachConditionGetsItsOwnMutedColour() {
-        java.awt.Color sun = HourlyForecastStrip.glyphColourFor("Sunny intervals");
-        java.awt.Color rain = HourlyForecastStrip.glyphColourFor("Heavy rain");
-        java.awt.Color snow = HourlyForecastStrip.glyphColourFor("Light snow");
-        java.awt.Color cloud = HourlyForecastStrip.glyphColourFor("Overcast");
+        final java.awt.Color sun = HourlyForecastStrip.glyphColourFor("Sunny intervals");
+        final java.awt.Color rain = HourlyForecastStrip.glyphColourFor("Heavy rain");
+        final java.awt.Color snow = HourlyForecastStrip.glyphColourFor("Light snow");
+        final java.awt.Color cloud = HourlyForecastStrip.glyphColourFor("Overcast");
 
         assertTrue(sun.getRed() > sun.getBlue(), "sun leans warm");
         assertTrue(rain.getBlue() > rain.getRed(), "rain leans cool");
@@ -100,17 +103,17 @@ final class HourlyForecastStripTest {
 
     @Test
     void overviewUsesAnEnabledButtonForHourlyForecastWhenWeatherStateIsAvailable() {
-        DashboardViewModel dashboard = new DashboardViewModel(new DashboardState(
+        final DashboardViewModel dashboard = new DashboardViewModel(new DashboardState(
                 "Toronto", LocalDate.of(2026, 8, 6), "Clear sky", "18°C"));
-        DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
+        final DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
                 "trip-1", Collections.emptyList(), "", false));
-        OverviewPanel overview = new OverviewPanel(
+        final OverviewPanel overview = new OverviewPanel(
                 dashboard,
                 new interface_adapter.viewmodels.SearchViewModel(
                         new interface_adapter.viewmodels.SearchState(Collections.emptyList(), "")),
                 null, dayPlan, null);
 
-        AbstractButton preview = overview.getWeatherPreviewButton();
+        final AbstractButton preview = overview.getWeatherPreviewButton();
         assertEquals("WEATHER PREVIEW", preview.getText());
         assertTrue(preview.isEnabled());
         assertEquals(1, preview.getActionListeners().length);
@@ -119,11 +122,11 @@ final class HourlyForecastStripTest {
     /** The click is a toggle: same button opens the strip and closes it again. */
     @Test
     void theWeatherPreviewButtonTogglesTheStripInsteadOfOpeningAWindow() throws Exception {
-        DashboardViewModel dashboard = new DashboardViewModel(new DashboardState(
+        final DashboardViewModel dashboard = new DashboardViewModel(new DashboardState(
                 "Toronto", LocalDate.of(2026, 8, 6), "Clear sky", "18°C"));
-        DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
+        final DayPlanViewModel dayPlan = new DayPlanViewModel(new DayPlanState(
                 "trip-1", Collections.emptyList(), "", false));
-        OverviewPanel overview = new OverviewPanel(
+        final OverviewPanel overview = new OverviewPanel(
                 dashboard,
                 new interface_adapter.viewmodels.SearchViewModel(
                         new interface_adapter.viewmodels.SearchState(Collections.emptyList(), "")),
@@ -132,7 +135,7 @@ final class HourlyForecastStripTest {
         assertTrue(findStrips(overview).isEmpty(), "no strip exists before the first click");
 
         SwingUtilities.invokeAndWait(() -> overview.getWeatherPreviewButton().doClick());
-        java.util.List<HourlyForecastStrip> shown = findStrips(overview);
+        final java.util.List<HourlyForecastStrip> shown = findStrips(overview);
         assertEquals(1, shown.size(), "first click creates the inline strip");
         assertTrue(shown.get(0).isVisible());
 
@@ -141,7 +144,7 @@ final class HourlyForecastStripTest {
     }
 
     private static java.util.List<HourlyForecastStrip> findStrips(Component root) {
-        java.util.List<HourlyForecastStrip> strips = new java.util.ArrayList<>();
+        final java.util.List<HourlyForecastStrip> strips = new java.util.ArrayList<>();
         collectStrips(root, strips);
         return strips;
     }
@@ -165,7 +168,7 @@ final class HourlyForecastStripTest {
     }
 
     private String allText(Component component) {
-        StringBuilder text = new StringBuilder();
+        final StringBuilder text = new StringBuilder();
         collectText(component, text);
         return text.toString();
     }

@@ -1,12 +1,9 @@
 package interface_adapter.weather;
 
-import entity.entities.Trip;
-import entity.entities.WeatherWarning;
-import entity.valueobjects.TransportationMode;
-import entity.valueobjects.WeatherSeverity;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -18,25 +15,32 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+import entity.entities.Trip;
+import entity.entities.WeatherWarning;
+import entity.valueobjects.TransportationMode;
+import entity.valueobjects.WeatherSeverity;
 
 final class OpenMeteoWeatherServiceTest {
     private HttpServer server;
 
     @AfterEach
     void stopServer() {
-        if (server != null) server.stop(0);
+        if (server != null) {
+            server.stop(0);
+        }
     }
 
     @Test
     void mapsGeocodingAndForecastJsonWithoutLiveNetwork() throws Exception {
-        AtomicReference<String> geocodingQuery = new AtomicReference<String>();
-        AtomicReference<String> forecastQuery = new AtomicReference<String>();
+        final AtomicReference<String> geocodingQuery = new AtomicReference<String>();
+        final AtomicReference<String> forecastQuery = new AtomicReference<String>();
         startServer();
         server.createContext("/geo", exchange -> {
             geocodingQuery.set(exchange.getRequestURI().getRawQuery());
@@ -49,7 +53,7 @@ final class OpenMeteoWeatherServiceTest {
         });
         server.start();
 
-        WeatherWarning warning = service().getWarning(trip("Montréal, QC"));
+        final WeatherWarning warning = service().getWarning(trip("Montréal, QC"));
 
         assertEquals(45.5019, warning.getLocation().getLatitude(), 0.00001);
         assertEquals("Montréal, Quebec, Canada", warning.getLocation().getAddress());
@@ -72,9 +76,9 @@ final class OpenMeteoWeatherServiceTest {
                         + "\"precipitation_probability\":[0,10],\"wind_speed_10m\":[5.0,8.0]}}"));
         server.start();
 
-        OpenMeteoWeatherService service = service();
-        List<WeatherWarning> hourly = service.getHourlyWarnings(trip("Montreal"));
-        WeatherWarning warning = service.getWarning(trip("Montreal"));
+        final OpenMeteoWeatherService service = service();
+        final List<WeatherWarning> hourly = service.getHourlyWarnings(trip("Montreal"));
+        final WeatherWarning warning = service.getWarning(trip("Montreal"));
 
         assertEquals(2, hourly.size());
         assertEquals(LocalTime.of(8, 0), hourly.get(0).getTime());
@@ -89,7 +93,7 @@ final class OpenMeteoWeatherServiceTest {
         server.createContext("/geo", exchange -> respond(exchange, 503, "{\"reason\":\"down\"}"));
         server.start();
 
-        WeatherServiceException error = assertThrows(WeatherServiceException.class,
+        final WeatherServiceException error = assertThrows(WeatherServiceException.class,
                 () -> service().getWarning(trip("Montreal")));
 
         assertTrue(error.getMessage().contains("HTTP 503"));
@@ -101,7 +105,7 @@ final class OpenMeteoWeatherServiceTest {
         server.createContext("/geo", exchange -> respond(exchange, 200, "{\"results\":[]}"));
         server.start();
 
-        WeatherServiceException error = assertThrows(WeatherServiceException.class,
+        final WeatherServiceException error = assertThrows(WeatherServiceException.class,
                 () -> service().getWarning(trip("Not A Place")));
 
         assertTrue(error.getMessage().contains("no location"));
@@ -113,7 +117,7 @@ final class OpenMeteoWeatherServiceTest {
         server.createContext("/geo", exchange -> respond(exchange, 200, "not-json"));
         server.start();
 
-        WeatherServiceException error = assertThrows(WeatherServiceException.class,
+        final WeatherServiceException error = assertThrows(WeatherServiceException.class,
                 () -> service().getWarning(trip("Montreal")));
 
         assertTrue(error.getMessage().contains("invalid JSON"));
@@ -130,7 +134,7 @@ final class OpenMeteoWeatherServiceTest {
                         + "\"wind_speed_10m\":[8.0]}}"));
         server.start();
 
-        WeatherServiceException error = assertThrows(WeatherServiceException.class,
+        final WeatherServiceException error = assertThrows(WeatherServiceException.class,
                 () -> service().getWarning(trip("Montreal")));
 
         assertTrue(error.getMessage().contains("misaligned"));
@@ -139,15 +143,15 @@ final class OpenMeteoWeatherServiceTest {
     @Test
     void wrapsConnectionFailureAsWeatherServiceError() throws Exception {
         startServer();
-        int unusedPort = server.getAddress().getPort();
+        final int unusedPort = server.getAddress().getPort();
         server.stop(0);
         server = null;
-        URI unavailable = URI.create("http://127.0.0.1:" + unusedPort + "/unavailable");
-        OpenMeteoWeatherService service = new OpenMeteoWeatherService(
+        final URI unavailable = URI.create("http://127.0.0.1:" + unusedPort + "/unavailable");
+        final OpenMeteoWeatherService service = new OpenMeteoWeatherService(
                 HttpClient.newBuilder().connectTimeout(Duration.ofMillis(250)).build(),
                 unavailable, unavailable, new ObjectMapper(), Duration.ofMillis(500));
 
-        WeatherServiceException error = assertThrows(WeatherServiceException.class,
+        final WeatherServiceException error = assertThrows(WeatherServiceException.class,
                 () -> service.getWarning(trip("Montreal")));
 
         assertTrue(error.getMessage().contains("request failed"));
@@ -158,7 +162,7 @@ final class OpenMeteoWeatherServiceTest {
     }
 
     private OpenMeteoWeatherService service() {
-        String base = "http://" + server.getAddress().getHostString() + ':' + server.getAddress().getPort();
+        final String base = "http://" + server.getAddress().getHostString() + ':' + server.getAddress().getPort();
         return new OpenMeteoWeatherService(HttpClient.newHttpClient(),
                 URI.create(base + "/geo"), URI.create(base + "/forecast"),
                 new ObjectMapper(), Duration.ofSeconds(2));
@@ -176,7 +180,7 @@ final class OpenMeteoWeatherServiceTest {
     }
 
     private void respond(HttpExchange exchange, int status, String body) throws IOException {
-        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        final byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json");
         exchange.sendResponseHeaders(status, bytes.length);
         exchange.getResponseBody().write(bytes);

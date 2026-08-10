@@ -1,16 +1,5 @@
 package use_case.usecases;
 
-import use_case.ports.DistanceService;
-import use_case.ports.TripRepository;
-import use_case.ports.WeatherService;
-import use_case.scheduling.ActivityScoringPolicy;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.entities.WeatherWarning;
-import entity.valueobjects.EventType;
-import entity.valueobjects.Location;
-import entity.valueobjects.WeatherSeverity;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -18,6 +7,18 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.entities.WeatherWarning;
+import entity.valueobjects.EventType;
+import entity.valueobjects.Location;
+import entity.valueobjects.WeatherSeverity;
+import use_case.ports.DistanceService;
+import use_case.ports.TripRepository;
+import use_case.ports.WeatherService;
+import use_case.scheduling.ActivityScoringPolicy;
 
 public final class AutoScheduleTripUseCase {
     private final TripRepository trips;
@@ -36,27 +37,34 @@ public final class AutoScheduleTripUseCase {
         this.scoringPolicy = scoringPolicy;
     }
 
+    /**
+     * Performs the e xe cu te operation.
+     * @param tripId the t ri pi d value
+     * @return the result of the operation
+     */
     public Trip execute(String tripId) {
-        Trip trip = trips.findById(tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
-        List<Activity> remaining = new ArrayList<Activity>(trip.getBookmarkedActivities());
+        final Trip trip = trips.findById(tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
+        final List<Activity> remaining = new ArrayList<Activity>(trip.getBookmarkedActivities());
         if (remaining.isEmpty()) {
             throw new IllegalArgumentException("Cannot auto schedule a trip with no bookmarked activities");
         }
 
-        List<WeatherWarning> hourlyWeather = weather.getHourlyWarnings(trip);
+        final List<WeatherWarning> hourlyWeather = weather.getHourlyWarnings(trip);
         validateHourlyWeather(hourlyWeather);
 
-        List<ScheduledEvent> schedule = new ArrayList<ScheduledEvent>();
+        final List<ScheduledEvent> schedule = new ArrayList<ScheduledEvent>();
         LocalTime cursor = trip.getStartTime();
         Location current = hourlyWeather.get(0).getLocation();
         int sequence = 0;
 
         while (!remaining.isEmpty()) {
-            List<CandidatePlan> feasible = new ArrayList<CandidatePlan>();
+            final List<CandidatePlan> feasible = new ArrayList<CandidatePlan>();
             for (Activity candidate : remaining) {
-                CandidatePlan plan = planCandidate(
+                final CandidatePlan plan = planCandidate(
                         trip, hourlyWeather, current, cursor, candidate);
-                if (plan != null) feasible.add(plan);
+                if (plan != null) {
+                    feasible.add(plan);
+                }
             }
 
             if (feasible.isEmpty()) {
@@ -68,7 +76,7 @@ public final class AutoScheduleTripUseCase {
 
             feasible.sort(Comparator.comparingDouble(CandidatePlan::getScore).reversed()
                     .thenComparing(plan -> plan.getActivity().getId()));
-            CandidatePlan chosen = feasible.get(0);
+            final CandidatePlan chosen = feasible.get(0);
 
             if (chosen.getTravelMinutes() > 0) {
                 schedule.add(new ScheduledEvent(eventId(trip, sequence++, EventType.TRAVEL,
@@ -85,13 +93,13 @@ public final class AutoScheduleTripUseCase {
             remaining.remove(chosen.getActivity());
         }
 
-        Trip scheduledTrip = trip.copyWithSchedule(schedule);
+        final Trip scheduledTrip = trip.copyWithSchedule(schedule);
         return trips.save(scheduledTrip);
     }
 
     private CandidatePlan planCandidate(Trip trip, List<WeatherWarning> hourlyWeather, Location current,
                                         LocalTime cursor, Activity activity) {
-        int travelMinutes = distances.estimateTravelMinutes(current, activity.getLocation(),
+        final int travelMinutes = distances.estimateTravelMinutes(current, activity.getLocation(),
                 trip.getTransportationMode(), LocalDateTime.of(trip.getDate(), cursor));
         if (travelMinutes < 0) {
             throw new IllegalStateException("Distance service returned negative travel time");
@@ -100,16 +108,22 @@ public final class AutoScheduleTripUseCase {
             throw new IllegalStateException("Activity duration must be positive");
         }
 
-        LocalTime arrival = plusWithoutDayRollover(cursor, travelMinutes);
-        if (arrival == null || arrival.isAfter(trip.getEndTime())) return null;
-        LocalTime start = arrival.isBefore(activity.getOpeningTime())
+        final LocalTime arrival = plusWithoutDayRollover(cursor, travelMinutes);
+        if (arrival == null || arrival.isAfter(trip.getEndTime())) {
+            return null;
+        }
+        final LocalTime start = arrival.isBefore(activity.getOpeningTime())
                 ? activity.getOpeningTime() : arrival;
-        if (start.isBefore(trip.getStartTime()) || start.isAfter(trip.getEndTime())) return null;
-        LocalTime end = plusWithoutDayRollover(start, activity.getEstimatedDurationMinutes());
-        if (end == null || end.isAfter(activity.getClosingTime()) || end.isAfter(trip.getEndTime())) return null;
+        if (start.isBefore(trip.getStartTime()) || start.isAfter(trip.getEndTime())) {
+            return null;
+        }
+        final LocalTime end = plusWithoutDayRollover(start, activity.getEstimatedDurationMinutes());
+        if (end == null || end.isAfter(activity.getClosingTime()) || end.isAfter(trip.getEndTime())) {
+            return null;
+        }
 
-        WeatherSeverity severity = worstSeverityDuring(hourlyWeather, start, end);
-        double score = scoringPolicy.score(activity, travelMinutes, severity);
+        final WeatherSeverity severity = worstSeverityDuring(hourlyWeather, start, end);
+        final double score = scoringPolicy.score(activity, travelMinutes, severity);
         if (!Double.isFinite(score)) {
             throw new IllegalStateException("Scoring policy returned a non-finite score");
         }
@@ -128,12 +142,17 @@ public final class AutoScheduleTripUseCase {
         }
     }
 
-    /** Uses the safest score for activities spanning more than one forecast hour. */
+    /**
+     * Uses the safest score for activities spanning more than one forecast hour.
+     * @return the result of the operation
+     */
     private WeatherSeverity worstSeverityDuring(
             List<WeatherWarning> hourlyWeather, LocalTime start, LocalTime end) {
         WeatherSeverity worst = null;
         for (WeatherWarning warning : hourlyWeather) {
-            if (!hourOverlaps(warning.getTime(), start, end)) continue;
+            if (!hourOverlaps(warning.getTime(), start, end)) {
+                continue;
+            }
             if (worst == null || warning.getSeverity().ordinal() > worst.ordinal()) {
                 worst = warning.getSeverity();
             }
@@ -146,19 +165,19 @@ public final class AutoScheduleTripUseCase {
     }
 
     private boolean hourOverlaps(LocalTime hour, LocalTime start, LocalTime end) {
-        LocalTime nextHour = hour.plusHours(1);
-        boolean reachesAfterStart = nextHour.isAfter(start) || nextHour.isBefore(hour);
+        final LocalTime nextHour = hour.plusHours(1);
+        final boolean reachesAfterStart = nextHour.isAfter(start) || nextHour.isBefore(hour);
         return hour.isBefore(end) && reachesAfterStart;
     }
 
     private LocalTime plusWithoutDayRollover(LocalTime time, int minutes) {
-        LocalTime result = time.plusMinutes(minutes);
+        final LocalTime result = time.plusMinutes(minutes);
         return minutes > 0 && result.isBefore(time) ? null : result;
     }
 
     private String eventId(Trip trip, int sequence, EventType type, Activity activity,
                            LocalTime start, LocalTime end) {
-        String seed = trip.getId() + '|' + sequence + '|' + type + '|' + activity.getId()
+        final String seed = trip.getId() + '|' + sequence + '|' + type + '|' + activity.getId()
                 + '|' + start + '|' + end;
         return UUID.nameUUIDFromBytes(seed.getBytes(StandardCharsets.UTF_8)).toString();
     }
@@ -181,11 +200,28 @@ public final class AutoScheduleTripUseCase {
             this.score = score;
         }
 
-        private Activity getActivity() { return activity; }
-        private int getTravelMinutes() { return travelMinutes; }
-        private LocalTime getArrivalTime() { return arrivalTime; }
-        private LocalTime getStartTime() { return startTime; }
-        private LocalTime getEndTime() { return endTime; }
-        private double getScore() { return score; }
+        private Activity getActivity() {
+            return activity;
+        }
+
+        private int getTravelMinutes() {
+            return travelMinutes;
+        }
+
+        private LocalTime getArrivalTime() {
+            return arrivalTime;
+        }
+
+        private LocalTime getStartTime() {
+            return startTime;
+        }
+
+        private LocalTime getEndTime() {
+            return endTime;
+        }
+
+        private double getScore() {
+            return score;
+        }
     }
 }

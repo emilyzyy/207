@@ -1,18 +1,19 @@
 package interface_adapter.controllers;
 
-import use_case.usecases.OptimizeItineraryInputBoundary;
-import use_case.usecases.OptimizeItineraryInputData;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import org.junit.jupiter.api.Test;
+
+import use_case.usecases.OptimizeItineraryInputBoundary;
+import use_case.usecases.OptimizeItineraryInputData;
 
 final class OptimizeItineraryControllerTest {
 
     @Test
     void executePassesTheActiveTripIdToTheInteractor() {
-        RecordingInputBoundary interactor = new RecordingInputBoundary();
-        OptimizeItineraryController controller =
+        final RecordingInputBoundary interactor = new RecordingInputBoundary();
+        final OptimizeItineraryController controller =
                 new OptimizeItineraryController(interactor, "trip-1");
 
         controller.execute();

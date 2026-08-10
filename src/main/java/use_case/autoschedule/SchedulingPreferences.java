@@ -1,11 +1,11 @@
 package use_case.autoschedule;
 
-import entity.valueobjects.WeatherOption;
-
-import use_case.autoschedule.policy.SoftPolicy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import entity.valueobjects.WeatherOption;
+import use_case.autoschedule.policy.SoftPolicy;
 
 /**
  * The scheduling intelligence in force for one run.
@@ -49,6 +49,8 @@ public final class SchedulingPreferences {
     }
 
     /**
+      * @param keepCurrentOrder the k ee pc ur re nt or de r value
+      * @param policies the p ol ic ie s value
      * @param countTravel whether travel minutes are part of the cost being minimised
      * @param countIdle   whether avoidable waiting is part of that cost
      */
@@ -63,22 +65,31 @@ public final class SchedulingPreferences {
         this.countIdle = countIdle;
     }
 
-    /** Travel and idle only: used by engine tests that isolate the search itself. */
+    /**
+     * Travel and idle only: used by engine tests that isolate the search itself.
+     * @return the result of the operation
+     */
     public static SchedulingPreferences none() {
         return NONE;
     }
-
     /**
      * The built-in intelligence, plus the traveller's one choice.
      *
      * @param builtInPolicies every registered policy; all of them are always active
+      * @return the result of the operation
      */
+
     public static SchedulingPreferences builtIn(List<SoftPolicy> builtInPolicies,
                                                 boolean keepCurrentOrder,
                                                 PolicyContext context) {
         return new SchedulingPreferences(builtInPolicies, keepCurrentOrder, context);
     }
 
+    /**
+     * Performs the b ui lt in operation.
+     * @param builtInPolicies the b ui lt in po li ci es value
+     * @return the result of the operation
+     */
     public static SchedulingPreferences builtIn(List<SoftPolicy> builtInPolicies,
                                                 boolean keepCurrentOrder,
                                                 PolicyContext context,
@@ -93,12 +104,16 @@ public final class SchedulingPreferences {
      * <p>Feasibility is unaffected either way: the traveller still has to physically reach
      * each place, and the placer still refuses a leg that cannot be made. This only decides
      * whether a shorter journey makes one schedule better than another.</p>
+      * @return the result of the operation
      */
     public boolean countsTravel() {
         return countTravel;
     }
+    /**
+     * Whether avoidable waiting counts toward the cost being minimised.
+     * @return the result of the operation
+     */
 
-    /** Whether avoidable waiting counts toward the cost being minimised. */
     public boolean countsIdle() {
         return countIdle;
     }
@@ -114,8 +129,12 @@ public final class SchedulingPreferences {
     public PolicyContext getContext() {
         return context;
     }
+    /**
+     * The capped charge for moving activities away from the order the user chose.
+     * @param totalDisplacement the t ot al di sp la ce me nt value
+     * @return the result of the operation
+     */
 
-    /** The capped charge for moving activities away from the order the user chose. */
     public int orderPenaltyFor(int totalDisplacement) {
         if (!keepCurrentOrder) {
             return 0;
@@ -131,9 +150,10 @@ public final class SchedulingPreferences {
      * ticked it but the forecast turned out to cover the whole day: in both cases it
      * scored nothing, and listing an objective that contributed zero would tell the user
      * their day was arranged around something it was not.</p>
+      * @return the result of the operation
      */
     public List<PolicyId> activeIds() {
-        List<PolicyId> ids = new ArrayList<>();
+        final List<PolicyId> ids = new ArrayList<>();
         for (SoftPolicy policy : policies) {
             if (policy.id() == PolicyId.WEATHER && !context.getWeather().canDistinguishTimes()) {
                 continue;

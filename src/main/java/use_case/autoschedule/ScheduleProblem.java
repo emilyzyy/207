@@ -39,9 +39,9 @@ public final class ScheduleProblem {
             throw new IllegalArgumentException("Travel estimates are required");
         }
 
-        List<ScheduleTask> movable = new ArrayList<>();
-        List<ScheduleTask> locked = new ArrayList<>();
-        Set<String> seenIds = new HashSet<>();
+        final List<ScheduleTask> movable = new ArrayList<>();
+        final List<ScheduleTask> locked = new ArrayList<>();
+        final Set<String> seenIds = new HashSet<>();
         for (ScheduleTask task : tasks) {
             if (task == null) {
                 throw new IllegalArgumentException("Schedule tasks cannot be null");
@@ -51,7 +51,8 @@ public final class ScheduleProblem {
             }
             if (task.isLocked()) {
                 locked.add(task);
-            } else {
+            }
+            else {
                 movable.add(task);
             }
         }
@@ -68,13 +69,16 @@ public final class ScheduleProblem {
     public SchedulingPreferences getPreferences() {
         return preferences;
     }
-
     /**
      * Periods in which nothing may be scheduled, from the traveller's point of view at
      * {@code lockedIndex} locks into the day. Unavailable windows are always included;
      * locks still ahead are added because a traveller cannot be journeying through an
      * appointment they have already committed to.
+      * @param locksInOrder the l oc ks in or de r value
+      * @param lockedIndex the l oc ke di nd ex value
+      * @return the result of the operation
      */
+
     public BlockedPeriods blockedPeriodsFrom(List<ScheduleTask> locksInOrder, int lockedIndex) {
         BlockedPeriods blocked = BlockedPeriods.of(unavailableWindows);
         for (int i = lockedIndex; i < locksInOrder.size(); i++) {
@@ -103,13 +107,20 @@ public final class ScheduleProblem {
         return travel;
     }
 
+    /**
+     * Performs the t as kc ou nt operation.
+     * @return the result of the operation
+     */
     public int taskCount() {
         return movableTasks.size() + lockedTasks.size();
     }
+    /**
+     * All tasks, locked first, in a deterministic order.
+     * @return the result of the operation
+     */
 
-    /** All tasks, locked first, in a deterministic order. */
     public List<ScheduleTask> allTasks() {
-        List<ScheduleTask> all = new ArrayList<>(lockedTasks);
+        final List<ScheduleTask> all = new ArrayList<>(lockedTasks);
         all.addAll(movableTasks);
         return Collections.unmodifiableList(all);
     }

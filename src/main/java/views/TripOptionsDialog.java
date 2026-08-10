@@ -1,14 +1,5 @@
 package views;
 
-import interface_adapter.controllers.TripOptionsController;
-import interface_adapter.viewmodels.TripAccessViewModel;
-import interface_adapter.viewmodels.TripOptionsState;
-import interface_adapter.viewmodels.TripOptionsViewModel;
-import use_case.ports.AccountService;
-import entity.entities.TripParticipant;
-import entity.entities.User;
-import entity.valueobjects.TripAccessLevel;
-import entity.valueobjects.TripAccessRole;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -29,6 +20,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -39,6 +31,16 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
+
+import entity.entities.TripParticipant;
+import entity.entities.User;
+import entity.valueobjects.TripAccessLevel;
+import entity.valueobjects.TripAccessRole;
+import interface_adapter.controllers.TripOptionsController;
+import interface_adapter.viewmodels.TripAccessViewModel;
+import interface_adapter.viewmodels.TripOptionsState;
+import interface_adapter.viewmodels.TripOptionsViewModel;
+import use_case.ports.AccountService;
 
 /** Focused modal editor for the active Day Plan's date, time boundaries, and sharing. */
 public final class TripOptionsDialog {
@@ -84,7 +86,7 @@ public final class TripOptionsDialog {
         this.controller = controller;
         this.account = account;
         this.tripAccess = tripAccess;
-        TripOptionsState state = viewModel.getState();
+        final TripOptionsState state = viewModel.getState();
         date = new DateSelectionButton(state.getDate());
         start = new TimeSelectorPanel(state.getStartTime());
         end = new TimeSelectorPanel(state.getEndTime());
@@ -93,27 +95,28 @@ public final class TripOptionsDialog {
         }
     }
 
+    /** Performs the s ho wd ia lo g operation. */
     public void showDialog() {
-        TripOptionsState state = viewModel.getState();
-        JPanel fields = new JPanel(new GridBagLayout());
+        final TripOptionsState state = viewModel.getState();
+        final JPanel fields = new JPanel(new GridBagLayout());
         fields.setBorder(BorderFactory.createEmptyBorder(16, 16, 8, 16));
         addField(fields, 0, "Destination", boldLabel(state.getDestination()));
         addField(fields, 1, "Trip start date", date);
         addField(fields, 2, "Day starts", start);
         addField(fields, 3, "Day ends", end);
         feedback.setFont(SwingTheme.SMALL);
-        GridBagConstraints feedbackConstraints = constraints(1, 4);
+        final GridBagConstraints feedbackConstraints = constraints(1, 4);
         feedbackConstraints.fill = GridBagConstraints.HORIZONTAL;
         fields.add(feedback, feedbackConstraints);
 
-        JButton cancel = SwingTheme.secondaryButton("Cancel");
+        final JButton cancel = SwingTheme.secondaryButton("Cancel");
         save = SwingTheme.primaryButton("Save Options");
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        final JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         actions.setBorder(BorderFactory.createEmptyBorder(0, 16, 16, 16));
         actions.add(cancel);
         actions.add(save);
 
-        JPanel center = new JPanel();
+        final JPanel center = new JPanel();
         center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
         center.add(fields);
         if (account != null && state.hasActiveTrip()) {
@@ -121,11 +124,12 @@ public final class TripOptionsDialog {
             center.add(Box.createVerticalStrut(12));
             center.add(sharingSection);
             refreshSharing(state);
-        } else if (account != null) {
+        }
+        else if (account != null) {
             sharingSection.setVisible(false);
         }
 
-        JPanel content = new JPanel(new BorderLayout(0, 8));
+        final JPanel content = new JPanel(new BorderLayout(0, 8));
         content.add(center, BorderLayout.CENTER);
         content.add(actions, BorderLayout.SOUTH);
         dialog = new JDialog(SwingUtilities.getWindowAncestor(owner),
@@ -135,7 +139,7 @@ public final class TripOptionsDialog {
         save.addActionListener(event -> {
             if (canEditItinerary) {
                 controller.execute(date.getDate(), start.getTime(), end.getTime());
-                TripOptionsState updated = viewModel.getState();
+                final TripOptionsState updated = viewModel.getState();
                 renderFeedback(updated);
                 if (!updated.isError()) {
                     dialog.dispose();
@@ -151,7 +155,7 @@ public final class TripOptionsDialog {
 
     private void buildSharingSection() {
         sharingSection.setOpaque(false);
-        JLabel shareTitle = new JLabel("Who has access");
+        final JLabel shareTitle = new JLabel("Who has access");
         shareTitle.setFont(SwingTheme.BODY.deriveFont(java.awt.Font.BOLD));
         shareTitle.setForeground(SwingTheme.NAVY);
         sharingSection.add(shareTitle, BorderLayout.NORTH);
@@ -159,13 +163,13 @@ public final class TripOptionsDialog {
         accessRows.setLayout(new BoxLayout(accessRows, BoxLayout.Y_AXIS));
         accessRows.setOpaque(false);
         accessRows.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
-        JScrollPane scroll = new JScrollPane(accessRows);
+        final JScrollPane scroll = new JScrollPane(accessRows);
         scroll.setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
         scroll.setPreferredSize(new Dimension(320, 180));
         scroll.getVerticalScrollBar().setUnitIncrement(12);
         sharingSection.add(scroll, BorderLayout.CENTER);
 
-        JPanel shareFooter = new JPanel(new BorderLayout(8, 0));
+        final JPanel shareFooter = new JPanel(new BorderLayout(8, 0));
         shareFooter.setOpaque(false);
         sharingStatus.setFont(SwingTheme.SMALL);
         sharingStatus.setForeground(SwingTheme.MUTED);
@@ -176,21 +180,21 @@ public final class TripOptionsDialog {
     }
 
     private void saveSharing() {
-        TripOptionsState state = viewModel.getState();
+        final TripOptionsState state = viewModel.getState();
         if (account == null || !state.hasActiveTrip() || !canManagePeople) {
             return;
         }
         saveSharing.setEnabled(false);
         sharingStatus.setForeground(SwingTheme.MUTED);
         sharingStatus.setText("Saving…");
-        Map<String, TripAccessRole> roles = new HashMap<>(memberRoles);
+        final Map<String, TripAccessRole> roles = new HashMap<>(memberRoles);
         if (currentUserId != null && ownerUser != null
                 && !currentUserId.equals(ownerUser.getId())
                 && memberUsers.containsKey(currentUserId)) {
             roles.putIfAbsent(currentUserId,
                     memberRoles.getOrDefault(currentUserId, TripAccessRole.ADMIN));
         }
-        String tripId = state.getTripId();
+        final String tripId = state.getTripId();
         new Thread(() -> {
             try {
                 account.setTripMembers(tripId, roles);
@@ -199,7 +203,8 @@ public final class TripOptionsDialog {
                     sharingStatus.setText("Sharing updated.");
                     saveSharing.setEnabled(canManagePeople);
                 });
-            } catch (RuntimeException exception) {
+            }
+            catch (RuntimeException exception) {
                 SwingUtilities.invokeLater(() -> {
                     sharingStatus.setForeground(SwingTheme.ERROR);
                     sharingStatus.setText(exception.getMessage() == null
@@ -234,25 +239,26 @@ public final class TripOptionsDialog {
         }
         sharingStatus.setForeground(SwingTheme.MUTED);
         sharingStatus.setText("Loading access…");
-        String tripId = state.getTripId();
+        final String tripId = state.getTripId();
         new Thread(() -> {
             try {
-                TripAccessLevel access = account.getMyTripAccess(tripId);
-                List<TripParticipant> participants = account.listTripParticipants(tripId);
-                List<User> friends = account.listFriends();
-                String selfId = account.currentProfile().map(User::getId).orElse(null);
+                final TripAccessLevel access = account.getMyTripAccess(tripId);
+                final List<TripParticipant> participants = account.listTripParticipants(tripId);
+                final List<User> friends = account.listFriends();
+                final String selfId = account.currentProfile().map(User::getId).orElse(null);
                 User owner = null;
-                Map<String, TripAccessRole> roles = new LinkedHashMap<>();
-                Map<String, User> users = new LinkedHashMap<>();
+                final Map<String, TripAccessRole> roles = new LinkedHashMap<>();
+                final Map<String, User> users = new LinkedHashMap<>();
                 for (TripParticipant participant : participants) {
                     if (participant.isOwner()) {
                         owner = participant.getUser();
-                    } else {
+                    }
+                    else {
                         roles.put(participant.getUser().getId(), participant.getRole());
                         users.put(participant.getUser().getId(), participant.getUser());
                     }
                 }
-                User resolvedOwner = owner;
+                final User resolvedOwner = owner;
                 SwingUtilities.invokeLater(() -> {
                     if (!tripId.equals(viewModel.getState().getTripId())) {
                         return;
@@ -273,17 +279,21 @@ public final class TripOptionsDialog {
                     rebuildAccessRows();
                     if (!canEditItinerary) {
                         sharingStatus.setText("View only — you can see this trip but not edit it.");
-                    } else if (!canManagePeople) {
+                    }
+                    else if (!canManagePeople) {
                         sharingStatus.setText(
                                 "You can edit the itinerary, but only admins manage access.");
-                    } else if (friends.isEmpty() && memberRoles.isEmpty()) {
+                    }
+                    else if (friends.isEmpty() && memberRoles.isEmpty()) {
                         sharingStatus.setText("Add friends from the Friends button to share trips.");
-                    } else {
+                    }
+                    else {
                         sharingStatus.setText(
                                 "Owner cannot be removed. Set View, Edit, or Admin for each person.");
                     }
                 });
-            } catch (RuntimeException exception) {
+            }
+            catch (RuntimeException exception) {
                 SwingUtilities.invokeLater(() -> {
                     sharingStatus.setForeground(SwingTheme.ERROR);
                     sharingStatus.setText(exception.getMessage() == null
@@ -301,7 +311,7 @@ public final class TripOptionsDialog {
         }
 
         if (canManagePeople) {
-            Map<String, User> shown = new LinkedHashMap<>();
+            final Map<String, User> shown = new LinkedHashMap<>();
             for (User friend : friendChoices) {
                 if (ownerUser != null && friend.getId().equals(ownerUser.getId())) {
                     continue;
@@ -312,26 +322,29 @@ public final class TripOptionsDialog {
                 shown.putIfAbsent(entry.getKey(), entry.getValue());
             }
             if (shown.isEmpty()) {
-                JLabel empty = new JLabel("No friends yet.");
+                final JLabel empty = new JLabel("No friends yet.");
                 empty.setFont(SwingTheme.SMALL);
                 empty.setForeground(SwingTheme.MUTED);
                 empty.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
                 accessRows.add(empty);
-            } else {
+            }
+            else {
                 for (User user : shown.values()) {
-                    boolean selfLocked = isSelfLockedMember(user.getId());
+                    final boolean selfLocked = isSelfLockedMember(user.getId());
                     accessRows.add(new MemberAccessRow(user, !selfLocked, selfLocked));
                     accessRows.add(Box.createVerticalStrut(4));
                 }
             }
-        } else {
+        }
+        else {
             if (memberUsers.isEmpty()) {
-                JLabel empty = new JLabel("Only the owner has access so far.");
+                final JLabel empty = new JLabel("Only the owner has access so far.");
                 empty.setFont(SwingTheme.SMALL);
                 empty.setForeground(SwingTheme.MUTED);
                 empty.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
                 accessRows.add(empty);
-            } else {
+            }
+            else {
                 for (User user : memberUsers.values()) {
                     accessRows.add(new MemberAccessRow(user, false, false));
                     accessRows.add(Box.createVerticalStrut(4));
@@ -363,25 +376,25 @@ public final class TripOptionsDialog {
     }
 
     private static JLabel boldLabel(String text) {
-        JLabel label = new JLabel(text);
+        final JLabel label = new JLabel(text);
         label.setFont(SwingTheme.BODY.deriveFont(java.awt.Font.BOLD));
         label.setForeground(SwingTheme.NAVY);
         return label;
     }
 
     private static void addField(JPanel panel, int row, String name, java.awt.Component value) {
-        JLabel label = new JLabel(name);
+        final JLabel label = new JLabel(name);
         label.setFont(SwingTheme.BODY);
         label.setForeground(SwingTheme.NAVY);
         panel.add(label, constraints(0, row));
-        GridBagConstraints valueConstraints = constraints(1, row);
+        final GridBagConstraints valueConstraints = constraints(1, row);
         valueConstraints.weightx = 1;
         valueConstraints.fill = GridBagConstraints.HORIZONTAL;
         panel.add(value, valueConstraints);
     }
 
     private static GridBagConstraints constraints(int column, int row) {
-        GridBagConstraints result = new GridBagConstraints();
+        final GridBagConstraints result = new GridBagConstraints();
         result.gridx = column;
         result.gridy = row;
         result.anchor = GridBagConstraints.WEST;
@@ -396,7 +409,7 @@ public final class TripOptionsDialog {
             setLayout(new FlowLayout(FlowLayout.LEFT, 10, 6));
             setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
             add(new JLabel(AvatarSupport.iconFor(owner, 26)));
-            JLabel name = new JLabel("@" + owner.getUsername() + " (Owner)");
+            final JLabel name = new JLabel("@" + owner.getUsername() + " (Owner)");
             name.setFont(SwingTheme.BODY.deriveFont(java.awt.Font.BOLD));
             name.setForeground(SwingTheme.NAVY);
             add(name);
@@ -411,7 +424,7 @@ public final class TripOptionsDialog {
         MemberAccessRow(User friend, boolean editable, boolean selfLocked) {
             this.friend = friend;
             this.selected = memberRoles.containsKey(friend.getId());
-            TripAccessRole role = memberRoles.getOrDefault(friend.getId(), TripAccessRole.EDIT);
+            final TripAccessRole role = memberRoles.getOrDefault(friend.getId(), TripAccessRole.EDIT);
             setOpaque(true);
             setBackground(selected || !editable || selfLocked
                     ? SwingTheme.BLUE_SOFT : SwingTheme.BACKGROUND);
@@ -419,7 +432,7 @@ public final class TripOptionsDialog {
             setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
             setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
 
-            JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+            final JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
             left.setOpaque(false);
             if (editable) {
                 left.add(new CircularCheck());
@@ -432,7 +445,7 @@ public final class TripOptionsDialog {
                 });
             }
             left.add(new JLabel(AvatarSupport.iconFor(friend, 26)));
-            JLabel name = new JLabel("@" + friend.getUsername()
+            final JLabel name = new JLabel("@" + friend.getUsername()
                     + (selfLocked ? " (You)" : ""));
             name.setFont(SwingTheme.BODY);
             name.setForeground(SwingTheme.NAVY);
@@ -448,16 +461,17 @@ public final class TripOptionsDialog {
             roleBox.setFont(SwingTheme.SMALL);
             // Protect the selected value from platform-specific combo-box arrow widths.
             // Without an explicit width Aqua truncates "Edit" and Windows may show only "...".
-            Dimension roleSize = new Dimension(112, 32);
+            final Dimension roleSize = new Dimension(112, 32);
             roleBox.setPreferredSize(roleSize);
             roleBox.setMinimumSize(roleSize);
             if (selfLocked) {
                 roleBox.setVisible(false);
-                JLabel roleLabel = new JLabel(role.displayName());
+                final JLabel roleLabel = new JLabel(role.displayName());
                 roleLabel.setFont(SwingTheme.SMALL);
                 roleLabel.setForeground(SwingTheme.MUTED);
                 add(roleLabel, BorderLayout.EAST);
-            } else if (editable) {
+            }
+            else if (editable) {
                 roleBox.setVisible(selected);
                 roleBox.setEnabled(selected);
                 roleBox.addActionListener(event -> {
@@ -468,7 +482,8 @@ public final class TripOptionsDialog {
                             roleFromDisplay((String) roleBox.getSelectedItem()));
                 });
                 add(roleBox, BorderLayout.EAST);
-            } else {
+            }
+            else {
                 roleBox.setEnabled(false);
                 roleBox.setVisible(true);
                 add(roleBox, BorderLayout.EAST);
@@ -478,13 +493,14 @@ public final class TripOptionsDialog {
         void toggle() {
             selected = !selected;
             if (selected) {
-                TripAccessRole role = roleFromDisplay((String) roleBox.getSelectedItem());
+                final TripAccessRole role = roleFromDisplay((String) roleBox.getSelectedItem());
                 memberRoles.put(friend.getId(), role);
                 memberUsers.put(friend.getId(), friend);
                 setBackground(SwingTheme.BLUE_SOFT);
                 roleBox.setVisible(true);
                 roleBox.setEnabled(true);
-            } else {
+            }
+            else {
                 memberRoles.remove(friend.getId());
                 setBackground(SwingTheme.BACKGROUND);
                 roleBox.setEnabled(false);
@@ -511,18 +527,19 @@ public final class TripOptionsDialog {
 
             @Override
             protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
+                final Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                int size = Math.min(getWidth(), getHeight()) - 2;
-                int x = (getWidth() - size) / 2;
-                int y = (getHeight() - size) / 2;
+                final int size = Math.min(getWidth(), getHeight()) - 2;
+                final int x = (getWidth() - size) / 2;
+                final int y = (getHeight() - size) / 2;
                 if (selected) {
                     g2.setColor(SwingTheme.BLUE);
                     g2.fill(new Ellipse2D.Float(x, y, size, size));
                     g2.setColor(Color.WHITE);
                     g2.drawLine(x + 4, y + size / 2, x + size / 2 - 1, y + size - 5);
                     g2.drawLine(x + size / 2 - 1, y + size - 5, x + size - 4, y + 4);
-                } else {
+                }
+                else {
                     g2.setColor(SwingTheme.PANEL);
                     g2.fill(new Ellipse2D.Float(x, y, size, size));
                     g2.setColor(SwingTheme.LINE);

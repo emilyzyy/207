@@ -14,5 +14,7 @@ public final class PlaceSearchException extends RuntimeException {
         this.failure = failure;
     }
 
-    public SearchFailure getFailure() { return failure; }
+    public SearchFailure getFailure() {
+        return failure;
+    }
 }

@@ -19,17 +19,26 @@ public enum TransportationMode {
         this.label = label;
     }
 
-    /** Title case for the interface; {@code name()} stays the stored form. */
+    /**
+     * Title case for the interface; {@code name()} stays the stored form.
+     * @return the result of the operation
+     */
     public String getLabel() {
         return label;
     }
+    /**
+     * True for a real means of transport, false for {@link #FASTEST}.
+     * @return the result of the operation
+     */
 
-    /** True for a real means of transport, false for {@link #FASTEST}. */
     public boolean isSpecific() {
         return this != FASTEST;
     }
+    /**
+     * The real modes a route can actually be planned for, in no significant order.
+     * @return the result of the operation
+     */
 
-    /** The real modes a route can actually be planned for, in no significant order. */
     public static TransportationMode[] specificModes() {
         return new TransportationMode[] {WALKING, DRIVING, TRANSIT};
     }

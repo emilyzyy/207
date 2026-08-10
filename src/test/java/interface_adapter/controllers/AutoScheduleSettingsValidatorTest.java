@@ -7,6 +7,7 @@ import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
 class AutoScheduleSettingsValidatorTest {
@@ -24,7 +25,7 @@ class AutoScheduleSettingsValidatorTest {
 
     @Test
     void sensibleSettingsPass() {
-        List<String> problems = validator.validate(
+        final List<String> problems = validator.validate(
                 settings(LocalTime.of(10, 0), LocalTime.of(18, 0),
                         new AutoScheduleSettings.Window(LocalTime.of(12, 0), LocalTime.of(13, 0))),
                 TRIP_START, TRIP_END);
@@ -34,7 +35,7 @@ class AutoScheduleSettingsValidatorTest {
 
     @Test
     void anEndBeforeAStartIsRejected() {
-        List<String> problems = validator.validate(
+        final List<String> problems = validator.validate(
                 settings(LocalTime.of(18, 0), LocalTime.of(10, 0)), TRIP_START, TRIP_END);
 
         assertEquals(1, problems.size());
@@ -43,7 +44,7 @@ class AutoScheduleSettingsValidatorTest {
 
     @Test
     void hoursWiderThanTheTripAreRejected() {
-        List<String> problems = validator.validate(
+        final List<String> problems = validator.validate(
                 settings(LocalTime.of(6, 0), LocalTime.of(23, 0)), TRIP_START, TRIP_END);
 
         assertTrue(problems.get(0).contains("within the trip's hours"));
@@ -51,7 +52,7 @@ class AutoScheduleSettingsValidatorTest {
 
     @Test
     void anUnavailablePeriodOutsideTheAvailableHoursIsRejected() {
-        List<String> problems = validator.validate(
+        final List<String> problems = validator.validate(
                 settings(LocalTime.of(10, 0), LocalTime.of(18, 0),
                         new AutoScheduleSettings.Window(LocalTime.of(19, 0), LocalTime.of(20, 0))),
                 TRIP_START, TRIP_END);
@@ -61,7 +62,7 @@ class AutoScheduleSettingsValidatorTest {
 
     @Test
     void anUnavailablePeriodThatEndsBeforeItStartsIsRejected() {
-        List<String> problems = validator.validate(
+        final List<String> problems = validator.validate(
                 settings(LocalTime.of(10, 0), LocalTime.of(18, 0),
                         new AutoScheduleSettings.Window(LocalTime.of(14, 0), LocalTime.of(13, 0))),
                 TRIP_START, TRIP_END);
@@ -71,7 +72,7 @@ class AutoScheduleSettingsValidatorTest {
 
     @Test
     void overlappingUnavailablePeriodsAreSurfacedRatherThanMerged() {
-        List<String> problems = validator.validate(
+        final List<String> problems = validator.validate(
                 settings(LocalTime.of(10, 0), LocalTime.of(18, 0),
                         new AutoScheduleSettings.Window(LocalTime.of(12, 0), LocalTime.of(14, 0)),
                         new AutoScheduleSettings.Window(LocalTime.of(13, 0), LocalTime.of(15, 0))),
@@ -83,7 +84,7 @@ class AutoScheduleSettingsValidatorTest {
 
     @Test
     void adjacentUnavailablePeriodsAreFine() {
-        List<String> problems = validator.validate(
+        final List<String> problems = validator.validate(
                 settings(LocalTime.of(10, 0), LocalTime.of(18, 0),
                         new AutoScheduleSettings.Window(LocalTime.of(12, 0), LocalTime.of(13, 0)),
                         new AutoScheduleSettings.Window(LocalTime.of(13, 0), LocalTime.of(14, 0))),
@@ -94,7 +95,7 @@ class AutoScheduleSettingsValidatorTest {
 
     @Test
     void missingTimesAreReportedBeforeAnythingElse() {
-        List<String> problems = validator.validate(
+        final List<String> problems = validator.validate(
                 new AutoScheduleSettings(null, null,
                         Collections.emptyList(), true, true),
                 TRIP_START, TRIP_END);
@@ -105,7 +106,7 @@ class AutoScheduleSettingsValidatorTest {
 
     @Test
     void anUnknownTripWindowSimplySkipsThatCheck() {
-        List<String> problems = validator.validate(
+        final List<String> problems = validator.validate(
                 settings(LocalTime.of(6, 0), LocalTime.of(23, 0)), null, null);
 
         assertTrue(problems.isEmpty());

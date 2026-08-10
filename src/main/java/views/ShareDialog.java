@@ -1,11 +1,10 @@
 package views;
 
-import interface_adapter.viewmodels.ShareState;
-import interface_adapter.viewmodels.ShareViewModel;
 import java.awt.BorderLayout;
 import java.awt.Frame;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
+
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -13,6 +12,9 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+
+import interface_adapter.viewmodels.ShareState;
+import interface_adapter.viewmodels.ShareViewModel;
 
 /** Modeless share preview with an explicit clipboard action. */
 public final class ShareDialog extends JDialog {
@@ -32,10 +34,10 @@ public final class ShareDialog extends JDialog {
         setLayout(new BorderLayout(0, 12));
         getContentPane().setBackground(SwingTheme.BACKGROUND);
 
-        JPanel heading = new JPanel(new BorderLayout());
+        final JPanel heading = new JPanel(new BorderLayout());
         heading.setBackground(SwingTheme.PANEL);
         heading.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
-        JLabel title = new JLabel("Share your itinerary");
+        final JLabel title = new JLabel("Share your itinerary");
         title.setFont(SwingTheme.TITLE);
         title.setForeground(SwingTheme.NAVY);
         heading.add(title, BorderLayout.WEST);
@@ -47,11 +49,11 @@ public final class ShareDialog extends JDialog {
         preview.setWrapStyleWord(true);
         preview.setFont(SwingTheme.BODY);
         preview.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
-        JScrollPane scroll = new JScrollPane(preview);
+        final JScrollPane scroll = new JScrollPane(preview);
         scroll.setBorder(BorderFactory.createLineBorder(SwingTheme.LINE));
         add(scroll, BorderLayout.CENTER);
 
-        JPanel actions = new JPanel(new BorderLayout(12, 0));
+        final JPanel actions = new JPanel(new BorderLayout(12, 0));
         actions.setOpaque(false);
         actions.setBorder(BorderFactory.createEmptyBorder(0, 0, 2, 0));
         status.setFont(SwingTheme.SMALL);
@@ -75,7 +77,8 @@ public final class ShareDialog extends JDialog {
                     new StringSelection(preview.getText()), null);
             status.setText("Copied to clipboard.");
             status.setForeground(SwingTheme.SUCCESS);
-        } catch (IllegalStateException exception) {
+        }
+        catch (IllegalStateException exception) {
             status.setText("Clipboard is busy. Please try again.");
             status.setForeground(SwingTheme.ERROR);
         }

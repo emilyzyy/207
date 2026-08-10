@@ -1,8 +1,9 @@
 package interface_adapter.viewmodels;
 
-import entity.entities.Trip;
 import java.time.LocalDate;
 import java.time.LocalTime;
+
+import entity.entities.Trip;
 
 /** Immutable create/edit trip setup state. */
 public final class TripOptionsState {
@@ -36,6 +37,13 @@ public final class TripOptionsState {
         this.error = error;
     }
 
+    /**
+     * Performs the f ro mt ri p operation.
+     * @param message the m es sa ge value
+     * @param error the e rr or value
+     * @param trip the t ri p value
+     * @return the result of the operation
+     */
     public static TripOptionsState fromTrip(Trip trip, String message, boolean error) {
         return new TripOptionsState(
                 trip.getId(),
@@ -47,6 +55,12 @@ public final class TripOptionsState {
                 error);
     }
 
+    /**
+     * Performs the w it hf ee db ac k operation.
+     * @param feedbackIsError the f ee db ac ki se rr or value
+     * @param feedback the f ee db ac k value
+     * @return the result of the operation
+     */
     public TripOptionsState withFeedback(String feedback, boolean feedbackIsError) {
         return new TripOptionsState(
                 tripId, destination, date, startTime, endTime, feedback, feedbackIsError);
@@ -56,6 +70,10 @@ public final class TripOptionsState {
         return tripId;
     }
 
+    /**
+     * Performs the h as ac ti ve tr ip operation.
+     * @return the result of the operation
+     */
     public boolean hasActiveTrip() {
         return !tripId.trim().isEmpty();
     }

@@ -12,9 +12,16 @@ package interface_adapter.controllers;
 @FunctionalInterface
 public interface TaskRunner {
 
+    /**
+     * Performs the r un operation.
+     * @param work the w or k value
+     */
     void run(Runnable work);
 
-    /** Runs work on the calling thread. Intended for tests. */
+    /**
+     * Runs work on the calling thread. Intended for tests.
+     * @return the result of the operation
+     */
     static TaskRunner immediate() {
         return Runnable::run;
     }

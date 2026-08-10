@@ -1,9 +1,5 @@
 package database.supabase;
 
-import use_case.ports.AuthService;
-import use_case.ports.AuthSession;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -11,6 +7,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Optional;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import use_case.ports.AuthService;
+import use_case.ports.AuthSession;
 
 /** Supabase GoTrue auth client (email/password) for desktop persistence. */
 public final class SupabaseAuthClient implements AuthService {
@@ -41,10 +42,10 @@ public final class SupabaseAuthClient implements AuthService {
     @Override
     public AuthSession signUp(String email, String password) {
         requireCredentials(email, password);
-        JsonNode body = postJson(baseUrl + "/auth/v1/signup",
+        final JsonNode body = postJson(baseUrl + "/auth/v1/signup",
                 "{\"email\":" + quote(email.trim()) + ",\"password\":" + quote(password) + "}",
                 true);
-        AuthSession created = sessionFrom(body, email.trim(), password);
+        final AuthSession created = sessionFrom(body, email.trim(), password);
         this.session = created;
         return created;
     }
@@ -52,10 +53,10 @@ public final class SupabaseAuthClient implements AuthService {
     @Override
     public AuthSession signIn(String email, String password) {
         requireCredentials(email, password);
-        JsonNode body = postJson(baseUrl + "/auth/v1/token?grant_type=password",
+        final JsonNode body = postJson(baseUrl + "/auth/v1/token?grant_type=password",
                 "{\"email\":" + quote(email.trim()) + ",\"password\":" + quote(password) + "}",
                 false);
-        AuthSession created = sessionFrom(body, email.trim(), password);
+        final AuthSession created = sessionFrom(body, email.trim(), password);
         this.session = created;
         return created;
     }
@@ -67,34 +68,34 @@ public final class SupabaseAuthClient implements AuthService {
 
     @Override
     public AuthSession updateCredentials(String email, String password) {
-        AuthSession current = session;
+        final AuthSession current = session;
         if (current == null) {
             throw new IllegalStateException("Sign in before updating your account.");
         }
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("Please enter your email.");
         }
-        String trimmedEmail = email.trim();
-        String nextPassword = password == null ? "" : password;
+        final String trimmedEmail = email.trim();
+        final String nextPassword = password == null ? "" : password;
         // Skip Auth round-trip when nothing credential-related changed.
-        boolean emailChanged = !trimmedEmail.equalsIgnoreCase(
+        final boolean emailChanged = !trimmedEmail.equalsIgnoreCase(
                 current.getEmail() == null ? "" : current.getEmail());
-        boolean passwordChanged = !nextPassword.isEmpty()
+        final boolean passwordChanged = !nextPassword.isEmpty()
                 && !nextPassword.equals(current.getPassword());
         if (!emailChanged && !passwordChanged) {
             return current;
         }
-        StringBuilder json = new StringBuilder("{\"email\":").append(quote(trimmedEmail));
+        final StringBuilder json = new StringBuilder("{\"email\":").append(quote(trimmedEmail));
         String retainedPassword = current.getPassword();
         if (passwordChanged) {
             json.append(",\"password\":").append(quote(nextPassword));
             retainedPassword = nextPassword;
         }
         json.append("}");
-        JsonNode body = putAuthJson(baseUrl + "/auth/v1/user", json.toString(), current.getAccessToken());
+        final JsonNode body = putAuthJson(baseUrl + "/auth/v1/user", json.toString(), current.getAccessToken());
         String newEmail = text(body, "email");
         if (newEmail == null || newEmail.isEmpty()) {
-            JsonNode user = body.get("user");
+            final JsonNode user = body.get("user");
             if (user != null && !user.isNull()) {
                 newEmail = text(user, "email");
             }
@@ -102,7 +103,7 @@ public final class SupabaseAuthClient implements AuthService {
         if (newEmail == null || newEmail.isEmpty()) {
             newEmail = trimmedEmail;
         }
-        AuthSession updated = new AuthSession(
+        final AuthSession updated = new AuthSession(
                 current.getUserId(), current.getAccessToken(), newEmail, retainedPassword);
         this.session = updated;
         return updated;
@@ -114,8 +115,8 @@ public final class SupabaseAuthClient implements AuthService {
     }
 
     private AuthSession sessionFrom(JsonNode body, String fallbackEmail, String password) {
-        String accessToken = text(body, "access_token");
-        JsonNode user = body.get("user");
+        final String accessToken = text(body, "access_token");
+        final JsonNode user = body.get("user");
         if (accessToken == null || accessToken.isEmpty()) {
             throw new IllegalStateException(
                     "Sign-in did not complete. If you just signed up, confirm your email "
@@ -124,7 +125,7 @@ public final class SupabaseAuthClient implements AuthService {
         if (user == null || user.isNull()) {
             throw new IllegalStateException("Supabase auth response missing user");
         }
-        String userId = text(user, "id");
+        final String userId = text(user, "id");
         String email = text(user, "email");
         if (email == null || email.isEmpty()) {
             email = fallbackEmail;
@@ -134,19 +135,20 @@ public final class SupabaseAuthClient implements AuthService {
 
     private JsonNode putAuthJson(String url, String jsonBody, String accessToken) {
         try {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+            final HttpRequest request = HttpRequest.newBuilder(URI.create(url))
                     .timeout(Duration.ofSeconds(15))
                     .header("apikey", anonKey)
                     .header("Authorization", "Bearer " + accessToken)
                     .header("Content-Type", "application/json")
                     .PUT(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();
-            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            final HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw new IllegalStateException(friendlyAuthError(response.body(), false));
             }
             return mapper.readTree(response.body());
-        } catch (IOException | InterruptedException exception) {
+        }
+        catch (IOException | InterruptedException exception) {
             if (exception instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
@@ -157,19 +159,20 @@ public final class SupabaseAuthClient implements AuthService {
 
     private JsonNode postJson(String url, String jsonBody, boolean signUp) {
         try {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+            final HttpRequest request = HttpRequest.newBuilder(URI.create(url))
                     .timeout(Duration.ofSeconds(15))
                     .header("apikey", anonKey)
                     .header("Authorization", "Bearer " + anonKey)
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();
-            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            final HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw new IllegalStateException(friendlyAuthError(response.body(), signUp));
             }
             return mapper.readTree(response.body());
-        } catch (IOException | InterruptedException exception) {
+        }
+        catch (IOException | InterruptedException exception) {
             if (exception instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
@@ -183,16 +186,17 @@ public final class SupabaseAuthClient implements AuthService {
         String message = null;
         try {
             if (body != null && !body.trim().isEmpty()) {
-                JsonNode node = mapper.readTree(body);
+                final JsonNode node = mapper.readTree(body);
                 code = authErrorCode(node);
                 message = firstNonBlankText(node, "msg", "message", "error_description", "error");
             }
-        } catch (IOException ignored) {
+        }
+        catch (IOException ignored) {
             // Fall through to generic mapping.
         }
 
-        String normalizedCode = code == null ? "" : code.trim().toLowerCase();
-        String normalizedMessage = message == null ? "" : message.trim().toLowerCase();
+        final String normalizedCode = code == null ? "" : code.trim().toLowerCase();
+        final String normalizedMessage = message == null ? "" : message.trim().toLowerCase();
 
         if (looksLike(normalizedCode, normalizedMessage,
                 "user_already_exists", "already registered", "already been registered",
@@ -234,11 +238,11 @@ public final class SupabaseAuthClient implements AuthService {
     }
 
     private static String authErrorCode(JsonNode node) {
-        String errorCode = text(node, "error_code");
+        final String errorCode = text(node, "error_code");
         if (notBlank(errorCode)) {
             return errorCode;
         }
-        String code = text(node, "code");
+        final String code = text(node, "code");
         if (notBlank(code) && !code.matches("\\d+")) {
             return code;
         }
@@ -247,7 +251,7 @@ public final class SupabaseAuthClient implements AuthService {
 
     private static String firstNonBlankText(JsonNode node, String... fields) {
         for (String field : fields) {
-            String value = text(node, field);
+            final String value = text(node, field);
             if (notBlank(value)) {
                 return value;
             }
@@ -282,7 +286,7 @@ public final class SupabaseAuthClient implements AuthService {
     }
 
     private static String text(JsonNode node, String field) {
-        JsonNode value = node.get(field);
+        final JsonNode value = node.get(field);
         return value == null || value.isNull() ? null : value.asText();
     }
 

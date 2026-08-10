@@ -31,7 +31,13 @@ public final class PlacedActivity {
         this.avoidableIdleMinutes = avoidableIdleMinutes;
     }
 
-    /** A placement with no preceding travel, used for the first activity of the day. */
+    /**
+     * A placement with no preceding travel, used for the first activity of the day.
+     * @param start the s ta rt value
+     * @param end the e nd value
+     * @param task the t as k value
+     * @return the result of the operation
+     */
     public static PlacedActivity first(ScheduleTask task, LocalTime start, LocalTime end,
                                        int idleMinutes, int avoidableIdleMinutes) {
         return new PlacedActivity(task, start, end, null, 0, idleMinutes, avoidableIdleMinutes);
@@ -48,8 +54,11 @@ public final class PlacedActivity {
     public LocalTime getEnd() {
         return end;
     }
+    /**
+     * When the traveller leaves the previous activity, or null when there is none.
+     * @return the result of the operation
+     */
 
-    /** When the traveller leaves the previous activity, or null when there is none. */
     public LocalTime getTravelDeparture() {
         return travelDeparture;
     }
@@ -58,11 +67,18 @@ public final class PlacedActivity {
         return travelMinutes;
     }
 
+    /**
+     * Performs the h as tr av el operation.
+     * @return the result of the operation
+     */
     public boolean hasTravel() {
         return travelDeparture != null && travelMinutes > 0;
     }
+    /**
+     * The travel block to generate, or null when this activity has no preceding leg.
+     * @return the result of the operation
+     */
 
-    /** The travel block to generate, or null when this activity has no preceding leg. */
     public TimeWindow travelWindow() {
         if (!hasTravel()) {
             return null;
@@ -73,17 +89,22 @@ public final class PlacedActivity {
     public int getIdleMinutesBefore() {
         return idleMinutes;
     }
-
     /**
      * Idle that the schedule could in principle have avoided. Waiting for a venue to
      * open, and time inside a period the user declared unavailable, are both excluded:
      * neither is the scheduler's fault, so penalising them would push the search toward
      * worse schedules for no benefit.
+      * @return the result of the operation
      */
+
     public int getAvoidableIdleMinutes() {
         return avoidableIdleMinutes;
     }
 
+    /**
+     * Performs the w in do w operation.
+     * @return the result of the operation
+     */
     public TimeWindow window() {
         return new TimeWindow(start, end);
     }

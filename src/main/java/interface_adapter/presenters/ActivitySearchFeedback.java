@@ -5,13 +5,14 @@ import use_case.search.SearchFailure;
 /** Converts search outcomes into concise, actionable, non-technical UI messages. */
 final class ActivitySearchFeedback {
     private ActivitySearchFeedback() {
+
     }
 
     static String format(SearchFailure failure, boolean partial,
                          String query, String destination) {
-        SearchFailure outcome = failure == null ? SearchFailure.NONE : failure;
-        String place = clean(destination, "this destination");
-        String terms = clean(query, "");
+        final SearchFailure outcome = failure == null ? SearchFailure.NONE : failure;
+        final String place = clean(destination, "this destination");
+        final String terms = clean(query, "");
         if (partial && outcome == SearchFailure.RATE_LIMITED) {
             return "Showing saved results while OpenStreetMap is busy right now.";
         }

@@ -1,16 +1,17 @@
 package interface_adapter.mock;
 
-import use_case.ports.ActivityRepository;
-import use_case.ports.PlacesService;
-import entity.entities.Activity;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.IndoorOutdoorType;
-import entity.valueobjects.Location;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+
+import entity.entities.Activity;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.Location;
+import use_case.ports.ActivityRepository;
+import use_case.ports.PlacesService;
 
 public final class MockPlacesService implements PlacesService, ActivityRepository {
     private final List<Activity> activities = Arrays.asList(
@@ -37,38 +38,79 @@ public final class MockPlacesService implements PlacesService, ActivityRepositor
                             LocalTime.of(9, 0), LocalTime.of(21, 0), type, risk);
     }
 
+    /**
+     * Performs the s ea rc h operation.
+     * @param query the q ue ry value
+     * @param destination the d es ti na ti on value
+     * @return the result of the operation
+     */
     public List<Activity> search(String destination, String query) {
-        String needle = query == null ? "" : query.trim().toLowerCase();
-        List<Activity> result = new ArrayList<Activity>();
+        final String needle = query == null ? "" : query.trim().toLowerCase();
+        final List<Activity> result = new ArrayList<Activity>();
         for (Activity activity : activities) {
             if (needle.isEmpty() || activity.getName().toLowerCase().contains(needle)
-                    || activity.getCategory().name().toLowerCase().contains(needle)) result.add(activity);
+                    || activity.getCategory().name().toLowerCase().contains(needle)) {
+                result.add(activity);
+            }
         }
         return result;
     }
 
+    /**
+     * Performs the s ea rc hi nb ou nd s operation.
+     * @param south the s ou th value
+     * @param west the w es t value
+     * @param destination the d es ti na ti on value
+     * @return the result of the operation
+     */
     public List<Activity> searchInBounds(String destination, double south, double west,
                                          double north, double east, int maxResults) {
         return searchInBounds(south, west, north, east, maxResults);
     }
 
+    /**
+     * Performs the s ea rc hi nb ou nd s operation.
+     * @param east the e as t value
+     * @param north the n or th value
+     * @param west the w es t value
+     * @param south the s ou th value
+     * @return the result of the operation
+     */
     public List<Activity> searchInBounds(double south, double west, double north, double east,
                                          int maxResults) {
-        List<Activity> result = new ArrayList<Activity>();
+        final List<Activity> result = new ArrayList<Activity>();
         for (Activity activity : activities) {
-            Location loc = activity.getLocation();
+            final Location loc = activity.getLocation();
             if (loc.getLatitude() >= south && loc.getLatitude() <= north
                     && loc.getLongitude() >= west && loc.getLongitude() <= east) {
                 result.add(activity);
             }
-            if (result.size() >= maxResults) break;
+            if (result.size() >= maxResults) {
+                break;
+            }
         }
         return result;
     }
 
-    public List<Activity> findAll() { return new ArrayList<Activity>(activities); }
+    /**
+     * Performs the f in da ll operation.
+     * @return the result of the operation
+     */
+    public List<Activity> findAll() {
+        return new ArrayList<Activity>(activities);
+    }
+
+    /**
+     * Performs the f in db yi d operation.
+     * @param id the i d value
+     * @return the result of the operation
+     */
     public Optional<Activity> findById(String id) {
-        for (Activity activity : activities) if (activity.getId().equals(id)) return Optional.of(activity);
+        for (Activity activity : activities) {
+            if (activity.getId().equals(id)) {
+                return Optional.of(activity);
+            }
+        }
         return Optional.empty();
     }
 }

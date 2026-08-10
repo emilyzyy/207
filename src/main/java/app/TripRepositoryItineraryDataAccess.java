@@ -1,9 +1,10 @@
 package app;
 
+import java.util.Optional;
+
+import entity.entities.Trip;
 import use_case.ports.ItineraryDataAccessInterface;
 import use_case.ports.TripRepository;
-import entity.entities.Trip;
-import java.util.Optional;
 
 /**
  * Application-side adapter so edit-itinerary can reuse {@link TripRepository} storage (DIP).

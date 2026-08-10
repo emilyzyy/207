@@ -7,6 +7,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+
 import javax.swing.JButton;
 
 /** Button that can show a small red count badge in the top-right corner. */
@@ -25,6 +26,10 @@ public final class BadgedButton extends JButton {
                 javax.swing.BorderFactory.createEmptyBorder(7, 12, 7, 12)));
     }
 
+    /**
+     * Performs the s et ba dg ec ou nt operation.
+     * @param count the c ou nt value
+     */
     public void setBadgeCount(int count) {
         this.badgeCount = Math.max(0, count);
         repaint();
@@ -40,28 +45,28 @@ public final class BadgedButton extends JButton {
         if (badgeCount <= 0) {
             return;
         }
-        Graphics2D g2 = (Graphics2D) g.create();
+        final Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        String label = badgeCount > 99 ? "99+" : Integer.toString(badgeCount);
-        Font badgeFont = SwingTheme.SMALL.deriveFont(Font.BOLD, 10f);
+        final String label = badgeCount > 99 ? "99+" : Integer.toString(badgeCount);
+        final Font badgeFont = SwingTheme.SMALL.deriveFont(Font.BOLD, 10f);
         g2.setFont(badgeFont);
-        FontMetrics metrics = g2.getFontMetrics();
-        int textWidth = metrics.stringWidth(label);
-        int diameter = Math.max(16, textWidth + 8);
-        int x = getWidth() - diameter - 1;
-        int y = 1;
+        final FontMetrics metrics = g2.getFontMetrics();
+        final int textWidth = metrics.stringWidth(label);
+        final int diameter = Math.max(16, textWidth + 8);
+        final int x = getWidth() - diameter - 1;
+        final int y = 1;
         g2.setColor(BADGE);
         g2.fillOval(x, y, diameter, diameter);
         g2.setColor(Color.WHITE);
-        int textX = x + (diameter - textWidth) / 2;
-        int textY = y + (diameter - metrics.getHeight()) / 2 + metrics.getAscent();
+        final int textX = x + (diameter - textWidth) / 2;
+        final int textY = y + (diameter - metrics.getHeight()) / 2 + metrics.getAscent();
         g2.drawString(label, textX, textY);
         g2.dispose();
     }
 
     @Override
     public Dimension getPreferredSize() {
-        Dimension size = super.getPreferredSize();
+        final Dimension size = super.getPreferredSize();
         return new Dimension(Math.max(size.width, 72), size.height);
     }
 }

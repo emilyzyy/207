@@ -4,11 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import entity.valueobjects.OpeningHours;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+
 import org.junit.jupiter.api.Test;
+
+import entity.valueobjects.OpeningHours;
 
 /**
  * What the parser makes of real {@code opening_hours} tags, and what it refuses to guess at.
@@ -24,7 +26,7 @@ class OpeningHoursParserTest {
     private static final LocalDate SUNDAY = LocalDate.of(2026, 8, 16);
 
     private static void assertSpans(List<OpeningHours.TimeInterval> intervals, String expected) {
-        StringBuilder actual = new StringBuilder();
+        final StringBuilder actual = new StringBuilder();
         for (OpeningHours.TimeInterval interval : intervals) {
             if (actual.length() > 0) {
                 actual.append(",");
@@ -36,7 +38,7 @@ class OpeningHoursParserTest {
 
     @Test
     void aWeekdayRangeAppliesToEveryDayInIt() {
-        OpeningHours hours = OpeningHoursParser.parse("Mo-Fr 09:00-17:00");
+        final OpeningHours hours = OpeningHoursParser.parse("Mo-Fr 09:00-17:00");
 
         assertTrue(hours.isKnown());
         assertSpans(hours.intervalsOn(WEDNESDAY), "09:00-17:00");
@@ -45,14 +47,14 @@ class OpeningHoursParserTest {
 
     @Test
     void aVenueThatShutsForLunchHasTwoSeparateWindows() {
-        OpeningHours hours = OpeningHoursParser.parse("Mo-Su 09:00-12:00,13:00-17:00");
+        final OpeningHours hours = OpeningHoursParser.parse("Mo-Su 09:00-12:00,13:00-17:00");
 
         assertSpans(hours.intervalsOn(WEDNESDAY), "09:00-12:00,13:00-17:00");
     }
 
     @Test
     void aDayMarkedOffIsClosedRatherThanUnknown() {
-        OpeningHours hours = OpeningHoursParser.parse("Mo-Sa 10:00-18:00; Su off");
+        final OpeningHours hours = OpeningHoursParser.parse("Mo-Sa 10:00-18:00; Su off");
 
         assertTrue(hours.isKnown());
         assertTrue(hours.isClosedOn(SUNDAY));
@@ -61,7 +63,7 @@ class OpeningHoursParserTest {
 
     @Test
     void alaterRuleOverridesAnEarlierOneForTheDaysItNames() {
-        OpeningHours hours = OpeningHoursParser.parse("Mo-Su 09:00-17:00; We 09:00-21:00");
+        final OpeningHours hours = OpeningHoursParser.parse("Mo-Su 09:00-17:00; We 09:00-21:00");
 
         assertSpans(hours.intervalsOn(WEDNESDAY), "09:00-21:00");
         assertSpans(hours.intervalsOn(SATURDAY), "09:00-17:00");
@@ -69,7 +71,7 @@ class OpeningHoursParserTest {
 
     @Test
     void aSpanPastMidnightIsSplitOntoBothDays() {
-        OpeningHours hours = OpeningHoursParser.parse("Fr 20:00-02:00");
+        final OpeningHours hours = OpeningHoursParser.parse("Fr 20:00-02:00");
 
         assertSpans(hours.intervalsOn(FRIDAY), "20:00-23:59");
         assertSpans(hours.intervalsOn(SATURDAY), "00:00-02:00");
@@ -77,7 +79,7 @@ class OpeningHoursParserTest {
 
     @Test
     void twentyFourSevenIsOpenRatherThanUnknown() {
-        OpeningHours hours = OpeningHoursParser.parse("24/7");
+        final OpeningHours hours = OpeningHoursParser.parse("24/7");
 
         assertTrue(hours.isKnown());
         assertFalse(hours.isClosedOn(SUNDAY));
@@ -92,7 +94,7 @@ class OpeningHoursParserTest {
 
     @Test
     void aRuleWithNoWeekdayAppliesToTheWholeWeek() {
-        OpeningHours hours = OpeningHoursParser.parse("08:00-20:00");
+        final OpeningHours hours = OpeningHoursParser.parse("08:00-20:00");
 
         assertSpans(hours.intervalsOn(WEDNESDAY), "08:00-20:00");
         assertSpans(hours.intervalsOn(SUNDAY), "08:00-20:00");
@@ -100,7 +102,7 @@ class OpeningHoursParserTest {
 
     @Test
     void holidayRulesAreSkippedSoTheOrdinaryWeekSurvives() {
-        OpeningHours hours = OpeningHoursParser.parse("Mo-Fr 09:00-17:00; PH off");
+        final OpeningHours hours = OpeningHoursParser.parse("Mo-Fr 09:00-17:00; PH off");
 
         assertTrue(hours.isKnown(), "one unsupported holiday rule must not lose the week");
         assertSpans(hours.intervalsOn(WEDNESDAY), "09:00-17:00");
@@ -113,7 +115,7 @@ class OpeningHoursParserTest {
      */
     @Test
     void anythingNotFullyUnderstoodIsUnknownRatherThanGuessedAt() {
-        String[] beyondUs = {
+        final String[] beyondUs = {
             null, "", "   ",
             "sunrise-sunset",
             "Jan-Mar 09:00-17:00",
@@ -133,7 +135,7 @@ class OpeningHoursParserTest {
 
     @Test
     void unknownHoursAreNotClosedHours() {
-        OpeningHours hours = OpeningHoursParser.parse(null);
+        final OpeningHours hours = OpeningHoursParser.parse(null);
 
         assertFalse(hours.isKnown());
         assertFalse(hours.isClosedOn(WEDNESDAY),
@@ -146,7 +148,7 @@ class OpeningHoursParserTest {
     void aSingleDayAndACommaListBothWork() {
         assertSpans(OpeningHoursParser.parse("We 11:00-15:00").intervalsOn(WEDNESDAY),
                 "11:00-15:00");
-        OpeningHours listed = OpeningHoursParser.parse("Mo,We,Fr 11:00-15:00");
+        final OpeningHours listed = OpeningHoursParser.parse("Mo,We,Fr 11:00-15:00");
         assertSpans(listed.intervalsOn(WEDNESDAY), "11:00-15:00");
         assertTrue(listed.isClosedOn(SATURDAY));
     }

@@ -1,29 +1,31 @@
 package interface_adapter.routing;
 
-import use_case.ports.DistanceService;
-import entity.valueobjects.Location;
-import entity.valueobjects.TransportationMode;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import entity.valueobjects.Location;
+import entity.valueobjects.TransportationMode;
+import use_case.ports.DistanceService;
 
 final class FastestModeDistanceServiceTest {
     private static final Location HERE = new Location(43.65, -79.38, "Toronto");
 
     @Test
     void returnsFastestAcrossAllSupportedModesWhenAskedForFastest() {
-        RecordingDistanceService delegate = new RecordingDistanceService();
+        final RecordingDistanceService delegate = new RecordingDistanceService();
         delegate.put(TransportationMode.WALKING, 60);
         delegate.put(TransportationMode.DRIVING, 20);
         delegate.put(TransportationMode.TRANSIT, 45);
-        FastestModeDistanceService service = new FastestModeDistanceService(delegate);
+        final FastestModeDistanceService service = new FastestModeDistanceService(delegate);
 
-        int minutes = service.estimateTravelMinutes(HERE, HERE,
+        final int minutes = service.estimateTravelMinutes(HERE, HERE,
                 TransportationMode.FASTEST, LocalDateTime.now());
 
         assertEquals(20, minutes);
@@ -40,13 +42,13 @@ final class FastestModeDistanceServiceTest {
      */
     @Test
     void aSpecificModeIsPassedStraightThroughAndCostsOneCall() {
-        RecordingDistanceService delegate = new RecordingDistanceService();
+        final RecordingDistanceService delegate = new RecordingDistanceService();
         delegate.put(TransportationMode.WALKING, 80);
         delegate.put(TransportationMode.DRIVING, 35);
         delegate.put(TransportationMode.TRANSIT, 40);
-        FastestModeDistanceService service = new FastestModeDistanceService(delegate);
+        final FastestModeDistanceService service = new FastestModeDistanceService(delegate);
 
-        int minutes = service.estimateTravelMinutes(HERE, HERE,
+        final int minutes = service.estimateTravelMinutes(HERE, HERE,
                 TransportationMode.WALKING, LocalDateTime.now());
 
         assertEquals(80, minutes, "asking to walk must cost what walking costs");
@@ -56,7 +58,7 @@ final class FastestModeDistanceServiceTest {
 
     @Test
     void aNullModeIsTreatedAsFastestForCallersWithNoOpinion() {
-        RecordingDistanceService delegate = new RecordingDistanceService();
+        final RecordingDistanceService delegate = new RecordingDistanceService();
         delegate.put(TransportationMode.WALKING, 80);
         delegate.put(TransportationMode.DRIVING, 35);
         delegate.put(TransportationMode.TRANSIT, 40);

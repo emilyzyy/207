@@ -20,7 +20,11 @@ public final class TravelLegPlanner {
      * Plans the leg from {@code fromId} to {@code toId} for a traveller free at
      * {@code cursor}.
      *
+      * @param fromId the f ro mi d value
+      * @param toId the t oi d value
+      * @param travel the t ra ve l value
      * @param notLaterThan latest acceptable arrival, or null when only the day's end applies
+      * @param cursor the c ur so r value
      * @return the leg, or null when no departure produces a legal journey
      */
     public TravelLeg plan(TravelMatrix travel, String fromId, String toId, LocalTime cursor,
@@ -30,13 +34,13 @@ public final class TravelLegPlanner {
         }
 
         TravelLeg best = null;
-        List<LocalTime> departures = blocked.departureOptionsFrom(cursor);
+        final List<LocalTime> departures = blocked.departureOptionsFrom(cursor);
         for (LocalTime departure : departures) {
             if (notLaterThan != null && departure.isAfter(notLaterThan)) {
                 break;
             }
-            int minutes = travel.estimateAt(fromId, toId, departure).getMinutes();
-            LocalTime arrival = departure.plusMinutes(minutes);
+            final int minutes = travel.estimateAt(fromId, toId, departure).getMinutes();
+            final LocalTime arrival = departure.plusMinutes(minutes);
             if (!arrival.isAfter(departure) && minutes > 0) {
                 continue;
             }
@@ -73,6 +77,9 @@ public final class TravelLegPlanner {
      * journey, arriving just before it is offered as a second candidate, so a traveller busy
      * from two until three still travels at ten to two rather than at half past one.</p>
      *
+      * @param toId the t oi d value
+      * @param travel the t ra ve l value
+      * @param fromId the f ro mi d value
      * @param earliest the feasibility leg, returned unchanged when nothing later works
      * @return the leg to actually travel; never null when {@code earliest} is non-null
      */
@@ -87,7 +94,7 @@ public final class TravelLegPlanner {
         // at three. Arriving just before such a window is the next best thing and still far
         // later than setting out at the first opportunity, so each one offers its own
         // candidate arrival.
-        List<LocalTime> arrivals = new ArrayList<>();
+        final List<LocalTime> arrivals = new ArrayList<>();
         arrivals.add(arriveBy);
         for (TimeWindow window : blocked.getWindows()) {
             if (window.getStart().isAfter(cursor) && !window.getStart().isAfter(arriveBy)) {
@@ -98,8 +105,8 @@ public final class TravelLegPlanner {
         TravelLeg best = earliest;
         for (LocalTime arrival : arrivals) {
             for (DeparturePeriod period : DeparturePeriod.values()) {
-                int minutes = travel.estimateAt(fromId, toId, period.getStart()).getMinutes();
-                LocalTime departure = arrival.minusMinutes(minutes);
+                final int minutes = travel.estimateAt(fromId, toId, period.getStart()).getMinutes();
+                final LocalTime departure = arrival.minusMinutes(minutes);
                 if (minutes > 0 && !departure.isBefore(arrival)) {
                     continue;
                 }
@@ -124,14 +131,18 @@ public final class TravelLegPlanner {
      * Minutes of waiting between arriving and starting that the schedule could have
      * avoided. Waiting for the venue to open, and time inside a period the user is
      * unavailable, are both excluded because no ordering of the day could reclaim them.
+      * @param start the s ta rt value
+      * @param openingTime the o pe ni ng ti me value
+      * @param arrival the a rr iv al value
+      * @return the result of the operation
      */
     public int avoidableIdleMinutes(LocalTime arrival, LocalTime start, LocalTime openingTime,
                                     BlockedPeriods blocked) {
-        LocalTime from = arrival.isBefore(openingTime) ? openingTime : arrival;
+        final LocalTime from = arrival.isBefore(openingTime) ? openingTime : arrival;
         if (!start.isAfter(from)) {
             return 0;
         }
-        int total = (start.toSecondOfDay() - from.toSecondOfDay()) / 60;
+        final int total = (start.toSecondOfDay() - from.toSecondOfDay()) / 60;
         return Math.max(0, total - blocked.minutesWithin(from, start));
     }
 }

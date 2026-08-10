@@ -1,5 +1,12 @@
 package interface_adapter.controllers;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
+
+import entity.valueobjects.WeatherOption;
 import interface_adapter.viewmodels.DayPlanState;
 import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.PreviewRowView;
@@ -8,12 +15,6 @@ import use_case.autoschedule.AutoScheduleInputBoundary;
 import use_case.autoschedule.AutoScheduleInputData;
 import use_case.autoschedule.ProposedEventData;
 import use_case.autoschedule.TimeWindow;
-import entity.valueobjects.WeatherOption;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.function.Consumer;
 
 /**
  * Turns what the traveller did into a request the use case understands.
@@ -40,19 +41,22 @@ public final class AutoScheduleController {
         this.taskRunner = taskRunner;
     }
 
-    /** Asks for a proposal. Nothing in the itinerary changes as a result of this. */
+    /**
+     * Asks for a proposal. Nothing in the itinerary changes as a result of this.
+     * @param settings the s et ti ng s value
+     */
     public void preview(AutoScheduleSettings settings) {
-        DayPlanState state = viewModel.getState();
+        final DayPlanState state = viewModel.getState();
         if (state.getTripId().isEmpty()) {
             return;
         }
 
-        List<TimeWindow> unavailable = new ArrayList<>();
+        final List<TimeWindow> unavailable = new ArrayList<>();
         for (AutoScheduleSettings.Window window : settings.getUnavailableWindows()) {
             unavailable.add(new TimeWindow(window.getStart(), window.getEnd()));
         }
 
-        AutoScheduleInputData input = new AutoScheduleInputData(state.getTripId(),
+        final AutoScheduleInputData input = new AutoScheduleInputData(state.getTripId(),
                 settings.getAvailableStart(), settings.getAvailableEnd(),
                 settings.getTransportationMode(), state.getLockedEventIds(), unavailable,
                 settings.isKeepCurrentOrder(), settings.isConsiderWeather(),
@@ -73,12 +77,13 @@ public final class AutoScheduleController {
      *
      * <p>The callback is invoked on the background thread. Marshalling back to the event
      * thread is the view's business, since it is the view that knows it is Swing.</p>
+      * @param onAnswered the o na ns we re d value
      */
     public void loadWeatherOption(Consumer<WeatherOption> onAnswered) {
         if (onAnswered == null) {
             return;
         }
-        String tripId = viewModel.getState().getTripId();
+        final String tripId = viewModel.getState().getTripId();
         if (tripId.isEmpty()) {
             onAnswered.accept(WeatherOption.unavailable(WeatherOption.NO_FORECAST));
             return;
@@ -88,12 +93,12 @@ public final class AutoScheduleController {
 
     /** Saves the proposal currently on screen, if the Day Plan has not moved on. */
     public void apply() {
-        DayPlanState state = viewModel.getState();
+        final DayPlanState state = viewModel.getState();
         if (state.getPreviewRows().isEmpty()) {
             return;
         }
 
-        List<ProposedEventData> proposed = new ArrayList<>();
+        final List<ProposedEventData> proposed = new ArrayList<>();
         for (PreviewRowView row : state.getPreviewRows()) {
             proposed.add(new ProposedEventData(row.getEventId(), "", row.getTitle(),
                     row.getKind() == PreviewRowView.Kind.TRAVEL
@@ -101,7 +106,7 @@ public final class AutoScheduleController {
                     row.getStart(), row.getEnd(), row.isLocked(), row.isMoved()));
         }
 
-        AutoScheduleApplyInputData input = new AutoScheduleApplyInputData(state.getTripId(),
+        final AutoScheduleApplyInputData input = new AutoScheduleApplyInputData(state.getTripId(),
                 state.getPreviewFingerprint(), proposed);
 
         viewModel.setState(state.loading("Applying..."));
@@ -117,19 +122,25 @@ public final class AutoScheduleController {
     /**
      * Pins or unpins an activity. Pins live with the view for as long as the app is open,
      * so re-running Autoschedule keeps honouring them without changing anything saved.
+      * @param eventId the e ve nt id value
      */
     public void toggleLock(String eventId) {
         if (eventId == null || eventId.trim().isEmpty()) {
             return;
         }
-        DayPlanState state = viewModel.getState();
-        Set<String> locks = new LinkedHashSet<>(state.getLockedEventIds());
+        final DayPlanState state = viewModel.getState();
+        final Set<String> locks = new LinkedHashSet<>(state.getLockedEventIds());
         if (!locks.remove(eventId)) {
             locks.add(eventId);
         }
         viewModel.setState(state.withLocks(locks));
     }
 
+    /**
+     * Performs the i sl oc ke d operation.
+     * @param eventId the e ve nt id value
+     * @return the result of the operation
+     */
     public boolean isLocked(String eventId) {
         return viewModel.getState().getLockedEventIds().contains(eventId);
     }

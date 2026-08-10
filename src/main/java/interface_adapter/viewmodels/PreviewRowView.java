@@ -16,7 +16,9 @@ import java.util.List;
 public final class PreviewRowView {
 
     /** Whether this line is something the traveller does, or the journey in between. */
-    public enum Kind { ACTIVITY, TRAVEL }
+    public enum Kind {
+        ACTIVITY, TRAVEL
+    }
 
     private final String eventId;
     private final String title;
@@ -65,23 +67,35 @@ public final class PreviewRowView {
     public boolean isLocked() {
         return locked;
     }
+    /**
+     * True when this activity ends up at a different time than it had before.
+     * @return the result of the operation
+     */
 
-    /** True when this activity ends up at a different time than it had before. */
     public boolean isMoved() {
         return moved;
     }
+    /**
+     * The single short explanation shown beside the row, or empty for none.
+     * @return the result of the operation
+     */
 
-    /** The single short explanation shown beside the row, or empty for none. */
     public String getReason() {
         return reason;
     }
+    /**
+     * Every explanation for this row, shown under "Why these times?".
+     * @return the result of the operation
+     */
 
-    /** Every explanation for this row, shown under "Why these times?". */
     public List<String> getAllReasons() {
         return allReasons;
     }
+    /**
+     * The row's span as the traveller reads a clock, e.g. {@code "09:00 – 10:00"}.
+     * @return the result of the operation
+     */
 
-    /** The row's span as the traveller reads a clock, e.g. {@code "09:00 – 10:00"}. */
     public String getTimeLabel() {
         return TimeDisplay.range(start, end);
     }

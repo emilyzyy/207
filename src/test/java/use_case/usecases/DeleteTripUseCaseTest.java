@@ -1,24 +1,26 @@
 package use_case.usecases;
 
-import entity.entities.Trip;
-import entity.valueobjects.TransportationMode;
-import use_case.ports.TripRepository;
-import database.persistence.InMemoryTripRepository;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import database.persistence.InMemoryTripRepository;
+import entity.entities.Trip;
+import entity.valueobjects.TransportationMode;
+import use_case.ports.TripRepository;
 
 final class DeleteTripUseCaseTest {
     @Test
     void deletesTheWholeTripAggregate() {
-        InMemoryTripRepository repository = new InMemoryTripRepository();
-        Trip trip = new Trip("trip-1", "Sicily", LocalDate.of(2026, 8, 10),
+        final InMemoryTripRepository repository = new InMemoryTripRepository();
+        final Trip trip = new Trip("trip-1", "Sicily", LocalDate.of(2026, 8, 10),
                 LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING);
         repository.save(trip);
 
@@ -29,7 +31,7 @@ final class DeleteTripUseCaseTest {
 
     @Test
     void rejectsAnUnknownTrip() {
-        DeleteTripUseCase useCase = new DeleteTripUseCase(new InMemoryTripRepository());
+        final DeleteTripUseCase useCase = new DeleteTripUseCase(new InMemoryTripRepository());
         assertThrows(IllegalArgumentException.class, () -> useCase.execute("missing"));
     }
 
@@ -37,13 +39,13 @@ final class DeleteTripUseCaseTest {
     void rejectsNullRepositoryBlankIdAndFailedDelete() {
         assertThrows(IllegalArgumentException.class, () -> new DeleteTripUseCase(null));
 
-        DeleteTripUseCase useCase = new DeleteTripUseCase(new InMemoryTripRepository());
+        final DeleteTripUseCase useCase = new DeleteTripUseCase(new InMemoryTripRepository());
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(" "));
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(null));
 
-        Trip trip = new Trip("trip-1", "Sicily", LocalDate.of(2026, 8, 10),
+        final Trip trip = new Trip("trip-1", "Sicily", LocalDate.of(2026, 8, 10),
                 LocalTime.of(9, 0), LocalTime.of(18, 0), TransportationMode.WALKING);
-        TripRepository sticky = new TripRepository() {
+        final TripRepository sticky = new TripRepository() {
             @Override
             public Trip save(Trip value) {
                 return value;

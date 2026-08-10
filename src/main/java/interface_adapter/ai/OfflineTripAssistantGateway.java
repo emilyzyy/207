@@ -1,14 +1,7 @@
 package interface_adapter.ai;
 
-import use_case.ports.TripAssistantGateway;
-import use_case.tripassistant.TripAssistantDecision;
-import entity.valueobjects.TripAssistantMessage;
-import use_case.tripassistant.TripAssistantRequest;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.valueobjects.IndoorOutdoorType;
-import java.time.LocalTime;
 import java.time.Duration;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -18,6 +11,14 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.TripAssistantMessage;
+import use_case.ports.TripAssistantGateway;
+import use_case.tripassistant.TripAssistantDecision;
+import use_case.tripassistant.TripAssistantRequest;
 
 /** Deterministic recommendation gateway used by default and whenever live AI is unavailable. */
 public final class OfflineTripAssistantGateway implements TripAssistantGateway {
@@ -30,10 +31,10 @@ public final class OfflineTripAssistantGateway implements TripAssistantGateway {
 
     @Override
     public TripAssistantDecision answer(TripAssistantRequest request) {
-        String question = request.getQuestion();
-        TripAssistantDecision.RequestedFact requestedFact = requestedFactFor(question);
-        List<String> explicitActivities = mentionedActivities(question, request.getActivities());
-        TripAssistantDecision.Intent intent = intentFor(
+        final String question = request.getQuestion();
+        final TripAssistantDecision.RequestedFact requestedFact = requestedFactFor(question);
+        final List<String> explicitActivities = mentionedActivities(question, request.getActivities());
+        final TripAssistantDecision.Intent intent = intentFor(
                 question, requestedFact, explicitActivities);
         if (intent == TripAssistantDecision.Intent.GENERAL) {
             return new TripAssistantDecision(
@@ -41,23 +42,23 @@ public final class OfflineTripAssistantGateway implements TripAssistantGateway {
                     friendlyGeneralAnswer(question), "", requestedFact);
         }
         if (intent == TripAssistantDecision.Intent.ACTIVITY_DETAILS) {
-            List<String> referenced = explicitActivities.isEmpty()
+            final List<String> referenced = explicitActivities.isEmpty()
                     ? previousRecommendations(request.getHistory()) : explicitActivities;
             return new TripAssistantDecision(
                     intent, referenced, "", "", requestedFact);
         }
         if (intent == TripAssistantDecision.Intent.EXPLAIN) {
-            List<String> previous = previousRecommendations(request.getHistory());
+            final List<String> previous = previousRecommendations(request.getHistory());
             if (!previous.isEmpty()) {
                 return new TripAssistantDecision(
                         intent, previous, "", "",
                         TripAssistantDecision.RequestedFact.RECOMMENDATION_REASON);
             }
         }
-        Set<String> planned = plannedIds(request.getScheduledEvents());
-        List<ScoredActivity> scored = new ArrayList<ScoredActivity>();
+        final Set<String> planned = plannedIds(request.getScheduledEvents());
+        final List<ScoredActivity> scored = new ArrayList<ScoredActivity>();
         for (Activity activity : request.getActivities()) {
-            boolean alreadyPlanned = planned.contains(activity.getId());
+            final boolean alreadyPlanned = planned.contains(activity.getId());
             if (!alreadyPlanned && !fitsFreeWindow(activity, request, false)) {
                 continue;
             }
@@ -90,7 +91,7 @@ public final class OfflineTripAssistantGateway implements TripAssistantGateway {
         Collections.sort(scored, Comparator
                 .comparingDouble(ScoredActivity::getScore).reversed()
                 .thenComparing(item -> item.getActivity().getId()));
-        List<String> ids = new ArrayList<String>();
+        final List<String> ids = new ArrayList<String>();
         for (ScoredActivity item : scored) {
             ids.add(item.getActivity().getId());
             if (ids.size() == 3) {
@@ -103,7 +104,7 @@ public final class OfflineTripAssistantGateway implements TripAssistantGateway {
     private TripAssistantDecision.Intent intentFor(
             String question, TripAssistantDecision.RequestedFact requestedFact,
             List<String> mentionedActivities) {
-        String normalized = question.toLowerCase(Locale.ROOT);
+        final String normalized = question.toLowerCase(Locale.ROOT);
         if (normalized.contains("why")) {
             return TripAssistantDecision.Intent.EXPLAIN;
         }
@@ -129,7 +130,7 @@ public final class OfflineTripAssistantGateway implements TripAssistantGateway {
     }
 
     private TripAssistantDecision.RequestedFact requestedFactFor(String question) {
-        String normalized = question.toLowerCase(Locale.ROOT);
+        final String normalized = question.toLowerCase(Locale.ROOT);
         if (normalized.contains("specialty") || normalized.contains("speciality")
                 || normalized.contains("signature") || normalized.contains("menu")
                 || normalized.contains("drink")) {
@@ -174,11 +175,11 @@ public final class OfflineTripAssistantGateway implements TripAssistantGateway {
 
     private List<String> mentionedActivities(
             String question, List<Activity> activities) {
-        String normalized = question.toLowerCase(Locale.ROOT);
-        List<String> result = new ArrayList<String>();
+        final String normalized = question.toLowerCase(Locale.ROOT);
+        final List<String> result = new ArrayList<String>();
         for (Activity activity : activities) {
-            String name = activity.getName().toLowerCase(Locale.ROOT);
-            String id = activity.getId().toLowerCase(Locale.ROOT);
+            final String name = activity.getName().toLowerCase(Locale.ROOT);
+            final String id = activity.getId().toLowerCase(Locale.ROOT);
             if (normalized.contains(name)
                     || (id.length() >= 3 && normalized.contains(id))) {
                 result.add(activity.getId());
@@ -198,12 +199,12 @@ public final class OfflineTripAssistantGateway implements TripAssistantGateway {
     }
 
     private String friendlyGeneralAnswer(String question) {
-        String normalized = question.toLowerCase(Locale.ROOT).trim();
-        Matcher arithmetic = SIMPLE_ARITHMETIC.matcher(normalized);
+        final String normalized = question.toLowerCase(Locale.ROOT).trim();
+        final Matcher arithmetic = SIMPLE_ARITHMETIC.matcher(normalized);
         if (arithmetic.matches()) {
-            long left = Long.parseLong(arithmetic.group(1));
-            long right = Long.parseLong(arithmetic.group(3));
-            String operator = arithmetic.group(2);
+            final long left = Long.parseLong(arithmetic.group(1));
+            final long right = Long.parseLong(arithmetic.group(3));
+            final String operator = arithmetic.group(2);
             if (("/".equals(operator)) && right == 0) {
                 return "That division is undefined—you can't divide by zero.";
             }
@@ -217,7 +218,7 @@ public final class OfflineTripAssistantGateway implements TripAssistantGateway {
                     || "×".equals(operator)) {
                 return left + " × " + right + " = " + (left * right) + ".";
             }
-            double quotient = (double) left / (double) right;
+            final double quotient = (double) left / (double) right;
             return String.format(Locale.ROOT, "%d ÷ %d = %s.",
                     left, right, Double.toString(quotient));
         }
@@ -243,7 +244,7 @@ public final class OfflineTripAssistantGateway implements TripAssistantGateway {
             end = earlier(end, AFTERNOON_END);
         }
         LocalTime cursor = start;
-        List<ScheduledEvent> ordered = new ArrayList<ScheduledEvent>(request.getScheduledEvents());
+        final List<ScheduledEvent> ordered = new ArrayList<ScheduledEvent>(request.getScheduledEvents());
         Collections.sort(ordered, Comparator.comparing(ScheduledEvent::getStartTime));
         for (ScheduledEvent event : ordered) {
             if (!event.getEndTime().isAfter(cursor) || !event.getStartTime().isBefore(end)) {
@@ -290,7 +291,7 @@ public final class OfflineTripAssistantGateway implements TripAssistantGateway {
     }
 
     private Set<String> plannedIds(List<ScheduledEvent> events) {
-        Set<String> result = new HashSet<String>();
+        final Set<String> result = new HashSet<String>();
         for (ScheduledEvent event : events) {
             if (event.getActivity() != null) {
                 result.add(event.getActivity().getId());
@@ -301,7 +302,7 @@ public final class OfflineTripAssistantGateway implements TripAssistantGateway {
 
     private List<String> previousRecommendations(List<TripAssistantMessage> history) {
         for (int index = history.size() - 1; index >= 0; index--) {
-            TripAssistantMessage message = history.get(index);
+            final TripAssistantMessage message = history.get(index);
             if (message.getRole() == TripAssistantMessage.Role.ASSISTANT
                     && !message.getActivityIds().isEmpty()) {
                 return message.getActivityIds();
@@ -319,8 +320,12 @@ public final class OfflineTripAssistantGateway implements TripAssistantGateway {
             this.score = score;
         }
 
-        private Activity getActivity() { return activity; }
+        private Activity getActivity() {
+            return activity;
+        }
 
-        private double getScore() { return score; }
+        private double getScore() {
+            return score;
+        }
     }
 }

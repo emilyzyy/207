@@ -38,8 +38,12 @@ public enum DeparturePeriod {
     public LocalTime getEnd() {
         return end;
     }
+    /**
+     * The single period containing {@code time}. Never null.
+     * @param time the t im e value
+     * @return the result of the operation
+     */
 
-    /** The single period containing {@code time}. Never null. */
     public static DeparturePeriod containing(LocalTime time) {
         if (time == null) {
             throw new IllegalArgumentException("Departure time is required");
@@ -52,9 +56,13 @@ public enum DeparturePeriod {
         return LATE;
     }
 
-    /** A representative departure instant for this period, clamped into {@code window}. */
+    /**
+     * A representative departure instant for this period, clamped into {@code window}.
+     * @param window the w in do w value
+     * @return the result of the operation
+     */
     public LocalTime sampleWithin(TimeWindow window) {
-        LocalTime candidate = start.isBefore(window.getStart()) ? window.getStart() : start;
+        final LocalTime candidate = start.isBefore(window.getStart()) ? window.getStart() : start;
         if (!candidate.isBefore(window.getEnd())) {
             return window.getStart();
         }

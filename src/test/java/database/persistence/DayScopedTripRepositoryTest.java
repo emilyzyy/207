@@ -1,31 +1,33 @@
 package database.persistence;
 
-import use_case.ports.TripRepository;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.entities.TripDay;
-import entity.valueobjects.EventType;
-import entity.valueobjects.TransportationMode;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.entities.TripDay;
+import entity.valueobjects.EventType;
+import entity.valueobjects.TransportationMode;
+import use_case.ports.TripRepository;
 
 final class DayScopedTripRepositoryTest {
 
     @Test
     void findByIdProjectsTheActiveDay() {
-        AtomicInteger day = new AtomicInteger(1);
-        DayScopedTripRepository repository =
+        final AtomicInteger day = new AtomicInteger(1);
+        final DayScopedTripRepository repository =
                 new DayScopedTripRepository(new RecordingRepository(), day::get);
 
-        Optional<Trip> projected = repository.findById("trip-1");
+        final Optional<Trip> projected = repository.findById("trip-1");
 
         assertTrue(projected.isPresent());
         assertEquals(1, projected.get().getDayCount());
@@ -34,16 +36,16 @@ final class DayScopedTripRepositoryTest {
 
     @Test
     void saveWritesScheduleBackIntoTheRealTripDay() {
-        RecordingRepository delegate = new RecordingRepository();
-        AtomicInteger day = new AtomicInteger(0);
-        DayScopedTripRepository repository = new DayScopedTripRepository(delegate, day::get);
+        final RecordingRepository delegate = new RecordingRepository();
+        final AtomicInteger day = new AtomicInteger(0);
+        final DayScopedTripRepository repository = new DayScopedTripRepository(delegate, day::get);
 
-        ScheduledEvent travel = new ScheduledEvent(
+        final ScheduledEvent travel = new ScheduledEvent(
                 "event-travel", null,
                 LocalTime.of(9, 0), LocalTime.of(9, 30), EventType.TRAVEL,
                 "Travel");
-        Trip projected = repository.findById("trip-1").orElseThrow();
-        Trip saved = repository.save(projected.copyWithSchedule(List.of(travel)));
+        final Trip projected = repository.findById("trip-1").orElseThrow();
+        final Trip saved = repository.save(projected.copyWithSchedule(List.of(travel)));
 
         assertEquals(2, saved.getDayCount());
         assertEquals(1, saved.getDay(0).getScheduledEvents().size());
@@ -54,15 +56,15 @@ final class DayScopedTripRepositoryTest {
 
     @Test
     void saveWritesToTheSelectedDay() {
-        RecordingRepository delegate = new RecordingRepository();
-        AtomicInteger day = new AtomicInteger(1);
-        DayScopedTripRepository repository = new DayScopedTripRepository(delegate, day::get);
+        final RecordingRepository delegate = new RecordingRepository();
+        final AtomicInteger day = new AtomicInteger(1);
+        final DayScopedTripRepository repository = new DayScopedTripRepository(delegate, day::get);
 
-        ScheduledEvent travel = new ScheduledEvent(
+        final ScheduledEvent travel = new ScheduledEvent(
                 "event-day2", null,
                 LocalTime.of(10, 0), LocalTime.of(10, 30), EventType.TRAVEL,
                 "Travel");
-        Trip projected = repository.findById("trip-1").orElseThrow();
+        final Trip projected = repository.findById("trip-1").orElseThrow();
         repository.save(projected.copyWithSchedule(List.of(travel)));
 
         assertTrue(delegate.stored.getDay(0).getScheduledEvents().isEmpty());

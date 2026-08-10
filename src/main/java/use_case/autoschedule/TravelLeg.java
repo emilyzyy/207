@@ -19,11 +19,21 @@ public final class TravelLeg {
         this.arrival = arrival;
     }
 
+    /**
+     * Performs the o f operation.
+     * @param minutes the m in ut es value
+     * @param departure the d ep ar tu re value
+     * @return the result of the operation
+     */
     public static TravelLeg of(LocalTime departure, int minutes) {
         return new TravelLeg(departure, minutes, departure.plusMinutes(minutes));
     }
+    /**
+     * No travel at all, for the first activity of the day.
+     * @param at the a t value
+     * @return the result of the operation
+     */
 
-    /** No travel at all, for the first activity of the day. */
     public static TravelLeg none(LocalTime at) {
         return new TravelLeg(null, 0, at);
     }
@@ -43,8 +53,11 @@ public final class TravelLeg {
     public boolean isTravelled() {
         return departure != null && minutes > 0;
     }
+    /**
+     * The window this leg would occupy, or null when nothing is travelled.
+     * @return the result of the operation
+     */
 
-    /** The window this leg would occupy, or null when nothing is travelled. */
     public TimeWindow window() {
         return isTravelled() ? new TimeWindow(departure, arrival) : null;
     }

@@ -3,36 +3,38 @@ package views;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JList;
 import javax.swing.JLabel;
-import javax.swing.ListCellRenderer;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
+import javax.swing.ListCellRenderer;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import javax.swing.border.Border;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.LineBorder;
-import javax.swing.border.Border;
+import javax.swing.plaf.ComponentUI;
 import javax.swing.plaf.basic.BasicButtonUI;
 import javax.swing.plaf.basic.BasicComboBoxUI;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 import javax.swing.plaf.basic.BasicTabbedPaneUI;
-import javax.swing.plaf.ComponentUI;
 import javax.swing.text.JTextComponent;
+
 import entity.valueobjects.ActivityCategory;
 
 /** Shared visual constants derived from the retained web prototype. */
@@ -66,25 +68,40 @@ public final class SwingTheme {
     }
 
     private SwingTheme() {
+
     }
 
-    public static boolean isInterAvailable() { return "Inter".equals(FONT_FAMILY); }
+    public static boolean isInterAvailable() {
+        return "Inter".equals(FONT_FAMILY);
+    }
 
     private static boolean availableFont(String family) {
         for (String installed : java.awt.GraphicsEnvironment
                 .getLocalGraphicsEnvironment().getAvailableFontFamilyNames()) {
-            if (family.equalsIgnoreCase(installed)) return true;
+            if (family.equalsIgnoreCase(installed)) {
+                return true;
+            }
         }
         return false;
     }
 
+    /**
+     * Performs the c at eg or ys ur fa ce operation.
+     * @param category the c at eg or y value
+     * @return the result of the operation
+     */
     public static Color categorySurface(ActivityCategory category) {
         return category == null ? PANEL : categorySurfaces.getOrDefault(category, PANEL);
     }
 
-    public static boolean isDarkMode() { return darkMode; }
+    public static boolean isDarkMode() {
+        return darkMode;
+    }
+    /**
+     * Applies the theme-controlled field, popup, and arrow to a combo box.
+     * @param comboBox the c om bo bo x value
+     */
 
-    /** Applies the theme-controlled field, popup, and arrow to a combo box. */
     public static void styleComboBox(JComboBox<?> comboBox) {
         comboBox.setUI(new ThemedComboBoxUI());
         comboBox.setBackground(PANEL);
@@ -93,41 +110,64 @@ public final class SwingTheme {
         comboBox.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
+    /**
+     * Performs the s et da rk mo de operation.
+     * @param enabled the e na bl ed value
+     */
     public static void setDarkMode(boolean enabled) {
-        if (darkMode == enabled) return;
-        Color oldPanel = PANEL, oldBackground = BACKGROUND, oldSoft = BLUE_SOFT;
-        Color oldLine = LINE;
-        Color oldTravel = TRAVEL_SURFACE, oldWarningSoft = WARNING_SOFT;
-        Color oldNavy = NAVY, oldMuted = MUTED, oldSuccess = SUCCESS;
-        Color oldError = ERROR, oldWarning = WARNING;
-        java.util.Map<ActivityCategory, Color> oldCategories = categorySurfaces;
+        if (darkMode == enabled) {
+            return;
+        }
+        final Color oldPanel = PANEL, oldBackground = BACKGROUND, oldSoft = BLUE_SOFT;
+        final Color oldLine = LINE;
+        final Color oldTravel = TRAVEL_SURFACE, oldWarningSoft = WARNING_SOFT;
+        final Color oldNavy = NAVY, oldMuted = MUTED, oldSuccess = SUCCESS;
+        final Color oldError = ERROR, oldWarning = WARNING;
+        final java.util.Map<ActivityCategory, Color> oldCategories = categorySurfaces;
         darkMode = enabled;
         if (enabled) {
-            NAVY = new Color(232, 238, 247); BACKGROUND = new Color(18, 24, 32);
-            PANEL = new Color(28, 36, 48); LINE = new Color(57, 70, 86);
-            MUTED = new Color(174, 187, 202); BLUE_SOFT = new Color(38, 54, 75);
-            SUCCESS = new Color(92, 201, 143); ERROR = new Color(255, 133, 124);
-            WARNING = new Color(240, 190, 92); WARNING_SOFT = new Color(65, 51, 28);
-            TRAVEL_SURFACE = new Color(34, 43, 55); categorySurfaces = darkCategories();
-        } else {
-            NAVY = new Color(13, 35, 64); BACKGROUND = new Color(244, 247, 250);
-            PANEL = Color.WHITE; LINE = new Color(216, 224, 232);
-            MUTED = new Color(91, 106, 123); BLUE_SOFT = new Color(238, 245, 255);
-            SUCCESS = new Color(26, 127, 83); ERROR = new Color(181, 56, 48);
-            WARNING = new Color(146, 94, 6); WARNING_SOFT = new Color(255, 248, 230);
-            TRAVEL_SURFACE = new Color(247, 249, 252); categorySurfaces = lightCategories();
+            NAVY = new Color(232, 238, 247);
+            BACKGROUND = new Color(18, 24, 32);
+            PANEL = new Color(28, 36, 48);
+            LINE = new Color(57, 70, 86);
+            MUTED = new Color(174, 187, 202);
+            BLUE_SOFT = new Color(38, 54, 75);
+            SUCCESS = new Color(92, 201, 143);
+            ERROR = new Color(255, 133, 124);
+            WARNING = new Color(240, 190, 92);
+            WARNING_SOFT = new Color(65, 51, 28);
+            TRAVEL_SURFACE = new Color(34, 43, 55);
+            categorySurfaces = darkCategories();
+        }
+        else {
+            NAVY = new Color(13, 35, 64);
+            BACKGROUND = new Color(244, 247, 250);
+            PANEL = Color.WHITE;
+            LINE = new Color(216, 224, 232);
+            MUTED = new Color(91, 106, 123);
+            BLUE_SOFT = new Color(238, 245, 255);
+            SUCCESS = new Color(26, 127, 83);
+            ERROR = new Color(181, 56, 48);
+            WARNING = new Color(146, 94, 6);
+            WARNING_SOFT = new Color(255, 248, 230);
+            TRAVEL_SURFACE = new Color(247, 249, 252);
+            categorySurfaces = lightCategories();
         }
         installDefaults();
-        java.util.Map<Color, Color> backgrounds = new java.util.HashMap<>();
-        backgrounds.put(oldPanel, PANEL); backgrounds.put(oldBackground, BACKGROUND);
-        backgrounds.put(oldSoft, BLUE_SOFT); backgrounds.put(oldTravel, TRAVEL_SURFACE);
+        final java.util.Map<Color, Color> backgrounds = new java.util.HashMap<>();
+        backgrounds.put(oldPanel, PANEL);
+        backgrounds.put(oldBackground, BACKGROUND);
+        backgrounds.put(oldSoft, BLUE_SOFT);
+        backgrounds.put(oldTravel, TRAVEL_SURFACE);
         backgrounds.put(oldWarningSoft, WARNING_SOFT);
         for (ActivityCategory category : ActivityCategory.values()) {
             backgrounds.put(oldCategories.get(category), categorySurfaces.get(category));
         }
-        java.util.Map<Color, Color> foregrounds = new java.util.HashMap<>();
-        foregrounds.put(oldNavy, NAVY); foregrounds.put(oldMuted, MUTED);
-        foregrounds.put(oldSuccess, SUCCESS); foregrounds.put(oldError, ERROR);
+        final java.util.Map<Color, Color> foregrounds = new java.util.HashMap<>();
+        foregrounds.put(oldNavy, NAVY);
+        foregrounds.put(oldMuted, MUTED);
+        foregrounds.put(oldSuccess, SUCCESS);
+        foregrounds.put(oldError, ERROR);
         foregrounds.put(oldWarning, WARNING);
         for (java.awt.Window window : java.awt.Window.getWindows()) {
             SwingUtilities.updateComponentTreeUI(window);
@@ -139,25 +179,31 @@ public final class SwingTheme {
 
     private static void recolor(Component component, java.util.Map<Color, Color> backgrounds,
                                 java.util.Map<Color, Color> foregrounds, Color oldLine) {
-        Color nextBackground = backgrounds.get(component.getBackground());
-        if (nextBackground != null) component.setBackground(nextBackground);
-        Color nextForeground = foregrounds.get(component.getForeground());
-        if (nextForeground != null) component.setForeground(nextForeground);
+        final Color nextBackground = backgrounds.get(component.getBackground());
+        if (nextBackground != null) {
+            component.setBackground(nextBackground);
+        }
+        final Color nextForeground = foregrounds.get(component.getForeground());
+        if (nextForeground != null) {
+            component.setForeground(nextForeground);
+        }
 
         if (component instanceof JComponent) {
-            JComponent swingComponent = (JComponent) component;
+            final JComponent swingComponent = (JComponent) component;
             swingComponent.setBorder(recolorBorder(swingComponent.getBorder(), oldLine));
         }
         if (component instanceof JTextComponent) {
-            JTextComponent text = (JTextComponent) component;
+            final JTextComponent text = (JTextComponent) component;
             text.setBackground(PANEL);
             text.setForeground(NAVY);
             text.setCaretColor(NAVY);
             text.setSelectionColor(BLUE);
             text.setSelectedTextColor(Color.WHITE);
-        } else if (component instanceof JComboBox) {
+        }
+        else if (component instanceof JComboBox) {
             styleComboBox((JComboBox<?>) component);
-        } else if (component instanceof JTabbedPane) {
+        }
+        else if (component instanceof JTabbedPane) {
             ((JTabbedPane) component).setUI(new MinimalTabbedPaneUI());
             component.setBackground(PANEL);
             component.setForeground(NAVY);
@@ -166,7 +212,7 @@ public final class SwingTheme {
             themeButton((JButton) component);
         }
         if (component instanceof JScrollPane) {
-            JScrollPane pane = (JScrollPane) component;
+            final JScrollPane pane = (JScrollPane) component;
             pane.getViewport().setBackground(pane.getViewport().getView() == null
                     ? PANEL : pane.getViewport().getView().getBackground());
         }
@@ -183,12 +229,12 @@ public final class SwingTheme {
 
     private static Border recolorBorder(Border border, Color oldLine) {
         if (border instanceof LineBorder) {
-            LineBorder line = (LineBorder) border;
-            Color color = line.getLineColor().equals(oldLine) ? LINE : line.getLineColor();
+            final LineBorder line = (LineBorder) border;
+            final Color color = line.getLineColor().equals(oldLine) ? LINE : line.getLineColor();
             return BorderFactory.createLineBorder(color, line.getThickness(), line.getRoundedCorners());
         }
         if (border instanceof CompoundBorder) {
-            CompoundBorder compound = (CompoundBorder) border;
+            final CompoundBorder compound = (CompoundBorder) border;
             return BorderFactory.createCompoundBorder(
                     recolorBorder(compound.getOutsideBorder(), oldLine),
                     recolorBorder(compound.getInsideBorder(), oldLine));
@@ -203,7 +249,7 @@ public final class SwingTheme {
         button.setUI(new RoundedButtonUI());
         button.setOpaque(false);
         button.setContentAreaFilled(true);
-        Object role = button.getClientProperty("trippy.buttonRole");
+        final Object role = button.getClientProperty("trippy.buttonRole");
         if ("primary".equals(role)) {
             button.setBackground(button.isEnabled() ? BLUE : LINE);
             button.setForeground(button.isEnabled() ? Color.WHITE : MUTED);
@@ -241,7 +287,7 @@ public final class SwingTheme {
         UIManager.put("ComboBox.border", BorderFactory.createLineBorder(LINE, 1, true));
         UIManager.put("Button.background", PANEL);
         UIManager.put("Button.foreground", NAVY);
-        Cursor pointer = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR);
+        final Cursor pointer = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR);
         UIManager.put("Button.cursor", pointer);
         UIManager.put("ComboBox.cursor", pointer);
         UIManager.put("CheckBox.cursor", pointer);
@@ -270,6 +316,11 @@ public final class SwingTheme {
 
     /** Combo-box delegate whose field, popup rows, and arrow all follow this theme. */
     public static final class ThemedComboBoxUI extends BasicComboBoxUI {
+        /**
+         * Performs the c re at eu i operation.
+         * @param component the c om po ne nt value
+         * @return the result of the operation
+         */
         public static ComponentUI createUI(JComponent component) {
             return new ThemedComboBoxUI();
         }
@@ -281,7 +332,7 @@ public final class SwingTheme {
 
         @Override
         protected JButton createArrowButton() {
-            JButton button = new JButton("\u25be");
+            final JButton button = new JButton("\u25be");
             button.setFont(SMALL);
             button.setMargin(new java.awt.Insets(0, 6, 0, 6));
             button.setFocusable(false);
@@ -293,20 +344,27 @@ public final class SwingTheme {
 
     /** Removes the heavy native content frame around the planner tabs. */
     public static final class MinimalTabbedPaneUI extends BasicTabbedPaneUI {
-        @Override protected void paintContentBorder(Graphics g, int placement, int selected) { }
+        @Override protected void paintContentBorder(Graphics g, int placement, int selected) {
+        }
     }
 
     /** Paints every themed button as one quiet rounded control in both themes. */
     public static final class RoundedButtonUI extends BasicButtonUI {
+        /**
+         * Performs the c re at eu i operation.
+         * @param component the c om po ne nt value
+         * @return the result of the operation
+         */
         public static ComponentUI createUI(JComponent component) {
             return new RoundedButtonUI();
         }
+
         @Override public void paint(Graphics graphics, JComponent component) {
-            JButton button = (JButton) component;
-            Graphics2D g2 = (Graphics2D) graphics.create();
+            final JButton button = (JButton) component;
+            final Graphics2D g2 = (Graphics2D) graphics.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                     RenderingHints.VALUE_ANTIALIAS_ON);
-            Color fill = button.isEnabled() ? button.getBackground() : LINE;
+            final Color fill = button.isEnabled() ? button.getBackground() : LINE;
             g2.setColor(fill);
             g2.fillRoundRect(0, 0, component.getWidth(), component.getHeight(), 14, 14);
             if (!"primary".equals(button.getClientProperty("trippy.buttonRole"))) {
@@ -325,7 +383,7 @@ public final class SwingTheme {
         public Component getListCellRendererComponent(JList<?> list, Object value, int index,
                                                        boolean isSelected,
                                                        boolean cellHasFocus) {
-            JLabel label = (JLabel) super.getListCellRendererComponent(
+            final JLabel label = (JLabel) super.getListCellRendererComponent(
                     list, value, index, isSelected, cellHasFocus);
             label.setBackground(isSelected ? BLUE_SOFT : PANEL);
             label.setForeground(list.isEnabled() ? NAVY : MUTED);
@@ -356,7 +414,7 @@ public final class SwingTheme {
         }
 
         private JButton scrollButton() {
-            JButton button = new JButton();
+            final JButton button = new JButton();
             button.setPreferredSize(new Dimension(0, 0));
             button.setMinimumSize(new Dimension(0, 0));
             button.setMaximumSize(new Dimension(0, 0));
@@ -367,7 +425,7 @@ public final class SwingTheme {
     }
 
     private static java.util.Map<ActivityCategory, Color> lightCategories() {
-        java.util.Map<ActivityCategory, Color> colors = new java.util.EnumMap<>(ActivityCategory.class);
+        final java.util.Map<ActivityCategory, Color> colors = new java.util.EnumMap<>(ActivityCategory.class);
         colors.put(ActivityCategory.FOOD, new Color(255, 238, 218));
         colors.put(ActivityCategory.MUSEUM, new Color(242, 230, 255));
         colors.put(ActivityCategory.SHOPPING, new Color(255, 229, 240));
@@ -382,7 +440,7 @@ public final class SwingTheme {
     }
 
     private static java.util.Map<ActivityCategory, Color> darkCategories() {
-        java.util.Map<ActivityCategory, Color> colors = new java.util.EnumMap<>(ActivityCategory.class);
+        final java.util.Map<ActivityCategory, Color> colors = new java.util.EnumMap<>(ActivityCategory.class);
         colors.put(ActivityCategory.FOOD, new Color(72, 52, 36));
         colors.put(ActivityCategory.MUSEUM, new Color(58, 43, 73));
         colors.put(ActivityCategory.SHOPPING, new Color(70, 42, 56));
@@ -396,19 +454,32 @@ public final class SwingTheme {
         return colors;
     }
 
+    /**
+     * Performs the c ar db or de r operation.
+     * @return the result of the operation
+     */
     public static Border cardBorder() {
         return BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(LINE, 1, true),
                 BorderFactory.createEmptyBorder(12, 14, 12, 14));
     }
 
+    /**
+     * Performs the s ty le ca rd operation.
+     * @param component the c om po ne nt value
+     */
     public static void styleCard(JComponent component) {
         component.setBackground(PANEL);
         component.setBorder(cardBorder());
     }
 
+    /**
+     * Performs the p ri ma ry bu tt on operation.
+     * @param text the t ex t value
+     * @return the result of the operation
+     */
     public static JButton primaryButton(String text) {
-        JButton button = new JButton(text);
+        final JButton button = new JButton(text);
         button.putClientProperty("trippy.buttonRole", "primary");
         button.setFont(BODY.deriveFont(Font.BOLD));
         button.setForeground(Color.WHITE);
@@ -423,8 +494,13 @@ public final class SwingTheme {
         return button;
     }
 
+    /**
+     * Performs the s ec on da ry bu tt on operation.
+     * @param text the t ex t value
+     * @return the result of the operation
+     */
     public static JButton secondaryButton(String text) {
-        JButton button = new JButton(text);
+        final JButton button = new JButton(text);
         button.putClientProperty("trippy.buttonRole", "secondary");
         button.setFont(BODY);
         button.setForeground(NAVY);
@@ -444,9 +520,13 @@ public final class SwingTheme {
      * <p>The text carries the meaning; the tint is decoration. That ordering matters — the
      * Preview previously wrote " [locked]" into an HTML label, which is readable but reads
      * as an afterthought rather than a state.</p>
+      * @param text the t ex t value
+      * @param surface the s ur fa ce value
+      * @param ink the i nk value
+      * @return the result of the operation
      */
     public static JLabel badge(String text, Color ink, Color surface) {
-        JLabel badge = new JLabel(text);
+        final JLabel badge = new JLabel(text);
         badge.setFont(SMALL.deriveFont(Font.BOLD));
         badge.setForeground(ink);
         badge.setBackground(surface);
@@ -456,19 +536,25 @@ public final class SwingTheme {
         return badge;
     }
 
-    /** A section heading with a rule running to the right of it. */
+    /**
+     * A section heading with a rule running to the right of it.
+     * @param trailing the t ra il in g value
+     * @param accent the a cc en t value
+     * @param title the t it le value
+     * @return the result of the operation
+     */
     public static JPanel sectionHeader(String title, String trailing, Color accent) {
-        JPanel header = new JPanel(new BorderLayout(10, 0));
+        final JPanel header = new JPanel(new BorderLayout(10, 0));
         header.setOpaque(false);
         header.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel label = new JLabel(title);
+        final JLabel label = new JLabel(title);
         label.setFont(SMALL.deriveFont(Font.BOLD));
         label.setForeground(accent);
         header.add(label, BorderLayout.WEST);
 
         if (trailing != null && !trailing.isEmpty()) {
-            JLabel note = new JLabel(trailing);
+            final JLabel note = new JLabel(trailing);
             note.setFont(SMALL);
             note.setForeground(MUTED);
             header.add(note, BorderLayout.EAST);
@@ -481,22 +567,25 @@ public final class SwingTheme {
     /**
      * One before/after figure, as a small card: a bold {@code 0 → 12} over a caption.
      * Replaces a run-on sentence of numbers with three things the eye can compare.
+      * @param value the v al ue value
+      * @param caption the c ap ti on value
+      * @return the result of the operation
      */
     public static JPanel metricCard(String value, String caption) {
-        JPanel card = new JPanel();
+        final JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(BLUE_SOFT);
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(214, 229, 250)),
                 BorderFactory.createEmptyBorder(8, 12, 8, 12)));
 
-        JLabel figure = new JLabel(value);
+        final JLabel figure = new JLabel(value);
         figure.setFont(BODY.deriveFont(Font.BOLD));
         figure.setForeground(NAVY);
         figure.setAlignmentX(Component.LEFT_ALIGNMENT);
         card.add(figure);
 
-        JLabel label = new JLabel(caption);
+        final JLabel label = new JLabel(caption);
         label.setFont(SMALL);
         label.setForeground(MUTED);
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -506,9 +595,13 @@ public final class SwingTheme {
         return card;
     }
 
-    /** A caution strip, visually separate from both the figures and the reasoning. */
+    /**
+     * A caution strip, visually separate from both the figures and the reasoning.
+     * @param messages the m es sa ge s value
+     * @return the result of the operation
+     */
     public static JPanel warningBand(java.util.List<String> messages) {
-        JPanel band = new JPanel();
+        final JPanel band = new JPanel();
         band.setLayout(new BoxLayout(band, BoxLayout.Y_AXIS));
         band.setBackground(WARNING_SOFT);
         band.setBorder(BorderFactory.createCompoundBorder(
@@ -516,7 +609,7 @@ public final class SwingTheme {
                 BorderFactory.createEmptyBorder(8, 10, 8, 10)));
         band.setAlignmentX(Component.LEFT_ALIGNMENT);
         for (String message : messages) {
-            JLabel line = new JLabel("<html>&#9888; " + message
+            final JLabel line = new JLabel("<html>&#9888; " + message
                     .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                     + "</html>");
             line.setFont(SMALL);
@@ -529,8 +622,13 @@ public final class SwingTheme {
         return band;
     }
 
+    /**
+     * Performs the p la ce ho ld er bu tt on operation.
+     * @param text the t ex t value
+     * @return the result of the operation
+     */
     public static JButton placeholderButton(String text) {
-        JButton button = new JButton(text);
+        final JButton button = new JButton(text);
         button.setFont(SMALL);
         button.setEnabled(false);
         button.setToolTipText("Not wired for this milestone");

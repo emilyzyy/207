@@ -1,16 +1,17 @@
 package interface_adapter.presenters;
 
-import org.junit.jupiter.api.Test;
-import use_case.search.SearchFailure;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
+
+import use_case.search.SearchFailure;
 
 final class ActivitySearchFeedbackTest {
 
     @Test
     void noMatchExplainsTheQueryAndDestination() {
-        String message = ActivitySearchFeedback.format(
+        final String message = ActivitySearchFeedback.format(
                 SearchFailure.NO_MATCH, false, "museum", "Toronto");
 
         assertTrue(message.contains("\"museum\""));
@@ -20,7 +21,7 @@ final class ActivitySearchFeedbackTest {
 
     @Test
     void emptyDiscoverySuggestsZoomingOrNamedSearch() {
-        String message = ActivitySearchFeedback.format(
+        final String message = ActivitySearchFeedback.format(
                 SearchFailure.NO_MATCH, false, "", "Milan");
 
         assertTrue(message.contains("Milan"));

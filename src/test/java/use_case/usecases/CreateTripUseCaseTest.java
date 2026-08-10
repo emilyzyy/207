@@ -1,26 +1,28 @@
 package use_case.usecases;
 
-import use_case.ports.TripRepository;
-import entity.entities.Trip;
-import entity.valueobjects.TransportationMode;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.Optional;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+
+import entity.entities.Trip;
+import entity.valueobjects.TransportationMode;
+import use_case.ports.TripRepository;
+
 final class CreateTripUseCaseTest {
 
     @Test
     void createsAndPersistsTrimmedTrip() {
-        RecordingTripRepository repository = new RecordingTripRepository();
-        CreateTripUseCase interactor = new CreateTripUseCase(repository);
+        final RecordingTripRepository repository = new RecordingTripRepository();
+        final CreateTripUseCase interactor = new CreateTripUseCase(repository);
 
-        Trip result = interactor.execute(new CreateTripInputData(
+        final Trip result = interactor.execute(new CreateTripInputData(
                 "  Montreal  ",
                 LocalDate.of(2026, 8, 2),
                 LocalTime.of(9, 0),
@@ -34,8 +36,8 @@ final class CreateTripUseCaseTest {
 
     @Test
     void rejectsBlankDestinationAndDoesNotSave() {
-        RecordingTripRepository repository = new RecordingTripRepository();
-        CreateTripUseCase interactor = new CreateTripUseCase(repository);
+        final RecordingTripRepository repository = new RecordingTripRepository();
+        final CreateTripUseCase interactor = new CreateTripUseCase(repository);
 
         assertThrows(IllegalArgumentException.class, () -> interactor.execute(
                 new CreateTripInputData(
@@ -49,7 +51,7 @@ final class CreateTripUseCaseTest {
 
     @Test
     void rejectsMissingRequiredValues() {
-        CreateTripUseCase interactor =
+        final CreateTripUseCase interactor =
                 new CreateTripUseCase(new RecordingTripRepository());
 
         assertThrows(IllegalArgumentException.class, () -> interactor.execute(
@@ -72,7 +74,7 @@ final class CreateTripUseCaseTest {
 
     @Test
     void rejectsEndThatDoesNotFollowStart() {
-        CreateTripUseCase interactor =
+        final CreateTripUseCase interactor =
                 new CreateTripUseCase(new RecordingTripRepository());
 
         assertThrows(IllegalArgumentException.class, () -> interactor.execute(
@@ -86,10 +88,10 @@ final class CreateTripUseCaseTest {
 
     @Test
     void createsMultiDayTripWithConsecutiveDates() {
-        RecordingTripRepository repository = new RecordingTripRepository();
-        CreateTripUseCase interactor = new CreateTripUseCase(repository);
+        final RecordingTripRepository repository = new RecordingTripRepository();
+        final CreateTripUseCase interactor = new CreateTripUseCase(repository);
 
-        Trip result = interactor.execute(new CreateTripInputData(
+        final Trip result = interactor.execute(new CreateTripInputData(
                 "Toronto",
                 LocalDate.of(2026, 8, 2),
                 LocalTime.of(9, 0),
@@ -105,7 +107,7 @@ final class CreateTripUseCaseTest {
 
     @Test
     void rejectsZeroDayTrip() {
-        CreateTripUseCase interactor =
+        final CreateTripUseCase interactor =
                 new CreateTripUseCase(new RecordingTripRepository());
 
         assertThrows(IllegalArgumentException.class, () -> interactor.execute(

@@ -1,6 +1,20 @@
 package use_case.usecases;
 
-import use_case.ports.TripRepository;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
@@ -9,41 +23,29 @@ import entity.valueobjects.EventType;
 import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import use_case.ports.TripRepository;
 
 final class OptimizeItineraryInteractorTest {
 
     @Test
     void compactsOnlyCurrentActivitiesAndPreservesTripState() {
-        Trip trip = trip("trip-1", LocalTime.of(9, 0), LocalTime.of(18, 0));
-        Activity first = activity("first", LocalTime.of(9, 0), LocalTime.of(18, 0));
-        Activity second = activity("second", LocalTime.of(9, 0), LocalTime.of(18, 0));
-        Activity unrelatedBookmark = activity(
+        final Trip trip = trip("trip-1", LocalTime.of(9, 0), LocalTime.of(18, 0));
+        final Activity first = activity("first", LocalTime.of(9, 0), LocalTime.of(18, 0));
+        final Activity second = activity("second", LocalTime.of(9, 0), LocalTime.of(18, 0));
+        final Activity unrelatedBookmark = activity(
                 "bookmark-only", LocalTime.of(9, 0), LocalTime.of(18, 0));
         trip.bookmark(unrelatedBookmark);
         trip.addEvent(travel("travel-before", LocalTime.of(9, 0), LocalTime.of(9, 20)));
         trip.addEvent(event("event-first", first, LocalTime.of(10, 0), LocalTime.of(11, 0)));
         trip.addEvent(travel("travel-middle", LocalTime.of(11, 0), LocalTime.of(11, 20)));
         trip.addEvent(event("event-second", second, LocalTime.of(13, 0), LocalTime.of(14, 30)));
-        FakeTripRepository repository = new FakeTripRepository(trip);
-        RecordingOutputBoundary output = new RecordingOutputBoundary();
+        final FakeTripRepository repository = new FakeTripRepository(trip);
+        final RecordingOutputBoundary output = new RecordingOutputBoundary();
 
         new OptimizeItineraryInteractor(repository, output)
                 .execute(new OptimizeItineraryInputData(trip.getId()));
 
-        Trip saved = repository.saved;
+        final Trip saved = repository.saved;
         assertNotNull(saved);
         assertNotNull(output.success);
         assertNull(output.failure);
@@ -73,11 +75,11 @@ final class OptimizeItineraryInteractorTest {
 
     @Test
     void reportsFailureWithoutSavingWhenNoActivitiesAreScheduled() {
-        Trip trip = trip("empty", LocalTime.of(9, 0), LocalTime.of(18, 0));
+        final Trip trip = trip("empty", LocalTime.of(9, 0), LocalTime.of(18, 0));
         trip.bookmark(activity("bookmark-only", LocalTime.of(9, 0), LocalTime.of(18, 0)));
         trip.addEvent(travel("travel-only", LocalTime.of(9, 0), LocalTime.of(9, 20)));
-        FakeTripRepository repository = new FakeTripRepository(trip);
-        RecordingOutputBoundary output = new RecordingOutputBoundary();
+        final FakeTripRepository repository = new FakeTripRepository(trip);
+        final RecordingOutputBoundary output = new RecordingOutputBoundary();
 
         new OptimizeItineraryInteractor(repository, output)
                 .execute(new OptimizeItineraryInputData(trip.getId()));
@@ -89,13 +91,13 @@ final class OptimizeItineraryInteractorTest {
 
     @Test
     void reportsFailureWithoutSavingWhenCompactedActivityCannotFit() {
-        Trip trip = trip("cannot-fit", LocalTime.of(9, 0), LocalTime.of(11, 0));
-        Activity closesEarly = activity(
+        final Trip trip = trip("cannot-fit", LocalTime.of(9, 0), LocalTime.of(11, 0));
+        final Activity closesEarly = activity(
                 "closes-early", LocalTime.of(9, 0), LocalTime.of(10, 0));
         trip.addEvent(event(
                 "too-long", closesEarly, LocalTime.of(9, 0), LocalTime.of(10, 30)));
-        FakeTripRepository repository = new FakeTripRepository(trip);
-        RecordingOutputBoundary output = new RecordingOutputBoundary();
+        final FakeTripRepository repository = new FakeTripRepository(trip);
+        final RecordingOutputBoundary output = new RecordingOutputBoundary();
 
         new OptimizeItineraryInteractor(repository, output)
                 .execute(new OptimizeItineraryInputData(trip.getId()));
@@ -119,7 +121,7 @@ final class OptimizeItineraryInteractorTest {
 
     private ScheduledEvent event(
             String id, Activity activity, LocalTime start, LocalTime end) {
-        String notes = "event-first".equals(id) ? "Keep first notes" : "Keep second notes";
+        final String notes = "event-first".equals(id) ? "Keep first notes" : "Keep second notes";
         return new ScheduledEvent(id, activity, start, end, EventType.ACTIVITY, notes);
     }
 
@@ -128,7 +130,7 @@ final class OptimizeItineraryInteractorTest {
     }
 
     private List<String> ids(List<Activity> activities) {
-        List<String> ids = new ArrayList<String>();
+        final List<String> ids = new ArrayList<String>();
         for (Activity activity : activities) {
             ids.add(activity.getId());
         }

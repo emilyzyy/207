@@ -1,11 +1,10 @@
 package database.persistence;
 
-import entity.entities.Trip;
-import entity.valueobjects.TransportationMode;
-import use_case.ports.AuthService;
-import use_case.ports.AuthSession;
-import use_case.ports.ItineraryDataAccessInterface;
-import use_case.ports.TripRepository;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -14,13 +13,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import entity.entities.Trip;
+import entity.valueobjects.TransportationMode;
+import use_case.ports.AuthService;
+import use_case.ports.AuthSession;
+import use_case.ports.ItineraryDataAccessInterface;
+import use_case.ports.TripRepository;
 
 /**
  * Dual-mode routing only: signed-out uses local memory; signed-in uses the remote port.
@@ -55,7 +57,7 @@ final class DualModeItineraryDataAccessTest {
 
     @Test
     void signedOutSaveAndLoadUseLocalOnly() {
-        Trip trip = sampleTrip("local-1");
+        final Trip trip = sampleTrip("local-1");
         dual.save(trip);
 
         assertEquals(0, remote.saveCount.get());
@@ -70,7 +72,7 @@ final class DualModeItineraryDataAccessTest {
         dual.save(sampleTrip("a"));
         dual.save(sampleTrip("b"));
 
-        List<Trip> all = dual.findAll();
+        final List<Trip> all = dual.findAll();
         assertEquals(2, all.size());
         assertEquals(0, remote.findAllCount.get());
     }
@@ -78,7 +80,7 @@ final class DualModeItineraryDataAccessTest {
     @Test
     void signedInSaveWritesRemoteAndMirrorsLocal() {
         auth.signIn();
-        Trip trip = sampleTrip("cloud-1");
+        final Trip trip = sampleTrip("cloud-1");
         dual.save(trip);
 
         assertEquals(1, remote.saveItineraryCount.get());
@@ -92,7 +94,7 @@ final class DualModeItineraryDataAccessTest {
         remote.store.put("cloud-2", sampleTrip("cloud-2"));
         local.clear();
 
-        Optional<Trip> loaded = dual.loadItinerary("cloud-2");
+        final Optional<Trip> loaded = dual.loadItinerary("cloud-2");
         assertTrue(loaded.isPresent());
         assertEquals(1, remote.loadCount.get());
         assertTrue(local.findById("cloud-2").isPresent());

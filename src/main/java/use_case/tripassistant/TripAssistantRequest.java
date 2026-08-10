@@ -1,11 +1,5 @@
 package use_case.tripassistant;
 
-import entity.valueobjects.TripAssistantMessage;
-
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.WeatherWarning;
-import entity.valueobjects.TransportationMode;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -13,6 +7,12 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.WeatherWarning;
+import entity.valueobjects.TransportationMode;
+import entity.valueobjects.TripAssistantMessage;
 
 /** Complete current-trip evidence passed to a chatbot gateway on every turn. */
 public final class TripAssistantRequest {
@@ -54,25 +54,47 @@ public final class TripAssistantRequest {
                 values == null ? Collections.<T>emptyList() : values));
     }
 
-    public String getDestination() { return destination; }
+    public String getDestination() {
+        return destination;
+    }
 
-    public LocalDate getDate() { return date; }
+    public LocalDate getDate() {
+        return date;
+    }
 
-    public LocalTime getStartTime() { return startTime; }
+    public LocalTime getStartTime() {
+        return startTime;
+    }
 
-    public LocalTime getEndTime() { return endTime; }
+    public LocalTime getEndTime() {
+        return endTime;
+    }
 
-    public TransportationMode getTransportationMode() { return transportationMode; }
+    public TransportationMode getTransportationMode() {
+        return transportationMode;
+    }
 
-    public List<Activity> getActivities() { return activities; }
+    public List<Activity> getActivities() {
+        return activities;
+    }
 
-    public Set<String> getBookmarkedActivityIds() { return bookmarkedActivityIds; }
+    public Set<String> getBookmarkedActivityIds() {
+        return bookmarkedActivityIds;
+    }
 
-    public List<ScheduledEvent> getScheduledEvents() { return scheduledEvents; }
+    public List<ScheduledEvent> getScheduledEvents() {
+        return scheduledEvents;
+    }
 
-    public List<WeatherWarning> getWeather() { return weather; }
+    public List<WeatherWarning> getWeather() {
+        return weather;
+    }
 
-    public List<TripAssistantMessage> getHistory() { return history; }
+    public List<TripAssistantMessage> getHistory() {
+        return history;
+    }
 
-    public String getQuestion() { return question; }
+    public String getQuestion() {
+        return question;
+    }
 }

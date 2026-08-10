@@ -2,6 +2,7 @@ package views;
 
 import java.awt.FlowLayout;
 import java.time.LocalTime;
+
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -47,29 +48,41 @@ public final class TimeSelectorPanel extends JPanel {
         setTime(initial == null ? LocalTime.MIDNIGHT : initial);
     }
 
-    /** The selected time on a 24-hour clock. */
+    /**
+     * The selected time on a 24-hour clock.
+     * @return the result of the operation
+     */
     public LocalTime getTime() {
-        int twelve = hour.getSelectedIndex() == 0 ? NOON : hour.getSelectedIndex();
-        boolean afternoon = meridiem.getSelectedIndex() == 1;
+        final int twelve = hour.getSelectedIndex() == 0 ? NOON : hour.getSelectedIndex();
+        final boolean afternoon = meridiem.getSelectedIndex() == 1;
         // 12 AM is midnight and 12 PM is noon; every other hour simply shifts by twelve.
-        int twentyFour;
+        final int twentyFour;
         if (twelve == NOON) {
             twentyFour = afternoon ? NOON : 0;
-        } else {
+        }
+        else {
             twentyFour = afternoon ? twelve + NOON : twelve;
         }
         return LocalTime.of(twentyFour, minute.getSelectedIndex() * 15);
     }
 
+    /**
+     * Performs the s et ti me operation.
+     * @param time the t im e value
+     */
     public void setTime(LocalTime time) {
-        LocalTime value = time == null ? LocalTime.MIDNIGHT : time;
-        int twentyFour = value.getHour();
+        final LocalTime value = time == null ? LocalTime.MIDNIGHT : time;
+        final int twentyFour = value.getHour();
         meridiem.setSelectedIndex(twentyFour >= NOON ? 1 : 0);
-        int twelve = twentyFour % NOON;
+        final int twelve = twentyFour % NOON;
         hour.setSelectedIndex(twelve);
         minute.setSelectedIndex(Math.min(3, value.getMinute() / 15));
     }
 
+    /**
+     * Performs the a dd ch an ge li st en er operation.
+     * @param listener the l is te ne r value
+     */
     public void addChangeListener(Runnable listener) {
         hour.addActionListener(event -> listener.run());
         minute.addActionListener(event -> listener.run());

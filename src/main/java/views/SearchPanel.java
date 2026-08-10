@@ -1,5 +1,38 @@
 package views;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Rectangle;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextField;
+import javax.swing.Scrollable;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+
+import entity.entities.Activity;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.IndoorOutdoorType;
 import interface_adapter.controllers.ActivityDiscoveryController;
 import interface_adapter.controllers.BookmarkController;
 import interface_adapter.controllers.ManualPlanController;
@@ -9,37 +42,6 @@ import interface_adapter.viewmodels.SearchState;
 import interface_adapter.viewmodels.SearchViewModel;
 import interface_adapter.viewmodels.TripAccessViewModel;
 import interface_adapter.viewmodels.TripOptionsViewModel;
-import entity.entities.Activity;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.IndoorOutdoorType;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Cursor;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.util.ArrayList;
-import java.util.List;
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JComponent;
-import javax.swing.JList;
-import javax.swing.JLabel;
-import javax.swing.DefaultListCellRenderer;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
-import javax.swing.SwingWorker;
-import javax.swing.Scrollable;
-import javax.swing.SwingConstants;
-import java.awt.Rectangle;
 
 /** Activity discovery view backed by application-layer search, filter, and bookmark use cases. */
 public final class SearchPanel extends JPanel {
@@ -115,8 +117,8 @@ public final class SearchPanel extends JPanel {
         this.tripAccess = tripAccess;
         SwingTheme.styleComboBox(category);
         SwingTheme.styleComboBox(type);
-        Dimension categorySize = new Dimension(category.getPreferredSize().width, 32);
-        Dimension settingSize = new Dimension(type.getPreferredSize().width, 32);
+        final Dimension categorySize = new Dimension(category.getPreferredSize().width, 32);
+        final Dimension settingSize = new Dimension(type.getPreferredSize().width, 32);
         category.setPreferredSize(categorySize);
         category.setMinimumSize(categorySize);
         type.setPreferredSize(settingSize);
@@ -151,14 +153,14 @@ public final class SearchPanel extends JPanel {
     }
 
     private JPanel searchControls() {
-        JPanel controls = new JPanel();
+        final JPanel controls = new JPanel();
         controls.setOpaque(false);
         controls.setLayout(new BoxLayout(controls, BoxLayout.Y_AXIS));
 
-        JPanel titleRow = new JPanel(new BorderLayout());
+        final JPanel titleRow = new JPanel(new BorderLayout());
         titleRow.setOpaque(false);
         titleRow.setAlignmentX(LEFT_ALIGNMENT);
-        JLabel titleLabel = new JLabel("Discover activities");
+        final JLabel titleLabel = new JLabel("Discover activities");
         titleLabel.setFont(SwingTheme.HEADING);
         titleLabel.setForeground(SwingTheme.NAVY);
         titleLabel.setHorizontalAlignment(JLabel.CENTER);
@@ -168,7 +170,7 @@ public final class SearchPanel extends JPanel {
         controls.add(titleRow);
         controls.add(Box.createVerticalStrut(10));
 
-        JPanel searchRow = new JPanel(new BorderLayout(8, 0));
+        final JPanel searchRow = new JPanel(new BorderLayout(8, 0));
         searchRow.setOpaque(false);
         searchRow.setAlignmentX(LEFT_ALIGNMENT);
         search.setToolTipText("Search by activity name or category");
@@ -183,7 +185,7 @@ public final class SearchPanel extends JPanel {
         controls.add(searchRow);
         controls.add(Box.createVerticalStrut(4));
 
-        JPanel feedbackRow = new JPanel(new BorderLayout());
+        final JPanel feedbackRow = new JPanel(new BorderLayout());
         feedbackRow.setOpaque(false);
         feedbackRow.setAlignmentX(LEFT_ALIGNMENT);
         feedback.setFont(SwingTheme.SMALL);
@@ -195,7 +197,7 @@ public final class SearchPanel extends JPanel {
         controls.add(feedbackRow);
         controls.add(Box.createVerticalStrut(8));
 
-        JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        final JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         filters.setOpaque(false);
         filters.add(category);
         filters.add(type);
@@ -234,7 +236,9 @@ public final class SearchPanel extends JPanel {
     }
 
     private static ActivityCategory categoryForLabel(String label) {
-        if (label == null || "All categories".equals(label)) return null;
+        if (label == null || "All categories".equals(label)) {
+            return null;
+        }
         return ActivityCategory.valueOf(label.toUpperCase().replace('/', '_'));
     }
 
@@ -244,15 +248,15 @@ public final class SearchPanel extends JPanel {
         public Component getListCellRendererComponent(JList<?> list, Object value, int index,
                                                        boolean isSelected,
                                                        boolean cellHasFocus) {
-            JLabel label = (JLabel) super.getListCellRendererComponent(
+            final JLabel label = (JLabel) super.getListCellRendererComponent(
                     list, value, index, isSelected, cellHasFocus);
-            ActivityCategory activityCategory = categoryForLabel(
+            final ActivityCategory activityCategory = categoryForLabel(
                     value == null ? null : value.toString());
             if (activityCategory != null) {
                 label.setText(ActivityCategoryPresentation.decorate(
                         activityCategory, value.toString()));
             }
-            Color surface = activityCategory == null
+            final Color surface = activityCategory == null
                     ? SwingTheme.PANEL : SwingTheme.categorySurface(activityCategory);
             label.setBackground(surface);
             label.setForeground(list.isEnabled() ? SwingTheme.NAVY : SwingTheme.MUTED);
@@ -283,7 +287,7 @@ public final class SearchPanel extends JPanel {
                 ? state.getActivities().size() + " nearby activities" : state.getFeedback());
         results.removeAll();
         if (state.getActivities().isEmpty()) {
-            JLabel empty = new JLabel(state.isLoading()
+            final JLabel empty = new JLabel(state.isLoading()
                     ? "Loading places…"
                     : "No activities match your search and filters");
             empty.setFont(SwingTheme.BODY);
@@ -294,15 +298,17 @@ public final class SearchPanel extends JPanel {
             scroll.getVerticalScrollBar().setValue(0);
             return;
         }
-        String selectedId = selection == null
+        final String selectedId = selection == null
                 ? state.getSelectedActivityId() : selection.getSelectedActivityId();
-        List<Activity> ordered = orderSelectedFirst(state.getActivities(), selectedId);
+        final List<Activity> ordered = orderSelectedFirst(state.getActivities(), selectedId);
         final JComponent[] focused = {null};
         for (Activity activity : ordered) {
-            JComponent card = activityCard(activity, state, activity.getId().equals(selectedId));
+            final JComponent card = activityCard(activity, state, activity.getId().equals(selectedId));
             results.add(card);
             results.add(Box.createVerticalStrut(8));
-            if (activity.getId().equals(selectedId)) focused[0] = card;
+            if (activity.getId().equals(selectedId)) {
+                focused[0] = card;
+            }
         }
         final JComponent focusedCard = focused[0];
         results.revalidate();
@@ -315,10 +321,17 @@ public final class SearchPanel extends JPanel {
         }
     }
 
-    /** Keeps the selected place first so it is always visible at the top of the sidebar. */
+    /**
+     * Keeps the selected place first so it is always visible at the top of the sidebar.
+     * @param selectedId the s el ec te di d value
+     * @param activities the a ct iv it ie s value
+     * @return the result of the operation
+     */
     private static List<Activity> orderSelectedFirst(List<Activity> activities, String selectedId) {
-        if (selectedId == null) return new ArrayList<>(activities);
-        List<Activity> ordered = new ArrayList<>();
+        if (selectedId == null) {
+            return new ArrayList<>(activities);
+        }
+        final List<Activity> ordered = new ArrayList<>();
         for (Activity activity : activities) {
             if (activity.getId().equals(selectedId)) {
                 ordered.add(activity);
@@ -326,13 +339,15 @@ public final class SearchPanel extends JPanel {
             }
         }
         for (Activity activity : activities) {
-            if (!activity.getId().equals(selectedId)) ordered.add(activity);
+            if (!activity.getId().equals(selectedId)) {
+                ordered.add(activity);
+            }
         }
         return ordered;
     }
 
     private JComponent activityCard(Activity activity, SearchState state, boolean focused) {
-        JPanel card = new JPanel(new BorderLayout(10, 8));
+        final JPanel card = new JPanel(new BorderLayout(10, 8));
         SwingTheme.styleCard(card);
         card.setPreferredSize(new Dimension(10, 132));
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 132));
@@ -340,16 +355,16 @@ public final class SearchPanel extends JPanel {
         card.setBackground(SwingTheme.categorySurface(activity.getCategory()));
         card.putClientProperty("activityId", activity.getId());
         makeSelectable(card, activity, focused);
-        JLabel name = new JLabel(ActivityCategoryPresentation.decorate(
+        final JLabel name = new JLabel(ActivityCategoryPresentation.decorate(
                 activity.getCategory(), activity.getName()));
         name.setFont(SwingTheme.BODY.deriveFont(Font.BOLD));
         name.setForeground(SwingTheme.NAVY);
         card.add(name, BorderLayout.NORTH);
-        String hoursText = activity.getOpeningHoursText();
-        boolean hasHours = hoursText != null && !hoursText.trim().isEmpty();
-        String hoursLine = "<br><font color='#1f68e1'>Hours:</font> "
+        final String hoursText = activity.getOpeningHoursText();
+        final boolean hasHours = hoursText != null && !hoursText.trim().isEmpty();
+        final String hoursLine = "<br><font color='#1f68e1'>Hours:</font> "
                 + (hasHours ? htmlEscape(hoursText) : "Not on record");
-        JLabel details = new JLabel(String.format(
+        final JLabel details = new JLabel(String.format(
                 "<html><font color='#1f68e1'>%s</font><br>%s - %d min - %s%s</html>",
                 categoryLabel(activity.getCategory()),
                 activity.getLocation().getAddress(),
@@ -359,10 +374,10 @@ public final class SearchPanel extends JPanel {
         details.setForeground(SwingTheme.MUTED);
         card.add(details, BorderLayout.CENTER);
 
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        final JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         actions.setOpaque(false);
-        boolean saved = state.getBookmarkedIds().contains(activity.getId());
-        JButton bookmarkButton = saved
+        final boolean saved = state.getBookmarkedIds().contains(activity.getId());
+        final JButton bookmarkButton = saved
                 ? SwingTheme.secondaryButton("Remove bookmark")
                 : SwingTheme.primaryButton("Bookmark");
         bookmarkButton.setEnabled(bookmarks != null && canEditItinerary());
@@ -382,14 +397,15 @@ public final class SearchPanel extends JPanel {
             }
         });
         actions.add(bookmarkButton);
-        boolean planned = state.getScheduledIds().contains(activity.getId());
+        final boolean planned = state.getScheduledIds().contains(activity.getId());
         if (planned) {
-            JLabel plannedLabel = new JLabel("In day plan");
+            final JLabel plannedLabel = new JLabel("In day plan");
             plannedLabel.setFont(SwingTheme.SMALL);
             plannedLabel.setForeground(SwingTheme.MUTED);
             actions.add(plannedLabel);
-        } else {
-            JButton add = SwingTheme.primaryButton("Add to plan");
+        }
+        else {
+            final JButton add = SwingTheme.primaryButton("Add to plan");
             add.setEnabled(manualPlan != null && canEditItinerary());
             if (!canEditItinerary()) {
                 add.setToolTipText("View only — you cannot change this itinerary");
@@ -407,15 +423,27 @@ public final class SearchPanel extends JPanel {
 
     /** BoxLayout content that always tracks the viewport width, preventing lateral growth. */
     private static final class WidthTrackingPanel extends JPanel implements Scrollable {
-        @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
+        @Override public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
         @Override public int getScrollableUnitIncrement(Rectangle visible, int orientation,
-                                                         int direction) { return 16; }
+                                                         int direction) {
+                                                             return 16;
+                                                         }
+
         @Override public int getScrollableBlockIncrement(Rectangle visible, int orientation,
                                                           int direction) {
             return orientation == SwingConstants.VERTICAL ? visible.height : visible.width;
         }
-        @Override public boolean getScrollableTracksViewportWidth() { return true; }
-        @Override public boolean getScrollableTracksViewportHeight() { return false; }
+
+        @Override public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override public boolean getScrollableTracksViewportHeight() {
+            return false;
+        }
     }
 
     private void makeSelectable(JPanel card, Activity activity, boolean focused) {
@@ -451,7 +479,8 @@ public final class SearchPanel extends JPanel {
     private void addToPlan(Activity activity) {
         if (dayPlan != null && tripOptions != null) {
             AddToPlanDialog.open(this, activity, dayPlan, tripOptions, manualPlan);
-        } else {
+        }
+        else {
             manualPlan.add(activity.getId(), "");
         }
     }

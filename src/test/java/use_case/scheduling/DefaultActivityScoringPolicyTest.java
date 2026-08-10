@@ -1,24 +1,26 @@
 package use_case.scheduling;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalTime;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
 import entity.valueobjects.ActivityCategory;
 import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
 import entity.valueobjects.WeatherSeverity;
-import java.time.LocalTime;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class DefaultActivityScoringPolicyTest {
     private final DefaultActivityScoringPolicy policy = new DefaultActivityScoringPolicy();
 
     @Test
     void combinesRatingTravelWeatherAndExposure() {
-        Activity indoor = activity("indoor", 4.5, IndoorOutdoorType.INDOOR);
-        Activity mixed = activity("mixed", 4.5, IndoorOutdoorType.MIXED);
-        Activity outdoor = activity("outdoor", 4.5, IndoorOutdoorType.OUTDOOR);
+        final Activity indoor = activity("indoor", 4.5, IndoorOutdoorType.INDOOR);
+        final Activity mixed = activity("mixed", 4.5, IndoorOutdoorType.MIXED);
+        final Activity outdoor = activity("outdoor", 4.5, IndoorOutdoorType.OUTDOOR);
 
         assertEquals(8.5, policy.score(indoor, 10, WeatherSeverity.HIGH), 0.0001);
         assertEquals(6.5, policy.score(mixed, 10, WeatherSeverity.HIGH), 0.0001);

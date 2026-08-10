@@ -1,17 +1,19 @@
 package views;
 
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+
+import javax.swing.BorderFactory;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JSplitPane;
+
+import entity.entities.User;
 import interface_adapter.viewmodels.BookmarksViewModel;
 import interface_adapter.viewmodels.CalendarViewModel;
 import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.SearchViewModel;
 import interface_adapter.viewmodels.ShareViewModel;
-import entity.entities.User;
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import javax.swing.BorderFactory;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.JSplitPane;
 
 /** Main Swing frame for the milestone dashboard. */
 public final class TrippyFrame extends JFrame {
@@ -46,12 +48,12 @@ public final class TrippyFrame extends JFrame {
         setMinimumSize(new Dimension(1050, 680));
         setPreferredSize(new Dimension(1320, 820));
 
-        JPanel root = new JPanel(new BorderLayout(0, 12));
+        final JPanel root = new JPanel(new BorderLayout(0, 12));
         root.setBackground(SwingTheme.BACKGROUND);
         root.setBorder(BorderFactory.createEmptyBorder(0, 14, 14, 14));
         root.add(headerPanel, BorderLayout.NORTH);
 
-        JSplitPane content = new JSplitPane(
+        final JSplitPane content = new JSplitPane(
                 JSplitPane.HORIZONTAL_SPLIT, overviewPanel, plannerPanel);
         content.setResizeWeight(0.42);
         content.setDividerSize(8);
@@ -79,28 +81,52 @@ public final class TrippyFrame extends JFrame {
     public CalendarDialog getCalendarDialog() {
         return calendarDialog;
     }
+    /**
+     * Wires the brand click in the header to return to the gallery.
+     * @param onHomeAction the o nh om ea ct io n value
+     */
 
-    /** Wires the brand click in the header to return to the gallery. */
     public void setOnHomeAction(Runnable onHomeAction) {
         headerPanel.setOnHomeAction(onHomeAction);
     }
 
+    /**
+     * Performs the s et au th ac ti on operation.
+     * @param signedIn the s ig ne di n value
+     * @param action the a ct io n value
+     */
     public void setAuthAction(Runnable action, boolean signedIn) {
         headerPanel.setAuthAction(action, signedIn);
     }
 
+    /**
+     * Performs the s et pr of il ea ct io n operation.
+     * @param action the a ct io n value
+     */
     public void setProfileAction(Runnable action) {
         headerPanel.setProfileAction(action);
     }
 
+    /**
+     * Performs the s et fr ie nd sa ct io n operation.
+     * @param action the a ct io n value
+     */
     public void setFriendsAction(Runnable action) {
         headerPanel.setFriendsAction(action);
     }
 
+    /**
+     * Performs the s et in co mi ng fr ie nd re qu es tc ou nt operation.
+     * @param count the c ou nt value
+     */
     public void setIncomingFriendRequestCount(int count) {
         headerPanel.setIncomingFriendRequestCount(count);
     }
 
+    /**
+     * Performs the s et pr of il eu se r operation.
+     * @param user the u se r value
+     */
     public void setProfileUser(User user) {
         headerPanel.setProfileUser(user);
     }

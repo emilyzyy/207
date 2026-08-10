@@ -1,3 +1,5 @@
 package entity.valueobjects;
 
-public enum EventType { ACTIVITY, TRAVEL }
+public enum EventType {
+    ACTIVITY, TRAVEL
+}

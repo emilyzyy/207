@@ -8,6 +8,7 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -38,7 +39,7 @@ public final class LoginDialog extends JDialog {
         super(owner, "Trippy account", true);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        JPanel root = new JPanel(new BorderLayout(0, 12));
+        final JPanel root = new JPanel(new BorderLayout(0, 12));
         root.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
         root.setBackground(SwingTheme.PANEL);
 
@@ -46,9 +47,9 @@ public final class LoginDialog extends JDialog {
         titleLabel.setForeground(SwingTheme.NAVY);
         root.add(titleLabel, BorderLayout.NORTH);
 
-        JPanel form = new JPanel(new GridBagLayout());
+        final JPanel form = new JPanel(new GridBagLayout());
         form.setOpaque(false);
-        GridBagConstraints gc = new GridBagConstraints();
+        final GridBagConstraints gc = new GridBagConstraints();
         gc.gridx = 0;
         gc.gridy = 0;
         gc.anchor = GridBagConstraints.WEST;
@@ -94,13 +95,13 @@ public final class LoginDialog extends JDialog {
         status.setForeground(SwingTheme.ERROR);
         status.setFont(SwingTheme.SMALL);
 
-        JPanel footer = new JPanel(new BorderLayout(0, 10));
+        final JPanel footer = new JPanel(new BorderLayout(0, 10));
         footer.setOpaque(false);
         footer.add(status, BorderLayout.NORTH);
 
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        final JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         actions.setOpaque(false);
-        JButton cancel = new JButton("Cancel");
+        final JButton cancel = new JButton("Cancel");
         cancel.addActionListener(event -> {
             confirmed = false;
             dispose();
@@ -161,12 +162,19 @@ public final class LoginDialog extends JDialog {
     public String getConfirmPassword() {
         return new String(confirmPasswordField.getPassword());
     }
+    /**
+     * Optional username used only when creating an account.
+     * @return the result of the operation
+     */
 
-    /** Optional username used only when creating an account. */
     public String getUsername() {
         return usernameField.getText().trim();
     }
 
+    /**
+     * Performs the s ho we rr or operation.
+     * @param message the m es sa ge value
+     */
     public void showError(String message) {
         status.setText(message == null ? "Unable to authenticate" : message);
         status.setForeground(SwingTheme.ERROR);
@@ -178,13 +186,14 @@ public final class LoginDialog extends JDialog {
             return;
         }
         if (signUpMode) {
-            String passwordError = PasswordRules.validateNewPasswordPair(
+            final String passwordError = PasswordRules.validateNewPasswordPair(
                     getPassword(), getConfirmPassword());
             if (passwordError != null) {
                 showError(passwordError);
                 return;
             }
-        } else if (getPassword().isEmpty()) {
+        }
+        else if (getPassword().isEmpty()) {
             showError("Please enter your password.");
             return;
         }
@@ -205,7 +214,8 @@ public final class LoginDialog extends JDialog {
             usernameField.setVisible(true);
             switchPrompt.setText("Already have an account?");
             switchLink.setText("Sign in");
-        } else {
+        }
+        else {
             setTitle("Sign in");
             titleLabel.setText("Sign in");
             primaryButton.setText("Sign in");

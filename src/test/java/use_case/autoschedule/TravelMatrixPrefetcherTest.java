@@ -3,11 +3,13 @@ package use_case.autoschedule;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import use_case.autoschedule.testdoubles.FakeTravelTimeEstimator;
-import entity.valueobjects.TransportationMode;
 import java.time.LocalTime;
 import java.util.List;
+
 import org.junit.jupiter.api.Test;
+
+import entity.valueobjects.TransportationMode;
+import use_case.autoschedule.testdoubles.FakeTravelTimeEstimator;
 
 class TravelMatrixPrefetcherTest {
 
@@ -20,15 +22,15 @@ class TravelMatrixPrefetcherTest {
 
     @Test
     void requestsExactlyPairsTimesBuckets() {
-        FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(true);
-        TimeWindow availability = ProblemFixtures.window(9, 21);
+        final FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(true);
+        final TimeWindow availability = ProblemFixtures.window(9, 21);
 
-        TravelMatrix matrix = new TravelMatrixPrefetcher(estimator)
+        final TravelMatrix matrix = new TravelMatrixPrefetcher(estimator)
                 .prefetch(threeTasks(), TransportationMode.TRANSIT,
                         ProblemFixtures.TRIP_DATE, availability);
 
-        int pairs = 3 * 2;
-        int buckets = matrix.getPeriods().size();
+        final int pairs = 3 * 2;
+        final int buckets = matrix.getPeriods().size();
         assertEquals(4, buckets);
         assertEquals(pairs * buckets, estimator.callCount());
         assertEquals(pairs * buckets, matrix.legCount());
@@ -36,7 +38,7 @@ class TravelMatrixPrefetcherTest {
 
     @Test
     void timeInsensitiveModeCostsOneMatrix() {
-        FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false);
+        final FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false);
 
         new TravelMatrixPrefetcher(estimator).prefetch(threeTasks(), TransportationMode.WALKING,
                 ProblemFixtures.TRIP_DATE, ProblemFixtures.window(9, 21));
@@ -46,7 +48,7 @@ class TravelMatrixPrefetcherTest {
 
     @Test
     void neverRequestsALegFromAnActivityToItself() {
-        FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false);
+        final FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(false);
 
         new TravelMatrixPrefetcher(estimator).prefetch(threeTasks(), TransportationMode.WALKING,
                 ProblemFixtures.TRIP_DATE, ProblemFixtures.window(9, 21));
@@ -58,12 +60,12 @@ class TravelMatrixPrefetcherTest {
 
     @Test
     void storesDifferentDurationsPerPeriod() {
-        FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator()
+        final FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator()
                 .timeSensitive(true)
                 .route("a", "b", DeparturePeriod.EARLY, 10)
                 .route("a", "b", DeparturePeriod.PEAK, 40);
 
-        TravelMatrix matrix = new TravelMatrixPrefetcher(estimator)
+        final TravelMatrix matrix = new TravelMatrixPrefetcher(estimator)
                 .prefetch(threeTasks(), TransportationMode.DRIVING,
                         ProblemFixtures.TRIP_DATE, ProblemFixtures.window(9, 21));
 
@@ -73,21 +75,21 @@ class TravelMatrixPrefetcherTest {
 
     @Test
     void minMinutesIsNeverAboveAnyBucketValue() {
-        FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator()
+        final FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator()
                 .timeSensitive(true)
                 .route("a", "b", DeparturePeriod.EARLY, 10)
                 .route("a", "b", DeparturePeriod.MIDDAY, 25)
                 .route("a", "b", DeparturePeriod.PEAK, 40)
                 .route("a", "b", DeparturePeriod.LATE, 15);
 
-        TravelMatrix matrix = new TravelMatrixPrefetcher(estimator)
+        final TravelMatrix matrix = new TravelMatrixPrefetcher(estimator)
                 .prefetch(threeTasks(), TransportationMode.DRIVING,
                         ProblemFixtures.TRIP_DATE, ProblemFixtures.window(9, 21));
 
-        int min = matrix.minMinutes("a", "b");
+        final int min = matrix.minMinutes("a", "b");
         assertEquals(10, min);
         for (DeparturePeriod period : matrix.getPeriods().activePeriods()) {
-            LocalTime sample = period.sampleWithin(ProblemFixtures.window(9, 21));
+            final LocalTime sample = period.sampleWithin(ProblemFixtures.window(9, 21));
             assertTrue(matrix.estimateAt("a", "b", sample).getMinutes() >= min,
                     "the lower bound must never exceed a real bucket value");
         }
@@ -95,15 +97,15 @@ class TravelMatrixPrefetcherTest {
 
     @Test
     void exactOverridesReplaceTheBucketTheyFallIn() {
-        FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(true)
+        final FakeTravelTimeEstimator estimator = new FakeTravelTimeEstimator().timeSensitive(true)
                 .defaultMinutes(20);
-        TravelMatrix matrix = new TravelMatrixPrefetcher(estimator)
+        final TravelMatrix matrix = new TravelMatrixPrefetcher(estimator)
                 .prefetch(threeTasks(), TransportationMode.DRIVING,
                         ProblemFixtures.TRIP_DATE, ProblemFixtures.window(9, 21));
 
-        java.util.Map<TravelLegKey, TravelEstimate> overrides = new java.util.HashMap<>();
+        final java.util.Map<TravelLegKey, TravelEstimate> overrides = new java.util.HashMap<>();
         overrides.put(new TravelLegKey("a", "b", LocalTime.of(17, 0)), TravelEstimate.routed(55));
-        TravelMatrix refined = matrix.withOverrides(overrides);
+        final TravelMatrix refined = matrix.withOverrides(overrides);
 
         assertEquals(55, refined.estimateAt("a", "b", LocalTime.of(17, 30)).getMinutes());
         assertEquals(20, refined.estimateAt("a", "b", LocalTime.of(9, 30)).getMinutes());

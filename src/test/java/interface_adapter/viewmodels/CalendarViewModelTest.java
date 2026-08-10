@@ -1,24 +1,26 @@
 package interface_adapter.viewmodels;
 
-import entity.entities.ScheduledEvent;
-import entity.valueobjects.EventType;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collections;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import entity.entities.ScheduledEvent;
+import entity.valueobjects.EventType;
 
 final class CalendarViewModelTest {
 
     @Test
     void navigatesBySelectedScaleAndReturnsToTodayOrTripDate() {
-        LocalDate today = LocalDate.of(2026, 8, 3);
-        LocalDate tripDate = LocalDate.of(2026, 8, 12);
-        DashboardViewModel dashboard = dashboard("Toronto", tripDate);
-        DayPlanViewModel dayPlan = dayPlan(Collections.emptyList());
-        CalendarViewModel calendar = new CalendarViewModel(
+        final LocalDate today = LocalDate.of(2026, 8, 3);
+        final LocalDate tripDate = LocalDate.of(2026, 8, 12);
+        final DashboardViewModel dashboard = dashboard("Toronto", tripDate);
+        final DayPlanViewModel dayPlan = dayPlan(Collections.emptyList());
+        final CalendarViewModel calendar = new CalendarViewModel(
                 dashboard, dayPlan, () -> today);
 
         assertEquals(CalendarViewMode.MONTH, calendar.getState().getViewMode());
@@ -41,20 +43,20 @@ final class CalendarViewModelTest {
 
     @Test
     void observesTripEditsAndScheduleChangesWithoutDuplicatingState() {
-        LocalDate today = LocalDate.of(2026, 8, 3);
-        DashboardViewModel dashboard = dashboard("", null);
-        DayPlanViewModel dayPlan = dayPlan(Collections.emptyList());
-        CalendarViewModel calendar = new CalendarViewModel(
+        final LocalDate today = LocalDate.of(2026, 8, 3);
+        final DashboardViewModel dashboard = dashboard("", null);
+        final DayPlanViewModel dayPlan = dayPlan(Collections.emptyList());
+        final CalendarViewModel calendar = new CalendarViewModel(
                 dashboard, dayPlan, () -> today);
         assertNull(calendar.getState().getTripDate());
 
-        LocalDate editedDate = LocalDate.of(2026, 10, 4);
+        final LocalDate editedDate = LocalDate.of(2026, 10, 4);
         dashboard.setState(new DashboardState("Montreal", editedDate, "Clear", ""));
         assertEquals(editedDate, calendar.getState().getTripDate());
         assertEquals(editedDate, calendar.getState().getFocusDate());
         assertEquals("Montreal", calendar.getState().getDestination());
 
-        ScheduledEvent travel = new ScheduledEvent(
+        final ScheduledEvent travel = new ScheduledEvent(
                 "travel-1", null, LocalTime.of(9, 0), LocalTime.of(9, 20),
                 EventType.TRAVEL, "Walk downtown");
         dayPlan.setState(new DayPlanState(

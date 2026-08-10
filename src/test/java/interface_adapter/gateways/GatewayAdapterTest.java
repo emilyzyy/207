@@ -4,22 +4,24 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import use_case.autoschedule.TravelEstimate;
-import use_case.autoschedule.TravelEstimateQuality;
-import use_case.autoschedule.WeatherContext;
-import use_case.ports.DistanceService;
-import use_case.ports.WeatherService;
-import entity.entities.Trip;
-import entity.entities.WeatherWarning;
-import entity.valueobjects.Location;
-import entity.valueobjects.TransportationMode;
-import entity.valueobjects.WeatherSeverity;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Collections;
+
 import org.junit.jupiter.api.Test;
+
+import entity.entities.Trip;
+import entity.entities.WeatherWarning;
+import entity.valueobjects.Location;
+import entity.valueobjects.TransportationMode;
+import entity.valueobjects.WeatherSeverity;
+import use_case.autoschedule.TravelEstimate;
+import use_case.autoschedule.TravelEstimateQuality;
+import use_case.autoschedule.WeatherContext;
+import use_case.ports.DistanceService;
+import use_case.ports.WeatherService;
 
 /**
  * The two adapters that connect scheduling to the team's shared services. Both exist to
@@ -39,9 +41,9 @@ class GatewayAdapterTest {
 
     @Test
     void travelQualityIsReportedAsUnknownBecauseTheSharedPortCannotSay() {
-        DistanceService distances = (from, to, mode, departure) -> 25;
+        final DistanceService distances = (from, to, mode, departure) -> 25;
 
-        TravelEstimate estimate = new DistanceServiceTravelTimeEstimator(distances)
+        final TravelEstimate estimate = new DistanceServiceTravelTimeEstimator(distances)
                 .estimate(FROM, TO, TransportationMode.WALKING, DEPARTURE);
 
         assertEquals(25, estimate.getMinutes());
@@ -52,7 +54,7 @@ class GatewayAdapterTest {
 
     @Test
     void walkingIsNeverTreatedAsTimeSensitive() {
-        DistanceServiceTravelTimeEstimator estimator = new DistanceServiceTravelTimeEstimator(
+        final DistanceServiceTravelTimeEstimator estimator = new DistanceServiceTravelTimeEstimator(
                 (from, to, mode, departure) -> 10, true);
 
         assertFalse(estimator.isTimeSensitive(TransportationMode.WALKING),
@@ -61,9 +63,9 @@ class GatewayAdapterTest {
 
     @Test
     void transitIsAlwaysTreatedAsTimeSensitive() {
-        DistanceServiceTravelTimeEstimator withKey = new DistanceServiceTravelTimeEstimator(
+        final DistanceServiceTravelTimeEstimator withKey = new DistanceServiceTravelTimeEstimator(
                 (from, to, mode, departure) -> 10, true);
-        DistanceServiceTravelTimeEstimator withoutKey = new DistanceServiceTravelTimeEstimator(
+        final DistanceServiceTravelTimeEstimator withoutKey = new DistanceServiceTravelTimeEstimator(
                 (from, to, mode, departure) -> 10, false);
 
         assertTrue(withKey.isTimeSensitive(TransportationMode.TRANSIT));
@@ -73,9 +75,9 @@ class GatewayAdapterTest {
 
     @Test
     void drivingIsTimeSensitiveOnlyWhenATrafficAwareProviderIsConfigured() {
-        DistanceServiceTravelTimeEstimator withTraffic = new DistanceServiceTravelTimeEstimator(
+        final DistanceServiceTravelTimeEstimator withTraffic = new DistanceServiceTravelTimeEstimator(
                 (from, to, mode, departure) -> 10, true);
-        DistanceServiceTravelTimeEstimator withoutTraffic = new DistanceServiceTravelTimeEstimator(
+        final DistanceServiceTravelTimeEstimator withoutTraffic = new DistanceServiceTravelTimeEstimator(
                 (from, to, mode, departure) -> 10, false);
 
         assertTrue(withTraffic.isTimeSensitive(TransportationMode.DRIVING));
@@ -85,8 +87,8 @@ class GatewayAdapterTest {
 
     @Test
     void theDepartureTimeIsPassedThroughToTheSharedService() {
-        LocalDateTime[] seen = new LocalDateTime[1];
-        DistanceService recording = (from, to, mode, departure) -> {
+        final LocalDateTime[] seen = new LocalDateTime[1];
+        final DistanceService recording = (from, to, mode, departure) -> {
             seen[0] = departure;
             return 12;
         };
@@ -100,11 +102,11 @@ class GatewayAdapterTest {
     @Test
     void anHourlyForecastBecomesAContextThatCanInfluenceTiming() {
         // Shiyuan's getHourlyWarnings is the abstract method now, so a lambda supplies it.
-        WeatherService service = requested -> Arrays.asList(
+        final WeatherService service = requested -> Arrays.asList(
                 new WeatherWarning(FROM, LocalTime.of(9, 0), "Rain", WeatherSeverity.HIGH, ""),
                 new WeatherWarning(FROM, LocalTime.of(15, 0), "Clear", WeatherSeverity.LOW, ""));
 
-        WeatherContext context = new WeatherServiceContextGateway(service).contextFor(trip());
+        final WeatherContext context = new WeatherServiceContextGateway(service).contextFor(trip());
 
         assertTrue(context.isAvailable());
         assertTrue(context.canDistinguishTimes(),
@@ -115,10 +117,10 @@ class GatewayAdapterTest {
 
     @Test
     void aSingleKnownHourStillCannotInfluenceTiming() {
-        WeatherService service = requested -> Collections.singletonList(
+        final WeatherService service = requested -> Collections.singletonList(
                 new WeatherWarning(FROM, LocalTime.of(12, 0), "Rain", WeatherSeverity.HIGH, ""));
 
-        WeatherContext context = new WeatherServiceContextGateway(service).contextFor(trip());
+        final WeatherContext context = new WeatherServiceContextGateway(service).contextFor(trip());
 
         assertTrue(context.isAvailable());
         assertFalse(context.canDistinguishTimes(),
@@ -128,11 +130,11 @@ class GatewayAdapterTest {
 
     @Test
     void aFailingWeatherServiceCostsTheTravellerNothing() {
-        WeatherService failing = requested -> {
+        final WeatherService failing = requested -> {
             throw new IllegalStateException("forecast service unavailable");
         };
 
-        WeatherContext context = new WeatherServiceContextGateway(failing).contextFor(trip());
+        final WeatherContext context = new WeatherServiceContextGateway(failing).contextFor(trip());
 
         assertFalse(context.isAvailable(),
                 "weather is a preference; losing it must never cost the schedule");
@@ -140,9 +142,9 @@ class GatewayAdapterTest {
 
     @Test
     void anEmptyOrSeverityLessForecastIsTreatedAsNoForecast() {
-        WeatherService none = requested -> null;
-        WeatherService empty = requested -> Collections.emptyList();
-        WeatherService blank = requested -> Collections.singletonList(
+        final WeatherService none = requested -> null;
+        final WeatherService empty = requested -> Collections.emptyList();
+        final WeatherService blank = requested -> Collections.singletonList(
                 new WeatherWarning(FROM, LocalTime.of(12, 0), "Unknown", null, ""));
 
         assertFalse(new WeatherServiceContextGateway(none).contextFor(trip()).isAvailable());
