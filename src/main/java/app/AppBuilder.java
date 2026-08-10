@@ -60,6 +60,7 @@ import use_case.ports.TripAssistantGateway;
 import use_case.ports.WeatherService;
 import use_case.scheduling.DefaultActivityScoringPolicy;
 import use_case.usecases.CreateTripInputData;
+import use_case.usecases.LoadViewportPlacesUseCase;
 import use_case.usecases.PlaceHydrator;
 import use_case.tripassistant.TripAssistantDecision;
 import use_case.tripassistant.TripAssistantInteractor;
@@ -204,9 +205,7 @@ public final class AppBuilder {
                 dashboardViewModel, searchViewModel, bookmarksViewModel,
                 dayPlanViewModel, activitySelectionViewModel);
         overviewPanel.setViewportPlacesLoader(
-                (south, west, north, east, maxResults) ->
-                        app.places.searchInBounds(
-                                trip.getDestination(), south, west, north, east, maxResults));
+                new LoadViewportPlacesUseCase(app.places, trip.getDestination()));
         if (app.places instanceof DestinationGeocoder) {
             overviewPanel.setDestinationGeocoder((DestinationGeocoder) app.places);
         }
@@ -326,10 +325,8 @@ public final class AppBuilder {
                 dashboardViewModel, searchViewModel, bookmarksViewModel,
                 dayPlanViewModel, activitySelectionViewModel);
         overviewPanel.setViewportPlacesLoader(
-                (south, west, north, east, maxResults) ->
-                        app.places.searchInBounds(
-                                dashboardViewModel.getState().getDestination(),
-                                south, west, north, east, maxResults));
+                new LoadViewportPlacesUseCase(app.places,
+                        dashboardViewModel.getState().getDestination()));
         if (app.places instanceof DestinationGeocoder) {
             overviewPanel.setDestinationGeocoder((DestinationGeocoder) app.places);
         }
@@ -365,7 +362,7 @@ public final class AppBuilder {
                 searchViewModel,
                 bookmarksViewModel);
         if (seedDemo) {
-            Trip demo = app.createTrip.execute(new CreateTripInputData(
+            Trip demo = app.createTrip.executeAndReturn(new CreateTripInputData(
                     "Toronto",
                     LocalDate.now().plusDays(5),
                     LocalTime.of(9, 0),

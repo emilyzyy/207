@@ -2,6 +2,7 @@ package views;
 
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
+import use_case.ports.ViewportPlacesLoader;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -163,14 +164,6 @@ public final class MapPanel extends JPanel {
     private ViewportRequest queuedViewportRequest;
     private String activeViewportKey = "";
     private String lastLoadedViewportKey = "";
-
-    /**
-     * Supplies places for a visible map window. Implementations should perform blocking
-     * lookups off the Swing event-dispatch thread (the loader is invoked on a worker thread).
-     */
-    public interface ViewportPlacesLoader {
-        List<Activity> load(double south, double west, double north, double east, int maxResults);
-    }
 
     public MapPanel(int width, int height) {
         this(

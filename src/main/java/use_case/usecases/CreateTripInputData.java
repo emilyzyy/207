@@ -1,8 +1,10 @@
 package use_case.usecases;
 
-import entity.valueobjects.TransportationMode;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
+
+import entity.valueobjects.TransportationMode;
 
 /** Immutable input for the Create Trip interactor. */
 public final class CreateTripInputData {
@@ -12,6 +14,7 @@ public final class CreateTripInputData {
     private final LocalTime endTime;
     private final TransportationMode transportationMode;
     private final int dayCount;
+    private final List<String> companionIds;
 
     public CreateTripInputData(
             String destination,
@@ -29,12 +32,24 @@ public final class CreateTripInputData {
             LocalTime endTime,
             TransportationMode transportationMode,
             int dayCount) {
+        this(destination, date, startTime, endTime, transportationMode, dayCount, null);
+    }
+
+    public CreateTripInputData(
+            String destination,
+            LocalDate date,
+            LocalTime startTime,
+            LocalTime endTime,
+            TransportationMode transportationMode,
+            int dayCount,
+            List<String> companionIds) {
         this.destination = destination;
         this.date = date;
         this.startTime = startTime;
         this.endTime = endTime;
         this.transportationMode = transportationMode;
         this.dayCount = dayCount;
+        this.companionIds = companionIds;
     }
 
     public String getDestination() {
@@ -59,5 +74,9 @@ public final class CreateTripInputData {
 
     public int getDayCount() {
         return dayCount;
+    }
+
+    public List<String> getCompanionIds() {
+        return companionIds;
     }
 }

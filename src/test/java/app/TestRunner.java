@@ -12,7 +12,7 @@ import java.time.LocalTime;
 public final class TestRunner {
     public static void main(String[] args) {
         AppContainer app = new AppBuilder().buildOffline();
-        Trip trip = app.createTrip.execute(new CreateTripInputData(
+        Trip trip = app.createTrip.executeAndReturn(new CreateTripInputData(
                 "Toronto", LocalDate.of(2026, 7, 18),
                 LocalTime.of(9, 0), LocalTime.of(19, 0),
                 TransportationMode.TRANSIT));

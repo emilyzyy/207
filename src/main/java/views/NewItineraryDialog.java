@@ -1,8 +1,5 @@
 package views;
 
-import entity.entities.User;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -20,19 +17,13 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Ellipse2D;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -48,24 +39,22 @@ import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
+import entity.entities.User;
+import use_case.ports.CityCandidate;
+import use_case.ports.CitySearchGeocoder;
+
 /**
  * Modal "New Itinerary" form combining a live city autocomplete with a trip-date picker.
  *
- * <p>Candidates come from Open-Meteo's geocoding API and expand downward beneath the city
- * field while the user types, one option per row, so ambiguous names surface as separate
- * options (e.g. "London, Ontario, Canada" vs "London, England, UK"). The user must pick a
- * suggested city before the itinerary can be created.</p>
+ * <p>Candidates come from the injected {@link CitySearchGeocoder} and expand downward beneath
+ * the city field while the user types, one option per row, so ambiguous names surface as
+ * separate options (e.g. "London, Ontario, Canada" vs "London, England, UK"). The user must
+ * pick a suggested city before the itinerary can be created.</p>
  */
 public final class NewItineraryDialog extends JDialog {
-    private static final String GEOCODING_ENDPOINT =
-            "https://geocoding-api.open-meteo.com/v1/search";
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(8);
     private static final int MAX_SUGGESTIONS = 8;
     private static final int CELL_HEIGHT = 28;
     private static final int VISIBLE_ROWS = 4;
-    private static final HttpClient HTTP = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5)).build();
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final JTextField cityField = new JTextField();
     private final DefaultListModel<String> suggestionModel = new DefaultListModel<>();
@@ -76,19 +65,24 @@ public final class NewItineraryDialog extends JDialog {
     private final JButton okButton = SwingTheme.primaryButton("Create Itinerary");
     private final Timer debounce = new Timer(400, e -> loadSuggestions(cityField.getText().trim()));
 
-    private List<Suggestion> suggestions = Collections.emptyList();
-    private Suggestion selected;
+    private List<CityCandidate> suggestions = Collections.emptyList();
+    private CityCandidate selected;
     private boolean confirmed;
     private boolean programmaticUpdate;
     private final Set<String> selectedFriendIds = new LinkedHashSet<>();
     private final List<User> friends;
+    private final CitySearchGeocoder geocoder;
 
-    public NewItineraryDialog(Frame owner) {
-        this(owner, Collections.emptyList());
+    public NewItineraryDialog(Frame owner, CitySearchGeocoder geocoder) {
+        this(owner, geocoder, Collections.emptyList());
     }
 
-    public NewItineraryDialog(Frame owner, List<User> friends) {
+    public NewItineraryDialog(Frame owner, CitySearchGeocoder geocoder, List<User> friends) {
         super(owner, "New Itinerary", true);
+        if (geocoder == null) {
+            throw new IllegalArgumentException("City search geocoder is required");
+        }
+        this.geocoder = geocoder;
         this.friends = friends == null ? Collections.emptyList() : new ArrayList<>(friends);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         debounce.setRepeats(false);
@@ -364,41 +358,26 @@ public final class NewItineraryDialog extends JDialog {
     private void loadSuggestions(String query) {
         if (query == null || query.isBlank()) return;
         new Thread(() -> {
+            List<CityCandidate> results;
             try {
-                String url = GEOCODING_ENDPOINT + "?name="
-                        + URLEncoder.encode(query, StandardCharsets.UTF_8)
-                        + "&count=" + MAX_SUGGESTIONS + "&language=en&format=json";
-                HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-                        .timeout(REQUEST_TIMEOUT)
-                        .header("Accept", "application/json")
-                        .header("User-Agent", "Trippy-CSC207/1.0")
-                        .GET().build();
-                HttpResponse<String> response = HTTP.send(request,
-                        HttpResponse.BodyHandlers.ofString());
-                List<Suggestion> result = new ArrayList<>();
-                if (response.statusCode() == 200) {
-                    SuggestionsResponse parsed =
-                            MAPPER.readValue(response.body(), SuggestionsResponse.class);
-                    if (parsed.results != null) {
-                        result.addAll(parsed.results);
-                    }
-                }
-                List<Suggestion> finalResults = result;
-                SwingUtilities.invokeLater(() -> applySuggestions(query, finalResults));
-            } catch (Exception ignored) {
-                SwingUtilities.invokeLater(() -> applySuggestions(query, Collections.emptyList()));
+                results = geocoder.search(query, MAX_SUGGESTIONS);
             }
+            catch (RuntimeException exception) {
+                results = Collections.emptyList();
+            }
+            final List<CityCandidate> captured = results;
+            SwingUtilities.invokeLater(() -> applySuggestions(query, captured));
         }, "City-Suggestions").start();
     }
 
-    private void applySuggestions(String query, List<Suggestion> results) {
+    private void applySuggestions(String query, List<CityCandidate> results) {
         if (!query.equals(cityField.getText().trim())) {
             return;
         }
         suggestions = results;
         suggestionModel.clear();
-        for (Suggestion s : results) {
-            suggestionModel.addElement(displayName(s));
+        for (CityCandidate candidate : results) {
+            suggestionModel.addElement(displayName(candidate));
         }
         if (results.isEmpty()) {
             statusLabel.setText("No matches for \"" + query + "\".");
@@ -428,13 +407,13 @@ public final class NewItineraryDialog extends JDialog {
         }
     }
 
-    private void select(Suggestion s) {
-        selected = s;
+    private void select(CityCandidate candidate) {
+        selected = candidate;
         programmaticUpdate = true;
-        cityField.setText(displayName(s));
+        cityField.setText(displayName(candidate));
         programmaticUpdate = false;
         okButton.setEnabled(true);
-        statusLabel.setText("Selected " + displayName(s) + ".");
+        statusLabel.setText("Selected " + displayName(candidate) + ".");
         setSuggestionsVisible(false);
     }
 
@@ -465,30 +444,21 @@ public final class NewItineraryDialog extends JDialog {
         return label;
     }
 
-    private static String displayName(Suggestion s) {
-        String name = s.name == null || s.name.isBlank() ? "Unknown" : s.name;
-        StringBuilder b = new StringBuilder(name);
-        if (s.admin1 != null && !s.admin1.isBlank() && !s.admin1.equalsIgnoreCase(name)) {
-            b.append(", ").append(s.admin1);
+    private static String displayName(CityCandidate candidate) {
+        String name = candidate.getName();
+        if (name == null || name.isBlank()) {
+            name = "Unknown";
         }
-        if (s.country != null && !s.country.isBlank()
-                && (s.admin1 == null || !s.country.equalsIgnoreCase(s.admin1))) {
-            b.append(", ").append(s.country);
+        StringBuilder b = new StringBuilder(name);
+        if (candidate.getRegion() != null && !candidate.getRegion().isBlank()
+                && !candidate.getRegion().equalsIgnoreCase(name)) {
+            b.append(", ").append(candidate.getRegion());
+        }
+        if (candidate.getCountry() != null && !candidate.getCountry().isBlank()
+                && (candidate.getRegion() == null
+                        || !candidate.getCountry().equalsIgnoreCase(candidate.getRegion()))) {
+            b.append(", ").append(candidate.getCountry());
         }
         return b.toString();
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private static final class SuggestionsResponse {
-        public List<Suggestion> results;
-    }
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    private static final class Suggestion {
-        public String name;
-        public String admin1;
-        public String country;
-        public Double latitude;
-        public Double longitude;
     }
 }

@@ -10,6 +10,7 @@ import interface_adapter.viewmodels.SearchViewModel;
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import use_case.ports.DestinationGeocoder;
+import use_case.ports.ViewportPlacesLoader;
 import entity.valueobjects.GeoPoint;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -344,7 +345,7 @@ public final class OverviewPanel extends JPanel {
         return weatherPreviewButton;
     }
 
-    public void setViewportPlacesLoader(MapPanel.ViewportPlacesLoader loader) {
+    public void setViewportPlacesLoader(ViewportPlacesLoader loader) {
         mapPanel.setViewportLoader(loader);
     }
 

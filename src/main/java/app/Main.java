@@ -180,32 +180,35 @@ public final class Main {
                 },
                 () -> {
                     List<User> friends = loadFriends(app);
-                    NewItineraryDialog dialog = new NewItineraryDialog(galleryFrame, friends);
+                    NewItineraryDialog dialog =
+                            new NewItineraryDialog(galleryFrame, app.citySearch, friends);
                     dialog.setVisible(true);
                     if (!dialog.isConfirmed()) return;
                     String dest = dialog.getDestination();
                     LocalDate date = dialog.getDate();
-                    List<User> selectedFriends = dialog.getSelectedFriends();
+                    List<String> memberIds = new ArrayList<>();
+                    for (User friend : dialog.getSelectedFriends()) {
+                        memberIds.add(friend.getId());
+                    }
+                    app.createTripPresenter.setOnCreated(created -> SwingUtilities.invokeLater(() -> {
+                        TrippyFrame tripFrame =
+                                openTripFrame(builder, app, created, galleryFrame, auth);
+                        enrichItineraryAsync(builder, app, created.getId(), dest, tripFrame);
+                    }));
+                    app.createTripPresenter.setOnError(message -> SwingUtilities.invokeLater(() -> {
+                        galleryFrame.setCursor(Cursor.getDefaultCursor());
+                        JOptionPane.showMessageDialog(galleryFrame,
+                                "Could not create the itinerary: " + message,
+                                "New Itinerary", JOptionPane.ERROR_MESSAGE);
+                    }));
                     galleryFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                     new Thread(() -> {
                         try {
-                            Trip created = app.createTrip.execute(dest, date,
+                            app.createTripController.create(dest, date,
                                     LocalTime.of(9, 0), LocalTime.of(18, 0),
-                                    TransportationMode.WALKING, dialog.getDayCount());
-                            if (app.account != null && !selectedFriends.isEmpty()) {
-                                List<String> memberIds = new ArrayList<>();
-                                for (User friend : selectedFriends) {
-                                    memberIds.add(friend.getId());
-                                }
-                                app.account.setTripMembers(created.getId(), memberIds);
-                            }
-                            SwingUtilities.invokeLater(() -> {
-                                TrippyFrame tripFrame =
-                                        openTripFrame(builder, app, created, galleryFrame, auth);
-                                enrichItineraryAsync(builder, app, created.getId(), dest, tripFrame);
-                            });
-                        } catch (Exception exception) {
-                            exception.printStackTrace();
+                                    TransportationMode.WALKING, dialog.getDayCount(), memberIds);
+                        }
+                        catch (RuntimeException exception) {
                             SwingUtilities.invokeLater(() -> {
                                 galleryFrame.setCursor(Cursor.getDefaultCursor());
                                 JOptionPane.showMessageDialog(galleryFrame,
@@ -496,7 +499,7 @@ public final class Main {
         AppBuilder builder = new AppBuilder();
         AppContainer app = builder.build();
 
-        Trip demo = app.createTrip.execute(new CreateTripInputData(
+        Trip demo = app.createTrip.executeAndReturn(new CreateTripInputData(
                 "Toronto",
                 LocalDate.of(2026, 7, 18),
                 LocalTime.of(9, 0),

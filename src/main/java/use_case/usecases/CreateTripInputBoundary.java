@@ -1,8 +1,11 @@
 package use_case.usecases;
 
-import entity.entities.Trip;
-
 /** Input boundary for creating and storing a new trip. */
 public interface CreateTripInputBoundary {
-    Trip execute(CreateTripInputData inputData);
+    /**
+     * Creates a new trip from the given input.
+     *
+     * @param inputData the validated trip details
+     */
+    void execute(CreateTripInputData inputData);
 }
