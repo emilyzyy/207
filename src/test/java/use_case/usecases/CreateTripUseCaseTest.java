@@ -306,7 +306,7 @@ final class CreateTripUseCaseTest {
         }
 
         @Override
-        public java.util.List<entity.entities.User> listFriends() {
+        public java.util.List<entity.entities.Friendship> listAcceptedFriendships() {
             return java.util.List.of();
         }
 
