@@ -1,25 +1,24 @@
 package interface_adapter.controllers;
 
-import java.util.List;
-import java.util.function.Supplier;
-
+import interface_adapter.presenters.ActivityDiscoveryPresenter;
+import use_case.usecases.FilterActivitiesUseCase;
+import use_case.usecases.SearchActivitiesUseCase;
+import use_case.search.ActivitySearchRequest;
+import use_case.search.ActivitySearchResult;
 import entity.entities.Activity;
 import entity.valueobjects.ActivityCategory;
 import entity.valueobjects.IndoorOutdoorType;
-import interface_adapter.presenters.ActivityDiscoveryPresenter;
-import use_case.search.ActivitySearchRequest;
-import use_case.search.ActivitySearchResult;
-import use_case.usecases.FilterActivitiesUseCase;
-import use_case.usecases.SearchActivitiesInteractor;
+import java.util.List;
+import java.util.function.Supplier;
 
 /** Converts Swing search/filter values into application use-case calls. */
 public final class ActivityDiscoveryController {
-    private final SearchActivitiesInteractor search;
+    private final SearchActivitiesUseCase search;
     private final FilterActivitiesUseCase filter;
     private final Supplier<String> destination;
     private final ActivityDiscoveryPresenter presenter;
 
-    public ActivityDiscoveryController(SearchActivitiesInteractor search,
+    public ActivityDiscoveryController(SearchActivitiesUseCase search,
                                        FilterActivitiesUseCase filter,
                                        Supplier<String> destination,
                                        ActivityDiscoveryPresenter presenter) {
@@ -32,32 +31,24 @@ public final class ActivityDiscoveryController {
         this.presenter = presenter;
     }
 
-    /**
-     * Performs the e xe cu te operation.
-     * @param minimumRating the m in im um ra ti ng value
-     * @param category the c at eg or y value
-     * @param query the q ue ry value
-     */
     public void execute(String query, ActivityCategory category, double minimumRating,
                         IndoorOutdoorType type) {
         try {
-            final String currentDestination = destination.get();
+            String currentDestination = destination.get();
             if (currentDestination == null || currentDestination.trim().isEmpty()) {
                 throw new IllegalArgumentException("Create a trip before searching for activities");
             }
-            final String normalizedQuery = query == null ? "" : query.trim();
-            final ActivitySearchResult result = search.execute(new ActivitySearchRequest(
+            String normalizedQuery = query == null ? "" : query.trim();
+            ActivitySearchResult result = search.execute(new ActivitySearchRequest(
                     currentDestination, normalizedQuery, category, type, 100));
-            final List<Activity> matches = result.getActivities();
+            List<Activity> matches = result.getActivities();
             presenter.presentSearchResult(
                     filter.execute(matches, category, minimumRating, type),
                     normalizedQuery, category, minimumRating, type,
                     result.getFailure(), result.isPartial(), currentDestination);
-        }
-        catch (IllegalArgumentException exception) {
+        } catch (IllegalArgumentException exception) {
             presenter.presentFailure(exception.getMessage());
-        }
-        catch (RuntimeException exception) {
+        } catch (RuntimeException exception) {
             presenter.presentFailure(
                     "Something went wrong while searching. Your existing activities are still "
                             + "available.");
