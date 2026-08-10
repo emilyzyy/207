@@ -1,18 +1,20 @@
 package interface_adapter;
 
-import entity.entities.Trip;
-import entity.entities.TripDay;
-import entity.valueobjects.TransportationMode;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.awt.image.BufferedImage;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import entity.entities.Trip;
+import entity.entities.TripDay;
+import entity.valueobjects.TransportationMode;
 
 final class DayPlanShareImageRendererTest {
 

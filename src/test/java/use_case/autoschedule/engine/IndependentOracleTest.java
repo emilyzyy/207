@@ -1,11 +1,24 @@
 package use_case.autoschedule.engine;
 
-import static use_case.autoschedule.ProblemFixtures.at;
-import static use_case.autoschedule.ProblemFixtures.noBlockedWindows;
-import static use_case.autoschedule.ProblemFixtures.window;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static use_case.autoschedule.ProblemFixtures.at;
+import static use_case.autoschedule.ProblemFixtures.noBlockedWindows;
+import static use_case.autoschedule.ProblemFixtures.window;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
+import org.junit.jupiter.api.Test;
 
 import entity.entities.Activity;
 import entity.valueobjects.ActivityCategory;
@@ -25,17 +38,6 @@ import use_case.autoschedule.policy.DaylightPolicy;
 import use_case.autoschedule.policy.MealWindowPolicy;
 import use_case.autoschedule.policy.SoftPolicy;
 import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import org.junit.jupiter.api.Test;
 
 /**
  * An oracle that finds the best schedule without asking the search how.

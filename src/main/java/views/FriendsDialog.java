@@ -1,14 +1,10 @@
 package views;
 
-import entity.entities.Friendship;
-import entity.entities.User;
-import interface_adapter.controllers.FriendsController;
-import interface_adapter.viewmodels.FriendsState;
-import interface_adapter.viewmodels.FriendsViewModel;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -21,6 +17,12 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
+
+import entity.entities.Friendship;
+import entity.entities.User;
+import interface_adapter.controllers.FriendsController;
+import interface_adapter.viewmodels.FriendsState;
+import interface_adapter.viewmodels.FriendsViewModel;
 
 /** Friends hub View: delegates all actions to {@link FriendsController}. */
 public final class FriendsDialog extends JDialog {

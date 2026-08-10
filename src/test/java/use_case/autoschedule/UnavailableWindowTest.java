@@ -1,23 +1,25 @@
 package use_case.autoschedule;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static use_case.autoschedule.ProblemFixtures.at;
 import static use_case.autoschedule.ProblemFixtures.flatMatrix;
 import static use_case.autoschedule.ProblemFixtures.lockedTask;
 import static use_case.autoschedule.ProblemFixtures.task;
 import static use_case.autoschedule.ProblemFixtures.tasks;
 import static use_case.autoschedule.ProblemFixtures.window;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
 
 import use_case.autoschedule.engine.ScheduleEngine;
 import use_case.autoschedule.engine.ScheduleSearchResult;
 import use_case.autoschedule.engine.SearchBudget;
-import java.util.Arrays;
-import java.util.List;
-import org.junit.jupiter.api.Test;
 
 /**
  * Unavailable windows are inviolable: the user has said they are unavailable for any

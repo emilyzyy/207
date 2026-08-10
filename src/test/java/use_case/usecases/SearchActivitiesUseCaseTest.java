@@ -1,21 +1,23 @@
 package use_case.usecases;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.time.LocalTime;
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
 import entity.valueobjects.ActivityCategory;
 import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
-import java.time.LocalTime;
-import java.util.Collections;
-import java.util.concurrent.atomic.AtomicReference;
-import org.junit.jupiter.api.Test;
 import use_case.search.ActivitySearchRequest;
 import use_case.search.ActivitySearchResult;
 import use_case.search.SearchFailure;
 import use_case.search.SearchSource;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 final class SearchActivitiesUseCaseTest {
 

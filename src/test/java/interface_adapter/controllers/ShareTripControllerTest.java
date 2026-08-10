@@ -1,20 +1,22 @@
 package interface_adapter.controllers;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+
+import org.junit.jupiter.api.Test;
+
+import database.persistence.InMemoryItineraryDataAccessObject;
+import entity.entities.Trip;
+import entity.valueobjects.TransportationMode;
+import use_case.usecases.GetTripSummaryUseCase;
 import use_case.usecases.ShareTripInputBoundary;
 import use_case.usecases.ShareTripOutputBoundary;
 import use_case.usecases.ShareTripOutputData;
 import use_case.usecases.ShareTripUseCase;
-import use_case.usecases.GetTripSummaryUseCase;
-import database.persistence.InMemoryItineraryDataAccessObject;
-import entity.entities.Trip;
-import entity.valueobjects.TransportationMode;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 final class ShareTripControllerTest {
 

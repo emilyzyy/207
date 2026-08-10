@@ -1,10 +1,5 @@
 package views;
 
-import interface_adapter.controllers.AutoScheduleSettings;
-import entity.valueobjects.TransportationMode;
-import interface_adapter.controllers.AutoScheduleSettingsValidator;
-import entity.valueobjects.WeatherOption;
-import interface_adapter.viewmodels.TimeDisplay;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -15,6 +10,7 @@ import java.awt.Insets;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -26,6 +22,12 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
+
+import entity.valueobjects.TransportationMode;
+import entity.valueobjects.WeatherOption;
+import interface_adapter.controllers.AutoScheduleSettings;
+import interface_adapter.controllers.AutoScheduleSettingsValidator;
+import interface_adapter.viewmodels.TimeDisplay;
 
 /**
  * Asks for the few things Autoschedule cannot work out for itself.

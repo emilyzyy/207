@@ -1,5 +1,8 @@
 package use_case.autoschedule.engine;
 
+import java.time.LocalTime;
+import java.util.List;
+
 import use_case.autoschedule.BlockedPeriods;
 import use_case.autoschedule.PlacedActivity;
 import use_case.autoschedule.ScheduleProblem;
@@ -7,8 +10,6 @@ import use_case.autoschedule.ScheduleTask;
 import use_case.autoschedule.TimeWindow;
 import use_case.autoschedule.TravelLeg;
 import use_case.autoschedule.TravelLegPlanner;
-import java.time.LocalTime;
-import java.util.List;
 
 /**
  * Places a single activity at the earliest time that satisfies every hard rule.

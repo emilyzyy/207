@@ -1,17 +1,5 @@
 package database.supabase;
 
-import use_case.ports.AccountService;
-import use_case.ports.AuthService;
-import use_case.ports.AuthSession;
-import entity.entities.Friendship;
-import entity.entities.TripParticipant;
-import entity.entities.User;
-import entity.valueobjects.TripAccessLevel;
-import entity.valueobjects.TripAccessRole;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -26,6 +14,19 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import entity.entities.Friendship;
+import entity.entities.TripParticipant;
+import entity.entities.User;
+import entity.valueobjects.TripAccessLevel;
+import entity.valueobjects.TripAccessRole;
+import use_case.ports.AccountService;
+import use_case.ports.AuthService;
+import use_case.ports.AuthSession;
 
 /** PostgREST-backed profiles and friendships. */
 public final class SupabaseAccountClient implements AccountService {

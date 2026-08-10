@@ -1,21 +1,9 @@
 package views;
 
-import interface_adapter.viewmodels.ActivitySelectionViewModel;
-import interface_adapter.viewmodels.BookmarksViewModel;
-import interface_adapter.viewmodels.DashboardState;
-import interface_adapter.viewmodels.DashboardViewModel;
-import interface_adapter.viewmodels.DayPlanViewModel;
-import interface_adapter.viewmodels.SearchState;
-import interface_adapter.viewmodels.SearchViewModel;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import use_case.ports.DestinationGeocoder;
-import use_case.ports.ViewportPlacesLoader;
-import entity.valueobjects.GeoPoint;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.Color;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
@@ -23,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -30,6 +19,19 @@ import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.valueobjects.GeoPoint;
+import interface_adapter.viewmodels.ActivitySelectionViewModel;
+import interface_adapter.viewmodels.BookmarksViewModel;
+import interface_adapter.viewmodels.DashboardState;
+import interface_adapter.viewmodels.DashboardViewModel;
+import interface_adapter.viewmodels.DayPlanViewModel;
+import interface_adapter.viewmodels.SearchState;
+import interface_adapter.viewmodels.SearchViewModel;
+import use_case.ports.DestinationGeocoder;
+import use_case.ports.ViewportPlacesLoader;
 
 /** Left-side interactive map and weather preview. */
 public final class OverviewPanel extends JPanel {

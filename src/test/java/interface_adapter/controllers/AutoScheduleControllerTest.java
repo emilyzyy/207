@@ -6,15 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import interface_adapter.viewmodels.AutoScheduleStatus;
-import interface_adapter.viewmodels.DayPlanState;
-import interface_adapter.viewmodels.DayPlanViewModel;
-import interface_adapter.viewmodels.PreviewRowView;
-import use_case.autoschedule.AutoScheduleApplyInputData;
-import use_case.autoschedule.AutoScheduleInputBoundary;
-import use_case.autoschedule.AutoScheduleInputData;
-import use_case.autoschedule.ProposedEventData;
-import entity.valueobjects.WeatherOption;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,8 +17,20 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
 import javax.swing.SwingUtilities;
+
 import org.junit.jupiter.api.Test;
+
+import entity.valueobjects.WeatherOption;
+import interface_adapter.viewmodels.AutoScheduleStatus;
+import interface_adapter.viewmodels.DayPlanState;
+import interface_adapter.viewmodels.DayPlanViewModel;
+import interface_adapter.viewmodels.PreviewRowView;
+import use_case.autoschedule.AutoScheduleApplyInputData;
+import use_case.autoschedule.AutoScheduleInputBoundary;
+import use_case.autoschedule.AutoScheduleInputData;
+import use_case.autoschedule.ProposedEventData;
 
 class AutoScheduleControllerTest {
 

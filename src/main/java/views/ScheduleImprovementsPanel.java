@@ -1,13 +1,15 @@
 package views;
 
-import interface_adapter.viewmodels.ImprovementView;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.util.List;
+
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+
+import interface_adapter.viewmodels.ImprovementView;
 
 /**
  * The "Schedule improvements" stack: one card per thing the schedule provably achieved.

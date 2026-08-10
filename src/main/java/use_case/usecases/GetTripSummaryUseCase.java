@@ -1,12 +1,13 @@
 package use_case.usecases;
 
-import use_case.ports.TripRepository;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
+
 import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
 import entity.entities.TripDay;
 import entity.valueobjects.EventType;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
+import use_case.ports.TripRepository;
 
 public final class GetTripSummaryUseCase {
     private final TripRepository trips;

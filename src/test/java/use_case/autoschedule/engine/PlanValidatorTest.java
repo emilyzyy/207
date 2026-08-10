@@ -1,5 +1,8 @@
 package use_case.autoschedule.engine;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static use_case.autoschedule.ProblemFixtures.at;
 import static use_case.autoschedule.ProblemFixtures.flatMatrix;
 import static use_case.autoschedule.ProblemFixtures.lockedTask;
@@ -7,22 +10,21 @@ import static use_case.autoschedule.ProblemFixtures.noBlockedWindows;
 import static use_case.autoschedule.ProblemFixtures.task;
 import static use_case.autoschedule.ProblemFixtures.tasks;
 import static use_case.autoschedule.ProblemFixtures.window;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
-import use_case.autoschedule.PlacedActivity;
-import use_case.autoschedule.SchedulePlan;
-import use_case.autoschedule.ScheduleConflict;
-import use_case.autoschedule.ScheduleProblem;
-import use_case.autoschedule.ScheduleTask;
-import use_case.autoschedule.SchedulingPreferences;
-import use_case.autoschedule.TimeWindow;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
 import org.junit.jupiter.api.Test;
+
+import use_case.autoschedule.PlacedActivity;
+import use_case.autoschedule.ScheduleConflict;
+import use_case.autoschedule.SchedulePlan;
+import use_case.autoschedule.ScheduleProblem;
+import use_case.autoschedule.ScheduleTask;
+import use_case.autoschedule.SchedulingPreferences;
+import use_case.autoschedule.TimeWindow;
 
 /**
  * The validator is the last thing standing between a wrong schedule and the traveller.

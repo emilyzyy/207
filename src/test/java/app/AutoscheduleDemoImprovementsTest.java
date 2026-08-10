@@ -5,27 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import interface_adapter.controllers.AutoScheduleController;
-import interface_adapter.controllers.AutoScheduleSettings;
-import interface_adapter.controllers.TaskRunner;
-import interface_adapter.gateways.DistanceServiceTravelTimeEstimator;
-import interface_adapter.presenters.AutoSchedulePresenter;
-import interface_adapter.viewmodels.AutoScheduleStatus;
-import interface_adapter.viewmodels.DayPlanState;
-import interface_adapter.viewmodels.DayPlanViewModel;
-import interface_adapter.viewmodels.ImprovementView;
-import interface_adapter.viewmodels.PreviewMetricsView;
-import app.AppContainer;
-import use_case.autoschedule.AutoScheduleInteractor;
-import use_case.autoschedule.WeatherContext;
-import use_case.autoschedule.engine.ScheduleEngine;
-import use_case.autoschedule.policy.DaylightPolicy;
-import use_case.autoschedule.policy.MealWindowPolicy;
-import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
-import entity.entities.Trip;
-import entity.entities.WeatherWarning;
-import entity.valueobjects.WeatherSeverity;
-import interface_adapter.mock.MockDistanceService;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,7 +12,30 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.junit.jupiter.api.Test;
+
+import app.AppContainer;
+import entity.entities.Trip;
+import entity.entities.WeatherWarning;
+import entity.valueobjects.WeatherSeverity;
+import interface_adapter.controllers.AutoScheduleController;
+import interface_adapter.controllers.AutoScheduleSettings;
+import interface_adapter.controllers.TaskRunner;
+import interface_adapter.gateways.DistanceServiceTravelTimeEstimator;
+import interface_adapter.mock.MockDistanceService;
+import interface_adapter.presenters.AutoSchedulePresenter;
+import interface_adapter.viewmodels.AutoScheduleStatus;
+import interface_adapter.viewmodels.DayPlanState;
+import interface_adapter.viewmodels.DayPlanViewModel;
+import interface_adapter.viewmodels.ImprovementView;
+import interface_adapter.viewmodels.PreviewMetricsView;
+import use_case.autoschedule.AutoScheduleInteractor;
+import use_case.autoschedule.WeatherContext;
+import use_case.autoschedule.engine.ScheduleEngine;
+import use_case.autoschedule.policy.DaylightPolicy;
+import use_case.autoschedule.policy.MealWindowPolicy;
+import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
 
 /**
  * The seeded demo, end to end, asserting the exact improvements it produces.

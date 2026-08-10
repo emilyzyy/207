@@ -1,26 +1,28 @@
 package interface_adapter.controllers;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.Collections;
+
+import org.junit.jupiter.api.Test;
+
+import entity.entities.Activity;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.Location;
 import interface_adapter.presenters.ActivityDiscoveryPresenter;
 import interface_adapter.viewmodels.BookmarksState;
 import interface_adapter.viewmodels.BookmarksViewModel;
 import interface_adapter.viewmodels.SearchState;
 import interface_adapter.viewmodels.SearchViewModel;
-import use_case.usecases.FilterActivitiesUseCase;
-import use_case.usecases.SearchActivitiesUseCase;
 import use_case.search.ActivitySearchResult;
 import use_case.search.SearchFailure;
 import use_case.search.SearchSource;
-import entity.entities.Activity;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.IndoorOutdoorType;
-import entity.valueobjects.Location;
-import java.time.LocalTime;
-import java.util.Arrays;
-import java.util.Collections;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import use_case.usecases.FilterActivitiesUseCase;
+import use_case.usecases.SearchActivitiesUseCase;
 
 final class ActivityDiscoveryControllerTest {
     @Test

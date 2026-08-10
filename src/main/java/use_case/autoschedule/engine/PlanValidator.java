@@ -1,16 +1,17 @@
 package use_case.autoschedule.engine;
 
-import use_case.autoschedule.BlockedPeriods;
-import use_case.autoschedule.PlacedActivity;
-import use_case.autoschedule.SchedulePlan;
-import use_case.autoschedule.ScheduleConflict;
-import use_case.autoschedule.ScheduleProblem;
-import use_case.autoschedule.ScheduleTask;
-import use_case.autoschedule.TimeWindow;
 import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import use_case.autoschedule.BlockedPeriods;
+import use_case.autoschedule.PlacedActivity;
+import use_case.autoschedule.ScheduleConflict;
+import use_case.autoschedule.SchedulePlan;
+import use_case.autoschedule.ScheduleProblem;
+import use_case.autoschedule.ScheduleTask;
+import use_case.autoschedule.TimeWindow;
 
 /**
  * Checks a finished schedule against every hard rule, independently of whatever built it.

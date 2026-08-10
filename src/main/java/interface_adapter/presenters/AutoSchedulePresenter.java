@@ -1,11 +1,21 @@
 package interface_adapter.presenters;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.valueobjects.EventType;
 import interface_adapter.viewmodels.AutoScheduleStatus;
+import interface_adapter.viewmodels.ConstraintChipView;
 import interface_adapter.viewmodels.DayPlanState;
 import interface_adapter.viewmodels.DayPlanViewModel;
-import interface_adapter.viewmodels.PreviewMetricsView;
-import interface_adapter.viewmodels.ConstraintChipView;
 import interface_adapter.viewmodels.ImprovementView;
+import interface_adapter.viewmodels.PreviewMetricsView;
 import interface_adapter.viewmodels.PreviewRowView;
 import interface_adapter.viewmodels.TimeDisplay;
 import use_case.autoschedule.AutoScheduleAppliedOutputData;
@@ -14,21 +24,12 @@ import use_case.autoschedule.AutoScheduleOutputBoundary;
 import use_case.autoschedule.AutoSchedulePreviewOutputData;
 import use_case.autoschedule.PolicyId;
 import use_case.autoschedule.ProposedEventData;
-import use_case.autoschedule.ScheduleImprovement;
-import use_case.autoschedule.ScheduleImprovementType;
 import use_case.autoschedule.Reason;
 import use_case.autoschedule.ReasonCode;
 import use_case.autoschedule.ScheduleConflict;
+import use_case.autoschedule.ScheduleImprovement;
+import use_case.autoschedule.ScheduleImprovementType;
 import use_case.autoschedule.TravelEstimateQuality;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.valueobjects.EventType;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Turns the use case's answers into something the Day Plan can display.

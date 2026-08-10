@@ -1,15 +1,12 @@
 package views;
 
-import entity.entities.User;
-import interface_adapter.controllers.ProfileController;
-import interface_adapter.viewmodels.ProfileState;
-import interface_adapter.viewmodels.ProfileViewModel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -21,6 +18,11 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
+
+import entity.entities.User;
+import interface_adapter.controllers.ProfileController;
+import interface_adapter.viewmodels.ProfileState;
+import interface_adapter.viewmodels.ProfileViewModel;
 
 /** Profile View: delegates load / save / sign-out to {@link ProfileController}. */
 public final class ProfileDialog extends JDialog {

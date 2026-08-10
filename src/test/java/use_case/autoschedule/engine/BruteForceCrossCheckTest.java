@@ -1,27 +1,29 @@
 package use_case.autoschedule.engine;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static use_case.autoschedule.ProblemFixtures.at;
 import static use_case.autoschedule.ProblemFixtures.noBlockedWindows;
 import static use_case.autoschedule.ProblemFixtures.task;
 import static use_case.autoschedule.ProblemFixtures.window;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+import org.junit.jupiter.api.Test;
 
 import use_case.autoschedule.DeparturePeriod;
 import use_case.autoschedule.PeriodPlan;
 import use_case.autoschedule.PlacedActivity;
 import use_case.autoschedule.ScheduleProblem;
-import use_case.autoschedule.SchedulingPreferences;
 import use_case.autoschedule.ScheduleScore;
 import use_case.autoschedule.ScheduleTask;
+import use_case.autoschedule.SchedulingPreferences;
 import use_case.autoschedule.TimeWindow;
 import use_case.autoschedule.TravelEstimate;
 import use_case.autoschedule.TravelMatrix;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import org.junit.jupiter.api.Test;
 
 /**
  * The safety net for the pruning rules.

@@ -1,12 +1,13 @@
 package use_case.autoschedule;
 
-import entity.valueobjects.Location;
-import entity.valueobjects.TransportationMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import entity.valueobjects.Location;
+import entity.valueobjects.TransportationMode;
 
 /**
  * One Autoschedule request's view of the routing provider, held still for its lifetime.

@@ -1,15 +1,16 @@
 package interface_adapter.mock;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.junit.jupiter.api.Test;
+
 import use_case.search.ActivitySearchRequest;
 import use_case.search.ActivitySearchResult;
 import use_case.search.SearchFailure;
 import use_case.search.SearchSource;
 import use_case.usecases.SearchActivitiesUseCase;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class MockPlacesServiceStructuredSearchTest {
 

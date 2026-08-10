@@ -1,5 +1,12 @@
 package interface_adapter.controllers;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
+
+import entity.valueobjects.WeatherOption;
 import interface_adapter.viewmodels.DayPlanState;
 import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.PreviewRowView;
@@ -9,12 +16,6 @@ import use_case.autoschedule.AutoScheduleInputData;
 import use_case.autoschedule.ProposalEditInputData;
 import use_case.autoschedule.ProposedEventData;
 import use_case.autoschedule.TimeWindow;
-import entity.valueobjects.WeatherOption;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.function.Consumer;
 
 /**
  * Turns what the traveller did into a request the use case understands.

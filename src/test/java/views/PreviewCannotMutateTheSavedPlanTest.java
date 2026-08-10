@@ -5,13 +5,29 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.GraphicsEnvironment;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import javax.swing.AbstractButton;
+import javax.swing.SwingUtilities;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
-import entity.entities.Trip;
 import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
 import entity.valueobjects.ActivityCategory;
 import entity.valueobjects.EventType;
 import entity.valueobjects.IndoorOutdoorType;
 import entity.valueobjects.Location;
+import entity.valueobjects.TransportationMode;
+import entity.valueobjects.WeatherOption;
 import interface_adapter.controllers.AutoScheduleController;
 import interface_adapter.controllers.ManualPlanController;
 import interface_adapter.controllers.TaskRunner;
@@ -23,20 +39,7 @@ import interface_adapter.viewmodels.PreviewRowView;
 import use_case.autoschedule.AutoScheduleApplyInputData;
 import use_case.autoschedule.AutoScheduleInputBoundary;
 import use_case.autoschedule.AutoScheduleInputData;
-import entity.valueobjects.TransportationMode;
-import entity.valueobjects.WeatherOption;
 import use_case.autoschedule.testdoubles.FakeTripRepository;
-import java.time.LocalDate;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.GraphicsEnvironment;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import javax.swing.AbstractButton;
-import javax.swing.SwingUtilities;
-import org.junit.jupiter.api.Test;
 
 /**
  * A Preview is an unsaved draft, and the row controls must not be a way around that.

@@ -1,13 +1,14 @@
 package interface_adapter.presenters;
 
+import java.awt.image.BufferedImage;
+import java.util.Collections;
+import java.util.List;
+
 import interface_adapter.DayPlanShareImageRenderer;
 import interface_adapter.viewmodels.ShareState;
 import interface_adapter.viewmodels.ShareViewModel;
 import use_case.usecases.ShareTripOutputBoundary;
 import use_case.usecases.ShareTripOutputData;
-import java.awt.image.BufferedImage;
-import java.util.Collections;
-import java.util.List;
 
 /** Presents share results to an observable Swing state; renders day-plan PNGs here. */
 public final class ShareTripPresenter implements ShareTripOutputBoundary {

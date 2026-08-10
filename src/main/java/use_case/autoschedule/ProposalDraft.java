@@ -1,7 +1,5 @@
 package use_case.autoschedule;
 
-import entity.entities.Activity;
-import entity.valueobjects.TransportationMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -9,6 +7,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import entity.entities.Activity;
+import entity.valueobjects.TransportationMode;
 
 /**
  * Direct edits to an unsaved proposal.

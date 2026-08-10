@@ -2,6 +2,12 @@ package interface_adapter.presenters;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Collections;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Trip;
 import entity.valueobjects.TransportationMode;
 import interface_adapter.viewmodels.DashboardState;
@@ -10,10 +16,6 @@ import interface_adapter.viewmodels.DayPlanState;
 import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.TripOptionsState;
 import interface_adapter.viewmodels.TripOptionsViewModel;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.Collections;
-import org.junit.jupiter.api.Test;
 
 /**
  * Extending the day's hours in Trip Options must reach the Day Plan timeline straight away.

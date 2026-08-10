@@ -1,9 +1,5 @@
 package interface_adapter;
 
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.entities.TripDay;
-import entity.valueobjects.EventType;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
@@ -16,6 +12,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.entities.TripDay;
+import entity.valueobjects.EventType;
 
 /**
  * Renders each trip day as a shareable PNG card (no Swing components).

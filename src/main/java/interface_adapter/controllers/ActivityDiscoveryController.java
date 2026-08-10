@@ -1,15 +1,16 @@
 package interface_adapter.controllers;
 
-import interface_adapter.presenters.ActivityDiscoveryPresenter;
-import use_case.usecases.FilterActivitiesUseCase;
-import use_case.usecases.SearchActivitiesUseCase;
-import use_case.search.ActivitySearchRequest;
-import use_case.search.ActivitySearchResult;
+import java.util.List;
+import java.util.function.Supplier;
+
 import entity.entities.Activity;
 import entity.valueobjects.ActivityCategory;
 import entity.valueobjects.IndoorOutdoorType;
-import java.util.List;
-import java.util.function.Supplier;
+import interface_adapter.presenters.ActivityDiscoveryPresenter;
+import use_case.search.ActivitySearchRequest;
+import use_case.search.ActivitySearchResult;
+import use_case.usecases.FilterActivitiesUseCase;
+import use_case.usecases.SearchActivitiesUseCase;
 
 /** Converts Swing search/filter values into application use-case calls. */
 public final class ActivityDiscoveryController {

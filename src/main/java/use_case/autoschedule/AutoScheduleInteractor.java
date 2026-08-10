@@ -1,19 +1,5 @@
 package use_case.autoschedule;
 
-import entity.valueobjects.WeatherOption;
-
-import use_case.autoschedule.engine.PlanValidator;
-import use_case.autoschedule.engine.ScheduleEngine;
-import use_case.autoschedule.engine.SchedulePlanRebuilder;
-import use_case.autoschedule.engine.ScheduleSearchResult;
-import use_case.autoschedule.engine.SearchBudget;
-import use_case.autoschedule.policy.SoftPolicy;
-import use_case.ports.TripRepository;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.valueobjects.EventType;
-import entity.valueobjects.TransportationMode;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -24,6 +10,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.valueobjects.EventType;
+import entity.valueobjects.TransportationMode;
+import entity.valueobjects.WeatherOption;
+import use_case.autoschedule.engine.PlanValidator;
+import use_case.autoschedule.engine.ScheduleEngine;
+import use_case.autoschedule.engine.SchedulePlanRebuilder;
+import use_case.autoschedule.engine.ScheduleSearchResult;
+import use_case.autoschedule.engine.SearchBudget;
+import use_case.autoschedule.policy.SoftPolicy;
+import use_case.ports.TripRepository;
 
 /**
  * Orchestrates one Autoschedule request.

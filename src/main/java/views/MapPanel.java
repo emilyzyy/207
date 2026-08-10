@@ -1,8 +1,5 @@
 package views;
 
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import use_case.ports.ViewportPlacesLoader;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -10,8 +7,8 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Polygon;
 import java.awt.Point;
+import java.awt.Polygon;
 import java.awt.RenderingHints;
 import java.awt.Stroke;
 import java.awt.event.ComponentAdapter;
@@ -35,12 +32,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.JCheckBox;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import use_case.ports.ViewportPlacesLoader;
 
 /** Pure Swing map panel that renders OpenStreetMap tiles with activity markers. */
 public final class MapPanel extends JPanel {

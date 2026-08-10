@@ -1,7 +1,5 @@
 package views;
 
-import interface_adapter.viewmodels.ShareState;
-import interface_adapter.viewmodels.ShareViewModel;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -14,6 +12,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -27,6 +26,9 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
+
+import interface_adapter.viewmodels.ShareState;
+import interface_adapter.viewmodels.ShareViewModel;
 
 /** Modeless share preview: scrollable day-plan PNGs plus text copy / save. */
 public final class ShareDialog extends JDialog {

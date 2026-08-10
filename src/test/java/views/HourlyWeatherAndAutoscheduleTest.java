@@ -6,23 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
-import interface_adapter.controllers.AutoScheduleController;
-import interface_adapter.controllers.TaskRunner;
-import interface_adapter.viewmodels.AutoScheduleStatus;
-import interface_adapter.viewmodels.DayPlanState;
-import interface_adapter.viewmodels.DayPlanViewModel;
-import use_case.autoschedule.AutoScheduleApplyInputData;
-import use_case.autoschedule.AutoScheduleInputBoundary;
-import use_case.autoschedule.AutoScheduleInputData;
-import entity.valueobjects.WeatherOption;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.WeatherWarning;
-import entity.valueobjects.ActivityCategory;
-import entity.valueobjects.EventType;
-import entity.valueobjects.IndoorOutdoorType;
-import entity.valueobjects.Location;
-import entity.valueobjects.WeatherSeverity;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.GraphicsEnvironment;
@@ -32,10 +15,30 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
 import javax.swing.AbstractButton;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
+
 import org.junit.jupiter.api.Test;
+
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.WeatherWarning;
+import entity.valueobjects.ActivityCategory;
+import entity.valueobjects.EventType;
+import entity.valueobjects.IndoorOutdoorType;
+import entity.valueobjects.Location;
+import entity.valueobjects.WeatherOption;
+import entity.valueobjects.WeatherSeverity;
+import interface_adapter.controllers.AutoScheduleController;
+import interface_adapter.controllers.TaskRunner;
+import interface_adapter.viewmodels.AutoScheduleStatus;
+import interface_adapter.viewmodels.DayPlanState;
+import interface_adapter.viewmodels.DayPlanViewModel;
+import use_case.autoschedule.AutoScheduleApplyInputData;
+import use_case.autoschedule.AutoScheduleInputBoundary;
+import use_case.autoschedule.AutoScheduleInputData;
 
 /**
  * The hourly forecast strip and the polished Autoschedule Day Plan, side by side.

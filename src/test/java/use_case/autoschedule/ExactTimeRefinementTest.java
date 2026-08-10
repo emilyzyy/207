@@ -6,24 +6,26 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import use_case.autoschedule.engine.ScheduleEngine;
-import use_case.autoschedule.engine.ScheduleSearchResult;
-import use_case.autoschedule.engine.SearchBudget;
-import use_case.autoschedule.testdoubles.FakeTripRepository;
-import use_case.autoschedule.testdoubles.FakeWeatherContextGateway;
-import use_case.autoschedule.testdoubles.RecordingPresenter;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
 import entity.entities.Activity;
 import entity.entities.ScheduledEvent;
 import entity.entities.Trip;
 import entity.valueobjects.EventType;
 import entity.valueobjects.Location;
 import entity.valueobjects.TransportationMode;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import org.junit.jupiter.api.Test;
+import use_case.autoschedule.engine.ScheduleEngine;
+import use_case.autoschedule.engine.ScheduleSearchResult;
+import use_case.autoschedule.engine.SearchBudget;
+import use_case.autoschedule.testdoubles.FakeTripRepository;
+import use_case.autoschedule.testdoubles.FakeWeatherContextGateway;
+import use_case.autoschedule.testdoubles.RecordingPresenter;
 
 /**
  * The search compares orders using estimates prefetched for a few departure periods; the

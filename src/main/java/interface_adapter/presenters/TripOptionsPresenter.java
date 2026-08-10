@@ -1,5 +1,6 @@
 package interface_adapter.presenters;
 
+import entity.entities.Trip;
 import interface_adapter.viewmodels.DashboardState;
 import interface_adapter.viewmodels.DashboardViewModel;
 import interface_adapter.viewmodels.DayPlanState;
@@ -7,7 +8,6 @@ import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.TripOptionsState;
 import interface_adapter.viewmodels.TripOptionsViewModel;
 import use_case.usecases.TripOptionsOutputBoundary;
-import entity.entities.Trip;
 
 /** Updates the existing trip, header, and Day Plan state after the options popup saves. */
 public final class TripOptionsPresenter implements TripOptionsOutputBoundary {

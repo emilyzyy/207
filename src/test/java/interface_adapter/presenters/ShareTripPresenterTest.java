@@ -1,19 +1,21 @@
 package interface_adapter.presenters;
 
-import interface_adapter.viewmodels.ShareState;
-import interface_adapter.viewmodels.ShareViewModel;
-import entity.entities.Trip;
-import entity.entities.TripDay;
-import entity.valueobjects.TransportationMode;
-import use_case.usecases.ShareTripOutputData;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.Arrays;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Arrays;
+
+import org.junit.jupiter.api.Test;
+
+import entity.entities.Trip;
+import entity.entities.TripDay;
+import entity.valueobjects.TransportationMode;
+import interface_adapter.viewmodels.ShareState;
+import interface_adapter.viewmodels.ShareViewModel;
+import use_case.usecases.ShareTripOutputData;
 
 final class ShareTripPresenterTest {
 

@@ -4,6 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
 import interface_adapter.viewmodels.DayPlanState;
 import interface_adapter.viewmodels.DayPlanViewModel;
 import use_case.autoschedule.AutoSchedulePreviewOutputData;
@@ -13,11 +20,6 @@ import use_case.autoschedule.Reason;
 import use_case.autoschedule.ScheduleImprovement;
 import use_case.autoschedule.ScheduleImprovementType;
 import use_case.autoschedule.TravelEstimateQuality;
-import java.time.LocalTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import org.junit.jupiter.api.Test;
 
 /**
  * The sentence under the proposed schedule has to describe the schedule.

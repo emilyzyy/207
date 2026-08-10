@@ -1,9 +1,10 @@
 package interface_adapter.viewmodels;
 
-import entity.entities.Friendship;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import entity.entities.Friendship;
 
 /** Immutable friends-hub state for Swing. */
 public final class FriendsState {

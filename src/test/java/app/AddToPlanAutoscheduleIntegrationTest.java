@@ -5,12 +5,28 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+import app.AppContainer;
+import entity.entities.Activity;
+import entity.entities.ScheduledEvent;
+import entity.entities.Trip;
+import entity.valueobjects.EventType;
+import entity.valueobjects.TransportationMode;
 import interface_adapter.controllers.AutoScheduleController;
 import interface_adapter.controllers.AutoScheduleSettings;
 import interface_adapter.controllers.ManualPlanController;
 import interface_adapter.controllers.TaskRunner;
 import interface_adapter.gateways.DistanceServiceTravelTimeEstimator;
 import interface_adapter.gateways.WeatherServiceContextGateway;
+import interface_adapter.mock.MockDistanceService;
 import interface_adapter.presenters.AutoSchedulePresenter;
 import interface_adapter.presenters.ManualPlanPresenter;
 import interface_adapter.viewmodels.AutoScheduleStatus;
@@ -19,26 +35,12 @@ import interface_adapter.viewmodels.DayPlanViewModel;
 import interface_adapter.viewmodels.PreviewRowView;
 import interface_adapter.viewmodels.SearchState;
 import interface_adapter.viewmodels.SearchViewModel;
-import app.AppContainer;
 import use_case.autoschedule.AutoScheduleInteractor;
 import use_case.autoschedule.engine.ScheduleEngine;
 import use_case.autoschedule.policy.DaylightPolicy;
 import use_case.autoschedule.policy.MealWindowPolicy;
 import use_case.autoschedule.policy.SoftPolicy;
 import use_case.autoschedule.policy.WeatherSuitabilityPolicy;
-import entity.entities.Activity;
-import entity.entities.ScheduledEvent;
-import entity.entities.Trip;
-import entity.valueobjects.EventType;
-import entity.valueobjects.TransportationMode;
-import interface_adapter.mock.MockDistanceService;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import org.junit.jupiter.api.Test;
 
 /**
  * Where Alex's feature and Emily's meet.

@@ -1,14 +1,15 @@
 package use_case.ports;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import entity.entities.Friendship;
 import entity.entities.TripParticipant;
 import entity.entities.User;
 import entity.valueobjects.TripAccessLevel;
 import entity.valueobjects.TripAccessRole;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 /** Profiles and friendships for signed-in Supabase accounts. */
 public interface AccountService {

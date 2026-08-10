@@ -1,9 +1,10 @@
 package use_case.usecases;
 
+import java.util.List;
+
 import entity.entities.Friendship;
 import entity.entities.User;
 import use_case.ports.AccountService;
-import java.util.List;
 
 /**
  * Interactor for loading and mutating friendships.
