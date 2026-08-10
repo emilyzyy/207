@@ -321,7 +321,7 @@ public final class NominatimPlacesService implements PlacesService {
                             try {
                                 Thread.sleep(wait);
                             }
-                            catch (InterruptedException e) {
+                            catch (InterruptedException exception) {
                                 Thread.currentThread().interrupt();
                                 return mapper.createArrayNode();
                             }
@@ -333,9 +333,9 @@ public final class NominatimPlacesService implements PlacesService {
                     System.err.println("[NominatimPlaces] Overpass " + endpoint.getHost()
                             + " timed out, will retry");
                 }
-                catch (Exception e) {
+                catch (Exception exception) {
                     System.err.println("[NominatimPlaces] Overpass " + endpoint.getHost()
-                            + " failed: " + e.getMessage());
+                            + " failed: " + exception.getMessage());
                 }
             }
             if (!sawBusy || busyRetries >= MAX_BUSY_RETRIES) {
@@ -691,7 +691,7 @@ public final class NominatimPlacesService implements PlacesService {
             final int value = Integer.parseInt(token);
             return value >= 0 && value <= 23 ? value : 0;
         }
-        catch (NumberFormatException e) {
+        catch (NumberFormatException exception) {
             return 0;
         }
     }
@@ -701,7 +701,7 @@ public final class NominatimPlacesService implements PlacesService {
             final int value = Integer.parseInt(token);
             return value >= 0 && value <= 59 ? value : 0;
         }
-        catch (NumberFormatException e) {
+        catch (NumberFormatException exception) {
             return 0;
         }
     }

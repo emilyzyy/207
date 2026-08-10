@@ -207,14 +207,14 @@ public final class ApiController implements HttpHandler {
                 try {
                     category = ActivityCategory.valueOf(categoryStr);
                 }
-                catch (IllegalArgumentException e) {
+                catch (IllegalArgumentException exception) {
                     category = ActivityCategory.ATTRACTION;
                 }
                 IndoorOutdoorType indoorType;
                 try {
                     indoorType = IndoorOutdoorType.valueOf(typeStr);
                 }
-                catch (IllegalArgumentException e) {
+                catch (IllegalArgumentException exception) {
                     indoorType = IndoorOutdoorType.MIXED;
                 }
                 final String risk = indoorType == IndoorOutdoorType.OUTDOOR ? "High"
@@ -224,7 +224,7 @@ public final class ApiController implements HttpHandler {
             }
             return result;
         }
-        catch (Exception e) {
+        catch (Exception exception) {
             return new ArrayList<>();
         }
     }
