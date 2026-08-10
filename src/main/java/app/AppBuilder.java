@@ -62,6 +62,7 @@ import use_case.scheduling.DefaultActivityScoringPolicy;
 import use_case.usecases.CreateTripInputData;
 import use_case.usecases.LoadViewportPlacesUseCase;
 import use_case.usecases.PlaceHydrator;
+import use_case.usecases.ShareTripUseCase;
 import use_case.tripassistant.TripAssistantDecision;
 import use_case.tripassistant.TripAssistantInteractor;
 import entity.valueobjects.TripAssistantMessage;
@@ -178,11 +179,11 @@ public final class AppBuilder {
         AutoScheduleController autoScheduleController =
                 buildAutoSchedule(app, dayPlanViewModel);
         ShareTripPresenter sharePresenter = new ShareTripPresenter(shareViewModel);
+        ShareTripUseCase shareUseCase = new ShareTripUseCase(
+                app.summary, app.trips, sharePresenter);
         ShareTripController shareController = new ShareTripController(
-                app.share,
-                () -> dayPlanViewModel.getState().getTripId(),
-                sharePresenter,
-                app.trips);
+                shareUseCase,
+                () -> dayPlanViewModel.getState().getTripId());
         ActivityDiscoveryPresenter discoveryPresenter = new ActivityDiscoveryPresenter(
                 searchViewModel, bookmarksViewModel);
         ActivityDiscoveryController discoveryController = new ActivityDiscoveryController(
@@ -299,11 +300,11 @@ public final class AppBuilder {
         AutoScheduleController autoScheduleController =
                 buildAutoSchedule(app, dayPlanViewModel);
         ShareTripPresenter sharePresenter = new ShareTripPresenter(shareViewModel);
+        ShareTripUseCase shareUseCase = new ShareTripUseCase(
+                app.summary, app.trips, sharePresenter);
         ShareTripController shareController = new ShareTripController(
-                app.share,
-                () -> dayPlanViewModel.getState().getTripId(),
-                sharePresenter,
-                app.trips);
+                shareUseCase,
+                () -> dayPlanViewModel.getState().getTripId());
         ActivityDiscoveryPresenter discoveryPresenter = new ActivityDiscoveryPresenter(
                 searchViewModel, bookmarksViewModel);
         ActivityDiscoveryController discoveryController = new ActivityDiscoveryController(

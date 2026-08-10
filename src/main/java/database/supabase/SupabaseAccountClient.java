@@ -178,20 +178,7 @@ public final class SupabaseAccountClient implements AccountService {
         ensureProfile(null);
         User target = findByUsername(username).orElseThrow(() ->
                 new IllegalStateException("No user found with that username."));
-        if (target.getId().equals(session.getUserId())) {
-            throw new IllegalStateException("You cannot friend yourself.");
-        }
-        Optional<Friendship.Status> existing = connectionStatus(
-                session.getUserId(), target.getId());
-        if (existing.isPresent() && existing.get() == Friendship.Status.ACCEPTED) {
-            throw new IllegalStateException(
-                    "You are already friends with this person");
-        }
-        if (existing.isPresent()) {
-            // One row per pair (pending or accepted); block a second request.
-            throw new IllegalStateException(
-                    "You already have a request or friendship with that user.");
-        }
+        // Friendship rules (self / already friends / pending) live in ManageFriendsInteractor.
         ObjectNode row = mapper.createObjectNode();
         row.put("requester_id", session.getUserId());
         row.put("addressee_id", target.getId());
@@ -420,23 +407,6 @@ public final class SupabaseAccountClient implements AccountService {
             return Optional.empty();
         }
         return Optional.of(ownerId);
-    }
-
-    private Optional<Friendship.Status> connectionStatus(String userId, String otherId) {
-        String body = request("GET",
-                "/rest/v1/friendships?or=("
-                        + "and(requester_id.eq." + enc(userId) + ",addressee_id.eq." + enc(otherId) + "),"
-                        + "and(requester_id.eq." + enc(otherId) + ",addressee_id.eq." + enc(userId) + ")"
-                        + ")&select=id,status&limit=1",
-                null, null);
-        JsonNode array = readArray(body);
-        if (!array.isArray() || array.size() == 0) {
-            return Optional.empty();
-        }
-        if ("accepted".equalsIgnoreCase(text(array.get(0), "status"))) {
-            return Optional.of(Friendship.Status.ACCEPTED);
-        }
-        return Optional.of(Friendship.Status.PENDING);
     }
 
     private List<Friendship> mapFriendships(String body, String currentUserId, boolean pendingOnly) {

@@ -39,8 +39,6 @@ import use_case.usecases.ListTripsUseCase;
 import use_case.usecases.RemoveBookmarkUseCase;
 import use_case.usecases.RemoveScheduledEventUseCase;
 import use_case.usecases.SearchActivitiesUseCase;
-import use_case.usecases.ShareTripInputBoundary;
-import use_case.usecases.ShareTripUseCase;
 
 /**
  * Application-layer use-case registry. Concrete infrastructure is supplied by an outer builder.
@@ -71,7 +69,6 @@ public final class AppContainer implements ApiTripService {
     public final EditScheduledEventUseCase editEvent;
     public final RemoveScheduledEventUseCase removeEvent;
     public final GetTripSummaryUseCase summary;
-    public final ShareTripInputBoundary share;
     public final GetWeatherWarningUseCase weatherWarning;
     public final ListTripsUseCase listTrips;
     public final DeleteTripUseCase deleteTrip;
@@ -132,7 +129,6 @@ public final class AppContainer implements ApiTripService {
         editEvent = new EditScheduledEventUseCase(trips);
         removeEvent = new RemoveScheduledEventUseCase(trips, distances);
         summary = new GetTripSummaryUseCase(trips);
-        share = new ShareTripUseCase(summary);
         weatherWarning = new GetWeatherWarningUseCase(trips, weather);
         listTrips = new ListTripsUseCase(trips);
         deleteTrip = new DeleteTripUseCase(trips);
@@ -197,7 +193,7 @@ public final class AppContainer implements ApiTripService {
 
     @Override
     public String shareTrip(String tripId) {
-        return share.execute(tripId);
+        return summary.execute(tripId);
     }
 
     @Override
