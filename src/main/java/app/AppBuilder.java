@@ -181,7 +181,8 @@ public final class AppBuilder {
         ShareTripController shareController = new ShareTripController(
                 app.share,
                 () -> dayPlanViewModel.getState().getTripId(),
-                sharePresenter);
+                sharePresenter,
+                app.trips);
         ActivityDiscoveryPresenter discoveryPresenter = new ActivityDiscoveryPresenter(
                 searchViewModel, bookmarksViewModel);
         ActivityDiscoveryController discoveryController = new ActivityDiscoveryController(
@@ -301,7 +302,8 @@ public final class AppBuilder {
         ShareTripController shareController = new ShareTripController(
                 app.share,
                 () -> dayPlanViewModel.getState().getTripId(),
-                sharePresenter);
+                sharePresenter,
+                app.trips);
         ActivityDiscoveryPresenter discoveryPresenter = new ActivityDiscoveryPresenter(
                 searchViewModel, bookmarksViewModel);
         ActivityDiscoveryController discoveryController = new ActivityDiscoveryController(
