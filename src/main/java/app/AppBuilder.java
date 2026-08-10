@@ -93,10 +93,13 @@ import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.swing.SwingUtilities;
 
@@ -202,7 +205,8 @@ public final class AppBuilder {
                 dayPlanViewModel, activitySelectionViewModel);
         overviewPanel.setViewportPlacesLoader(
                 (south, west, north, east, maxResults) ->
-                        app.places.searchInBounds(south, west, north, east, maxResults));
+                        app.places.searchInBounds(
+                                trip.getDestination(), south, west, north, east, maxResults));
         if (app.places instanceof DestinationGeocoder) {
             overviewPanel.setDestinationGeocoder((DestinationGeocoder) app.places);
         }
@@ -323,7 +327,9 @@ public final class AppBuilder {
                 dayPlanViewModel, activitySelectionViewModel);
         overviewPanel.setViewportPlacesLoader(
                 (south, west, north, east, maxResults) ->
-                        app.places.searchInBounds(south, west, north, east, maxResults));
+                        app.places.searchInBounds(
+                                dashboardViewModel.getState().getDestination(),
+                                south, west, north, east, maxResults));
         if (app.places instanceof DestinationGeocoder) {
             overviewPanel.setDestinationGeocoder((DestinationGeocoder) app.places);
         }
@@ -449,15 +455,31 @@ public final class AppBuilder {
      * flow to populate a newly created trip after its real activities finish loading.
      */
     public void refreshFrameForTrip(Trip trip, TrippyFrame frame) {
-        frame.getSearchViewModel().setState(searchStateFor(trip));
+        SearchState searchCurrent = frame.getSearchViewModel().getState();
+        SearchState refreshed = searchStateFor(trip);
+        // Merge the refreshed pool into whatever the map has already accumulated (viewport cells,
+        // prior enrichment). Replacing wholesale lets a late or empty enrichment answer wipe the
+        // markers the user can already see.
+        Map<String, Activity> merged = new LinkedHashMap<>();
+        for (Activity activity : searchCurrent.getActivities()) merged.put(activity.getId(), activity);
+        for (Activity activity : refreshed.getActivities()) merged.put(activity.getId(), activity);
+        frame.getSearchViewModel().setState(new SearchState(
+                new ArrayList<>(merged.values()),
+                searchCurrent.getQuery(),
+                refreshed.getBookmarkedIds(),
+                refreshed.getScheduledIds(),
+                searchCurrent.getSelectedActivityId(),
+                searchCurrent.isLoading(),
+                searchCurrent.getCategory(), searchCurrent.getMinimumRating(),
+                searchCurrent.getType(), searchCurrent.getFeedback()));
         frame.getBookmarksViewModel().setState(new BookmarksState(trip.getBookmarkedActivities()));
-        DayPlanState current = frame.getDayPlanViewModel().getState();
+        DayPlanState dayPlanCurrent = frame.getDayPlanViewModel().getState();
         frame.getDayPlanViewModel().setState(new DayPlanState(
                 trip.getId(),
                 trip.getScheduledEvents(),
                 "Seeded demo. Choose Autoschedule to arrange this day.",
                 false,
-                current.getHourlyWeather(),
+                dayPlanCurrent.getHourlyWeather(),
                 trip.getTripDates(),
                 trip.getActiveDayIndex()));
     }

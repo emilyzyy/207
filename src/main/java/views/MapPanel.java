@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.JCheckBox;
@@ -45,7 +46,29 @@ public final class MapPanel extends JPanel {
     private static final int TILE_SIZE = 256;
     private static final int MIN_ZOOM = 2;
     private static final int MAX_ZOOM = 18;
-    private static final int MAX_VIEWPORT_RESULTS = 75;
+    private static final int MAX_VIEWPORT_RESULTS = 25;
+    /** Split the visible box into at most this many cells so places appear as each one answers. */
+    private static final int MAX_VIEWPORT_CELLS = 4;
+    /**
+     * Viewport cells are snapped to a fixed lat/lng grid of roughly this size so panned views
+     * reuse cells already fetched (the per-cell Overpass cache key is the cell's bounds).
+     */
+    private static final double VIEWPORT_CELL_SIZE_METERS = 3_000.0;
+    /**
+     * The lng step of the snap grid must not depend on a viewport's own latitude, or two panned
+     * views would get different grid origins and never reuse cells. It is fixed at the reference
+     * latitude (Toronto), which keeps every lng step a multiple of the same constant.
+     */
+    private static final double GRID_REFERENCE_METERS_PER_DEGREE_LNG =
+            111_320.0 * Math.cos(Math.toRadians(43.6532));
+    /** Background neighbor cells warmed after a viewport load settles, at most. */
+    private static final int MAX_PREFETCH_CELLS = 3;
+    /**
+     * Prefetch only runs after the map has been idle this long. Warm-up requests to the public
+     * Overpass replicas must never compete with the user's own pan/zoom queries, which the public
+     * servers rate-limit aggressively.
+     */
+    private static final int PREFETCH_IDLE_DELAY_MILLIS = 2_000;
     private static final int MAX_GENERIC_MARKERS = 65;
     private static final int GENERIC_MARKER_RADIUS = 11;
     private static final int HIGHLIGHTED_MARKER_RADIUS = 14;
@@ -79,6 +102,7 @@ public final class MapPanel extends JPanel {
     private boolean hasHomeLocation;
     private double homeLat;
     private double homeLng;
+    private boolean hasFittedActivities;
 
     private final List<Integer> markerHitboxesX = new ArrayList<>();
     private final List<Integer> markerHitboxesY = new ArrayList<>();
@@ -90,6 +114,8 @@ public final class MapPanel extends JPanel {
     private final JCheckBox highlightOnly =
             new JCheckBox("Bookmarked & added to plan only");
 
+    private final Spinner loadingSpinner = new Spinner(34, 3f);
+
     private final ConcurrentHashMap<String, BufferedImage> tileCache = new ConcurrentHashMap<>();
     private final Set<String> pendingLoads = ConcurrentHashMap.newKeySet();
     private final ExecutorService tileLoader = Executors.newFixedThreadPool(2,
@@ -99,8 +125,12 @@ public final class MapPanel extends JPanel {
     private final boolean tileLoadingEnabled;
 
     private Timer viewportTimer;
-    private final ExecutorService viewportLoaderExecutor = Executors.newSingleThreadExecutor(
+    private Timer prefetchTimer;
+    private ViewportRequest prefetchPending;
+    private final ExecutorService viewportLoaderExecutor = Executors.newFixedThreadPool(3,
             r -> { Thread t = new Thread(r, "ViewportLoader"); t.setDaemon(true); return t; });
+    private final ExecutorService prefetchExecutor = Executors.newSingleThreadExecutor(
+            r -> { Thread t = new Thread(r, "ViewportPrefetch"); t.setDaemon(true); return t; });
 
     private ViewportPlacesLoader viewportLoader;
     private boolean viewportLoadRunning;
@@ -194,10 +224,13 @@ public final class MapPanel extends JPanel {
             repaint();
         });
         add(highlightOnly);
+        loadingSpinner.setVisible(false);
+        add(loadingSpinner);
         addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
                 positionHighlightToggle();
+                positionLoadingSpinner();
             }
         });
     }
@@ -208,6 +241,12 @@ public final class MapPanel extends JPanel {
         highlightOnly.setBounds(x, 6, preferred.width, 24);
     }
 
+    private void positionLoadingSpinner() {
+        Dimension size = loadingSpinner.getPreferredSize();
+        loadingSpinner.setBounds(12, Math.max(0, getHeight() - size.height - 12),
+                size.width, size.height);
+    }
+
     public void setActivities(List<Activity> activities) {
         List<Activity> newList = (activities == null) ? new ArrayList<>() : new ArrayList<>(activities);
         if (sameIds(newList, this.activities)) {
@@ -216,7 +255,12 @@ public final class MapPanel extends JPanel {
         }
         boolean wasEmpty = this.activities.isEmpty();
         this.activities = newList;
-        if (wasEmpty && !this.activities.isEmpty()) fitToActivities();
+        // Fit only the first time the map fills. A later empty->non-empty transition (places
+        // briefly clearing during a refresh, then coming back) must not yank the user's view.
+        if (wasEmpty && !this.activities.isEmpty() && !hasFittedActivities) {
+            hasFittedActivities = true;
+            fitToActivities();
+        }
         repaint();
     }
 
@@ -249,9 +293,19 @@ public final class MapPanel extends JPanel {
         repaint();
     }
 
-    /** Selects, centers, and visually emphasizes one activity marker. */
+    /**
+     * Selects and visually emphasizes one activity marker. The view centers on it only when the
+     * selection actually changes: refresh flows (viewport merges, bookmark/day-plan updates) keep
+     * re-applying the same selection, and re-flying on every one would yank the map back whenever
+     * the user pans away from the clicked marker.
+     */
     public void selectActivity(Activity activity) {
-        selectedActivityId = activity == null ? "" : activity.getId();
+        String nextId = activity == null ? "" : activity.getId();
+        if (nextId.equals(selectedActivityId)) {
+            repaint();
+            return;
+        }
+        selectedActivityId = nextId;
         if (activity != null) {
             zoom = Math.max(zoom, 15);
             flyTo(activity.getLocation().getLatitude(), activity.getLocation().getLongitude());
@@ -298,7 +352,9 @@ public final class MapPanel extends JPanel {
     public void flyTo(double lat, double lng) {
         centerLat = lat;
         centerLng = lng;
-        scheduleViewportReload();
+        // Programmatic navigation (initial city focus, marker selection) loads right away;
+        // the debounce is only meant to let drag/zoom gestures settle.
+        SwingUtilities.invokeLater(this::reloadViewport);
         repaint();
     }
 
@@ -307,7 +363,7 @@ public final class MapPanel extends JPanel {
         this.viewportLoader = loader;
         // The initial city focus can happen before AppBuilder installs the live loader.
         // Request that already-visible viewport now instead of waiting for a pan or zoom.
-        if (loader != null) SwingUtilities.invokeLater(this::scheduleViewportReload);
+        if (loader != null) SwingUtilities.invokeLater(this::reloadViewport);
     }
 
     /** Registers a callback invoked when the user clicks a marker on the map. */
@@ -344,8 +400,11 @@ public final class MapPanel extends JPanel {
 
     private void scheduleViewportReload() {
         if (viewportLoader == null) return;
+        cancelPrefetch();
         if (viewportTimer == null) {
-            viewportTimer = new Timer(300, e -> reloadViewport());
+            // Let pan/zoom settle for a bit before new places start loading, so a quick drag
+            // doesn't fire a storm of viewport queries.
+            viewportTimer = new Timer(1000, e -> reloadViewport());
             viewportTimer.setRepeats(false);
         }
         viewportTimer.restart();
@@ -353,7 +412,12 @@ public final class MapPanel extends JPanel {
 
     void reloadViewport() {
         if (viewportLoader == null) return;
-        if (hasHomeLocation && distanceToHomeMeters() > MAX_CITY_DISTANCE_METERS) return;
+        cancelPrefetch();
+        // Until the trip's destination is resolved the map still sits on the default center
+        // (Toronto). Loading places there would pollute every itinerary with the wrong city,
+        // so wait for the destination geocode before any viewport query runs.
+        if (!hasHomeLocation) return;
+        if (distanceToHomeMeters() > MAX_CITY_DISTANCE_METERS) return;
         int w = getWidth(), h = getHeight();
         if (w <= 0 || h <= 0) return;
         double[][] corners = visibleCoords(w, h);
@@ -388,34 +452,194 @@ public final class MapPanel extends JPanel {
     }
 
     private void loadViewport(ViewportRequest request) {
-        viewportLoaderExecutor.submit(() -> {
-            List<Activity> found = Collections.emptyList();
-            try {
-                found = viewportLoader.load(request.south, request.west,
-                        request.north, request.east, request.maxResults);
-            } catch (Exception ignored) {
-                // A failed public lookup leaves the current markers intact.
-            }
-            List<Activity> completed = found;
-            SwingUtilities.invokeLater(() -> finishViewportLoad(request, completed));
-        });
+        List<double[]> cells = viewportCells(request.south, request.west,
+                request.north, request.east);
+        int perCell = Math.max(1,
+                (int) Math.ceil(request.maxResults / (double) cells.size()));
+        AtomicInteger pending = new AtomicInteger(cells.size());
+        for (double[] cell : cells) {
+            double cellSouth = cell[0];
+            double cellWest = cell[1];
+            double cellNorth = cell[2];
+            double cellEast = cell[3];
+            viewportLoaderExecutor.submit(() -> {
+                List<Activity> found = Collections.emptyList();
+                try {
+                    found = viewportLoader.load(cellSouth, cellWest,
+                            cellNorth, cellEast, perCell);
+                } catch (Exception ignored) {
+                    // A failed public lookup leaves the current markers intact.
+                }
+                List<Activity> completed = found;
+                SwingUtilities.invokeLater(() -> {
+                    // Places appear as each cell answers; a cell that finished after the user
+                    // panned on is dropped so it cannot pollute the newer view.
+                    boolean current = activeViewportKey.equals(request.key);
+                    boolean last = current && pending.decrementAndGet() == 0;
+                    if (current && completed != null && !completed.isEmpty()) {
+                        mergeViewportResults(completed);
+                    }
+                    if (last) {
+                        finishViewportLoad(request);
+                    }
+                });
+            });
+        }
     }
 
-    private void finishViewportLoad(ViewportRequest completed, List<Activity> found) {
+    private void finishViewportLoad(ViewportRequest completed) {
         ViewportRequest next = null;
-        boolean apply;
         synchronized (this) {
-            apply = queuedViewportRequest == null;
-            if (apply) lastLoadedViewportKey = completed.key;
+            lastLoadedViewportKey = completed.key;
             viewportLoadRunning = false;
             activeViewportKey = "";
             if (queuedViewportRequest != null) next = takeQueuedViewportRequest();
         }
-        if (apply && found != null && !found.isEmpty()) mergeViewportResults(found);
         if (next == null) {
             notifyPlacesLoading(false);
+            schedulePrefetch(completed);
         } else {
             loadViewport(next);
+        }
+    }
+
+    /**
+     * Warm-up runs only once the map has sat idle for a moment. A user mid-pan or mid-zoom is
+     * exactly when the public Overpass replicas are most likely to rate-limit, so the neighbor
+     * cells wait until the interaction has stopped before they start asking for anything.
+     */
+    private void schedulePrefetch(ViewportRequest settled) {
+        cancelPrefetch();
+        prefetchPending = settled;
+        prefetchTimer = new Timer(PREFETCH_IDLE_DELAY_MILLIS, e -> {
+            prefetchNeighbours(prefetchPending);
+            prefetchPending = null;
+        });
+        prefetchTimer.setRepeats(false);
+        prefetchTimer.start();
+    }
+
+    /** Stops a scheduled warm-up so a new pan/zoom never finds prefetch in the way. */
+    private void cancelPrefetch() {
+        if (prefetchTimer != null) {
+            prefetchTimer.stop();
+            prefetchTimer = null;
+        }
+        prefetchPending = null;
+    }
+
+    /**
+     * Warms the ring of cells just beyond the settled view so the next pan is answered from the
+     * per-cell cache instead of fresh Overpass queries. Background work only: each cell checks
+     * that no user-driven load has started, runs on its own single thread, and uses the same
+     * per-cell result limit as the user's own load so a warm-up query is never heavier than a
+     * pan would have made.
+     */
+    private void prefetchNeighbours(ViewportRequest settled) {
+        if (viewportLoader == null || !hasHomeLocation) return;
+        GridCells grid = gridFor(settled.south, settled.west, settled.north, settled.east);
+        int perCell = Math.max(1,
+                (int) Math.ceil(settled.maxResults / (double) grid.rows / grid.cols));
+        double marginLat = grid.stepLat;
+        double marginLng = grid.stepLng;
+        double south = Math.floor((settled.south - marginLat) / grid.stepLat) * grid.stepLat;
+        double west = Math.floor((settled.west - marginLng) / grid.stepLng) * grid.stepLng;
+        double north = Math.ceil((settled.north + marginLat) / grid.stepLat) * grid.stepLat;
+        double east = Math.ceil((settled.east + marginLng) / grid.stepLng) * grid.stepLng;
+        int queued = 0;
+        outer:
+        for (double cellSouth = south; cellSouth < north; cellSouth += grid.stepLat) {
+            for (double cellWest = west; cellWest < east; cellWest += grid.stepLng) {
+                if (cellSouth < settled.north && cellWest < settled.east
+                        && cellSouth + grid.stepLat > settled.south
+                        && cellWest + grid.stepLng > settled.west) {
+                    continue;
+                }
+                if (queued >= MAX_PREFETCH_CELLS) break outer;
+                queued++;
+                final double cSouth = cellSouth;
+                final double cWest = cellWest;
+                final double cNorth = cellSouth + grid.stepLat;
+                final double cEast = cellWest + grid.stepLng;
+                prefetchExecutor.submit(() ->
+                        prefetchCell(cSouth, cWest, cNorth, cEast, perCell));
+            }
+        }
+    }
+
+    /** Loads one prefetch cell, dropping it the moment a user-driven load takes over. */
+    private void prefetchCell(double south, double west, double north, double east, int perCell) {
+        synchronized (this) {
+            if (viewportLoadRunning || queuedViewportRequest != null) return;
+        }
+        try {
+            viewportLoader.load(south, west, north, east, perCell);
+        } catch (Exception ignored) {
+            // A failed background prefetch must never disturb the map or the UI thread.
+        }
+    }
+
+    /**
+     * Splits the visible box into a few grid-aligned cells of about a discovery radius across,
+     * capped so a fresh pan loads at most a handful of queries instead of one oversized
+     * whole-box request. Cell edges snap to a fixed global grid, so two panned views that share a
+     * cell produce identical bounds (and identical Overpass cache keys) instead of re-querying a
+     * slightly shifted rectangle. The cell size doubles, keeping the grid alignment, until the
+     * box fits within the cell budget.
+     */
+    static List<double[]> viewportCells(double south, double west,
+                                        double north, double east) {
+        GridCells grid = gridFor(south, west, north, east);
+        List<double[]> cells = new ArrayList<>();
+        for (int row = 0; row < grid.rows; row++) {
+            for (int col = 0; col < grid.cols; col++) {
+                cells.add(new double[]{
+                        grid.south + row * grid.stepLat,
+                        grid.west + col * grid.stepLng,
+                        grid.south + (row + 1) * grid.stepLat,
+                        grid.west + (col + 1) * grid.stepLng});
+            }
+        }
+        return cells;
+    }
+
+    private static GridCells gridFor(double south, double west, double north, double east) {
+        int scale = 1;
+        while (true) {
+            double stepLat = VIEWPORT_CELL_SIZE_METERS * scale / 111_320.0;
+            double stepLng = VIEWPORT_CELL_SIZE_METERS * scale
+                    / GRID_REFERENCE_METERS_PER_DEGREE_LNG;
+            double gridSouth = Math.floor(south / stepLat) * stepLat;
+            double gridWest = Math.floor(west / stepLng) * stepLng;
+            double gridNorth = Math.ceil(north / stepLat) * stepLat;
+            double gridEast = Math.ceil(east / stepLng) * stepLng;
+            int rows = Math.max(1, (int) Math.round((gridNorth - gridSouth) / stepLat));
+            int cols = Math.max(1, (int) Math.round((gridEast - gridWest) / stepLng));
+            if (rows * cols <= MAX_VIEWPORT_CELLS) {
+                return new GridCells(gridSouth, gridWest, rows, cols, stepLat, stepLng, scale);
+            }
+            scale *= 2;
+        }
+    }
+
+    private static final class GridCells {
+        final double south;
+        final double west;
+        final int rows;
+        final int cols;
+        final double stepLat;
+        final double stepLng;
+        final int scale;
+
+        GridCells(double south, double west, int rows, int cols,
+                  double stepLat, double stepLng, int scale) {
+            this.south = south;
+            this.west = west;
+            this.rows = rows;
+            this.cols = cols;
+            this.stepLat = stepLat;
+            this.stepLng = stepLng;
+            this.scale = scale;
         }
     }
 
@@ -446,6 +670,7 @@ public final class MapPanel extends JPanel {
     }
 
     private void notifyPlacesLoading(boolean loading) {
+        loadingSpinner.setVisible(loading);
         if (placesLoadingListener != null) {
             placesLoadingListener.accept(loading);
         }

@@ -50,7 +50,13 @@ final class ShareTripUseCaseTest {
                 new GetTripSummaryUseCase(new InMemoryItineraryDataAccessObject()));
 
         assertThrows(IllegalArgumentException.class, () -> useCase.execute(" "));
+        assertThrows(IllegalArgumentException.class, () -> useCase.execute(null));
         assertThrows(IllegalArgumentException.class, () -> useCase.execute("missing"));
+    }
+
+    @Test
+    void rejectsNullSummaryDependency() {
+        assertThrows(IllegalArgumentException.class, () -> new ShareTripUseCase(null));
     }
 
     private Trip trip(String id) {

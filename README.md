@@ -236,9 +236,18 @@ The normal test suite is deterministic and does not require public internet serv
 External API behavior is tested with fakes and loopback HTTP servers; explicitly named live
 smoke tests are skipped by default.
 
-```powershell
-.\mvnw.cmd clean test
-.\mvnw.cmd checkstyle:check
+### Commands
+
+```bash
+./mvnw clean test                 # all tests, plus the JaCoCo report in target/site/jacoco/index.html
+./mvnw checkstyle:check           # style report -> target/checkstyle-result.xml
+open target/site/jacoco/index.html  # coverage report
+
+# opt-in live checks (network required)
+RUN_LIVE_AUTOSCHEDULE_TEST=true ./mvnw test -Dtest=AutoScheduleLiveVerificationTest
+
+# conclusive live TomTom driving check (also needs a credential in the environment)
+RUN_LIVE_TOMTOM_TEST=true ./mvnw test -Dtest=TomTomLiveVerificationTest
 ```
 
 Generated reports:
@@ -273,5 +282,56 @@ A retained secondary web prototype can be started with:
 .\mvnw.cmd compile exec:java "-Dexec.args=--web"
 ```
 
-Then open [http://localhost:8080](http://localhost:8080). The Swing application is the main
-and actively developed interface.
+Both are configured as reports rather than build gates, so a threshold or a legacy style
+violation cannot block a teammate's commit.
+
+**JaCoCo exclusions (intentional, documented):**
+
+| Excluded | Why |
+|---|---|
+| `views/**` | Swing rendering; verified by hand / structural tests, not unit-tested for pixels. |
+| `interface_adapter/web/**` | Optional REST static-file handler; needs network-style setup. |
+| `database/supabase/**` | HTTP adapters for optional cloud auth/persistence (GoTrue + PostgREST). No scheduling or itinerary business rules. Default app mode is in-memory; use cases are tested against ports/fakes. Live cloud checks need credentials/network, so this layer is out of unit coverage like Swing UI. Dual-mode local-vs-cloud routing is covered by `DualModeItineraryDataAccessTest`. |
+
+**Checkstyle uses the official CSC207 configuration.** `config/mystyle.xml` is byte-identical
+to the file distributed with the course starter code and named in the regex lecture. The
+course ships it for the IntelliJ Checkstyle plugin rather than as a build gate — its own
+starter code produces 62 warnings under it — so this project runs it through Maven for
+reproducible evidence with `failOnViolation=false`. `pom.xml` pins Checkstyle 10.21.4
+because the plugin's bundled version predates two modules the course file uses.
+
+**JaCoCo is 0.8.13 or newer.** 0.8.12 cannot instrument Java 24 class files (major version
+68) and floods the build with `IllegalClassFormatException`. Only JDK classes were affected,
+so coverage numbers were never wrong, but the noise made the output unreadable.
+
+## Known limitations
+
+- The current `Trip` model has a destination but no separate hotel/home origin. The geocoded destination centre is therefore the initial scheduling location.
+- The model uses same-day `LocalTime`; overnight trips and overnight opening hours are not supported.
+- Greedy scoring is deterministic but does not guarantee a globally optimal itinerary.
+- Distance estimates and persistence remain mock/in-memory implementations.
+- Live place discovery is optional and uses public Nominatim/Overpass services; offline mode remains the supported default.
+- Autoschedule's own limitations are listed under [Autoschedule (Day Plan)](#autoschedule-day-plan): day-wide weather, unknown travel provenance, JVM-default transit time zone, and driving not yet live-verified.
+
+## REST API
+
+- `POST /api/trips`
+- `GET /api/trips/{tripId}`
+- `PUT /api/trips/{tripId}` — edit itinerary options (destination, date, window, transportation)
+- `GET /api/activities`
+- `POST|DELETE /api/trips/{tripId}/bookmarks/{activityId}`
+- `POST /api/trips/{tripId}/plan/manual`
+- `POST /api/trips/{tripId}/plan/autoschedule`
+- `PUT|DELETE /api/trips/{tripId}/plan/{eventId}`
+- `GET /api/trips/{tripId}/summary`
+- `GET /api/trips/{tripId}/share`
+- `GET /api/trips/{tripId}/weather`
+- `GET /api/trips/{tripId}/weather/hourly`
+
+## Contribution
+
+Shiyuan (Dennis) Lyu: Share Trip Clean Architecture flow and clipboard-ready Swing preview; interactive Day/Week/Month calendar expansion and synchronized navigation; related unit, Swing structure, and application integration tests; Create Trip input boundary/interactor validation and tests; Trip Setup create/edit Swing workflow; active-trip composition; offline-by-default service selection; reviewed integration and tests for Raashid's map/place branch; Auto Schedule, scoring policy, schedule invariants, weather weighting, Open-Meteo adapter, Maven/JUnit 5 configuration, and documentation.
+
+Bianca: Edit Itinerary interactor (`EditItineraryInteractor`), `ItineraryDataAccessInterface`, `InMemoryItineraryDataAccessObject`, Options/API wiring for in-place itinerary updates, and related unit test.
+
+Raashid: interactive Swing map, Nominatim/Overpass place discovery, cached-place repository, and web map integration.

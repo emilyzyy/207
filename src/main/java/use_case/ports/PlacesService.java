@@ -25,13 +25,24 @@ public interface PlacesService extends ActivitySearchGateway {
     /**
      * Searches for places inside a geographic bounding box.
      *
+     * @param destination the trip destination whose viewport is being loaded
      * @param south the southern latitude of the window
      * @param west the western longitude of the window
      * @param north the northern latitude of the window
      * @param east the eastern longitude of the window
      * @param maxResults the maximum number of places to return for this window
      */
-    default List<Activity> searchInBounds(double south, double west, double north, double east, int maxResults) {
+    default List<Activity> searchInBounds(String destination, double south, double west,
+                                          double north, double east, int maxResults) {
         return java.util.Collections.emptyList();
+    }
+
+    /**
+     * Compatibility view of {@link #searchInBounds(String, double, double, double, double, int)}
+     * for providers that do not track a destination for bounding-box searches.
+     */
+    default List<Activity> searchInBounds(double south, double west, double north, double east,
+                                          int maxResults) {
+        return searchInBounds("", south, west, north, east, maxResults);
     }
 }

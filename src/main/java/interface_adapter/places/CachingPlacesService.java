@@ -38,9 +38,10 @@ public final class CachingPlacesService
     }
 
     @Override
-    public List<Activity> searchInBounds(double south, double west, double north, double east,
-                                         int maxResults) {
-        List<Activity> results = delegate.searchInBounds(south, west, north, east, maxResults);
+    public List<Activity> searchInBounds(String destination, double south, double west,
+                                         double north, double east, int maxResults) {
+        List<Activity> results = delegate.searchInBounds(
+                destination, south, west, north, east, maxResults);
         cache.addAll(results);
         return results;
     }

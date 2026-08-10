@@ -172,7 +172,12 @@ public final class Main {
 
         galleryHolder[0] = new GalleryPanel(
                 trips,
-                trip -> openTripFrame(builder, app, trip, galleryFrame, auth),
+                trip -> {
+                    TrippyFrame tripFrame =
+                            openTripFrame(builder, app, trip, galleryFrame, auth);
+                    enrichItineraryAsync(builder, app, trip.getId(),
+                            trip.getDestination(), tripFrame);
+                },
                 () -> {
                     List<User> friends = loadFriends(app);
                     NewItineraryDialog dialog = new NewItineraryDialog(galleryFrame, friends);

@@ -22,18 +22,27 @@ import javax.swing.Timer;
  */
 public final class Spinner extends JComponent {
 
-    private static final int SIZE = 14;
+    private static final int DEFAULT_SIZE = 14;
     private static final int STEP_DEGREES = 30;
     private static final int FRAME_MILLIS = 90;
-    private static final float STROKE = 2f;
+    private static final float DEFAULT_STROKE = 2f;
 
+    private final int size;
+    private final float stroke;
     private final Timer timer;
     private int angle;
 
     public Spinner() {
-        setPreferredSize(new Dimension(SIZE, SIZE));
-        setMinimumSize(new Dimension(SIZE, SIZE));
-        setMaximumSize(new Dimension(SIZE, SIZE));
+        this(DEFAULT_SIZE, DEFAULT_STROKE);
+    }
+
+    /** A spinner of the given diameter and stroke, for overlays that need a bigger circle. */
+    public Spinner(int size, float stroke) {
+        this.size = size;
+        this.stroke = stroke;
+        setPreferredSize(new Dimension(size, size));
+        setMinimumSize(new Dimension(size, size));
+        setMaximumSize(new Dimension(size, size));
         setOpaque(false);
         // Decorative, and deliberately left out of the focus and accessibility trees: the
         // status sentence beside it carries the meaning, and a screen reader announcing a
@@ -76,11 +85,11 @@ public final class Spinner extends JComponent {
         Graphics2D g = (Graphics2D) graphics.create();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setStroke(new java.awt.BasicStroke(STROKE, java.awt.BasicStroke.CAP_ROUND,
+        g.setStroke(new java.awt.BasicStroke(stroke, java.awt.BasicStroke.CAP_ROUND,
                 java.awt.BasicStroke.JOIN_ROUND));
 
-        int inset = (int) STROKE;
-        int diameter = SIZE - 2 * inset;
+        int inset = (int) Math.ceil(stroke / 2);
+        int diameter = size - 2 * inset;
 
         g.setColor(SwingTheme.LINE);
         g.draw(new Arc2D.Double(inset, inset, diameter, diameter, 0, 360, Arc2D.OPEN));

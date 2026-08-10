@@ -105,13 +105,37 @@ final class OpenStreetMapPlacesServiceTest {
                 (destination, query, limit) -> {
                     namedCalls.incrementAndGet(); return List.of();
                 }, nearby);
-        service.searchInBounds(43.6, -79.5, 43.7, -79.3, 50);
+        service.searchInBounds("Toronto", 43.6, -79.5, 43.7, -79.3, 50);
 
         ActivitySearchResult result = service.search(request("Christie Pits Park"));
 
         assertEquals(SearchSource.LOCAL, result.getSource());
         assertEquals(0, namedCalls.get());
         assertEquals(park.getId(), result.getActivities().get(0).getId());
+    }
+
+    @Test
+    void viewportPlacesLoadedForOneTripDoNotLeakIntoAnotherDestination() {
+        Activity torontoPark = activity("osm-way-6", "High Park",
+                ActivityCategory.PARKS_NATURE);
+        NearbyActivityDiscovery nearby = new NearbyActivityDiscovery() {
+            @Override public List<Activity> around(String destination, int limit) {
+                return List.of();
+            }
+            @Override public List<Activity> inBounds(double south, double west, double north,
+                                                     double east, int limit) {
+                return List.of(torontoPark);
+            }
+        };
+        OpenStreetMapPlacesService service = new OpenStreetMapPlacesService(
+                (destination, query, limit) -> List.of(), nearby);
+
+        service.searchInBounds("Toronto", 43.6, -79.5, 43.7, -79.3, 50);
+
+        ActivitySearchResult vancouver = service.search(
+                new ActivitySearchRequest("Vancouver", "", null, null, 25));
+        assertTrue(vancouver.getActivities().stream()
+                .noneMatch(activity -> activity.getId().equals(torontoPark.getId())));
     }
 
     private static ActivitySearchRequest request(String query) {
