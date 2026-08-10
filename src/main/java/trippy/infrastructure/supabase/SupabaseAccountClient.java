@@ -181,8 +181,16 @@ public final class SupabaseAccountClient implements AccountService {
         if (target.getId().equals(session.getUserId())) {
             throw new IllegalStateException("You cannot friend yourself.");
         }
-        if (alreadyConnected(session.getUserId(), target.getId())) {
-            throw new IllegalStateException("You already have a request or friendship with that user.");
+        Optional<Friendship.Status> existing = connectionStatus(
+                session.getUserId(), target.getId());
+        if (existing.isPresent() && existing.get() == Friendship.Status.ACCEPTED) {
+            throw new IllegalStateException(
+                    "You are already friends with this person");
+        }
+        if (existing.isPresent()) {
+            // One row per pair (pending or accepted); block a second request.
+            throw new IllegalStateException(
+                    "You already have a request or friendship with that user.");
         }
         ObjectNode row = mapper.createObjectNode();
         row.put("requester_id", session.getUserId());
@@ -258,19 +266,14 @@ public final class SupabaseAccountClient implements AccountService {
     }
 
     @Override
-    public List<User> listFriends() {
+    public List<Friendship> listAcceptedFriendships() {
         AuthSession session = requireSession();
         String body = request("GET",
                 "/rest/v1/friendships?status=eq.accepted&or=(requester_id.eq."
                         + enc(session.getUserId()) + ",addressee_id.eq."
                         + enc(session.getUserId()) + ")&select=*",
                 null, null);
-        List<Friendship> rows = mapFriendships(body, session.getUserId(), false);
-        List<User> friends = new ArrayList<>();
-        for (Friendship friendship : rows) {
-            friends.add(friendship.getOtherUser());
-        }
-        return friends;
+        return mapFriendships(body, session.getUserId(), false);
     }
 
     @Override
@@ -419,15 +422,21 @@ public final class SupabaseAccountClient implements AccountService {
         return Optional.of(ownerId);
     }
 
-    private boolean alreadyConnected(String userId, String otherId) {
+    private Optional<Friendship.Status> connectionStatus(String userId, String otherId) {
         String body = request("GET",
                 "/rest/v1/friendships?or=("
                         + "and(requester_id.eq." + enc(userId) + ",addressee_id.eq." + enc(otherId) + "),"
                         + "and(requester_id.eq." + enc(otherId) + ",addressee_id.eq." + enc(userId) + ")"
-                        + ")&select=id&limit=1",
+                        + ")&select=id,status&limit=1",
                 null, null);
         JsonNode array = readArray(body);
-        return array.isArray() && array.size() > 0;
+        if (!array.isArray() || array.size() == 0) {
+            return Optional.empty();
+        }
+        if ("accepted".equalsIgnoreCase(text(array.get(0), "status"))) {
+            return Optional.of(Friendship.Status.ACCEPTED);
+        }
+        return Optional.of(Friendship.Status.PENDING);
     }
 
     private List<Friendship> mapFriendships(String body, String currentUserId, boolean pendingOnly) {

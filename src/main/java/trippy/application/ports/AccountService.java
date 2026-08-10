@@ -37,7 +37,21 @@ public interface AccountService {
 
     List<Friendship> listOutgoingRequests();
 
-    List<User> listFriends();
+    /**
+     * Accepted friendships for the current user (includes friendship id for removal).
+     * Prefer this when the UI needs to delete a friend; use {@link #listFriends()} for
+     * profile pickers.
+     */
+    List<Friendship> listAcceptedFriendships();
+
+    /** Profiles of accepted friends (no friendship ids). */
+    default List<User> listFriends() {
+        List<User> friends = new java.util.ArrayList<User>();
+        for (Friendship friendship : listAcceptedFriendships()) {
+            friends.add(friendship.getOtherUser());
+        }
+        return friends;
+    }
 
     /**
      * Replaces shared members on a trip. Owner is never stored as a member and cannot be removed.

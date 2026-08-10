@@ -15,6 +15,7 @@ import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
@@ -154,12 +155,12 @@ public final class FriendsDialog extends JDialog {
     private void refreshFriends() {
         friendsPanel.removeAll();
         try {
-            List<User> friends = account.listFriends();
+            List<Friendship> friends = account.listAcceptedFriendships();
             if (friends.isEmpty()) {
                 friendsPanel.add(mutedRow("You have no friends yet."));
             } else {
-                for (User friend : friends) {
-                    friendsPanel.add(friendRow(friend));
+                for (Friendship friendship : friends) {
+                    friendsPanel.add(friendRow(friendship));
                     friendsPanel.add(Box.createVerticalStrut(6));
                 }
             }
@@ -211,9 +212,34 @@ public final class FriendsDialog extends JDialog {
         return row;
     }
 
-    private JPanel friendRow(User friend) {
+    private JPanel friendRow(Friendship friendship) {
+        User friend = friendship.getOtherUser();
         JPanel row = listRow();
         row.add(avatarAndName(friend), BorderLayout.CENTER);
+        JButton remove = SwingTheme.secondaryButton("Remove");
+        remove.addActionListener(event -> {
+            int choice = JOptionPane.showConfirmDialog(
+                    FriendsDialog.this,
+                    "Remove @" + friend.getUsername() + " from your friends?\n"
+                            + "You can send them a new request later if you change your mind.",
+                    "Remove friend",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (choice != JOptionPane.YES_OPTION) {
+                return;
+            }
+            try {
+                account.removeFriend(friendship.getId());
+                status.setForeground(SwingTheme.MUTED);
+                status.setText("Removed @" + friend.getUsername()
+                        + ". You can send them a new request anytime.");
+                refreshFriends();
+            } catch (RuntimeException exception) {
+                status.setForeground(SwingTheme.ERROR);
+                status.setText(exception.getMessage());
+            }
+        });
+        row.add(remove, BorderLayout.EAST);
         return row;
     }
 
