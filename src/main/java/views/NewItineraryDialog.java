@@ -177,7 +177,9 @@ public final class NewItineraryDialog extends JDialog {
 
         cityField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { onCityTyped(); }
+
             @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { onCityTyped(); }
+
             @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { onCityTyped(); }
         });
         suggestionList.addMouseListener(new MouseAdapter() {

@@ -194,6 +194,7 @@ public final class MapPanel extends JPanel {
                 isDragging = true;
                 setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             }
+
             @Override
             public void mouseReleased(MouseEvent e) {
                 handleMarkerClick(e);

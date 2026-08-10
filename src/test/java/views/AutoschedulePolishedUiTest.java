@@ -525,6 +525,7 @@ class AutoschedulePolishedUiTest {
      * the two markers had to survive the move onto the timeline. The card has no badge
      * slot, so "moved" leads the subtitle and locking keeps its own toggle.
      */
+
     @Test
     void movedAndLockedStaySignpostedOnTheTimelineCards() throws Exception {
         final DayPlanViewModel viewModel = new DayPlanViewModel(previewState());

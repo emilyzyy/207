@@ -11,7 +11,9 @@ import use_case.ports.TripRepository;
 
 public final class GetTripSummaryUseCase {
     private final TripRepository trips;
+
     public GetTripSummaryUseCase(TripRepository trips) { this.trips = trips; }
+
     public String execute(String tripId) {
         final Trip trip = trips.findById(tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
         final DateTimeFormatter time = DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH);

@@ -30,6 +30,7 @@ public final class TestRunner {
                 "transport mode timing");
         System.out.println("All Trippy tests passed.");
     }
+
     private static void require(boolean condition, String label) {
         if (!condition) throw new AssertionError("Failed: " + label);
     }

@@ -194,6 +194,7 @@ public final class DayPlanPanel extends JPanel {
                 render(viewModel.getState());
             }
         });
+
         add(actions(), BorderLayout.SOUTH);
 
 
