@@ -1248,7 +1248,9 @@ public final class DayPlanPanel extends JPanel {
 
         @Override
         public void doLayout() {
-            if (state == null) return;
+            if (state == null) {
+                return;
+            }
             final int cardWidth = Math.max(160, getWidth() - TIME_GUTTER - EVENT_GAP * 2);
             final List<ScheduledEvent> events = displayed(state);
             for (JPanel card : cards) {
@@ -1380,7 +1382,9 @@ public final class DayPlanPanel extends JPanel {
 
                 @Override
                 public void mouseReleased(MouseEvent mouseEvent) {
-                    if (!moved) return;
+                    if (!moved) {
+                        return;
+                    }
                     final int duration = Math.max(1, minutesBetween(
                             event.getStartTime(), event.getEndTime()));
                     final LocalTime start = draggedStartFor(
@@ -1398,7 +1402,9 @@ public final class DayPlanPanel extends JPanel {
         }
 
         private void addDragListener(Component component, MouseAdapter listener) {
-            if (component instanceof AbstractButton) return;
+            if (component instanceof AbstractButton) {
+                return;
+            }
             component.addMouseListener(listener);
             component.addMouseMotionListener(listener);
             if (component instanceof Container) {
@@ -1473,7 +1479,9 @@ public final class DayPlanPanel extends JPanel {
     }
 
     private void makeSelectable(JPanel card, ScheduledEvent event) {
-        if (selection == null || event.getActivity() == null) return;
+        if (selection == null || event.getActivity() == null) {
+            return;
+        }
         card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         card.setToolTipText("Show " + event.getActivity().getName() + " on the map");
         if (event.getActivity().getId().equals(selection.getSelectedActivityId())) {

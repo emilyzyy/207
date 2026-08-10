@@ -201,7 +201,9 @@ public final class Main {
                     final NewItineraryDialog dialog =
                             new NewItineraryDialog(galleryFrame, app.citySearch, friends);
                     dialog.setVisible(true);
-                    if (!dialog.isConfirmed()) return;
+                    if (!dialog.isConfirmed()) {
+                        return;
+                    }
                     final String dest = dialog.getDestination();
                     final LocalDate date = dialog.getDate();
                     final List<String> memberIds = new ArrayList<>();

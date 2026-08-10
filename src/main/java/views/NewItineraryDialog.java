@@ -349,7 +349,9 @@ public final class NewItineraryDialog extends JDialog {
     }
 
     private void onCityTyped() {
-        if (programmaticUpdate) return;
+        if (programmaticUpdate) {
+            return;
+        }
         selected = null;
         okButton.setEnabled(false);
         final String query = cityField.getText().trim();
@@ -366,7 +368,9 @@ public final class NewItineraryDialog extends JDialog {
     }
 
     private void loadSuggestions(String query) {
-        if (query == null || query.isBlank()) return;
+        if (query == null || query.isBlank()) {
+            return;
+        }
         new Thread(() -> {
             List<CityCandidate> results;
             try {

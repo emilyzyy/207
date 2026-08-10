@@ -32,6 +32,8 @@ public final class TestRunner {
     }
 
     private static void require(boolean condition, String label) {
-        if (!condition) throw new AssertionError("Failed: " + label);
+        if (!condition) {
+            throw new AssertionError("Failed: " + label);
+        }
     }
 }

@@ -463,8 +463,12 @@ public final class AppBuilder {
         // prior enrichment). Replacing wholesale lets a late or empty enrichment answer wipe the
         // markers the user can already see.
         final Map<String, Activity> merged = new LinkedHashMap<>();
-        for (Activity activity : searchCurrent.getActivities()) merged.put(activity.getId(), activity);
-        for (Activity activity : refreshed.getActivities()) merged.put(activity.getId(), activity);
+        for (Activity activity : searchCurrent.getActivities()) {
+            merged.put(activity.getId(), activity);
+        }
+        for (Activity activity : refreshed.getActivities()) {
+            merged.put(activity.getId(), activity);
+        }
         frame.getSearchViewModel().setState(new SearchState(
                 new ArrayList<>(merged.values()),
                 searchCurrent.getQuery(),
@@ -599,7 +603,9 @@ public final class AppBuilder {
         WeatherWarning closest = null;
         long closestMinutes = Long.MAX_VALUE;
         for (WeatherWarning warning : hourlyWeather) {
-            if (warning == null || warning.getTime() == null) continue;
+            if (warning == null || warning.getTime() == null) {
+                continue;
+            }
             final long difference = Math.abs(Duration.between(
                     trip.getStartTime(), warning.getTime()).toMinutes());
             if (difference < closestMinutes) {
