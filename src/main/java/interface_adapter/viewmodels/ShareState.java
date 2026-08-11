@@ -23,7 +23,8 @@ public final class ShareState {
         this.error = error;
         if (dayImages == null || dayImages.isEmpty()) {
             this.dayImages = Collections.emptyList();
-        } else {
+        }
+        else {
             this.dayImages = Collections.unmodifiableList(
                     new ArrayList<BufferedImage>(dayImages));
         }

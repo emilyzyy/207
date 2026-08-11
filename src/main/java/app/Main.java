@@ -70,20 +70,23 @@ public final class Main {
                     final AuthService auth = createSupabaseAuth();
                     final AppContainer app = builder.build(auth);
                     showGallery(builder, app, auth);
-                } else {
+                }
+                else {
                     final AppContainer app = builder.build();
                     new Thread(() -> {
                         try {
                             seedTrip(app, "Toronto",
                                     LocalDate.of(2026, 7, 23),
                                     LocalTime.of(9, 0), LocalTime.of(18, 0));
-                        } catch (Exception exception) {
+                        }
+                        catch (Exception exception) {
                             exception.printStackTrace();
                         }
                         SwingUtilities.invokeLater(() -> showGallery(builder, app, null));
                     }, "Seed-Toronto").start();
                 }
-            } catch (Exception exception) {
+            }
+            catch (Exception exception) {
                 exception.printStackTrace();
                 JOptionPane.showMessageDialog(null,
                         exception.getMessage(),
@@ -131,11 +134,13 @@ public final class Main {
                     final User profile = account.ensureProfile(preferred);
                     System.out.println("Signed in as @" + profile.getUsername()
                             + " (" + session.getEmail() + ")");
-                } else {
+                }
+                else {
                     System.out.println("Signed in as " + session.getEmail());
                 }
                 return true;
-            } catch (RuntimeException exception) {
+            }
+            catch (RuntimeException exception) {
                 JOptionPane.showMessageDialog(owner,
                         exception.getMessage(),
                         "Sign in failed",
@@ -168,9 +173,11 @@ public final class Main {
             if (auth.currentSession().isEmpty()) {
                 galleryFrame.dispose();
                 showGallery(builder, app, auth);
-            } else if (updated != null && galleryHolder[0] != null) {
+            }
+            else if (updated != null && galleryHolder[0] != null) {
                 galleryHolder[0].setProfileUser(updated);
-            } else if (galleryHolder[0] != null) {
+            }
+            else if (galleryHolder[0] != null) {
                 galleryHolder[0].setProfileUser(loadProfile(app));
             }
         };
@@ -194,7 +201,9 @@ public final class Main {
                     final NewItineraryDialog dialog =
                             new NewItineraryDialog(galleryFrame, app.citySearch, friends);
                     dialog.setVisible(true);
-                    if (!dialog.isConfirmed()) return;
+                    if (!dialog.isConfirmed()) {
+                        return;
+                    }
                     final String dest = dialog.getDestination();
                     final LocalDate date = dialog.getDate();
                     final List<String> memberIds = new ArrayList<>();
@@ -269,9 +278,11 @@ public final class Main {
                 if (auth.currentSession().isEmpty()) {
                     tripFrame.dispose();
                     showGallery(builder, app, auth);
-                } else if (updated != null) {
+                }
+                else if (updated != null) {
                     tripFrame.setProfileUser(updated);
-                } else {
+                }
+                else {
                     tripFrame.setProfileUser(loadProfile(app));
                 }
             });
@@ -297,7 +308,8 @@ public final class Main {
             final DualModeItineraryDataAccess dual = dualMode(app);
             if (dual != null) {
                 dual.syncTripToCloud(tripId);
-            } else {
+            }
+            else {
                 app.trips.findById(tripId).ifPresent(app.trips::save);
             }
             tripFrame.setAuthAction(
@@ -307,9 +319,11 @@ public final class Main {
                 if (auth.currentSession().isEmpty()) {
                     tripFrame.dispose();
                     showGallery(builder, app, auth);
-                } else if (updated != null) {
+                }
+                else if (updated != null) {
                     tripFrame.setProfileUser(updated);
-                } else {
+                }
+                else {
                     tripFrame.setProfileUser(loadProfile(app));
                 }
             });
@@ -320,7 +334,8 @@ public final class Main {
                     "Signed in. This itinerary was saved to your account.",
                     "Signed in",
                     JOptionPane.INFORMATION_MESSAGE);
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             JOptionPane.showMessageDialog(tripFrame,
                     "Signed in, but saving failed: " + exception.getMessage(),
                     "Save failed",
@@ -381,7 +396,8 @@ public final class Main {
                 return null;
             }
             return dialog.isSaved() ? dialog.getSavedProfile() : null;
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             JOptionPane.showMessageDialog(owner,
                     exception.getMessage(),
                     "Profile",
@@ -396,7 +412,8 @@ public final class Main {
         }
         try {
             return app.account.currentProfile().orElseGet(() -> app.account.ensureProfile(null));
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             System.err.println("[Main] Could not load profile: " + exception.getMessage());
             return null;
         }
@@ -408,7 +425,8 @@ public final class Main {
         }
         try {
             return app.account.listIncomingRequests().size();
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             System.err.println("[Main] Could not load friend requests: " + exception.getMessage());
             return 0;
         }
@@ -420,7 +438,8 @@ public final class Main {
         }
         try {
             return app.account.listFriends();
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             System.err.println("[Main] Could not load friends: " + exception.getMessage());
             return java.util.Collections.emptyList();
         }
@@ -437,7 +456,8 @@ public final class Main {
                 if (!names.isEmpty()) {
                     companions.put(trip.getId(), names);
                 }
-            } catch (RuntimeException exception) {
+            }
+            catch (RuntimeException exception) {
                 System.err.println("[Main] Could not load companions for trip "
                         + trip.getId() + ": " + exception.getMessage());
             }
@@ -470,7 +490,8 @@ public final class Main {
                         SwingUtilities.invokeLater(() ->
                                 builder.refreshFrameForTrip(fresh.get(), tripFrame));
                     }
-                } catch (RuntimeException exception) {
+                }
+                catch (RuntimeException exception) {
                     System.err.println("[Main] Shared trip sync failed: " + exception.getMessage());
                 }
             }, "Shared-Trip-Sync").start();
@@ -556,7 +577,8 @@ public final class Main {
             try {
                 final Trip updated = app.discoverTripPlaces.execute(tripId, destination);
                 SwingUtilities.invokeLater(() -> builder.refreshFrameForTrip(updated, frame));
-            } catch (Exception exception) {
+            }
+            catch (Exception exception) {
                 System.err.println("[Main] Could not enrich itinerary for " + destination
                         + ": " + exception.getMessage());
                 SwingUtilities.invokeLater(() -> frame.getSearchViewModel().setLoading(false));

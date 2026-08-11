@@ -124,7 +124,8 @@ public final class FriendsDialog extends JDialog {
         requestsPanel.add(sectionLabel("Incoming"));
         if (state.getIncoming().isEmpty()) {
             requestsPanel.add(mutedRow("No incoming requests."));
-        } else {
+        }
+        else {
             for (Friendship request : state.getIncoming()) {
                 requestsPanel.add(incomingRow(request));
                 requestsPanel.add(Box.createVerticalStrut(6));
@@ -134,7 +135,8 @@ public final class FriendsDialog extends JDialog {
         requestsPanel.add(sectionLabel("Outgoing"));
         if (state.getOutgoing().isEmpty()) {
             requestsPanel.add(mutedRow("No outgoing requests."));
-        } else {
+        }
+        else {
             for (Friendship request : state.getOutgoing()) {
                 requestsPanel.add(outgoingRow(request));
                 requestsPanel.add(Box.createVerticalStrut(6));
@@ -148,7 +150,8 @@ public final class FriendsDialog extends JDialog {
         friendsPanel.removeAll();
         if (state.getAccepted().isEmpty()) {
             friendsPanel.add(mutedRow("You have no friends yet."));
-        } else {
+        }
+        else {
             for (Friendship friendship : state.getAccepted()) {
                 friendsPanel.add(friendRow(friendship));
                 friendsPanel.add(Box.createVerticalStrut(6));

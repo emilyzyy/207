@@ -117,7 +117,8 @@ class HourlyWeatherAndAutoscheduleTest {
         for (Component component : all(root)) {
             if (component instanceof JLabel) {
                 text.append(((JLabel) component).getText()).append(' ');
-            } else if (component instanceof AbstractButton) {
+            }
+            else if (component instanceof AbstractButton) {
                 text.append(((AbstractButton) component).getText()).append(' ');
             }
         }

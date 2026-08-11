@@ -148,7 +148,8 @@ public final class MapPanel extends JPanel {
     private final ConcurrentHashMap<String, BufferedImage> tileCache = new ConcurrentHashMap<>();
     private final Set<String> pendingLoads = ConcurrentHashMap.newKeySet();
     private final ExecutorService tileLoader = Executors.newFixedThreadPool(2,
-            r -> { final Thread t = new Thread(r, "TileLoader"); t.setDaemon(true); return t; });
+            r -> {
+                final Thread t = new Thread(r, "TileLoader"); t.setDaemon(true); return t; });
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(java.time.Duration.ofSeconds(8)).build();
     private final boolean tileLoadingEnabled;
@@ -157,9 +158,11 @@ public final class MapPanel extends JPanel {
     private Timer prefetchTimer;
     private ViewportRequest prefetchPending;
     private final ExecutorService viewportLoaderExecutor = Executors.newFixedThreadPool(3,
-            r -> { final Thread t = new Thread(r, "ViewportLoader"); t.setDaemon(true); return t; });
+            r -> {
+                final Thread t = new Thread(r, "ViewportLoader"); t.setDaemon(true); return t; });
     private final ExecutorService prefetchExecutor = Executors.newSingleThreadExecutor(
-            r -> { final Thread t = new Thread(r, "ViewportPrefetch"); t.setDaemon(true); return t; });
+            r -> {
+                final Thread t = new Thread(r, "ViewportPrefetch"); t.setDaemon(true); return t; });
 
     private ViewportPlacesLoader viewportLoader;
     private boolean viewportLoadRunning;
@@ -208,7 +211,9 @@ public final class MapPanel extends JPanel {
         addMouseMotionListener(new MouseAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                if (dragStart == null) return;
+                if (dragStart == null) {
+                    return;
+                }
                 final int dx = e.getX() - dragStart.x;
                 final int dy = e.getY() - dragStart.y;
                 final double px = latLngToPixelX(centerLng) - dx;
@@ -372,13 +377,16 @@ public final class MapPanel extends JPanel {
         if (activity != null) {
             zoom = Math.max(zoom, 15);
             flyTo(activity.getLocation().getLatitude(), activity.getLocation().getLongitude());
-        } else {
+        }
+        else {
             repaint();
         }
     }
 
     private List<Activity> visibleActivities() {
-        if (!showHighlightedOnly) return activities;
+        if (!showHighlightedOnly) {
+            return activities;
+        }
         final List<Activity> visible = new ArrayList<>();
         for (Activity activity : activities) {
             if (isHighlighted(activity.getId())
@@ -396,18 +404,30 @@ public final class MapPanel extends JPanel {
     private Color markerColor(String id) {
         final boolean bookmarked = bookmarkedIds.contains(id);
         final boolean scheduled = scheduledIds.contains(id);
-        if (bookmarked && scheduled) return COLOR_BOTH;
-        if (bookmarked) return COLOR_BOOKMARKED;
-        if (scheduled) return COLOR_SCHEDULED;
+        if (bookmarked && scheduled) {
+            return COLOR_BOTH;
+        }
+        if (bookmarked) {
+            return COLOR_BOOKMARKED;
+        }
+        if (scheduled) {
+            return COLOR_SCHEDULED;
+        }
         return COLOR_PLAIN;
     }
 
     private static boolean sameIds(List<Activity> a, List<Activity> b) {
-        if (a.size() != b.size()) return false;
+        if (a.size() != b.size()) {
+            return false;
+        }
         final Set<String> idsB = new HashSet<>();
-        for (Activity activity : b) idsB.add(activity.getId());
+        for (Activity activity : b) {
+            idsB.add(activity.getId());
+        }
         for (Activity activity : a) {
-            if (!idsB.contains(activity.getId())) return false;
+            if (!idsB.contains(activity.getId())) {
+                return false;
+            }
         }
         return true;
     }
@@ -426,7 +446,9 @@ public final class MapPanel extends JPanel {
         this.viewportLoader = loader;
         // The initial city focus can happen before AppBuilder installs the live loader.
         // Request that already-visible viewport now instead of waiting for a pan or zoom.
-        if (loader != null) SwingUtilities.invokeLater(this::reloadViewport);
+        if (loader != null) {
+            SwingUtilities.invokeLater(this::reloadViewport);
+        }
     }
 
     /** Registers a callback invoked when the user clicks a marker on the map. */
@@ -445,11 +467,17 @@ public final class MapPanel extends JPanel {
     }
 
     private void handleMarkerClick(MouseEvent e) {
-        if (placeSelectionListener == null) return;
-        if (pressStart == null) return;
+        if (placeSelectionListener == null) {
+            return;
+        }
+        if (pressStart == null) {
+            return;
+        }
         final int dx = e.getX() - pressStart.x;
         final int dy = e.getY() - pressStart.y;
-        if (Math.sqrt(dx * dx + dy * dy) > 6) return;
+        if (Math.sqrt(dx * dx + dy * dy) > 6) {
+            return;
+        }
         // Hit-test from front to back, matching the reverse of the paint order.
         for (int i = markerHitboxesX.size() - 1; i >= 0; i--) {
             final int mx = markerHitboxesX.get(i);
@@ -462,7 +490,9 @@ public final class MapPanel extends JPanel {
     }
 
     private void scheduleViewportReload() {
-        if (viewportLoader == null) return;
+        if (viewportLoader == null) {
+            return;
+        }
         cancelPrefetch();
         if (viewportTimer == null) {
             // Let pan/zoom settle for a bit before new places start loading, so a quick drag
@@ -474,15 +504,23 @@ public final class MapPanel extends JPanel {
     }
 
     void reloadViewport() {
-        if (viewportLoader == null) return;
+        if (viewportLoader == null) {
+            return;
+        }
         cancelPrefetch();
         // Until the trip's destination is resolved the map still sits on the default center
         // (Toronto). Loading places there would pollute every itinerary with the wrong city,
         // so wait for the destination geocode before any viewport query runs.
-        if (!hasHomeLocation) return;
-        if (distanceToHomeMeters() > MAX_CITY_DISTANCE_METERS) return;
+        if (!hasHomeLocation) {
+            return;
+        }
+        if (distanceToHomeMeters() > MAX_CITY_DISTANCE_METERS) {
+            return;
+        }
         final int w = getWidth(), h = getHeight();
-        if (w <= 0 || h <= 0) return;
+        if (w <= 0 || h <= 0) {
+            return;
+        }
         final double[][] corners = visibleCoords(w, h);
         final int maxResults = maxResultsForZoom(zoom);
         final double south = corners[0][0];
@@ -499,7 +537,9 @@ public final class MapPanel extends JPanel {
                 return;
             }
             queuedViewportRequest = request;
-            if (viewportLoadRunning) return;
+            if (viewportLoadRunning) {
+                return;
+            }
             request = takeQueuedViewportRequest();
         }
         notifyPlacesLoading(true);
@@ -530,7 +570,8 @@ public final class MapPanel extends JPanel {
                 try {
                     found = viewportLoader.load(cellSouth, cellWest,
                             cellNorth, cellEast, perCell);
-                } catch (Exception ignored) {
+                }
+                catch (Exception ignored) {
                     // A failed public lookup leaves the current markers intact.
                 }
                 final List<Activity> completed = found;
@@ -556,12 +597,15 @@ public final class MapPanel extends JPanel {
             lastLoadedViewportKey = completed.key;
             viewportLoadRunning = false;
             activeViewportKey = "";
-            if (queuedViewportRequest != null) next = takeQueuedViewportRequest();
+            if (queuedViewportRequest != null) {
+                next = takeQueuedViewportRequest();
+            }
         }
         if (next == null) {
             notifyPlacesLoading(false);
             schedulePrefetch(completed);
-        } else {
+        }
+        else {
             loadViewport(next);
         }
     }
@@ -599,7 +643,9 @@ public final class MapPanel extends JPanel {
      * pan would have made.
      */
     private void prefetchNeighbours(ViewportRequest settled) {
-        if (viewportLoader == null || !hasHomeLocation) return;
+        if (viewportLoader == null || !hasHomeLocation) {
+            return;
+        }
         final GridCells grid = gridFor(settled.south, settled.west, settled.north, settled.east);
         final int perCell = Math.max(1,
                 (int) Math.ceil(settled.maxResults / (double) grid.rows / grid.cols));
@@ -618,7 +664,9 @@ public final class MapPanel extends JPanel {
                         && cellWest + grid.stepLng > settled.west) {
                     continue;
                 }
-                if (queued >= MAX_PREFETCH_CELLS) break outer;
+                if (queued >= MAX_PREFETCH_CELLS) {
+                    break outer;
+                }
                 queued++;
                 final double cSouth = cellSouth;
                 final double cWest = cellWest;
@@ -633,11 +681,14 @@ public final class MapPanel extends JPanel {
     /** Loads one prefetch cell, dropping it the moment a user-driven load takes over. */
     private void prefetchCell(double south, double west, double north, double east, int perCell) {
         synchronized (this) {
-            if (viewportLoadRunning || queuedViewportRequest != null) return;
+            if (viewportLoadRunning || queuedViewportRequest != null) {
+                return;
+            }
         }
         try {
             viewportLoader.load(south, west, north, east, perCell);
-        } catch (Exception ignored) {
+        }
+        catch (Exception ignored) {
             // A failed background prefetch must never disturb the map or the UI thread.
         }
     }
@@ -657,10 +708,10 @@ public final class MapPanel extends JPanel {
         for (int row = 0; row < grid.rows; row++) {
             for (int col = 0; col < grid.cols; col++) {
                 cells.add(new double[]{
-                        grid.south + row * grid.stepLat,
-                        grid.west + col * grid.stepLng,
-                        grid.south + (row + 1) * grid.stepLat,
-                        grid.west + (col + 1) * grid.stepLng});
+                    grid.south + row * grid.stepLat,
+                    grid.west + col * grid.stepLng,
+                    grid.south + (row + 1) * grid.stepLat,
+                    grid.west + (col + 1) * grid.stepLng});
             }
         }
         return cells;
@@ -743,7 +794,9 @@ public final class MapPanel extends JPanel {
         final Map<String, Activity> byId = new HashMap<>();
         if (found != null) {
             for (Activity activity : found) {
-                if (activity.getLocation() != null) byId.put(activity.getId(), activity);
+                if (activity.getLocation() != null) {
+                    byId.put(activity.getId(), activity);
+                }
             }
         }
         for (Activity activity : activities) {
@@ -768,8 +821,10 @@ public final class MapPanel extends JPanel {
         double east = clampLng(pixelXToLng(eastPixel));
         double north = pixelYToLat(visiblePixelY(northPixel));
         double south = pixelYToLat(visiblePixelY(southPixel));
-        if (south > north) { final double t = south; south = north; north = t; }
-        if (west > east) { final double t = east; east = west; west = t; }
+        if (south > north) {
+            final double t = south; south = north; north = t; }
+        if (west > east) {
+            final double t = east; east = west; west = t; }
         return new double[][]{{south, west}, {north, east}};
     }
 
@@ -834,7 +889,9 @@ public final class MapPanel extends JPanel {
 
     private void fitToActivities() {
         final List<Activity> visible = visibleActivities();
-        if (visible.isEmpty()) return;
+        if (visible.isEmpty()) {
+            return;
+        }
         double minLat = Double.MAX_VALUE, maxLat = -Double.MAX_VALUE;
         double minLng = Double.MAX_VALUE, maxLng = -Double.MAX_VALUE;
         for (Activity a : visible) {
@@ -849,7 +906,9 @@ public final class MapPanel extends JPanel {
         final double lngSpan = maxLng - minLng;
         zoom = 13;
         final int pw = getWidth(), ph = getHeight();
-        if (pw <= 0 || ph <= 0) return;
+        if (pw <= 0 || ph <= 0) {
+            return;
+        }
         for (int z = 17; z >= MIN_ZOOM; z--) {
             final double metersPerPixel = 156543.03392 * Math.cos(Math.toRadians(centerLat)) / Math.pow(2, z);
             final double spanMeters = Math.max(latSpan * 111320.0, lngSpan * 111320.0 * Math.cos(Math.toRadians(centerLat)));
@@ -887,7 +946,9 @@ public final class MapPanel extends JPanel {
 
         final int w = getWidth();
         final int h = getHeight();
-        if (w <= 0 || h <= 0) return;
+        if (w <= 0 || h <= 0) {
+            return;
+        }
 
         final double centerPixelX = latLngToPixelX(centerLng);
         final double centerPixelY = latLngToPixelY(centerLat);
@@ -905,14 +966,17 @@ public final class MapPanel extends JPanel {
             for (int ty = -tilesY / 2; ty <= tilesY / 2; ty++) {
                 final int cx = centerTileX + tx;
                 final int cy = centerTileY + ty;
-                if (cx < 0 || cx >= maxTiles || cy < 0 || cy >= maxTiles) continue;
+                if (cx < 0 || cx >= maxTiles || cy < 0 || cy >= maxTiles) {
+                    continue;
+                }
                 final int px = (int) (w / 2.0 + (cx * TILE_SIZE - centerPixelX));
                 final int py = (int) (h / 2.0 + (cy * TILE_SIZE - centerPixelY));
                 final String key = currentZoom + "/" + cx + "/" + cy;
                 final BufferedImage tile = tileLoadingEnabled ? tileCache.get(key) : null;
                 if (tile != null) {
                     g2.drawImage(tile, px, py, null);
-                } else {
+                }
+                else {
                     g2.setColor(new Color(230, 236, 242));
                     g2.fillRect(px, py, TILE_SIZE, TILE_SIZE);
                     g2.setColor(new Color(200, 210, 220));
@@ -1058,8 +1122,8 @@ public final class MapPanel extends JPanel {
                 final double px = latLngToPixelX(activity.getLocation().getLongitude());
                 final double py = latLngToPixelY(activity.getLocation().getLatitude());
                 points.add(new int[] {
-                        (int) (w / 2.0 + (px - centerPixelX)),
-                        (int) (h / 2.0 + (py - centerPixelY))});
+                    (int) (w / 2.0 + (px - centerPixelX)),
+                    (int) (h / 2.0 + (py - centerPixelY))});
                 break;
             }
         }
@@ -1077,8 +1141,8 @@ public final class MapPanel extends JPanel {
                 final double px = latLngToPixelX(activity.getLocation().getLongitude());
                 final double py = latLngToPixelY(activity.getLocation().getLatitude());
                 points.add(new int[] {
-                        (int) (w / 2.0 + (px - centerPixelX)),
-                        (int) (h / 2.0 + (py - centerPixelY))});
+                    (int) (w / 2.0 + (px - centerPixelX)),
+                    (int) (h / 2.0 + (py - centerPixelY))});
                 break;
             }
         }
@@ -1124,7 +1188,9 @@ public final class MapPanel extends JPanel {
                 g2.setColor(new Color(0x1a, 0x1f, 0x36));
                 g2.setFont(SwingTheme.SMALL);
                 String name = a.getName();
-                if (name.length() > 25) name = name.substring(0, 22) + "...";
+                if (name.length() > 25) {
+                    name = name.substring(0, 22) + "...";
+                }
                 g2.drawString(name, sx + markerRadius(a.getId()) + 4, sy + 4);
             }
         }
@@ -1148,9 +1214,15 @@ public final class MapPanel extends JPanel {
     }
 
     private int markerLayer(String activityId) {
-        if (activityId.equals(selectedActivityId)) return 3;
-        if (scheduledIds.contains(activityId)) return 2;
-        if (bookmarkedIds.contains(activityId)) return 1;
+        if (activityId.equals(selectedActivityId)) {
+            return 3;
+        }
+        if (scheduledIds.contains(activityId)) {
+            return 2;
+        }
+        if (bookmarkedIds.contains(activityId)) {
+            return 1;
+        }
         return 0;
     }
 
@@ -1196,9 +1268,11 @@ public final class MapPanel extends JPanel {
             if (bookmarked) {
                 drawBookmarkBadge(g2, sx + radius - 4, sy - radius + 3);
             }
-        } else if (bookmarked) {
+        }
+        else if (bookmarked) {
             drawBookmarkGlyph(g2, sx, sy, radius);
-        } else {
+        }
+        else {
             g2.setColor(Color.WHITE);
             g2.fillOval(sx - 4, sy - 4, 8, 8);
         }
@@ -1206,8 +1280,12 @@ public final class MapPanel extends JPanel {
 
     /** Ordinary discovery pins are deliberately quieter than user-selected map content. */
     int markerRadius(String activityId) {
-        if (activityId.equals(selectedActivityId)) return SELECTED_MARKER_RADIUS;
-        if (isHighlighted(activityId)) return HIGHLIGHTED_MARKER_RADIUS;
+        if (activityId.equals(selectedActivityId)) {
+            return SELECTED_MARKER_RADIUS;
+        }
+        if (isHighlighted(activityId)) {
+            return HIGHLIGHTED_MARKER_RADIUS;
+        }
         return GENERIC_MARKER_RADIUS;
     }
 
@@ -1235,7 +1313,9 @@ public final class MapPanel extends JPanel {
 
     String markerText(String activityId) {
         final int index = scheduledActivityIds.indexOf(activityId);
-        if (index >= 0) return String.valueOf(index + 1);
+        if (index >= 0) {
+            return String.valueOf(index + 1);
+        }
         return bookmarkedIds.contains(activityId) ? "bookmark" : "pin";
     }
 
@@ -1244,7 +1324,9 @@ public final class MapPanel extends JPanel {
     }
 
     private void loadTile(int x, int y, int z, String key) {
-        if (tileCache.containsKey(key) || !pendingLoads.add(key)) return;
+        if (tileCache.containsKey(key) || !pendingLoads.add(key)) {
+            return;
+        }
         tileLoader.submit(() -> {
             try {
                 final String url = "https://tile.openstreetmap.org/" + z + "/" + x + "/" + y + ".png";
@@ -1261,10 +1343,13 @@ public final class MapPanel extends JPanel {
                     }
                 }
                 response.body().close();
-            } catch (InterruptedException exception) {
+            }
+            catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
-            } catch (Exception ignored) {
-            } finally {
+            }
+            catch (Exception ignored) {
+            }
+            finally {
                 pendingLoads.remove(key);
             }
         });

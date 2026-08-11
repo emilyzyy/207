@@ -35,7 +35,8 @@ public final class ShareTripUseCase implements ShareTripInputBoundary {
                     () -> new IllegalArgumentException("Trip not found"));
             final String shareText = summaries.execute(id);
             output.presentSuccess(new ShareTripOutputData(shareText, trip));
-        } catch (IllegalArgumentException | IllegalStateException exception) {
+        }
+        catch (IllegalArgumentException | IllegalStateException exception) {
             output.presentFailure(exception.getMessage());
         }
     }

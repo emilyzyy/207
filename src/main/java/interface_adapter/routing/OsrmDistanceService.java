@@ -127,8 +127,8 @@ public final class OsrmDistanceService implements DistanceService {
             }
             return Math.max(1, (int) Math.round(seconds / 60.0));
         }
-        catch (Exception e) {
-            warnOnce("TomTom route request failed: " + e + "; driving estimates fall back to OSRM");
+        catch (Exception exception) {
+            warnOnce("TomTom route request failed: " + exception + "; driving estimates fall back to OSRM");
             return null;
         }
     }
@@ -147,7 +147,7 @@ public final class OsrmDistanceService implements DistanceService {
             }
             return body;
         }
-        catch (Exception e) {
+        catch (Exception exception) {
             return body;
         }
     }
@@ -186,7 +186,7 @@ public final class OsrmDistanceService implements DistanceService {
             }
             return Math.max(1, (int) Math.round(seconds / 60.0));
         }
-        catch (Exception e) {
+        catch (Exception exception) {
             return fallback(from, to, from.calculateDistanceTo(to), TransportationMode.TRANSIT);
         }
     }
@@ -223,7 +223,7 @@ public final class OsrmDistanceService implements DistanceService {
             }
             return Math.max(1, (int) Math.round(seconds / 60.0));
         }
-        catch (Exception e) {
+        catch (Exception exception) {
             return fallback(from, to, from.calculateDistanceTo(to), modeFromProfile(profile));
         }
     }

@@ -140,7 +140,8 @@ class AutoschedulePolishedUiTest {
         for (Component component : all(root)) {
             if (component instanceof JLabel) {
                 text.append(((JLabel) component).getText()).append(' ');
-            } else if (component instanceof AbstractButton) {
+            }
+            else if (component instanceof AbstractButton) {
                 text.append(((AbstractButton) component).getText()).append(' ');
             }
         }
@@ -473,7 +474,8 @@ class AutoschedulePolishedUiTest {
                 final int depth = timeline.getComponentZOrder(card);
                 if (isTravelCard(card)) {
                     depths[0] = Math.max(depths[0], depth);
-                } else {
+                }
+                else {
                     depths[1] = Math.min(depths[1], depth);
                 }
             }

@@ -12,7 +12,8 @@ import use_case.ports.TripRepository;
 public final class GetTripSummaryUseCase {
     private final TripRepository trips;
 
-    public GetTripSummaryUseCase(TripRepository trips) { this.trips = trips; }
+    public GetTripSummaryUseCase(TripRepository trips) {
+        this.trips = trips; }
 
     public String execute(String tripId) {
         final Trip trip = trips.findById(tripId).orElseThrow(() -> new IllegalArgumentException("Trip not found"));
@@ -27,7 +28,8 @@ public final class GetTripSummaryUseCase {
                     .append(" – ").append(trip.getEndTime()).append("\n\n")
                     .append("Itinerary\n");
             appendEvents(summary, trip.getScheduledEvents(), time);
-        } else {
+        }
+        else {
             summary.append("Days: ").append(trip.getDayCount()).append("\n\n");
             for (int i = 0; i < trip.getDayCount(); i++) {
                 final TripDay day = trip.getDay(i);

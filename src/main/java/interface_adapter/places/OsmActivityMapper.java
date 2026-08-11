@@ -192,7 +192,7 @@ public final class OsmActivityMapper {
         }
         switch (category) {
             case FOOD: case COFFEE: case MUSEUM: case SHOPPING:
-            case ENTERTAINMENT: case ARTS_CULTURE: return IndoorOutdoorType.INDOOR;
+                case ENTERTAINMENT: case ARTS_CULTURE: return IndoorOutdoorType.INDOOR;
             case PARKS_NATURE: return IndoorOutdoorType.OUTDOOR;
             default: return IndoorOutdoorType.MIXED;
         }

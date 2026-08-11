@@ -76,7 +76,9 @@ public final class OverviewPanel extends JPanel {
         mapPanel.setPlaceSelectionListener(this::selectPlaceFromMap);
         mapPanel.setPlacesLoadedListener(loaded -> mergeIntoSearch(searchViewModel, loaded));
         mapPanel.setPlacesLoadingListener(loading -> {
-            if (!loading && !searchViewModel.getState().getActivities().isEmpty()) return;
+            if (!loading && !searchViewModel.getState().getActivities().isEmpty()) {
+                return;
+            }
             searchViewModel.setLoading(loading);
         });
         // The map sits in a layered pane so the forecast strip can float over its
@@ -270,7 +272,9 @@ public final class OverviewPanel extends JPanel {
     }
 
     private void selectCurrentActivity() {
-        if (selectionViewModel == null) return;
+        if (selectionViewModel == null) {
+            return;
+        }
         final String selectedId = selectionViewModel.getSelectedActivityId();
         Activity selected = null;
         for (Activity activity : mapActivities()) {
@@ -319,14 +323,18 @@ public final class OverviewPanel extends JPanel {
 
     /** Folds viewport-loaded places into the shared search state so the sidebar updates too. */
     private void mergeIntoSearch(SearchViewModel searchViewModel, List<Activity> loaded) {
-        if (loaded == null || loaded.isEmpty()) return;
+        if (loaded == null || loaded.isEmpty()) {
+            return;
+        }
         final SearchState current = searchViewModel.getState();
         final Map<String, Activity> byId = new java.util.LinkedHashMap<>();
         for (Activity activity : current.getActivities()) {
             byId.put(activity.getId(), activity);
         }
         for (Activity activity : loaded) {
-            if (activity.getLocation() != null) byId.putIfAbsent(activity.getId(), activity);
+            if (activity.getLocation() != null) {
+                byId.putIfAbsent(activity.getId(), activity);
+            }
         }
         searchViewModel.setState(new SearchState(
                 new ArrayList<>(byId.values()),
@@ -353,14 +361,17 @@ public final class OverviewPanel extends JPanel {
 
     /** Resolves non-built-in destinations through the application's shared geocoder. */
     public void setDestinationGeocoder(DestinationGeocoder geocoder) {
-        if (geocoder == null) return;
+        if (geocoder == null) {
+            return;
+        }
         final String destination = viewModel.getState().getDestination();
         final Thread worker = new Thread(() -> {
             try {
                 final GeoPoint point = geocoder.geocode(destination);
                 javax.swing.SwingUtilities.invokeLater(() ->
                         mapPanel.focusOnCoordinates(point.getLatitude(), point.getLongitude()));
-            } catch (RuntimeException exception) {
+            }
+            catch (RuntimeException exception) {
                 System.err.println("[Overview] Could not locate " + destination + ": "
                         + exception.getMessage());
             }

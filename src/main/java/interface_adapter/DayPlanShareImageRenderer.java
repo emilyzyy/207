@@ -116,7 +116,8 @@ public final class DayPlanShareImageRenderer {
                 g.setColor(MUTED);
                 g.setFont(new Font("SansSerif", Font.ITALIC, 14));
                 g.drawString("No activities scheduled for this day yet.", x, y + 12);
-            } else {
+            }
+            else {
                 for (ScheduledEvent event : events) {
                     final boolean travel = event.getEventType() == EventType.TRAVEL;
                     g.setColor(travel ? TRAVEL : new Color(238, 245, 255));
@@ -149,7 +150,8 @@ public final class DayPlanShareImageRenderer {
             g.setColor(MUTED);
             g.setFont(new Font("SansSerif", Font.PLAIN, 12));
             g.drawString("Shared from Trippy", x, height - 36);
-        } finally {
+        }
+        finally {
             g.dispose();
         }
         return image;

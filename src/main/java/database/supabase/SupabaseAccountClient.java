@@ -83,7 +83,8 @@ public final class SupabaseAccountClient implements AccountService {
                         "resolution=merge-duplicates,return=representation");
                 return findById(session.getUserId()).orElseThrow(() ->
                         new IllegalStateException("Could not create your profile."));
-            } catch (RuntimeException exception) {
+            }
+            catch (RuntimeException exception) {
                 lastFailure = exception;
                 final String message = exception.getMessage() == null ? "" : exception.getMessage();
                 // Username collision — try another generated name.
@@ -139,7 +140,8 @@ public final class SupabaseAccountClient implements AccountService {
                         ? User.DEFAULT_AVATAR_COLOR : avatarColor.trim());
         if (avatarImage == null || avatarImage.trim().isEmpty()) {
             row.putNull("avatar_image");
-        } else {
+        }
+        else {
             row.put("avatar_image", avatarImage.trim());
         }
         row.put("updated_at", java.time.Instant.now().toString());
@@ -477,10 +479,12 @@ public final class SupabaseAccountClient implements AccountService {
         final String suffix;
         if (attempt <= 0 && idPart.length() >= 6) {
             suffix = idPart.substring(0, 6);
-        } else if (idPart.length() >= 4) {
+        }
+        else if (idPart.length() >= 4) {
             suffix = idPart.substring(0, 4)
                     + Integer.toString(ThreadLocalRandom.current().nextInt(1000, 9999));
-        } else {
+        }
+        else {
             suffix = Integer.toString(ThreadLocalRandom.current().nextInt(100000, 999999));
         }
         String candidate = base + suffix;
@@ -549,14 +553,18 @@ public final class SupabaseAccountClient implements AccountService {
             }
             if ("GET".equals(method)) {
                 builder.GET();
-            } else if ("DELETE".equals(method)) {
+            }
+            else if ("DELETE".equals(method)) {
                 builder.DELETE();
-            } else if ("POST".equals(method)) {
+            }
+            else if ("POST".equals(method)) {
                 builder.POST(HttpRequest.BodyPublishers.ofString(jsonBody == null ? "" : jsonBody));
-            } else if ("PATCH".equals(method)) {
+            }
+            else if ("PATCH".equals(method)) {
                 builder.method("PATCH",
                         HttpRequest.BodyPublishers.ofString(jsonBody == null ? "" : jsonBody));
-            } else {
+            }
+            else {
                 throw new IllegalArgumentException("Unsupported method: " + method);
             }
             final HttpResponse<String> response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString());
@@ -564,7 +572,8 @@ public final class SupabaseAccountClient implements AccountService {
                 throw new IllegalStateException(friendlyError(response.statusCode(), response.body()));
             }
             return response.body() == null ? "" : response.body();
-        } catch (IOException | InterruptedException exception) {
+        }
+        catch (IOException | InterruptedException exception) {
             if (exception instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
@@ -599,7 +608,8 @@ public final class SupabaseAccountClient implements AccountService {
                 return node;
             }
             return mapper.createArrayNode().add(node);
-        } catch (IOException exception) {
+        }
+        catch (IOException exception) {
             throw new IllegalStateException("Invalid account JSON: " + exception.getMessage(),
                     exception);
         }

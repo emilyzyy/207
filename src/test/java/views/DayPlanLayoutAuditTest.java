@@ -765,13 +765,13 @@ class DayPlanLayoutAuditTest {
                 "trip-1", List.of(first, second), "", false));
         new AutoSchedulePresenter(viewModel).presentApplied(new AutoScheduleAppliedOutputData(
                 "trip-1", List.of(
-                new ProposedEventData("a", "a", "First Museum",
+                    new ProposedEventData("a", "a", "First Museum",
                         ProposedEventData.Kind.ACTIVITY, LocalTime.of(9, 0),
                         LocalTime.of(10, 0), false, false),
-                new ProposedEventData("travel-b", "", "Travel to Second Museum",
+                    new ProposedEventData("travel-b", "", "Travel to Second Museum",
                         ProposedEventData.Kind.TRAVEL, LocalTime.of(10, 0),
                         LocalTime.of(10, 20), false, false),
-                new ProposedEventData("b", "b", "Second Museum",
+                    new ProposedEventData("b", "b", "Second Museum",
                         ProposedEventData.Kind.ACTIVITY, LocalTime.of(10, 20),
                         LocalTime.of(11, 20), false, true)), "saved-fingerprint"));
 

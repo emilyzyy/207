@@ -268,14 +268,16 @@ public final class ProfileDialog extends JDialog {
                 avatarImage = null;
                 refreshAvatarPreview();
             }
-        } else if (choice == 1) {
+        }
+        else if (choice == 1) {
             try {
                 final String encoded = AvatarSupport.chooseImageBase64(this);
                 if (encoded != null) {
                     avatarImage = encoded;
                     refreshAvatarPreview();
                 }
-            } catch (RuntimeException exception) {
+            }
+            catch (RuntimeException exception) {
                 status.setForeground(SwingTheme.ERROR);
                 status.setText(exception.getMessage());
             }

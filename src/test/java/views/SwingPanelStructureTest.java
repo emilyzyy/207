@@ -184,7 +184,9 @@ final class SwingPanelStructureTest {
         if (component instanceof Container) {
             for (Component child : ((Container) component).getComponents()) {
                 final JLabel found = findLabel(child, text);
-                if (found != null) return found;
+                if (found != null) {
+                    return found;
+                }
             }
         }
         return null;
@@ -194,13 +196,17 @@ final class SwingPanelStructureTest {
         if (component instanceof JComboBox) {
             final JComboBox<?> combo = (JComboBox<?>) component;
             for (int i = 0; i < combo.getItemCount(); i++) {
-                if (item.equals(combo.getItemAt(i))) return combo;
+                if (item.equals(combo.getItemAt(i))) {
+                    return combo;
+                }
             }
         }
         if (component instanceof Container) {
             for (Component child : ((Container) component).getComponents()) {
                 final JComboBox<?> found = findComboItem(child, item);
-                if (found != null) return found;
+                if (found != null) {
+                    return found;
+                }
             }
         }
         return null;
@@ -225,18 +231,24 @@ final class SwingPanelStructureTest {
         if (component instanceof Container) {
             for (Component child : ((Container) component).getComponents()) {
                 final Component found = findByTooltip(child, tooltip);
-                if (found != null) return found;
+                if (found != null) {
+                    return found;
+                }
             }
         }
         return null;
     }
 
     private Component findByName(Component component, String name) {
-        if (name.equals(component.getName())) return component;
+        if (name.equals(component.getName())) {
+            return component;
+        }
         if (component instanceof Container) {
             for (Component child : ((Container) component).getComponents()) {
                 final Component found = findByName(child, name);
-                if (found != null) return found;
+                if (found != null) {
+                    return found;
+                }
             }
         }
         return null;

@@ -527,7 +527,8 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
         }
         try {
             return TimeDisplay.format(java.time.LocalTime.parse(detail.trim()));
-        } catch (java.time.format.DateTimeParseException notATime) {
+        }
+        catch (java.time.format.DateTimeParseException notATime) {
             return detail;
         }
     }
@@ -694,7 +695,8 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
             // borrowing the words for gains it did not make.
             summary.append("This arrangement respects your constraints; it does not reduce "
                     + "travel or waiting.");
-        } else {
+        }
+        else {
             summary.append("Arranged for ").append(join(achieved)).append('.');
         }
         if (data.isKeptCurrentOrder()) {

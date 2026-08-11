@@ -47,9 +47,11 @@ public final class ActivityDiscoveryController {
                     filter.execute(matches, category, minimumRating, type),
                     normalizedQuery, category, minimumRating, type,
                     result.getFailure(), result.isPartial(), currentDestination);
-        } catch (IllegalArgumentException exception) {
+        }
+        catch (IllegalArgumentException exception) {
             presenter.presentFailure(exception.getMessage());
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             presenter.presentFailure(
                     "Something went wrong while searching. Your existing activities are still "
                             + "available.");

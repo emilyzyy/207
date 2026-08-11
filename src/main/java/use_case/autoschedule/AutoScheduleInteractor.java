@@ -133,7 +133,8 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         try {
             matrix = new TravelMatrixPrefetcher(travelForThisRequest)
                     .prefetch(tasks, mode, trip.getDate(), availability);
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             presenter.presentFailure(
                     "Travel times are unavailable right now, so no schedule was produced. "
                             + "Your Day Plan was not changed.");
@@ -180,7 +181,8 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         WeatherContext weather;
         try {
             weather = weatherGateway.contextFor(trip);
-        } catch (RuntimeException exception) {
+        }
+        catch (RuntimeException exception) {
             // The gateway contract says failures come back as an unavailable context, but a
             // schedule must not be lost if an implementation throws instead.
             weather = WeatherContext.unavailable();
@@ -189,7 +191,8 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
             warnings.add("You asked for weather to be considered, but no forecast was "
                     + "available, so the schedule was arranged using time and travel "
                     + "information only.");
-        } else if (!weather.canDistinguishTimes()) {
+        }
+        else if (!weather.canDistinguishTimes()) {
             warnings.add("The forecast covers the whole day rather than each hour, so weather "
                     + "could not influence the timing of outdoor activities.");
         }
@@ -290,7 +293,8 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
                 exact = snapshot.estimate(
                         from.getActivity().getLocation(), to.getActivity().getLocation(), mode,
                         LocalDateTime.of(date, departure));
-            } catch (RuntimeException providerFailed) {
+            }
+            catch (RuntimeException providerFailed) {
                 snapshot.recordFailure(from.getEventId() + " to " + to.getEventId()
                         + " at " + departure + ": " + providerFailed.getMessage());
                 continue;
@@ -414,7 +418,8 @@ public final class AutoScheduleInteractor implements AutoScheduleInputBoundary {
         final Trip saved;
         try {
             saved = trips.save(trip.copyWithSchedule(events));
-        } catch (IllegalArgumentException | IllegalStateException exception) {
+        }
+        catch (IllegalArgumentException | IllegalStateException exception) {
             presenter.presentFailure("The proposed schedule could not be saved: "
                     + exception.getMessage());
             return;

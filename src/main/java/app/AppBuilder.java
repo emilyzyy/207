@@ -446,7 +446,8 @@ public final class AppBuilder {
         try {
             return new FallbackTripAssistantGateway(
                     OpenAiTripAssistantGateway.viaProxy(URI.create(endpoint), model), offline);
-        } catch (IllegalArgumentException exception) {
+        }
+        catch (IllegalArgumentException exception) {
             return offline;
         }
     }
@@ -462,8 +463,12 @@ public final class AppBuilder {
         // prior enrichment). Replacing wholesale lets a late or empty enrichment answer wipe the
         // markers the user can already see.
         final Map<String, Activity> merged = new LinkedHashMap<>();
-        for (Activity activity : searchCurrent.getActivities()) merged.put(activity.getId(), activity);
-        for (Activity activity : refreshed.getActivities()) merged.put(activity.getId(), activity);
+        for (Activity activity : searchCurrent.getActivities()) {
+            merged.put(activity.getId(), activity);
+        }
+        for (Activity activity : refreshed.getActivities()) {
+            merged.put(activity.getId(), activity);
+        }
         frame.getSearchViewModel().setState(new SearchState(
                 new ArrayList<>(merged.values()),
                 searchCurrent.getQuery(),
@@ -545,7 +550,8 @@ public final class AppBuilder {
                 SwingUtilities.invokeLater(() ->
                         tripAccessViewModel.setAccess(
                                 access.canEditItinerary(), access.canManagePeople()));
-            } catch (RuntimeException exception) {
+            }
+            catch (RuntimeException exception) {
                 // Keep default editable until access loads, or user retries.
             }
         }, "Trip-Access-" + tripId);
@@ -578,7 +584,8 @@ public final class AppBuilder {
     private List<WeatherWarning> weatherWarningsFor(AppContainer app, Trip trip) {
         try {
             return app.weatherWarning.executeHourly(trip.getId());
-        } catch (Exception exception) {
+        }
+        catch (Exception exception) {
             System.err.println("[AppBuilder] Weather preview unavailable for " + trip.getDestination()
                     + ": " + exception.getMessage());
             return Collections.singletonList(new WeatherWarning(
@@ -596,7 +603,9 @@ public final class AppBuilder {
         WeatherWarning closest = null;
         long closestMinutes = Long.MAX_VALUE;
         for (WeatherWarning warning : hourlyWeather) {
-            if (warning == null || warning.getTime() == null) continue;
+            if (warning == null || warning.getTime() == null) {
+                continue;
+            }
             final long difference = Math.abs(Duration.between(
                     trip.getStartTime(), warning.getTime()).toMinutes());
             if (difference < closestMinutes) {
@@ -638,7 +647,8 @@ public final class AppBuilder {
                     new SupabaseItineraryDataAccess(url, anonKey, auth, hydrator);
             trips = new DualModeItineraryDataAccess(local, remote, auth);
             account = new SupabaseAccountClient(url, anonKey, auth);
-        } else {
+        }
+        else {
             trips = new InMemoryItineraryDataAccessObject();
         }
 

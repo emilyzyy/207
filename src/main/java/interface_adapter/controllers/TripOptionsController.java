@@ -52,7 +52,8 @@ public final class TripOptionsController {
                 if (!updatedTimes.containsKey(event.getKey())) {
                     removed++;
 
-                } else if (!event.getValue().equals(updatedTimes.get(event.getKey()))) {
+                }
+                else if (!event.getValue().equals(updatedTimes.get(event.getKey()))) {
 
                     adjusted++;
                 }
