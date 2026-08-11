@@ -13,9 +13,10 @@ public final class InMemoryTripRepository implements TripRepository {
     private final Map<String, Trip> trips = new ConcurrentHashMap<String, Trip>();
 
     /**
-     * Performs the s av e operation.
-     * @param trip the t ri p value
-     * @return the result of the operation
+     * Stores the trip, replacing any existing entry with the same identifier.
+     *
+     * @param trip the trip to store
+     * @return the stored trip
      */
     public Trip save(Trip trip) {
         trips.put(trip.getId(), trip);
@@ -23,26 +24,29 @@ public final class InMemoryTripRepository implements TripRepository {
     }
 
     /**
-     * Performs the f in db yi d operation.
-     * @param id the i d value
-     * @return the result of the operation
+     * Looks up a trip by its identifier.
+     *
+     * @param id the identifier to look for
+     * @return the trip, or empty when no such trip is stored
      */
     public Optional<Trip> findById(String id) {
         return Optional.ofNullable(trips.get(id));
     }
 
     /**
-     * Performs the f in da ll operation.
-     * @return the result of the operation
+     * Returns every trip currently stored.
+     *
+     * @return every stored trip, in no guaranteed order
      */
     public List<Trip> findAll() {
         return new ArrayList<Trip>(trips.values());
     }
 
     /**
-     * Performs the d el et eb yi d operation.
-     * @param id the i d value
-     * @return the result of the operation
+     * Removes the trip with the given identifier.
+     *
+     * @param id the identifier to remove
+     * @return whether a stored entry was actually removed
      */
     public boolean deleteById(String id) {
         return id != null && trips.remove(id) != null;

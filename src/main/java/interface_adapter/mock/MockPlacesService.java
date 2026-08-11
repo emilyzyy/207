@@ -93,17 +93,19 @@ public final class MockPlacesService implements PlacesService, ActivityRepositor
     }
 
     /**
-     * Performs the f in da ll operation.
-     * @return the result of the operation
+     * Returns every mock places currently stored.
+     *
+     * @return every stored mock places, in no guaranteed order
      */
     public List<Activity> findAll() {
         return new ArrayList<Activity>(activities);
     }
 
     /**
-     * Performs the f in db yi d operation.
-     * @param id the i d value
-     * @return the result of the operation
+     * Looks up a mock places by its identifier.
+     *
+     * @param id the identifier to look for
+     * @return the mock places, or empty when no such mock places is stored
      */
     public Optional<Activity> findById(String id) {
         for (Activity activity : activities) {

@@ -18,8 +18,9 @@ public final class DashboardViewModel {
     }
 
     /**
-     * Performs the s et st at e operation.
-     * @param updatedState the u pd at ed st at e value
+     * Replaces the current state and notifies every registered listener.
+     *
+     * @param updatedState the state to publish
      */
     public void setState(DashboardState updatedState) {
         final DashboardState oldState = state;
@@ -28,16 +29,18 @@ public final class DashboardViewModel {
     }
 
     /**
-     * Performs the a dd pr op er ty ch an ge li st en er operation.
-     * @param listener the l is te ne r value
+     * Registers a listener notified whenever this view model's state is replaced.
+     *
+     * @param listener the listener to notify
      */
     public void addPropertyChangeListener(PropertyChangeListener listener) {
         changes.addPropertyChangeListener(listener);
     }
 
     /**
-     * Performs the r em ov ep ro pe rt yc ha ng el is te ne r operation.
-     * @param listener the l is te ne r value
+     * Stops notifying the given listener of state changes.
+     *
+     * @param listener the listener to stop notifying
      */
     public void removePropertyChangeListener(PropertyChangeListener listener) {
         changes.removePropertyChangeListener(listener);

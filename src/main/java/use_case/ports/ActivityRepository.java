@@ -7,15 +7,17 @@ import entity.entities.Activity;
 
 public interface ActivityRepository {
     /**
-     * Performs the f in da ll operation.
-     * @return the result of the operation
+     * Returns every activity currently stored.
+     *
+     * @return every stored activity, in no guaranteed order
      */
     List<Activity> findAll();
 
     /**
-     * Performs the f in db yi d operation.
-     * @param id the i d value
-     * @return the result of the operation
+     * Looks up an activity by its identifier.
+     *
+     * @param id the identifier to look for
+     * @return the activity, or empty when no such activity is stored
      */
     Optional<Activity> findById(String id);
 }
