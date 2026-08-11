@@ -151,8 +151,10 @@ final class SmallUseCaseCoverageTest {
         assertThrows(IllegalArgumentException.class,
                 () -> useCase.execute("trip-1", "missing", LocalTime.of(10, 0)));
         assertThrows(IllegalArgumentException.class,
-                () -> useCase.execute("trip-1", "museum",
-                        LocalTime.of(12, 0), LocalTime.of(11, 0)));
+                () -> {
+                    useCase.execute("trip-1", "museum",
+                            LocalTime.of(12, 0), LocalTime.of(11, 0));
+                });
     }
 
     @Test

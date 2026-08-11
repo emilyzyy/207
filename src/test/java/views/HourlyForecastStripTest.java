@@ -46,9 +46,11 @@ final class HourlyForecastStripTest {
         final WeatherWarning morning = warning(
                 LocalTime.of(9, 0), "Clear sky", WeatherSeverity.LOW,
                 "18°C · 5% precipitation · 4 km/h wind");
-        SwingUtilities.invokeAndWait(() -> dayPlan.setState(new DayPlanState(
-                "trip-1", Collections.emptyList(), "", false,
-                Arrays.asList(afternoon, morning))));
+        SwingUtilities.invokeAndWait(() -> {
+            dayPlan.setState(new DayPlanState(
+                    "trip-1", Collections.emptyList(), "", false,
+                    Arrays.asList(afternoon, morning)));
+        });
 
         final String forecast = allText(strip);
         assertTrue(forecast.contains("9:00 AM"), forecast);
@@ -67,10 +69,12 @@ final class HourlyForecastStripTest {
         final HourlyForecastStrip strip = new HourlyForecastStrip(dayPlan);
         strip.disposeListeners();
 
-        SwingUtilities.invokeAndWait(() -> dayPlan.setState(new DayPlanState(
-                "trip-1", Collections.emptyList(), "", false,
-                Collections.singletonList(warning(LocalTime.of(9, 0), "Clear sky",
-                        WeatherSeverity.LOW, "18°C · 5% precipitation")))));
+        SwingUtilities.invokeAndWait(() -> {
+            dayPlan.setState(new DayPlanState(
+                    "trip-1", Collections.emptyList(), "", false,
+                    Collections.singletonList(warning(LocalTime.of(9, 0), "Clear sky",
+                            WeatherSeverity.LOW, "18°C · 5% precipitation"))));
+        });
 
         assertTrue(allText(strip).contains("Weather is updating"),
                 "after dispose the strip must not repaint from the view model");

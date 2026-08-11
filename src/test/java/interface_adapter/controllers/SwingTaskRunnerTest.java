@@ -22,10 +22,12 @@ class SwingTaskRunnerTest {
         final AtomicBoolean ranOnEventThread = new AtomicBoolean(true);
         final CountDownLatch finished = new CountDownLatch(1);
 
-        SwingUtilities.invokeAndWait(() -> new SwingTaskRunner().run(() -> {
-            ranOnEventThread.set(SwingUtilities.isEventDispatchThread());
-            finished.countDown();
-        }));
+        SwingUtilities.invokeAndWait(() -> {
+            new SwingTaskRunner().run(() -> {
+                ranOnEventThread.set(SwingUtilities.isEventDispatchThread());
+                finished.countDown();
+            });
+        });
 
         assertTrue(finished.await(5, TimeUnit.SECONDS), "the work should have run");
         assertFalse(ranOnEventThread.get(),

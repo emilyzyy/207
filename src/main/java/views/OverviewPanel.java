@@ -368,8 +368,9 @@ public final class OverviewPanel extends JPanel {
         final Thread worker = new Thread(() -> {
             try {
                 final GeoPoint point = geocoder.geocode(destination);
-                javax.swing.SwingUtilities.invokeLater(() ->
-                        mapPanel.focusOnCoordinates(point.getLatitude(), point.getLongitude()));
+                javax.swing.SwingUtilities.invokeLater(() -> {
+                    mapPanel.focusOnCoordinates(point.getLatitude(), point.getLongitude());
+                });
             }
             catch (RuntimeException exception) {
                 System.err.println("[Overview] Could not locate " + destination + ": "

@@ -145,10 +145,12 @@ class AutoScheduleControllerTest {
         final AutoScheduleController controller =
                 new AutoScheduleController(useCase, viewModel, new SwingTaskRunner());
 
-        SwingUtilities.invokeAndWait(() -> controller.loadWeatherOption(option -> {
-            ranOnEventThread.set(SwingUtilities.isEventDispatchThread());
-            answered.countDown();
-        }));
+        SwingUtilities.invokeAndWait(() -> {
+            controller.loadWeatherOption(option -> {
+                ranOnEventThread.set(SwingUtilities.isEventDispatchThread());
+                answered.countDown();
+            });
+        });
 
         assertTrue(answered.await(5, TimeUnit.SECONDS), "the lookup should have answered");
         assertFalse(ranOnEventThread.get(),

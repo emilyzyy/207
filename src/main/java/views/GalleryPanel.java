@@ -274,8 +274,10 @@ public final class GalleryPanel extends JPanel {
             return StaticTileLoader.loadCityTile(destination, MAP_ZOOM);
         }
         return CompletableFuture.supplyAsync(() -> destinationGeocoder.geocode(destination))
-                .thenCompose(point -> StaticTileLoader.loadTile(
-                        point.getLatitude(), point.getLongitude(), MAP_ZOOM))
+                .thenCompose(point -> {
+                    return StaticTileLoader.loadTile(
+                            point.getLatitude(), point.getLongitude(), MAP_ZOOM);
+                })
                 .exceptionally(exception -> null);
     }
 

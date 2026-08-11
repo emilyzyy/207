@@ -498,9 +498,11 @@ public final class AutoSchedulePresenter implements AutoScheduleOutputBoundary {
         final Map<String, List<String>> sentences = new LinkedHashMap<>();
         for (Map.Entry<String, List<Reason>> entry : byEvent.entrySet()) {
             final List<Reason> ordered = new ArrayList<>(entry.getValue());
-            ordered.sort((left, right) -> Integer.compare(
-                    REASON_PRIORITY.indexOf(left.getCode()),
-                    REASON_PRIORITY.indexOf(right.getCode())));
+            ordered.sort((left, right) -> {
+                return Integer.compare(
+                        REASON_PRIORITY.indexOf(left.getCode()),
+                        REASON_PRIORITY.indexOf(right.getCode()));
+            });
             final List<String> worded = new ArrayList<>();
             for (Reason reason : ordered) {
                 worded.add(describe(reason));

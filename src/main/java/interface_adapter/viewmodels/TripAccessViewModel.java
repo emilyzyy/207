@@ -41,8 +41,9 @@ public final class TripAccessViewModel {
     }
 
     /**
-     * Performs the a dd pr op er ty ch an ge li st en er operation.
-     * @param listener the l is te ne r value
+     * Registers a listener notified whenever this view model's state is replaced.
+     *
+     * @param listener the listener to notify
      */
     public void addPropertyChangeListener(PropertyChangeListener listener) {
         support.addPropertyChangeListener(listener);

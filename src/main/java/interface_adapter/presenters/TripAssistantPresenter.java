@@ -47,10 +47,12 @@ public final class TripAssistantPresenter implements TripAssistantOutputBoundary
 
     @Override
     public void presentFailure(String message) {
-        update(() -> viewModel.setState(new TripAssistantState(
-                viewModel.getState().getMessages(), false,
-                message == null || message.trim().isEmpty()
-                        ? "George couldn't answer right now." : message)));
+        update(() -> {
+            viewModel.setState(new TripAssistantState(
+                    viewModel.getState().getMessages(), false,
+                    message == null || message.trim().isEmpty()
+                            ? "George couldn't answer right now." : message));
+        });
     }
 
     private List<TripAssistantMessage> mutableMessages() {

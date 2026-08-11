@@ -7,8 +7,9 @@ import entity.entities.Activity;
 /** Write-side port for persisting discovered places. */
 public interface PlacesWriter {
     /**
-     * Performs the a dd al l operation.
-     * @param activities the a ct iv it ie s value
+     * Adds each of the given entries, keeping any already held.
+     *
+     * @param activities the entries to add
      */
     void addAll(List<Activity> activities);
 }

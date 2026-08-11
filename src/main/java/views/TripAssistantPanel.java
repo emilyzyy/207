@@ -166,8 +166,10 @@ public final class TripAssistantPanel extends JPanel {
         input.setEnabled(!state.isLoading());
         send.setEnabled(!state.isLoading());
         error.setText(state.getError().isEmpty() ? " " : state.getError());
-        SwingUtilities.invokeLater(() -> historyScroll.getVerticalScrollBar().setValue(
-                historyScroll.getVerticalScrollBar().getMaximum()));
+        SwingUtilities.invokeLater(() -> {
+            historyScroll.getVerticalScrollBar().setValue(
+                    historyScroll.getVerticalScrollBar().getMaximum());
+        });
     }
 
     public JTextArea getHistoryArea() {

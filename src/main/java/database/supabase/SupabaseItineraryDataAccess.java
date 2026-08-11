@@ -367,8 +367,9 @@ public final class SupabaseItineraryDataAccess
     }
 
     private AuthSession requireSession() {
-        return auth.currentSession().orElseThrow(() ->
-                new IllegalStateException("Sign in before saving or loading itineraries"));
+        return auth.currentSession().orElseThrow(() -> {
+            return new IllegalStateException("Sign in before saving or loading itineraries");
+        });
     }
 
     private Optional<String> lookupTripOwner(String tripId) {

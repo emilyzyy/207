@@ -46,8 +46,9 @@ class ImprovementTileLayoutTest {
             throws Exception {
         assumeFalse(GraphicsEnvironment.isHeadless(), "building components needs a display");
         final ScheduleImprovementsPanel[] panel = new ScheduleImprovementsPanel[1];
-        SwingUtilities.invokeAndWait(() ->
-                panel[0] = new ScheduleImprovementsPanel(improvements));
+        SwingUtilities.invokeAndWait(() -> {
+            panel[0] = new ScheduleImprovementsPanel(improvements);
+        });
         return panel[0];
     }
 

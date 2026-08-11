@@ -7,22 +7,25 @@ import entity.entities.Trip;
 
 public interface TripRepository {
     /**
-     * Performs the s av e operation.
-     * @param trip the t ri p value
-     * @return the result of the operation
+     * Stores the trip, replacing any existing entry with the same identifier.
+     *
+     * @param trip the trip to store
+     * @return the stored trip
      */
     Trip save(Trip trip);
 
     /**
-     * Performs the f in db yi d operation.
-     * @param id the i d value
-     * @return the result of the operation
+     * Looks up a trip by its identifier.
+     *
+     * @param id the identifier to look for
+     * @return the trip, or empty when no such trip is stored
      */
     Optional<Trip> findById(String id);
 
     /**
-     * Performs the f in da ll operation.
-     * @return the result of the operation
+     * Returns every trip currently stored.
+     *
+     * @return every stored trip, in no guaranteed order
      */
     List<Trip> findAll();
 

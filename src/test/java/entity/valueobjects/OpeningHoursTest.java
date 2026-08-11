@@ -91,14 +91,22 @@ class OpeningHoursTest {
      */
     @Test
     void anIntervalMustEndAfterItStarts() {
-        assertThrows(IllegalArgumentException.class, () -> new OpeningHours.TimeInterval(
-                LocalTime.of(17, 0), LocalTime.of(9, 0)));
-        assertThrows(IllegalArgumentException.class, () -> new OpeningHours.TimeInterval(
-                LocalTime.of(9, 0), LocalTime.of(9, 0)));
-        assertThrows(IllegalArgumentException.class, () -> new OpeningHours.TimeInterval(
-                null, LocalTime.of(9, 0)));
-        assertThrows(IllegalArgumentException.class, () -> new OpeningHours.TimeInterval(
-                LocalTime.of(9, 0), null));
+        assertThrows(IllegalArgumentException.class, () -> {
+            new OpeningHours.TimeInterval(
+                    LocalTime.of(17, 0), LocalTime.of(9, 0));
+        });
+        assertThrows(IllegalArgumentException.class, () -> {
+            new OpeningHours.TimeInterval(
+                    LocalTime.of(9, 0), LocalTime.of(9, 0));
+        });
+        assertThrows(IllegalArgumentException.class, () -> {
+            new OpeningHours.TimeInterval(
+                    null, LocalTime.of(9, 0));
+        });
+        assertThrows(IllegalArgumentException.class, () -> {
+            new OpeningHours.TimeInterval(
+                    LocalTime.of(9, 0), null);
+        });
     }
 
     @Test

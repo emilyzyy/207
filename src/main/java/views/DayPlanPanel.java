@@ -199,17 +199,20 @@ public final class DayPlanPanel extends JPanel {
 
 
         render(viewModel.getState());
-        viewModel.addPropertyChangeListener(event ->
-                onEventThread(() -> render(viewModel.getState())));
+        viewModel.addPropertyChangeListener(event -> {
+            onEventThread(() -> render(viewModel.getState()));
+        });
         if (selection != null) {
             // Selection changes arrive on the event thread already, but they are marshalled
             // the same way so there is one rendering path rather than two.
-            selection.addPropertyChangeListener(event ->
-                    onEventThread(() -> render(viewModel.getState())));
+            selection.addPropertyChangeListener(event -> {
+                onEventThread(() -> render(viewModel.getState()));
+            });
         }
         if (tripAccess != null) {
-            tripAccess.addPropertyChangeListener(event ->
-                    onEventThread(() -> render(viewModel.getState())));
+            tripAccess.addPropertyChangeListener(event -> {
+                onEventThread(() -> render(viewModel.getState()));
+            });
         }
     }
 
@@ -357,8 +360,10 @@ public final class DayPlanPanel extends JPanel {
         final JButton dismiss = SwingTheme.secondaryButton("OK");
         dismiss.setToolTipText("Dismiss this message; your Day Plan is unchanged");
         dismiss.getAccessibleContext().setAccessibleName("Dismiss the Autoschedule message");
-        dismiss.addActionListener(event -> viewModel.setState(
-                viewModel.getState().withoutNotice()));
+        dismiss.addActionListener(event -> {
+            viewModel.setState(
+                    viewModel.getState().withoutNotice());
+        });
         final JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         right.setOpaque(false);
         right.add(dismiss);
@@ -470,8 +475,9 @@ public final class DayPlanPanel extends JPanel {
         // off the event thread while the dialog is already on screen. The answer comes
         // back on a background thread and is applied here, on the EDT, because knowing
         // that this is Swing is the view's job rather than the controller's.
-        autoScheduleController.loadWeatherOption(option ->
-                SwingUtilities.invokeLater(() -> dialog.applyWeatherOption(option)));
+        autoScheduleController.loadWeatherOption(option -> {
+            SwingUtilities.invokeLater(() -> dialog.applyWeatherOption(option));
+        });
         final AutoScheduleSettings settings = dialog.showDialog();
         if (dialog.wasResetRequested() && settings == null) {
             autoScheduleController.forgetRememberedSettings();

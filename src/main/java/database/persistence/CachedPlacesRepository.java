@@ -15,8 +15,9 @@ public final class CachedPlacesRepository implements ActivityRepository, PlacesW
     private final Map<String, Activity> places = new LinkedHashMap<>();
 
     /**
-     * Performs the a dd al l operation.
-     * @param activities the a ct iv it ie s value
+     * Adds each of the given entries, keeping any already held.
+     *
+     * @param activities the entries to add
      */
     public synchronized void addAll(List<Activity> activities) {
         for (Activity activity : activities) {
@@ -24,7 +25,9 @@ public final class CachedPlacesRepository implements ActivityRepository, PlacesW
         }
     }
 
-    /** Performs the c le ar operation. */
+    /**
+     * Discards everything held in this cache.
+     */
     public synchronized void clear() {
         places.clear();
     }

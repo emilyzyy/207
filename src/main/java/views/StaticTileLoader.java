@@ -48,9 +48,10 @@ final class StaticTileLoader {
      * @return the result of the operation
      */
     static CompletableFuture<BufferedImage> loadCityTile(String city, int zoom) {
-        return cityCoords(city).thenCompose(coords ->
-                coords == null ? CompletableFuture.completedFuture(null)
-                        : loadTile(coords[0], coords[1], zoom));
+        return cityCoords(city).thenCompose(coords -> {
+            return coords == null ? CompletableFuture.completedFuture(null)
+                            : loadTile(coords[0], coords[1], zoom);
+        });
     }
 
     static CompletableFuture<double[]> cityCoords(String city) {

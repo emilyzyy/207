@@ -53,12 +53,16 @@ final class TripAssistantPanelTest {
             panel.getInputField().postActionEvent();
         });
         assertEquals("What works in rain?", question.get());
-        SwingUtilities.invokeAndWait(() -> viewModel.setState(new TripAssistantState(
-                viewModel.getState().getMessages(), true, "")));
+        SwingUtilities.invokeAndWait(() -> {
+            viewModel.setState(new TripAssistantState(
+                    viewModel.getState().getMessages(), true, ""));
+        });
         assertTrue(panel.isLoadingVisible());
         assertFalse(panel.getSendButton().isEnabled());
-        SwingUtilities.invokeAndWait(() -> presenter.presentFailure(
-                "Open or create a trip before asking George"));
+        SwingUtilities.invokeAndWait(() -> {
+            presenter.presentFailure(
+                    "Open or create a trip before asking George");
+        });
         assertFalse(panel.isLoadingVisible());
         assertTrue(panel.getErrorLabel().getText().contains("Open or create"));
         assertEquals("George chat history", panel.getHistoryArea()

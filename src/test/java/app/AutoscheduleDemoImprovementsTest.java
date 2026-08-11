@@ -120,9 +120,11 @@ class AutoscheduleDemoImprovementsTest {
         final PreviewMetricsView metrics = state.getMetrics();
         assertEquals(5, metrics.getActivityCount(), "the demo is a five-activity day");
         assertTrue(state.getPreviewRows().stream()
-                        .noneMatch(row -> row.getStart().isBefore(
-                                AutoscheduleDemoTrip.UNAVAILABLE_TO)
-                                && row.getEnd().isAfter(AutoscheduleDemoTrip.UNAVAILABLE_FROM)),
+                        .noneMatch(row -> {
+                            return row.getStart().isBefore(
+                                    AutoscheduleDemoTrip.UNAVAILABLE_TO)
+                                    && row.getEnd().isAfter(AutoscheduleDemoTrip.UNAVAILABLE_FROM);
+                        }),
                 "nothing may sit inside the unavailable period, travel included");
     }
 
@@ -179,9 +181,11 @@ class AutoscheduleDemoImprovementsTest {
         final DayPlanState state = runDemo();
 
         assertTrue(state.getPreviewRows().stream()
-                        .anyMatch(row -> "Royal Ontario Museum".equals(row.getTitle())
-                                && row.getStart().equals(LocalTime.of(11, 0))
-                                && row.isLocked()),
+                        .anyMatch(row -> {
+                            return "Royal Ontario Museum".equals(row.getTitle())
+                                    && row.getStart().equals(LocalTime.of(11, 0))
+                                    && row.isLocked();
+                        }),
                 "the museum was pinned at 11:00 and must not have moved: "
                         + state.getPreviewRows());
     }

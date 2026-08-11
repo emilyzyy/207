@@ -210,17 +210,21 @@ public final class Main {
                     for (User friend : dialog.getSelectedFriends()) {
                         memberIds.add(friend.getId());
                     }
-                    app.createTripPresenter.setOnCreated(created -> SwingUtilities.invokeLater(() -> {
-                        final TrippyFrame tripFrame =
-                                openTripFrame(builder, app, created, galleryFrame, auth);
-                        enrichItineraryAsync(builder, app, created.getId(), dest, tripFrame);
-                    }));
-                    app.createTripPresenter.setOnError(message -> SwingUtilities.invokeLater(() -> {
-                        galleryFrame.setCursor(Cursor.getDefaultCursor());
-                        JOptionPane.showMessageDialog(galleryFrame,
-                                "Could not create the itinerary: " + message,
-                                "New Itinerary", JOptionPane.ERROR_MESSAGE);
-                    }));
+                    app.createTripPresenter.setOnCreated(created -> {
+                        SwingUtilities.invokeLater(() -> {
+                            final TrippyFrame tripFrame =
+                                    openTripFrame(builder, app, created, galleryFrame, auth);
+                            enrichItineraryAsync(builder, app, created.getId(), dest, tripFrame);
+                        });
+                    });
+                    app.createTripPresenter.setOnError(message -> {
+                        SwingUtilities.invokeLater(() -> {
+                            galleryFrame.setCursor(Cursor.getDefaultCursor());
+                            JOptionPane.showMessageDialog(galleryFrame,
+                                    "Could not create the itinerary: " + message,
+                                    "New Itinerary", JOptionPane.ERROR_MESSAGE);
+                        });
+                    });
                     galleryFrame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                     new Thread(() -> {
                         try {
@@ -487,8 +491,9 @@ public final class Main {
                     final String next = tripFingerprint(fresh.get());
                     if (!next.equals(fingerprint[0])) {
                         fingerprint[0] = next;
-                        SwingUtilities.invokeLater(() ->
-                                builder.refreshFrameForTrip(fresh.get(), tripFrame));
+                        SwingUtilities.invokeLater(() -> {
+                            builder.refreshFrameForTrip(fresh.get(), tripFrame);
+                        });
                     }
                 }
                 catch (RuntimeException exception) {

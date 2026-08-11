@@ -23,9 +23,11 @@ final class FallbackTripAssistantGatewayTest {
     @Test
     void unknownLiveActivityTriggersOfflineGroundedFallback() {
         final FallbackTripAssistantGateway gateway = new FallbackTripAssistantGateway(
-                ignored -> new TripAssistantDecision(
-                        TripAssistantDecision.Intent.RECOMMEND,
-                        Collections.singletonList("invented")),
+                ignored -> {
+                    return new TripAssistantDecision(
+                            TripAssistantDecision.Intent.RECOMMEND,
+                            Collections.singletonList("invented"));
+                },
                 new OfflineTripAssistantGateway());
 
         final TripAssistantDecision decision = gateway.answer(request());
@@ -37,9 +39,11 @@ final class FallbackTripAssistantGatewayTest {
     @Test
     void groundedGeneralAnswerUsesLiveAi() {
         final FallbackTripAssistantGateway gateway = new FallbackTripAssistantGateway(
-                ignored -> new TripAssistantDecision(
-                        TripAssistantDecision.Intent.GENERAL, Collections.emptyList(),
-                        "I'm George, and 3 + 3 is 6.", ""),
+                ignored -> {
+                    return new TripAssistantDecision(
+                            TripAssistantDecision.Intent.GENERAL, Collections.emptyList(),
+                            "I'm George, and 3 + 3 is 6.", "");
+                },
                 new OfflineTripAssistantGateway());
 
         final TripAssistantDecision decision = gateway.answer(request(
@@ -70,9 +74,11 @@ final class FallbackTripAssistantGatewayTest {
     @Test
     void misclassifiedGeneralActivityClaimIsRejectedForGroundedFallback() {
         final FallbackTripAssistantGateway gateway = new FallbackTripAssistantGateway(
-                ignored -> new TripAssistantDecision(
-                        TripAssistantDecision.Intent.GENERAL, Collections.emptyList(),
-                        "Its signature drink costs $12.", ""),
+                ignored -> {
+                    return new TripAssistantDecision(
+                            TripAssistantDecision.Intent.GENERAL, Collections.emptyList(),
+                            "Its signature drink costs $12.", "");
+                },
                 new OfflineTripAssistantGateway());
         final TripAssistantMessage recommendation = new TripAssistantMessage(
                 TripAssistantMessage.Role.ASSISTANT, "Try Real Activity",

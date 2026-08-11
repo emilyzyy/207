@@ -80,8 +80,10 @@ final class OpenStreetMapPlacesServiceTest {
     @Test
     void accentsAndMultiWordNamesAreNormalizedForLocalRanking() {
         final OpenStreetMapPlacesService service = new OpenStreetMapPlacesService(
-                (destination, query, limit) -> List.of(
-                        activity("osm-node-4", "Musée Royal", ActivityCategory.MUSEUM)),
+                (destination, query, limit) -> {
+                    return List.of(
+                            activity("osm-node-4", "Musée Royal", ActivityCategory.MUSEUM));
+                },
                 nearby(new AtomicInteger()));
         service.search(request("Musée Royal"));
 

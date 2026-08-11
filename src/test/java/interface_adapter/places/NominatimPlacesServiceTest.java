@@ -384,10 +384,12 @@ final class NominatimPlacesServiceTest {
             int overpassStatus,
             String overpassBody) throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/search", exchange ->
-                respond(exchange, geocodingStatus, geocodingBody));
-        server.createContext("/interpreter", exchange ->
-                respond(exchange, overpassStatus, overpassBody));
+        server.createContext("/search", exchange -> {
+            respond(exchange, geocodingStatus, geocodingBody);
+        });
+        server.createContext("/interpreter", exchange -> {
+            respond(exchange, overpassStatus, overpassBody);
+        });
         server.start();
     }
 

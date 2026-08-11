@@ -96,13 +96,15 @@ final class SwingPanelStructureTest {
         final ScheduledEvent event = new ScheduledEvent(
                 "event-rom", activity("rom"), LocalTime.of(10, 0),
                 LocalTime.of(11, 0), EventType.ACTIVITY, "Visit");
-        SwingUtilities.invokeAndWait(() -> dayPlanViewModel.setState(
-                new DayPlanState("trip-1", Collections.singletonList(event),
-                        "Autoschedule applied. Your Day Plan has been updated.", false,
-                        Collections.singletonList(new WeatherWarning(
-                                new Location(43.65, -79.38, "Toronto"),
-                                LocalTime.of(10, 0), "Rain", WeatherSeverity.MEDIUM,
-                                "18°C · 65% precipitation")))));
+        SwingUtilities.invokeAndWait(() -> {
+            dayPlanViewModel.setState(
+                    new DayPlanState("trip-1", Collections.singletonList(event),
+                            "Autoschedule applied. Your Day Plan has been updated.", false,
+                            Collections.singletonList(new WeatherWarning(
+                                    new Location(43.65, -79.38, "Toronto"),
+                                    LocalTime.of(10, 0), "Rain", WeatherSeverity.MEDIUM,
+                                    "18°C · 65% precipitation"))));
+        });
 
         assertTrue(allText(dayPlan).contains("rom"));
         assertTrue(allText(dayPlan).contains("Autoschedule applied"));
@@ -127,9 +129,11 @@ final class SwingPanelStructureTest {
         assertEquals(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER,
                 dayPlanScroll.getHorizontalScrollBarPolicy());
 
-        SwingUtilities.invokeAndWait(() -> dayPlanViewModel.setState(
-                new DayPlanState("trip-1", Collections.singletonList(event),
-                        "The itinerary cannot fit inside the trip window", true)));
+        SwingUtilities.invokeAndWait(() -> {
+            dayPlanViewModel.setState(
+                    new DayPlanState("trip-1", Collections.singletonList(event),
+                            "The itinerary cannot fit inside the trip window", true));
+        });
         assertTrue(allText(dayPlan).contains(
                 "The itinerary cannot fit inside the trip window"));
     }

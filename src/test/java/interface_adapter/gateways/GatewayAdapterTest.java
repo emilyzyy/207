@@ -102,9 +102,11 @@ class GatewayAdapterTest {
     @Test
     void anHourlyForecastBecomesAContextThatCanInfluenceTiming() {
         // Shiyuan's getHourlyWarnings is the abstract method now, so a lambda supplies it.
-        final WeatherService service = requested -> Arrays.asList(
-                new WeatherWarning(FROM, LocalTime.of(9, 0), "Rain", WeatherSeverity.HIGH, ""),
-                new WeatherWarning(FROM, LocalTime.of(15, 0), "Clear", WeatherSeverity.LOW, ""));
+        final WeatherService service = requested -> {
+            return Arrays.asList(
+                    new WeatherWarning(FROM, LocalTime.of(9, 0), "Rain", WeatherSeverity.HIGH, ""),
+                    new WeatherWarning(FROM, LocalTime.of(15, 0), "Clear", WeatherSeverity.LOW, ""));
+        };
 
         final WeatherContext context = new WeatherServiceContextGateway(service).contextFor(trip());
 
@@ -117,8 +119,10 @@ class GatewayAdapterTest {
 
     @Test
     void aSingleKnownHourStillCannotInfluenceTiming() {
-        final WeatherService service = requested -> Collections.singletonList(
-                new WeatherWarning(FROM, LocalTime.of(12, 0), "Rain", WeatherSeverity.HIGH, ""));
+        final WeatherService service = requested -> {
+            return Collections.singletonList(
+                    new WeatherWarning(FROM, LocalTime.of(12, 0), "Rain", WeatherSeverity.HIGH, ""));
+        };
 
         final WeatherContext context = new WeatherServiceContextGateway(service).contextFor(trip());
 
@@ -144,8 +148,10 @@ class GatewayAdapterTest {
     void anEmptyOrSeverityLessForecastIsTreatedAsNoForecast() {
         final WeatherService none = requested -> null;
         final WeatherService empty = requested -> Collections.emptyList();
-        final WeatherService blank = requested -> Collections.singletonList(
-                new WeatherWarning(FROM, LocalTime.of(12, 0), "Unknown", null, ""));
+        final WeatherService blank = requested -> {
+            return Collections.singletonList(
+                    new WeatherWarning(FROM, LocalTime.of(12, 0), "Unknown", null, ""));
+        };
 
         assertFalse(new WeatherServiceContextGateway(none).contextFor(trip()).isAvailable());
         assertFalse(new WeatherServiceContextGateway(empty).contextFor(trip()).isAvailable());

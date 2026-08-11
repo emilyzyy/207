@@ -183,12 +183,14 @@ class HourlyWeatherAndAutoscheduleTest {
         final Pair panels = bothPanels(viewModel);
 
         // A new state carrying the same forecast, as a preview run produces.
-        SwingUtilities.invokeAndWait(() -> viewModel.setState(new DayPlanState(
-                "trip-1", Arrays.asList(event("High Park", 10)), "Preview ready", false,
-                Collections.singletonList(hour(9, "Clear sky", WeatherSeverity.LOW)),
-                AutoScheduleStatus.PREVIEW, Collections.emptyList(), null,
-                Collections.emptyList(), "", true, true, "", "",
-                Collections.<String>emptySet())));
+        SwingUtilities.invokeAndWait(() -> {
+            viewModel.setState(new DayPlanState(
+                    "trip-1", Arrays.asList(event("High Park", 10)), "Preview ready", false,
+                    Collections.singletonList(hour(9, "Clear sky", WeatherSeverity.LOW)),
+                    AutoScheduleStatus.PREVIEW, Collections.emptyList(), null,
+                    Collections.emptyList(), "", true, true, "", "",
+                    Collections.<String>emptySet()));
+        });
 
         assertTrue(allText(panels.forecast).contains("9:00 AM"),
                 "an Autoschedule preview must not blank the forecast strip: "
@@ -201,9 +203,11 @@ class HourlyWeatherAndAutoscheduleTest {
                 hour(9, "Clear sky", WeatherSeverity.LOW))));
         final Pair panels = bothPanels(viewModel);
 
-        SwingUtilities.invokeAndWait(() -> viewModel.setState(planWith(Arrays.asList(
-                hour(9, "Clear sky", WeatherSeverity.LOW),
-                hour(10, "Thunderstorm", WeatherSeverity.HIGH)))));
+        SwingUtilities.invokeAndWait(() -> {
+            viewModel.setState(planWith(Arrays.asList(
+                    hour(9, "Clear sky", WeatherSeverity.LOW),
+                    hour(10, "Thunderstorm", WeatherSeverity.HIGH))));
+        });
 
         assertTrue(allText(panels.forecast).contains("⚡"),
                 "the thunderstorm hour arrives with its glyph: " + allText(panels.forecast));

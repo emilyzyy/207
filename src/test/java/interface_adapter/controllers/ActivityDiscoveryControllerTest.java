@@ -78,9 +78,11 @@ final class ActivityDiscoveryControllerTest {
         final SearchViewModel search = new SearchViewModel(
                 new SearchState(Collections.emptyList(), ""));
         final ActivityDiscoveryController controller = new ActivityDiscoveryController(
-                new SearchActivitiesUseCase(request -> new ActivitySearchResult(
-                        Collections.singletonList(cachedMuseum),
-                        SearchSource.LOCAL, true, SearchFailure.RATE_LIMITED)),
+                new SearchActivitiesUseCase(request -> {
+                    return new ActivitySearchResult(
+                            Collections.singletonList(cachedMuseum),
+                            SearchSource.LOCAL, true, SearchFailure.RATE_LIMITED);
+                }),
                 new FilterActivitiesUseCase(), () -> "Toronto",
                 new ActivityDiscoveryPresenter(search, new BookmarksViewModel(
                         new BookmarksState(Collections.emptyList()))));

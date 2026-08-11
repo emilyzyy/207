@@ -672,8 +672,9 @@ public final class MapPanel extends JPanel {
                 final double cWest = cellWest;
                 final double cNorth = cellSouth + grid.stepLat;
                 final double cEast = cellWest + grid.stepLng;
-                prefetchExecutor.submit(() ->
-                        prefetchCell(cSouth, cWest, cNorth, cEast, perCell));
+                prefetchExecutor.submit(() -> {
+                    prefetchCell(cSouth, cWest, cNorth, cEast, perCell);
+                });
             }
         }
     }
@@ -1199,8 +1200,10 @@ public final class MapPanel extends JPanel {
     /** Back-to-front marker order: generic, bookmarked, planned, then selected. */
     List<Activity> markerDrawingOrder() {
         final List<Activity> ordered = new ArrayList<>(visibleActivities());
-        ordered.sort((left, right) -> Integer.compare(
-                markerLayer(left.getId()), markerLayer(right.getId())));
+        ordered.sort((left, right) -> {
+            return Integer.compare(
+                    markerLayer(left.getId()), markerLayer(right.getId()));
+        });
         final List<Activity> limited = new ArrayList<>();
         int genericCount = 0;
         for (Activity activity : ordered) {

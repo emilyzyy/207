@@ -50,8 +50,10 @@ class AutoScheduleSettingsDialogTest {
     private AutoScheduleSettingsDialog dialog(LocalTime start, LocalTime end) throws Exception {
         assumeFalse(GraphicsEnvironment.isHeadless(), "a dialog needs a display");
         final AutoScheduleSettingsDialog[] built = new AutoScheduleSettingsDialog[1];
-        SwingUtilities.invokeAndWait(() -> built[0] = new AutoScheduleSettingsDialog(
-                null, start, end));
+        SwingUtilities.invokeAndWait(() -> {
+            built[0] = new AutoScheduleSettingsDialog(
+                    null, start, end);
+        });
         opened.add(built[0]);
         return built[0];
     }
