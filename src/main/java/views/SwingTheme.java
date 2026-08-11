@@ -39,20 +39,90 @@ import entity.valueobjects.ActivityCategory;
 
 /** Shared visual constants derived from the retained web prototype. */
 public final class SwingTheme {
-    public static Color NAVY = new Color(13, 35, 64);
+
+    // The two palettes, each stated once. The mutable fields below name whichever palette is
+    // currently in force; before this they carried their light values inline and repeated them
+    // again when the theme switched back, so the same colour was written in two places.
+    private static final Color NAVY_LIGHT = new Color(13, 35, 64);
+    private static final Color NAVY_DARK = new Color(232, 238, 247);
+    private static final Color BLUE_SOFT_LIGHT = new Color(238, 245, 255);
+    private static final Color BLUE_SOFT_DARK = new Color(38, 54, 75);
+    private static final Color BACKGROUND_LIGHT = new Color(244, 247, 250);
+    private static final Color BACKGROUND_DARK = new Color(18, 24, 32);
+    private static final Color PANEL_LIGHT = Color.WHITE;
+    private static final Color PANEL_DARK = new Color(28, 36, 48);
+    private static final Color LINE_LIGHT = new Color(216, 224, 232);
+    private static final Color LINE_DARK = new Color(57, 70, 86);
+    private static final Color MUTED_LIGHT = new Color(91, 106, 123);
+    private static final Color MUTED_DARK = new Color(174, 187, 202);
+    private static final Color SUCCESS_LIGHT = new Color(26, 127, 83);
+    private static final Color SUCCESS_DARK = new Color(92, 201, 143);
+    private static final Color ERROR_LIGHT = new Color(181, 56, 48);
+    private static final Color ERROR_DARK = new Color(255, 133, 124);
+    private static final Color WARNING_LIGHT = new Color(146, 94, 6);
+    private static final Color WARNING_DARK = new Color(240, 190, 92);
+    private static final Color WARNING_SOFT_LIGHT = new Color(255, 248, 230);
+    private static final Color WARNING_SOFT_DARK = new Color(65, 51, 28);
+    private static final Color TRAVEL_SURFACE_LIGHT = new Color(247, 249, 252);
+    private static final Color TRAVEL_SURFACE_DARK = new Color(34, 43, 55);
+
+    // One surface tint per activity category, in both themes.
+    private static final Color FOOD_LIGHT = new Color(255, 238, 218);
+    private static final Color FOOD_DARK = new Color(72, 52, 36);
+    private static final Color MUSEUM_LIGHT = new Color(242, 230, 255);
+    private static final Color MUSEUM_DARK = new Color(58, 43, 73);
+    private static final Color SHOPPING_LIGHT = new Color(255, 229, 240);
+    private static final Color SHOPPING_DARK = new Color(70, 42, 56);
+    private static final Color COFFEE_LIGHT = new Color(241, 226, 207);
+    private static final Color COFFEE_DARK = new Color(65, 51, 40);
+    private static final Color ATTRACTION_LIGHT = new Color(255, 246, 194);
+    private static final Color ATTRACTION_DARK = new Color(70, 62, 31);
+    private static final Color ENTERTAINMENT_LIGHT = new Color(255, 224, 224);
+    private static final Color ENTERTAINMENT_DARK = new Color(73, 42, 43);
+    private static final Color PARKS_LIGHT = new Color(224, 244, 226);
+    private static final Color PARKS_DARK = new Color(38, 65, 45);
+    private static final Color HISTORIC_LIGHT = new Color(239, 229, 207);
+    private static final Color HISTORIC_DARK = new Color(63, 54, 38);
+    private static final Color SPORTS_LIGHT = new Color(218, 243, 232);
+    private static final Color SPORTS_DARK = new Color(34, 65, 56);
+    private static final Color ARTS_LIGHT = new Color(250, 225, 215);
+    private static final Color ARTS_DARK = new Color(70, 47, 40);
+    private static final Color SCROLL_THUMB_DARK = new Color(85, 101, 120);
+
+    // Padding used by the shared component builders.
+    private static final int CHIP_PAD_Y = 4;
+    private static final int CHIP_PAD_X = 7;
+    private static final int BUTTON_MARGIN_X = 6;
+    private static final int CORNER_RADIUS = 14;
+    private static final int BADGE_PAD_Y = 3;
+    private static final int BADGE_PAD_X = 6;
+    private static final int CARD_PAD_Y = 12;
+    private static final int CARD_PAD_X = 14;
+    private static final int PRIMARY_PAD_Y = 10;
+    private static final int PRIMARY_PAD_X = 16;
+    private static final int FIELD_PAD_Y = 7;
+    private static final int FIELD_PAD_X = 12;
+    private static final int PILL_PAD_Y = 2;
+    private static final int PILL_PAD_X = 7;
+    private static final int NOTICE_PAD_Y = 8;
+    private static final int NOTICE_PAD_X = 12;
+    private static final int NOTICE_STRIPE = 3;
+    private static final int NOTICE_INNER_X = 10;
+
+    public static Color NAVY = NAVY_LIGHT;
     public static final Color BLUE = new Color(31, 104, 225);
-    public static Color BLUE_SOFT = new Color(238, 245, 255);
-    public static Color BACKGROUND = new Color(244, 247, 250);
-    public static Color PANEL = Color.WHITE;
-    public static Color LINE = new Color(216, 224, 232);
-    public static Color MUTED = new Color(91, 106, 123);
-    public static Color SUCCESS = new Color(26, 127, 83);
-    public static Color ERROR = new Color(181, 56, 48);
+    public static Color BLUE_SOFT = BLUE_SOFT_LIGHT;
+    public static Color BACKGROUND = BACKGROUND_LIGHT;
+    public static Color PANEL = PANEL_LIGHT;
+    public static Color LINE = LINE_LIGHT;
+    public static Color MUTED = MUTED_LIGHT;
+    public static Color SUCCESS = SUCCESS_LIGHT;
+    public static Color ERROR = ERROR_LIGHT;
     /** Warning band: amber enough to read as a caution, quiet enough not to shout. */
-    public static Color WARNING = new Color(146, 94, 6);
-    public static Color WARNING_SOFT = new Color(255, 248, 230);
+    public static Color WARNING = WARNING_LIGHT;
+    public static Color WARNING_SOFT = WARNING_SOFT_LIGHT;
     /** Surface for generated travel rows, so they sit below activities without a border. */
-    public static Color TRAVEL_SURFACE = new Color(247, 249, 252);
+    public static Color TRAVEL_SURFACE = TRAVEL_SURFACE_LIGHT;
     private static final Object LIGHT_BUTTON_UI = UIManager.get("ButtonUI");
     private static final Object LIGHT_TABBED_PANE_UI = UIManager.get("TabbedPaneUI");
     private static boolean darkMode;
@@ -126,31 +196,31 @@ public final class SwingTheme {
         final java.util.Map<ActivityCategory, Color> oldCategories = categorySurfaces;
         darkMode = enabled;
         if (enabled) {
-            NAVY = new Color(232, 238, 247);
-            BACKGROUND = new Color(18, 24, 32);
-            PANEL = new Color(28, 36, 48);
-            LINE = new Color(57, 70, 86);
-            MUTED = new Color(174, 187, 202);
-            BLUE_SOFT = new Color(38, 54, 75);
-            SUCCESS = new Color(92, 201, 143);
-            ERROR = new Color(255, 133, 124);
-            WARNING = new Color(240, 190, 92);
-            WARNING_SOFT = new Color(65, 51, 28);
-            TRAVEL_SURFACE = new Color(34, 43, 55);
+            NAVY = NAVY_DARK;
+            BACKGROUND = BACKGROUND_DARK;
+            PANEL = PANEL_DARK;
+            LINE = LINE_DARK;
+            MUTED = MUTED_DARK;
+            BLUE_SOFT = BLUE_SOFT_DARK;
+            SUCCESS = SUCCESS_DARK;
+            ERROR = ERROR_DARK;
+            WARNING = WARNING_DARK;
+            WARNING_SOFT = WARNING_SOFT_DARK;
+            TRAVEL_SURFACE = TRAVEL_SURFACE_DARK;
             categorySurfaces = darkCategories();
         }
         else {
-            NAVY = new Color(13, 35, 64);
-            BACKGROUND = new Color(244, 247, 250);
-            PANEL = Color.WHITE;
-            LINE = new Color(216, 224, 232);
-            MUTED = new Color(91, 106, 123);
-            BLUE_SOFT = new Color(238, 245, 255);
-            SUCCESS = new Color(26, 127, 83);
-            ERROR = new Color(181, 56, 48);
-            WARNING = new Color(146, 94, 6);
-            WARNING_SOFT = new Color(255, 248, 230);
-            TRAVEL_SURFACE = new Color(247, 249, 252);
+            NAVY = NAVY_LIGHT;
+            BACKGROUND = BACKGROUND_LIGHT;
+            PANEL = PANEL_LIGHT;
+            LINE = LINE_LIGHT;
+            MUTED = MUTED_LIGHT;
+            BLUE_SOFT = BLUE_SOFT_LIGHT;
+            SUCCESS = SUCCESS_LIGHT;
+            ERROR = ERROR_LIGHT;
+            WARNING = WARNING_LIGHT;
+            WARNING_SOFT = WARNING_SOFT_LIGHT;
+            TRAVEL_SURFACE = TRAVEL_SURFACE_LIGHT;
             categorySurfaces = lightCategories();
         }
         installDefaults();
@@ -276,7 +346,7 @@ public final class SwingTheme {
         UIManager.put("TextField.caretForeground", NAVY);
         UIManager.put("TextField.border", BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(LINE, 1, true),
-                BorderFactory.createEmptyBorder(4, 7, 4, 7)));
+                BorderFactory.createEmptyBorder(CHIP_PAD_Y, CHIP_PAD_X, CHIP_PAD_Y, CHIP_PAD_X)));
         UIManager.put("TextField.inactiveBackground", BACKGROUND);
         UIManager.put("FormattedTextField.background", PANEL);
         UIManager.put("FormattedTextField.foreground", NAVY);
@@ -334,7 +404,7 @@ public final class SwingTheme {
         protected JButton createArrowButton() {
             final JButton button = new JButton("\u25be");
             button.setFont(SMALL);
-            button.setMargin(new java.awt.Insets(0, 6, 0, 6));
+            button.setMargin(new java.awt.Insets(0, BUTTON_MARGIN_X, 0, BUTTON_MARGIN_X));
             button.setFocusable(false);
             button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             themeButton(button);
@@ -366,11 +436,11 @@ public final class SwingTheme {
                     RenderingHints.VALUE_ANTIALIAS_ON);
             final Color fill = button.isEnabled() ? button.getBackground() : LINE;
             g2.setColor(fill);
-            g2.fillRoundRect(0, 0, component.getWidth(), component.getHeight(), 14, 14);
+            g2.fillRoundRect(0, 0, component.getWidth(), component.getHeight(), CORNER_RADIUS, CORNER_RADIUS);
             if (!"primary".equals(button.getClientProperty("trippy.buttonRole"))) {
                 g2.setColor(LINE);
                 g2.drawRoundRect(0, 0, component.getWidth() - 1,
-                        component.getHeight() - 1, 14, 14);
+                        component.getHeight() - 1, CORNER_RADIUS, CORNER_RADIUS);
             }
             g2.dispose();
             button.setContentAreaFilled(false);
@@ -388,7 +458,7 @@ public final class SwingTheme {
             label.setBackground(isSelected ? BLUE_SOFT : PANEL);
             label.setForeground(list.isEnabled() ? NAVY : MUTED);
             label.setOpaque(true);
-            label.setBorder(BorderFactory.createEmptyBorder(3, 6, 3, 6));
+            label.setBorder(BorderFactory.createEmptyBorder(BADGE_PAD_Y, BADGE_PAD_X, BADGE_PAD_Y, BADGE_PAD_X));
             return label;
         }
     }
@@ -397,7 +467,7 @@ public final class SwingTheme {
         @Override
         protected void configureScrollBarColors() {
             trackColor = BACKGROUND;
-            thumbColor = darkMode ? new Color(85, 101, 120) : LINE;
+            thumbColor = darkMode ? SCROLL_THUMB_DARK : LINE;
             thumbDarkShadowColor = thumbColor;
             thumbHighlightColor = thumbColor;
             thumbLightShadowColor = thumbColor;
@@ -426,31 +496,31 @@ public final class SwingTheme {
 
     private static java.util.Map<ActivityCategory, Color> lightCategories() {
         final java.util.Map<ActivityCategory, Color> colors = new java.util.EnumMap<>(ActivityCategory.class);
-        colors.put(ActivityCategory.FOOD, new Color(255, 238, 218));
-        colors.put(ActivityCategory.MUSEUM, new Color(242, 230, 255));
-        colors.put(ActivityCategory.SHOPPING, new Color(255, 229, 240));
-        colors.put(ActivityCategory.COFFEE, new Color(241, 226, 207));
-        colors.put(ActivityCategory.ATTRACTION, new Color(255, 246, 194));
-        colors.put(ActivityCategory.ENTERTAINMENT, new Color(255, 224, 224));
-        colors.put(ActivityCategory.PARKS_NATURE, new Color(224, 244, 226));
-        colors.put(ActivityCategory.HISTORIC, new Color(239, 229, 207));
-        colors.put(ActivityCategory.SPORTS_RECREATION, new Color(218, 243, 232));
-        colors.put(ActivityCategory.ARTS_CULTURE, new Color(250, 225, 215));
+        colors.put(ActivityCategory.FOOD, FOOD_LIGHT);
+        colors.put(ActivityCategory.MUSEUM, MUSEUM_LIGHT);
+        colors.put(ActivityCategory.SHOPPING, SHOPPING_LIGHT);
+        colors.put(ActivityCategory.COFFEE, COFFEE_LIGHT);
+        colors.put(ActivityCategory.ATTRACTION, ATTRACTION_LIGHT);
+        colors.put(ActivityCategory.ENTERTAINMENT, ENTERTAINMENT_LIGHT);
+        colors.put(ActivityCategory.PARKS_NATURE, PARKS_LIGHT);
+        colors.put(ActivityCategory.HISTORIC, HISTORIC_LIGHT);
+        colors.put(ActivityCategory.SPORTS_RECREATION, SPORTS_LIGHT);
+        colors.put(ActivityCategory.ARTS_CULTURE, ARTS_LIGHT);
         return colors;
     }
 
     private static java.util.Map<ActivityCategory, Color> darkCategories() {
         final java.util.Map<ActivityCategory, Color> colors = new java.util.EnumMap<>(ActivityCategory.class);
-        colors.put(ActivityCategory.FOOD, new Color(72, 52, 36));
-        colors.put(ActivityCategory.MUSEUM, new Color(58, 43, 73));
-        colors.put(ActivityCategory.SHOPPING, new Color(70, 42, 56));
-        colors.put(ActivityCategory.COFFEE, new Color(65, 51, 40));
-        colors.put(ActivityCategory.ATTRACTION, new Color(70, 62, 31));
-        colors.put(ActivityCategory.ENTERTAINMENT, new Color(73, 42, 43));
-        colors.put(ActivityCategory.PARKS_NATURE, new Color(38, 65, 45));
-        colors.put(ActivityCategory.HISTORIC, new Color(63, 54, 38));
-        colors.put(ActivityCategory.SPORTS_RECREATION, new Color(34, 65, 56));
-        colors.put(ActivityCategory.ARTS_CULTURE, new Color(70, 47, 40));
+        colors.put(ActivityCategory.FOOD, FOOD_DARK);
+        colors.put(ActivityCategory.MUSEUM, MUSEUM_DARK);
+        colors.put(ActivityCategory.SHOPPING, SHOPPING_DARK);
+        colors.put(ActivityCategory.COFFEE, COFFEE_DARK);
+        colors.put(ActivityCategory.ATTRACTION, ATTRACTION_DARK);
+        colors.put(ActivityCategory.ENTERTAINMENT, ENTERTAINMENT_DARK);
+        colors.put(ActivityCategory.PARKS_NATURE, PARKS_DARK);
+        colors.put(ActivityCategory.HISTORIC, HISTORIC_DARK);
+        colors.put(ActivityCategory.SPORTS_RECREATION, SPORTS_DARK);
+        colors.put(ActivityCategory.ARTS_CULTURE, ARTS_DARK);
         return colors;
     }
 
@@ -461,7 +531,7 @@ public final class SwingTheme {
     public static Border cardBorder() {
         return BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(LINE, 1, true),
-                BorderFactory.createEmptyBorder(12, 14, 12, 14));
+                BorderFactory.createEmptyBorder(CARD_PAD_Y, CARD_PAD_X, CARD_PAD_Y, CARD_PAD_X));
     }
 
     /**
@@ -488,7 +558,7 @@ public final class SwingTheme {
         button.setOpaque(true);
         button.setContentAreaFilled(true);
         button.setBorderPainted(false);
-        button.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
+        button.setBorder(BorderFactory.createEmptyBorder(PRIMARY_PAD_Y, PRIMARY_PAD_X, PRIMARY_PAD_Y, PRIMARY_PAD_X));
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         button.setUI(new RoundedButtonUI());
         return button;
@@ -510,7 +580,7 @@ public final class SwingTheme {
         button.setUI(new RoundedButtonUI());
         button.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(LINE),
-                BorderFactory.createEmptyBorder(7, 12, 7, 12)));
+                BorderFactory.createEmptyBorder(FIELD_PAD_Y, FIELD_PAD_X, FIELD_PAD_Y, FIELD_PAD_X)));
         return button;
     }
 
@@ -531,7 +601,7 @@ public final class SwingTheme {
         badge.setForeground(ink);
         badge.setBackground(surface);
         badge.setOpaque(true);
-        badge.setBorder(BorderFactory.createEmptyBorder(2, 7, 2, 7));
+        badge.setBorder(BorderFactory.createEmptyBorder(PILL_PAD_Y, PILL_PAD_X, PILL_PAD_Y, PILL_PAD_X));
         badge.getAccessibleContext().setAccessibleName(text);
         return badge;
     }
@@ -577,7 +647,7 @@ public final class SwingTheme {
         card.setBackground(BLUE_SOFT);
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(214, 229, 250)),
-                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+                BorderFactory.createEmptyBorder(NOTICE_PAD_Y, NOTICE_PAD_X, NOTICE_PAD_Y, NOTICE_PAD_X)));
 
         final JLabel figure = new JLabel(value);
         figure.setFont(BODY.deriveFont(Font.BOLD));
@@ -605,8 +675,8 @@ public final class SwingTheme {
         band.setLayout(new BoxLayout(band, BoxLayout.Y_AXIS));
         band.setBackground(WARNING_SOFT);
         band.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 3, 0, 0, WARNING),
-                BorderFactory.createEmptyBorder(8, 10, 8, 10)));
+                BorderFactory.createMatteBorder(0, NOTICE_STRIPE, 0, 0, WARNING),
+                BorderFactory.createEmptyBorder(NOTICE_PAD_Y, NOTICE_INNER_X, NOTICE_PAD_Y, NOTICE_INNER_X)));
         band.setAlignmentX(Component.LEFT_ALIGNMENT);
         for (String message : messages) {
             final JLabel line = new JLabel("<html>&#9888; " + message
