@@ -138,8 +138,10 @@ class PreviewCannotMutateTheSavedPlanTest {
                                          ManualPlanController manual) throws Exception {
         assumeFalse(GraphicsEnvironment.isHeadless(), "these components need a display");
         final DayPlanPanel[] built = new DayPlanPanel[1];
-        SwingUtilities.invokeAndWait(() -> built[0] = new DayPlanPanel(viewModel,
-                new AutoScheduleController(INERT, viewModel, TaskRunner.immediate()), manual));
+        SwingUtilities.invokeAndWait(() -> {
+            built[0] = new DayPlanPanel(viewModel,
+                    new AutoScheduleController(INERT, viewModel, TaskRunner.immediate()), manual);
+        });
         return built[0];
     }
 
@@ -231,8 +233,9 @@ class PreviewCannotMutateTheSavedPlanTest {
             assertFalse(edit.isEnabled(),
                     "Edit has no draft-only form yet, so a Preview must disarm it");
         }
-        SwingUtilities.invokeAndWait(() ->
-                buttonsLabelled(panel, "Remove").forEach(AbstractButton::doClick));
+        SwingUtilities.invokeAndWait(() -> {
+            buttonsLabelled(panel, "Remove").forEach(AbstractButton::doClick);
+        });
         assertEquals(2, savedActivityCount(trips), "and the stored trip is untouched");
     }
 }

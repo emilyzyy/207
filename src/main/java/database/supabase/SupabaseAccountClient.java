@@ -81,8 +81,9 @@ public final class SupabaseAccountClient implements AccountService {
             try {
                 request("POST", "/rest/v1/profiles?on_conflict=id", row.toString(),
                         "resolution=merge-duplicates,return=representation");
-                return findById(session.getUserId()).orElseThrow(() ->
-                        new IllegalStateException("Could not create your profile."));
+                return findById(session.getUserId()).orElseThrow(() -> {
+                    return new IllegalStateException("Could not create your profile.");
+                });
             }
             catch (RuntimeException exception) {
                 lastFailure = exception;
@@ -179,8 +180,9 @@ public final class SupabaseAccountClient implements AccountService {
     public Friendship sendFriendRequest(String username) {
         final AuthSession session = requireSession();
         ensureProfile(null);
-        final User target = findByUsername(username).orElseThrow(() ->
-                new IllegalStateException("No user found with that username."));
+        final User target = findByUsername(username).orElseThrow(() -> {
+            return new IllegalStateException("No user found with that username.");
+        });
         // Friendship rules (self / already friends / pending) live in ManageFriendsInteractor.
         final ObjectNode row = mapper.createObjectNode();
         row.put("requester_id", session.getUserId());
@@ -346,11 +348,14 @@ public final class SupabaseAccountClient implements AccountService {
                 continue;
             }
             final TripAccessRole role = TripAccessRole.fromDb(text(node, "role"));
-            findById(memberId).ifPresent(user ->
-                    members.add(TripParticipant.member(user, role)));
+            findById(memberId).ifPresent(user -> {
+                members.add(TripParticipant.member(user, role));
+            });
         }
-        members.sort((left, right) -> left.getUser().getUsername()
-                .compareToIgnoreCase(right.getUser().getUsername()));
+        members.sort((left, right) -> {
+            return left.getUser().getUsername()
+                    .compareToIgnoreCase(right.getUser().getUsername());
+        });
         participants.addAll(members);
         return participants;
     }
@@ -536,8 +541,9 @@ public final class SupabaseAccountClient implements AccountService {
     }
 
     private AuthSession requireSession() {
-        return auth.currentSession().orElseThrow(() ->
-                new IllegalStateException("Sign in before using your account."));
+        return auth.currentSession().orElseThrow(() -> {
+            return new IllegalStateException("Sign in before using your account.");
+        });
     }
 
     private String request(String method, String path, String jsonBody, String prefer) {

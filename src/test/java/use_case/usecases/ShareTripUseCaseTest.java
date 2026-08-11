@@ -71,8 +71,10 @@ final class ShareTripUseCaseTest {
     void rejectsNullDependencies() {
         org.junit.jupiter.api.Assertions.assertThrows(
                 IllegalArgumentException.class,
-                () -> new ShareTripUseCase(null, new InMemoryItineraryDataAccessObject(),
-                        new RecordingOutput()));
+                () -> {
+                    new ShareTripUseCase(null, new InMemoryItineraryDataAccessObject(),
+                            new RecordingOutput());
+                });
     }
 
     @Test

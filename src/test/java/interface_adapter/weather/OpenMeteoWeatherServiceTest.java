@@ -68,12 +68,16 @@ final class OpenMeteoWeatherServiceTest {
     @Test
     void returnsEveryHourAndKeepsNearestHourForThePreview() throws Exception {
         startServer();
-        server.createContext("/geo", exchange -> respond(exchange, 200,
-                "{\"results\":[{\"name\":\"Montreal\",\"latitude\":45.5,\"longitude\":-73.5}]}"));
-        server.createContext("/forecast", exchange -> respond(exchange, 200,
-                "{\"hourly\":{\"time\":[\"2026-07-14T08:00\",\"2026-07-14T10:00\"],"
-                        + "\"weather_code\":[0,3],\"temperature_2m\":[18.0,20.0],"
-                        + "\"precipitation_probability\":[0,10],\"wind_speed_10m\":[5.0,8.0]}}"));
+        server.createContext("/geo", exchange -> {
+            respond(exchange, 200,
+                    "{\"results\":[{\"name\":\"Montreal\",\"latitude\":45.5,\"longitude\":-73.5}]}");
+        });
+        server.createContext("/forecast", exchange -> {
+            respond(exchange, 200,
+                    "{\"hourly\":{\"time\":[\"2026-07-14T08:00\",\"2026-07-14T10:00\"],"
+                            + "\"weather_code\":[0,3],\"temperature_2m\":[18.0,20.0],"
+                            + "\"precipitation_probability\":[0,10],\"wind_speed_10m\":[5.0,8.0]}}");
+        });
         server.start();
 
         final OpenMeteoWeatherService service = service();
@@ -126,12 +130,16 @@ final class OpenMeteoWeatherServiceTest {
     @Test
     void rejectsMissingOrMisalignedForecastData() throws Exception {
         startServer();
-        server.createContext("/geo", exchange -> respond(exchange, 200,
-                "{\"results\":[{\"name\":\"Montreal\",\"latitude\":45.5,\"longitude\":-73.5}]}"));
-        server.createContext("/forecast", exchange -> respond(exchange, 200,
-                "{\"hourly\":{\"time\":[\"2026-07-14T09:00\"],\"weather_code\":[],"
-                        + "\"temperature_2m\":[20.0],\"precipitation_probability\":[10],"
-                        + "\"wind_speed_10m\":[8.0]}}"));
+        server.createContext("/geo", exchange -> {
+            respond(exchange, 200,
+                    "{\"results\":[{\"name\":\"Montreal\",\"latitude\":45.5,\"longitude\":-73.5}]}");
+        });
+        server.createContext("/forecast", exchange -> {
+            respond(exchange, 200,
+                    "{\"hourly\":{\"time\":[\"2026-07-14T09:00\"],\"weather_code\":[],"
+                            + "\"temperature_2m\":[20.0],\"precipitation_probability\":[10],"
+                            + "\"wind_speed_10m\":[8.0]}}");
+        });
         server.start();
 
         final WeatherServiceException error = assertThrows(WeatherServiceException.class,

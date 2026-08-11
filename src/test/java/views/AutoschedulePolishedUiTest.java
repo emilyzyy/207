@@ -99,9 +99,11 @@ class AutoschedulePolishedUiTest {
     private static DayPlanPanel panelFor(DayPlanViewModel viewModel) throws Exception {
         assumeFalse(GraphicsEnvironment.isHeadless(), "these components need a display");
         final DayPlanPanel[] built = new DayPlanPanel[1];
-        SwingUtilities.invokeAndWait(() -> built[0] = new DayPlanPanel(viewModel,
-                new AutoScheduleController(new RecordingUseCase(), viewModel,
-                        TaskRunner.immediate())));
+        SwingUtilities.invokeAndWait(() -> {
+            built[0] = new DayPlanPanel(viewModel,
+                    new AutoScheduleController(new RecordingUseCase(), viewModel,
+                            TaskRunner.immediate()));
+        });
         return built[0];
     }
 
@@ -280,10 +282,14 @@ class AutoschedulePolishedUiTest {
         final DayPlanPanel panel = panelFor(viewModel);
         assertTrue(lockToggles(panel).get(0).isSelected());
 
-        SwingUtilities.invokeAndWait(() -> viewModel.setState(
-                viewModel.getState().loading("Working...")));
-        SwingUtilities.invokeAndWait(() -> viewModel.setState(
-                viewModel.getState().clearedPreview("Cancelled")));
+        SwingUtilities.invokeAndWait(() -> {
+            viewModel.setState(
+                    viewModel.getState().loading("Working..."));
+        });
+        SwingUtilities.invokeAndWait(() -> {
+            viewModel.setState(
+                    viewModel.getState().clearedPreview("Cancelled"));
+        });
 
         assertTrue(viewModel.getState().getLockedEventIds().contains("museum"));
         assertTrue(lockToggles(panel).get(0).isSelected(),
@@ -752,9 +758,11 @@ class AutoschedulePolishedUiTest {
         assumeFalse(GraphicsEnvironment.isHeadless(), "building components needs a display");
         final ScheduleImprovementsPanel[] standalone = new ScheduleImprovementsPanel[1];
 
-        SwingUtilities.invokeAndWait(() -> standalone[0] = new ScheduleImprovementsPanel(
-                Collections.singletonList(new ImprovementView("\u2600",
-                        "Moved into daylight", "High Park"))));
+        SwingUtilities.invokeAndWait(() -> {
+            standalone[0] = new ScheduleImprovementsPanel(
+                    Collections.singletonList(new ImprovementView("\u2600",
+                            "Moved into daylight", "High Park")));
+        });
 
         // Nothing about a Day Plan was needed to build it, which is what lets it move to a
         // calendar view later.

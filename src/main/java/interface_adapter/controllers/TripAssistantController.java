@@ -47,7 +47,9 @@ public final class TripAssistantController {
                 viewModel.getState().getMessages());
         final String currentTripId = tripId.get();
         presenter.presentLoading(normalized);
-        taskRunner.run(() -> inputBoundary.execute(
-                new TripAssistantInputData(currentTripId, normalized, history)));
+        taskRunner.run(() -> {
+            inputBoundary.execute(
+                    new TripAssistantInputData(currentTripId, normalized, history));
+        });
     }
 }

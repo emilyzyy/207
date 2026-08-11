@@ -46,9 +46,11 @@ final class TripAssistantInteractorTest {
         final RecordingPresenter presenter = new RecordingPresenter();
         final TripAssistantInteractor interactor = new TripAssistantInteractor(
                 trips, activities,
-                ignored -> Collections.singletonList(new WeatherWarning(
-                        new Location(43.6, -79.3, "Toronto"), LocalTime.of(13, 0),
-                        "Rain", WeatherSeverity.MEDIUM, "Wet afternoon")),
+                ignored -> {
+                    return Collections.singletonList(new WeatherWarning(
+                            new Location(43.6, -79.3, "Toronto"), LocalTime.of(13, 0),
+                            "Rain", WeatherSeverity.MEDIUM, "Wet afternoon"));
+                },
                 gateway, presenter);
 
         interactor.execute(new TripAssistantInputData(
@@ -86,9 +88,11 @@ final class TripAssistantInteractorTest {
 
     @Test
     void rejectsBlankQuestionOrTripAndNullDependencies() {
-        assertThrows(IllegalArgumentException.class, () -> new TripAssistantInteractor(
-                null, new CachedPlacesRepository(), ignored -> Collections.emptyList(),
-                ignored -> null, new RecordingPresenter()));
+        assertThrows(IllegalArgumentException.class, () -> {
+            new TripAssistantInteractor(
+                    null, new CachedPlacesRepository(), ignored -> Collections.emptyList(),
+                    ignored -> null, new RecordingPresenter());
+        });
 
         final RecordingPresenter presenter = new RecordingPresenter();
         final TripAssistantInteractor interactor = new TripAssistantInteractor(
@@ -147,9 +151,11 @@ final class TripAssistantInteractorTest {
         final CachedPlacesRepository activities = new CachedPlacesRepository();
         activities.addAll(Collections.singletonList(museum));
         final RecordingPresenter presenter = new RecordingPresenter();
-        final TripAssistantGateway gateway = ignored -> new TripAssistantDecision(
-                TripAssistantDecision.Intent.GENERAL, Collections.emptyList(),
-                "I'm George, and 3 + 3 is 6.", "");
+        final TripAssistantGateway gateway = ignored -> {
+            return new TripAssistantDecision(
+                    TripAssistantDecision.Intent.GENERAL, Collections.emptyList(),
+                    "I'm George, and 3 + 3 is 6.", "");
+        };
         final TripAssistantInteractor interactor = new TripAssistantInteractor(
                 trips, activities, ignored -> Collections.emptyList(), gateway, presenter);
 

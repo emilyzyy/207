@@ -54,8 +54,10 @@ class AutoScheduleWeatherCheckBoxTest {
     private AutoScheduleSettingsDialog dialog() throws Exception {
         assumeFalse(GraphicsEnvironment.isHeadless(), "a dialog needs a display");
         final AtomicReference<AutoScheduleSettingsDialog> built = new AtomicReference<>();
-        SwingUtilities.invokeAndWait(() -> built.set(new AutoScheduleSettingsDialog(
-                null, LocalTime.of(9, 0), LocalTime.of(21, 0))));
+        SwingUtilities.invokeAndWait(() -> {
+            built.set(new AutoScheduleSettingsDialog(
+                    null, LocalTime.of(9, 0), LocalTime.of(21, 0)));
+        });
         opened.add(built.get());
         return built.get();
     }
@@ -92,8 +94,10 @@ class AutoScheduleWeatherCheckBoxTest {
     void aWholeDayForecastDisablesAndUnticksTheCheckBox() throws Exception {
         final AutoScheduleSettingsDialog dialog = dialog();
 
-        SwingUtilities.invokeAndWait(() -> dialog.applyWeatherOption(
-                WeatherOption.unavailable(WeatherOption.NO_HOURLY_FORECAST)));
+        SwingUtilities.invokeAndWait(() -> {
+            dialog.applyWeatherOption(
+                    WeatherOption.unavailable(WeatherOption.NO_HOURLY_FORECAST));
+        });
 
         assertFalse(dialog.weatherCheckBox().isEnabled());
         assertFalse(dialog.weatherCheckBox().isSelected());
@@ -106,8 +110,10 @@ class AutoScheduleWeatherCheckBoxTest {
     void anUnavailableForecastDisablesAndUnticksTheCheckBox() throws Exception {
         final AutoScheduleSettingsDialog dialog = dialog();
 
-        SwingUtilities.invokeAndWait(() -> dialog.applyWeatherOption(
-                WeatherOption.unavailable(WeatherOption.NO_FORECAST)));
+        SwingUtilities.invokeAndWait(() -> {
+            dialog.applyWeatherOption(
+                    WeatherOption.unavailable(WeatherOption.NO_FORECAST));
+        });
 
         assertFalse(dialog.weatherCheckBox().isEnabled());
         assertFalse(dialog.weatherCheckBox().isSelected());
@@ -119,8 +125,10 @@ class AutoScheduleWeatherCheckBoxTest {
     void theExplanationIsAlsoAvailableToAScreenReader() throws Exception {
         final AutoScheduleSettingsDialog dialog = dialog();
 
-        SwingUtilities.invokeAndWait(() -> dialog.applyWeatherOption(
-                WeatherOption.unavailable(WeatherOption.NO_HOURLY_FORECAST)));
+        SwingUtilities.invokeAndWait(() -> {
+            dialog.applyWeatherOption(
+                    WeatherOption.unavailable(WeatherOption.NO_HOURLY_FORECAST));
+        });
 
         // A disabled control can be skipped in focus traversal, so the reason is carried on
         // the checkbox itself as well as in the visible label beside it.

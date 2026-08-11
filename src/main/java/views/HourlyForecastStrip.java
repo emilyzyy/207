@@ -97,8 +97,9 @@ public final class HourlyForecastStrip extends JPanel {
         // notch moves well under one card: this is a glance at a few hours, not a
         // journey through the day, and a fast strip is hard to stop on the hour you want.
         scroller.setWheelScrollingEnabled(false);
-        scroller.addMouseWheelListener(event ->
-                bar.setValue(bar.getValue() + event.getWheelRotation() * WHEEL_STEP));
+        scroller.addMouseWheelListener(event -> {
+            bar.setValue(bar.getValue() + event.getWheelRotation() * WHEEL_STEP);
+        });
         add(scroller, BorderLayout.CENTER);
 
         dayPlanViewModel.addPropertyChangeListener(dayPlanListener);
@@ -135,8 +136,9 @@ public final class HourlyForecastStrip extends JPanel {
                 }
             }
             final int scrollTo = firstDaytime * (CARD_WIDTH + 6);
-            SwingUtilities.invokeLater(() ->
-                    scroller.getHorizontalScrollBar().setValue(scrollTo));
+            SwingUtilities.invokeLater(() -> {
+                scroller.getHorizontalScrollBar().setValue(scrollTo);
+            });
         }
         cards.revalidate();
         cards.repaint();

@@ -51,8 +51,10 @@ public final class TripAssistantInteractor implements TripAssistantInputBoundary
                 throw new IllegalArgumentException("Open or create a trip before asking George");
             }
             final Trip trip = trips.findById(inputData.getTripId())
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "The current trip could not be found"));
+                    .orElseThrow(() -> {
+                        return new IllegalArgumentException(
+                                "The current trip could not be found");
+                    });
             final TripAssistantRequest request = requestFor(trip, inputData);
             final TripAssistantDecision decision = gateway.answer(request);
             presenter.presentSuccess(formatter.format(request, decision));

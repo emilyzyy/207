@@ -159,8 +159,10 @@ class AddToPlanAutoscheduleIntegrationTest {
         assertEquals(2, saved.getScheduledEvents().size(),
                 "the activity must become a real scheduled event on the Trip");
         assertTrue(saved.getScheduledEvents().stream()
-                        .anyMatch(e -> e.getActivity() != null
-                                && e.getActivity().getId().equals(added.getId())),
+                        .anyMatch(e -> {
+                            return e.getActivity() != null
+                                    && e.getActivity().getId().equals(added.getId());
+                        }),
                 "the saved Trip must contain the added activity");
 
         assertEquals(2, dayPlan.getState().getEvents().size(),
@@ -192,8 +194,10 @@ class AddToPlanAutoscheduleIntegrationTest {
 
         final Trip applied = app.trips.findById("integration-trip").orElseThrow();
         assertTrue(applied.getScheduledEvents().stream()
-                        .anyMatch(e -> e.getActivity() != null
-                                && e.getActivity().getId().equals(added.getId())),
+                        .anyMatch(e -> {
+                            return e.getActivity() != null
+                                    && e.getActivity().getId().equals(added.getId());
+                        }),
                 "Apply must preserve the added activity, not drop it");
         assertActivitiesAreUnique(applied);
     }

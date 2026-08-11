@@ -229,12 +229,16 @@ public final class AppBuilder {
                 dashboardViewModel, dayPlanViewModel, tripOptionsViewModel);
         final TripOptionsController tripOptionsController = new TripOptionsController(
                 app.editItinerary,
-                () -> app.trips.findById(dayPlanViewModel.getState().getTripId())
-                        .orElse(null),
+                () -> {
+                    return app.trips.findById(dayPlanViewModel.getState().getTripId())
+                            .orElse(null);
+                },
                 tripOptionsPresenter);
-        dayPlanPanel.setOpenOptionsAction(() -> new TripOptionsDialog(
-                dayPlanPanel, tripOptionsViewModel, tripOptionsController,
-                app.account, tripAccessViewModel).showDialog());
+        dayPlanPanel.setOpenOptionsAction(() -> {
+            new TripOptionsDialog(
+                    dayPlanPanel, tripOptionsViewModel, tripOptionsController,
+                    app.account, tripAccessViewModel).showDialog();
+        });
         tripOptionsViewModel.addPropertyChangeListener(event -> {
             final TripOptionsState options = tripOptionsViewModel.getState();
             dayPlanPanel.setTripDefaults(options.getStartTime(), options.getEndTime());
@@ -547,9 +551,10 @@ public final class AppBuilder {
         final Thread worker = new Thread(() -> {
             try {
                 final TripAccessLevel access = app.account.getMyTripAccess(tripId);
-                SwingUtilities.invokeLater(() ->
-                        tripAccessViewModel.setAccess(
-                                access.canEditItinerary(), access.canManagePeople()));
+                SwingUtilities.invokeLater(() -> {
+                    tripAccessViewModel.setAccess(
+                                    access.canEditItinerary(), access.canManagePeople());
+                });
             }
             catch (RuntimeException exception) {
                 // Keep default editable until access loads, or user retries.

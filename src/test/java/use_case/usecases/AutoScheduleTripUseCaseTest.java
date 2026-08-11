@@ -172,8 +172,10 @@ final class AutoScheduleTripUseCaseTest {
         assertEquals(4, result.getScheduledEvents().size());
         assertLegalSchedule(result);
         assertTrue(result.getScheduledEvents().stream()
-                .noneMatch(event -> event.getActivity() != null
-                        && "too-late".equals(event.getActivity().getId())));
+                .noneMatch(event -> {
+                    return event.getActivity() != null
+                            && "too-late".equals(event.getActivity().getId());
+                }));
     }
 
     @Test
@@ -191,8 +193,10 @@ final class AutoScheduleTripUseCaseTest {
         distances.defaultMinutes = 20;
 
         final IllegalStateException error = assertThrows(IllegalStateException.class,
-                () -> scheduler(trips, distances, new CountingWeatherService(WeatherSeverity.LOW))
-                        .execute(trip.getId()));
+                () -> {
+                    scheduler(trips, distances, new CountingWeatherService(WeatherSeverity.LOW))
+                            .execute(trip.getId());
+                });
 
         assertTrue(error.getMessage().contains("No bookmarked activity"));
         assertEquals(1, trips.findById(trip.getId()).get().getScheduledEvents().size());
@@ -221,8 +225,10 @@ final class AutoScheduleTripUseCaseTest {
         };
 
         assertThrows(IllegalStateException.class,
-                () -> scheduler(trips, failing, new CountingWeatherService(WeatherSeverity.LOW))
-                        .execute(trip.getId()));
+                () -> {
+                    scheduler(trips, failing, new CountingWeatherService(WeatherSeverity.LOW))
+                            .execute(trip.getId());
+                });
         assertEquals("existing-event", trips.findById(trip.getId()).get()
                 .getScheduledEvents().get(0).getId());
     }

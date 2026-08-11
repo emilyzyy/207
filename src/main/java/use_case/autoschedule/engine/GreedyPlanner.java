@@ -93,9 +93,11 @@ public final class GreedyPlanner {
         final List<ScheduleTask> sorted = new ArrayList<>(remaining);
         Collections.sort(sorted, Comparator
                 .comparing(ScheduleTask::getClosingTime)
-                .thenComparingInt((ScheduleTask task) -> previous == null ? 0
-                        : problem.getTravel().estimateAt(previous.getEventId(),
-                                task.getEventId(), cursor).getMinutes())
+                .thenComparingInt((ScheduleTask task) -> {
+                    return previous == null ? 0
+                            : problem.getTravel().estimateAt(previous.getEventId(),
+                                    task.getEventId(), cursor).getMinutes();
+                })
                 .thenComparing(ScheduleTask::getEventId));
         return sorted;
     }

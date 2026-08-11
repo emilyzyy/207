@@ -36,9 +36,11 @@ final class AddToPlanDialogTest {
         assertNotNull(slot);
         final AtomicReference<AddToPlanDialog> built = new AtomicReference<>();
 
-        SwingUtilities.invokeAndWait(() -> built.set(new AddToPlanDialog(
-                new JPanel(), proposed, Collections.singletonList(planned),
-                LocalTime.of(9, 0), LocalTime.of(18, 0), null, slot)));
+        SwingUtilities.invokeAndWait(() -> {
+            built.set(new AddToPlanDialog(
+                    new JPanel(), proposed, Collections.singletonList(planned),
+                    LocalTime.of(9, 0), LocalTime.of(18, 0), null, slot));
+        });
 
         assertEquals(1, built.get().displayedPlannedActivityCount());
         assertTrue(allText(built.get()).contains("enter manually"));

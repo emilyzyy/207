@@ -80,8 +80,10 @@ class OpeningHoursProductionWiringTest {
                 + "\"tags\":{\"name\":\"City Museum\",\"tourism\":\"museum\"" + tag + "}}]}";
 
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/search", exchange -> respond(exchange,
-                "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]"));
+        server.createContext("/search", exchange -> {
+            respond(exchange,
+                    "[{\"lat\":\"43.65\",\"lon\":\"-79.38\"}]");
+        });
         server.createContext("/interpreter", exchange -> respond(exchange, overpass));
         server.start();
 

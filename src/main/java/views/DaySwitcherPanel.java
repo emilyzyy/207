@@ -57,8 +57,9 @@ public final class DaySwitcherPanel extends JPanel {
         add(scroller, BorderLayout.CENTER);
 
         render(viewModel.getState());
-        viewModel.addPropertyChangeListener(event ->
-                onEventThread(() -> render(viewModel.getState())));
+        viewModel.addPropertyChangeListener(event -> {
+            onEventThread(() -> render(viewModel.getState()));
+        });
     }
 
     private void render(DayPlanState state) {

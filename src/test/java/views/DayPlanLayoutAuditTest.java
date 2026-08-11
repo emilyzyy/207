@@ -167,8 +167,10 @@ class DayPlanLayoutAuditTest {
     private static DayPlanPanel panelFor(DayPlanViewModel viewModel) throws Exception {
         assumeFalse(GraphicsEnvironment.isHeadless(), "these components need a display");
         final DayPlanPanel[] built = new DayPlanPanel[1];
-        SwingUtilities.invokeAndWait(() -> built[0] = new DayPlanPanel(viewModel,
-                new AutoScheduleController(INERT, viewModel, TaskRunner.immediate())));
+        SwingUtilities.invokeAndWait(() -> {
+            built[0] = new DayPlanPanel(viewModel,
+                    new AutoScheduleController(INERT, viewModel, TaskRunner.immediate()));
+        });
         return built[0];
     }
 
@@ -863,8 +865,9 @@ class DayPlanLayoutAuditTest {
         final JFrame frame = host(panel, 1200);
         assertEquals(1, countImprovementPanels(panel), "precondition");
 
-        SwingUtilities.invokeAndWait(() ->
-                viewModel.setState(viewModel.getState().clearedPreview("Cancelled.")));
+        SwingUtilities.invokeAndWait(() -> {
+            viewModel.setState(viewModel.getState().clearedPreview("Cancelled."));
+        });
         drain();
 
         assertEquals(0, countImprovementPanels(panel),

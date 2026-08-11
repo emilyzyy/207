@@ -150,8 +150,9 @@ class AutoscheduleDeterminismTest {
 
         final List<ScheduledEvent> shuffled = new ArrayList<>(forwards.getScheduledEvents());
         Collections.reverse(shuffled);
-        Collections.sort(shuffled, (left, right) ->
-                left.getStartTime().compareTo(right.getStartTime()));
+        Collections.sort(shuffled, (left, right) -> {
+            return left.getStartTime().compareTo(right.getStartTime());
+        });
         final Trip rebuilt = new Trip("trip-1", "Toronto", DATE, at(9, 0), at(21, 0),
                 TransportationMode.WALKING);
         rebuilt.replaceSchedule(shuffled);
@@ -282,8 +283,9 @@ class AutoscheduleDeterminismTest {
         final List<ScheduledEvent> withTravel = new ArrayList<>(trip.getScheduledEvents());
         withTravel.add(new ScheduledEvent("travel-e1", null, at(10, 0), at(10, 20),
                 EventType.TRAVEL, "Travel to Place e1"));
-        Collections.sort(withTravel, (left, right) ->
-                left.getStartTime().compareTo(right.getStartTime()));
+        Collections.sort(withTravel, (left, right) -> {
+            return left.getStartTime().compareTo(right.getStartTime());
+        });
         trip.replaceSchedule(withTravel);
 
         final DayPlanState state = runOnce(trip, new FakeTravelTimeEstimator()
